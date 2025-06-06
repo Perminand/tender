@@ -1,10 +1,6 @@
 package ru.perminov.tender.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -14,6 +10,7 @@ import lombok.ToString;
 import java.util.UUID;
 
 @Entity
+@Table(name = "companies")
 @Getter
 @Setter
 @ToString
@@ -39,6 +36,8 @@ public class Company {
     @Column(nullable = false)
     private String address;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "type_id")
     private TypeCompany type;
 
     private String director;
@@ -68,6 +67,4 @@ public class Company {
     public int hashCode() {
         return getUuid() != null ? getUuid().hashCode() : 0;
     }
-
-
 }
