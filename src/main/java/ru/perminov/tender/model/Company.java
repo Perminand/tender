@@ -1,0 +1,72 @@
+package ru.perminov.tender.model;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
+import java.util.UUID;
+
+@Entity
+@Getter
+@Setter
+@ToString
+@NoArgsConstructor
+public class Company {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID uuid;
+
+    @Column(nullable = false)
+    private String inn;
+
+    @Column(nullable = false)
+    private String kpp;
+
+    @Column(nullable = false)
+    private String ogrn;
+
+    @Column(nullable = false)
+    private String name;
+
+    @Column(nullable = false)
+    private String address;
+
+    private TypeCompany type;
+
+    private String director;
+
+    private String phone;
+
+    private String email;
+
+    private String bankName;
+
+    private String bankAccount;
+
+    private String correspondentAccount;
+
+    private String bik;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Company company = (Company) o;
+        return uuid != null && uuid.equals(company.uuid);
+    }
+
+    @Override
+    public int hashCode() {
+        return getUuid() != null ? getUuid().hashCode() : 0;
+    }
+
+
+}
