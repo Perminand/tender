@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 
 public record CompanyDtoNew(
+
     @NotBlank(message = "ИНН не может быть пустым")
     @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
     String inn,
@@ -26,10 +27,17 @@ public record CompanyDtoNew(
     String typeId,
 
     String director,
+
     String phone,
+
     String email,
+
     String bankName,
+
     String bankAccount,
+
     String correspondentAccount,
+
     String bik
+
 ) {} 
