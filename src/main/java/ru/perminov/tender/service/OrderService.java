@@ -1,7 +1,7 @@
 package ru.perminov.tender.service;
 
-import ru.perminov.tender.dto.OrderDtoNew;
-import ru.perminov.tender.dto.OrderDtoUpdate;
+import ru.perminov.tender.dto.order.OrderDtoNew;
+import ru.perminov.tender.dto.order.OrderDtoUpdate;
 import ru.perminov.tender.model.Order;
 
 import java.util.List;

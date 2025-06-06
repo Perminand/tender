@@ -1,26 +1,20 @@
-package ru.perminov.tender.dto;
+package ru.perminov.tender.dto.order;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import lombok.Getter;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-public record OrderDtoNew(
+public record OrderDtoUpdate(
 
-        @NotNull
         @Positive
         Integer number,
 
-        @NotNull
         LocalDate date,
 
-        @NotNull
         UUID companyId,
 
-        @NotNull
         UUID projectId,
 
         List<UUID> materialIds

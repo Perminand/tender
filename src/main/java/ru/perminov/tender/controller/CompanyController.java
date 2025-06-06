@@ -1,0 +1,56 @@
+package ru.perminov.tender.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import ru.perminov.tender.dto.company.CompanyDtoNew;
+import ru.perminov.tender.dto.company.CompanyDtoUpdate;
+import ru.perminov.tender.model.Company;
+import ru.perminov.tender.service.CompanyService;
+
+import java.util.List;
+import java.util.UUID;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/companies")
+@RequiredArgsConstructor
+@Validated
+public class CompanyController {
+
+    private final CompanyService companyService;
+
+    @PostMapping
+    public ResponseEntity<Company> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
+        log.info("Пришел POST запрос на создание компании: {}", companyDtoNew);
+        return ResponseEntity.ok(companyService.create(companyDtoNew));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Company> update(@PathVariable UUID id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
+        log.info("Пришел PATCH запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
+        return ResponseEntity.ok(companyService.update(id, companyDtoUpdate));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        log.info("Пришел DELETE запрос на удаление компании uuid: {}", id);
+        companyService.delete(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Company> getById(@PathVariable UUID id) {
+        log.info("Пришел GET запрос на получение компании uuid: {}", id);
+        return ResponseEntity.ok(companyService.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Company>> getAll() {
+        log.info("Пришел GET запрос на получение всех компаний");
+        return ResponseEntity.ok(companyService.getAll());
+    }
+} 

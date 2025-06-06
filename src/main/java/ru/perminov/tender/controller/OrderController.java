@@ -6,8 +6,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import ru.perminov.tender.dto.OrderDtoNew;
-import ru.perminov.tender.dto.OrderDtoUpdate;
+import ru.perminov.tender.dto.order.OrderDtoNew;
+import ru.perminov.tender.dto.order.OrderDtoUpdate;
 import ru.perminov.tender.model.Order;
 import ru.perminov.tender.service.OrderService;
 

@@ -24,13 +24,13 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID uuid;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String inn;
 
     @Column(nullable = false)
     private String kpp;
 
-    @Column(nullable = false)
+    @Column(nullable = false, unique = true)
     private String ogrn;
 
     @Column(nullable = false)
@@ -49,6 +49,7 @@ public class Company {
 
     private String bankName;
 
+    @Column(unique = true)
     private String bankAccount;
 
     private String correspondentAccount;
