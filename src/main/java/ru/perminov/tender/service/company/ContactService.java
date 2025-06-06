@@ -9,8 +9,6 @@ import java.util.UUID;
 
 public interface ContactService {
 
-    Contact create(ContactDtoNew contactDtoNew);
-
     Contact update(UUID id, ContactDtoUpdate contactDtoUpdate);
 
     void delete(UUID id);

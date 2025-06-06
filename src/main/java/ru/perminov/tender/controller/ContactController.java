@@ -22,13 +22,6 @@ public class ContactController {
 
     private final ContactService contactService;
 
-    @PostMapping
-    public ResponseEntity<Contact> create(@Valid @RequestBody ContactDtoNew contactDtoNew) {
-        log.info("Получен запрос на создание контакта: {}", contactDtoNew);
-        Contact contact = contactService.create(contactDtoNew);
-        return ResponseEntity.status(HttpStatus.CREATED).body(contact);
-    }
-
     @PutMapping("/{id}")
     public ResponseEntity<Contact> update(@PathVariable UUID id, @Valid @RequestBody ContactDtoUpdate contactDtoUpdate) {
         log.info("Получен запрос на обновление контакта с id {}: {}", id, contactDtoUpdate);

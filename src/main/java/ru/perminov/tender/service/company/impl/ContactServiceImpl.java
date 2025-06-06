@@ -26,18 +26,6 @@ public class ContactServiceImpl implements ContactService {
 
     @Override
     @Transactional
-    public Contact create(ContactDtoNew contactDtoNew) {
-        ContactPerson contactPerson = contactPersonRepository.findById(contactDtoNew.contactPersonId())
-                .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactDtoNew.contactPersonId()));
-
-        Contact contact = contactMapper.toContact(contactDtoNew);
-        contact.setContactPerson(contactPerson);
-
-        return contactRepository.save(contact);
-    }
-
-    @Override
-    @Transactional
     public Contact update(UUID id, ContactDtoUpdate contactDtoUpdate) {
         Contact existingContact = getById(id);
         contactMapper.updateContactFromDto(contactDtoUpdate, existingContact);

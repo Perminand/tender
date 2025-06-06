@@ -9,6 +9,7 @@ import lombok.ToString;
 import java.util.UUID;
 
 @Entity
+@Table(name = "type_companies")
 @Getter
 @Setter
 @ToString
@@ -20,6 +21,8 @@ public class TypeCompany {
     private UUID uuid;
 
     private String name;
+
+    private String code;
 
     @Override
     public boolean equals(Object o) {

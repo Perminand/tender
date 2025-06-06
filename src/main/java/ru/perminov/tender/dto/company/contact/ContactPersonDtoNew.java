@@ -6,23 +6,27 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 
 import java.util.UUID;
+import java.util.List;
 
 public record ContactPersonDtoNew(
-    @NotNull(message = "ID компании не может быть пустым")
-    UUID companyUuid,
+        UUID uuid,
 
-    @NotBlank(message = "Фамилия не может быть пустой")
-    String lastName,
+        @NotNull(message = "ID компании не может быть пустым")
+        UUID companyUuid,
 
-    @NotBlank(message = "Имя не может быть пустым")
-    String firstName,
+        @NotBlank(message = "Фамилия не может быть пустой")
+        String lastName,
 
-    @NotBlank(message = "Должность не может быть пустой")
-    String position,
+        @NotBlank(message = "Имя не может быть пустым")
+        String firstName,
 
-    @Pattern(regexp = "^\\+?[1-9]\\d{10,14}$", message = "Неверный формат телефона")
-    String phone,
+        @NotBlank(message = "Должность не может быть пустой")
+        String position,
 
-    @Email(message = "Неверный формат email")
-    String email
-) {} 
+
+        @NotNull(message = "Тип контакта не может быть пустым")
+        UUID contactTypeUuid,
+
+        List<ContactDtoNew> contacts
+) {
+}

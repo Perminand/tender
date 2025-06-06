@@ -27,6 +27,9 @@ public class TypeCompanyServiceImpl implements TypeCompanyService {
         if (typeCompanyRepository.existsByName(typeCompanyDtoNew.name())) {
             throw new RuntimeException("Тип компании с именем '" + typeCompanyDtoNew.name() + "' уже существует");
         }
+        if (typeCompanyRepository.existsByCode(typeCompanyDtoNew.code())) {
+            throw new RuntimeException("Тип компании с кодом '" + typeCompanyDtoNew.code() + "' уже существует");
+        }
         TypeCompany typeCompany = typeCompanyMapper.toTypeCompany(typeCompanyDtoNew);
         return typeCompanyRepository.save(typeCompany);
     }
@@ -35,6 +38,19 @@ public class TypeCompanyServiceImpl implements TypeCompanyService {
     @Transactional
     public TypeCompany update(UUID id, TypeCompanyDtoUpdate typeCompanyDtoUpdate) {
         TypeCompany existingTypeCompany = getById(id);
+        
+        if (typeCompanyDtoUpdate.name() != null && !typeCompanyDtoUpdate.name().equals(existingTypeCompany.getName())) {
+            if (typeCompanyRepository.existsByName(typeCompanyDtoUpdate.name())) {
+                throw new RuntimeException("Тип компании с именем '" + typeCompanyDtoUpdate.name() + "' уже существует");
+            }
+        }
+        
+        if (typeCompanyDtoUpdate.code() != null && !typeCompanyDtoUpdate.code().equals(existingTypeCompany.getCode())) {
+            if (typeCompanyRepository.existsByCode(typeCompanyDtoUpdate.code())) {
+                throw new RuntimeException("Тип компании с кодом '" + typeCompanyDtoUpdate.code() + "' уже существует");
+            }
+        }
+        
         typeCompanyMapper.updateTypeCompanyFromDto(typeCompanyDtoUpdate, existingTypeCompany);
         return typeCompanyRepository.save(existingTypeCompany);
     }

@@ -2,65 +2,88 @@ package ru.perminov.tender.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoNew;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
-import ru.perminov.tender.model.company.ContactPerson;
+import ru.perminov.tender.service.company.CompanyService;
 import ru.perminov.tender.service.company.ContactPersonService;
+import ru.perminov.tender.repository.company.ContactTypeRepository;
 
-import java.util.List;
+import java.util.ArrayList;
 import java.util.UUID;
 
-@Slf4j
-@RestController
+@Controller
+@RequestMapping("/contact-persons")
 @RequiredArgsConstructor
-@RequestMapping("/api/companies/contact-persons")
 public class ContactPersonController {
 
     private final ContactPersonService contactPersonService;
-
-    @PostMapping
-    public ResponseEntity<ContactPerson> create(@Valid @RequestBody ContactPersonDtoNew contactPersonDtoNew) {
-        log.info("Получен запрос на создание контактного лица: {}", contactPersonDtoNew);
-        ContactPerson contactPerson = contactPersonService.create(contactPersonDtoNew);
-        return ResponseEntity.status(HttpStatus.CREATED).body(contactPerson);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<ContactPerson> update(@PathVariable UUID id, @Valid @RequestBody ContactPersonDtoUpdate contactPersonDtoUpdate) {
-        log.info("Получен запрос на обновление контактного лица с id {}: {}", id, contactPersonDtoUpdate);
-        ContactPerson contactPerson = contactPersonService.update(id, contactPersonDtoUpdate);
-        return ResponseEntity.ok(contactPerson);
-    }
-
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Получен запрос на удаление контактного лица с id {}", id);
-        contactPersonService.delete(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @GetMapping("/{id}")
-    public ResponseEntity<ContactPerson> getById(@PathVariable UUID id) {
-        log.info("Получен запрос на получение контактного лица с id {}", id);
-        ContactPerson contactPerson = contactPersonService.getById(id);
-        return ResponseEntity.ok(contactPerson);
-    }
+    private final CompanyService companyService;
+    private final ContactTypeRepository contactTypeRepository;
 
     @GetMapping
-    public ResponseEntity<List<ContactPerson>> getAll() {
-        log.info("Получен запрос на получение всех контактных лиц");
-        List<ContactPerson> contactPersons = contactPersonService.getAll();
-        return ResponseEntity.ok(contactPersons);
+    public String list(Model model) {
+        model.addAttribute("contactPersons", contactPersonService.getAll());
+        return "contact-person/list";
     }
 
-    @GetMapping("/company/{companyUuid}")
-    public ResponseEntity<List<ContactPerson>> getByCompanyUuid(@PathVariable UUID companyUuid) {
-        log.info("Получен запрос на получение контактных лиц для компании с id {}", companyUuid);
-        List<ContactPerson> contactPersons = contactPersonService.getByCompanyUuid(companyUuid);
-        return ResponseEntity.ok(contactPersons);
+    @GetMapping("/new")
+    public String newForm(Model model) {
+        model.addAttribute("contactPerson", new ContactPersonDtoNew(null, null, null, null, null, null, new ArrayList<>()));
+        model.addAttribute("companies", companyService.getAll());
+        model.addAttribute("contactTypes", contactTypeRepository.findAll());
+        return "contact-person/form";
+    }
+
+    @PostMapping
+    public String create(@Valid @ModelAttribute("contactPerson") ContactPersonDtoNew contactPerson,
+                        BindingResult bindingResult,
+                        Model model,
+                        RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("companies", companyService.getAll());
+            model.addAttribute("contactTypes", contactTypeRepository.findAll());
+            return "contact-person/form";
+        }
+
+        contactPersonService.create(contactPerson);
+        redirectAttributes.addFlashAttribute("success", "Контактное лицо успешно создано");
+        return "redirect:/contact-persons";
+    }
+
+    @GetMapping("/{uuid}/edit")
+    public String editForm(@PathVariable UUID uuid, Model model) {
+        model.addAttribute("contactPerson", contactPersonService.findByUuid(uuid));
+        model.addAttribute("companies", companyService.getAll());
+        model.addAttribute("contactTypes", contactTypeRepository.findAll());
+        return "contact-person/form";
+    }
+
+    @PostMapping("/{uuid}")
+    public String update(@PathVariable UUID uuid,
+                        @Valid @ModelAttribute("contactPerson") ContactPersonDtoUpdate contactPerson,
+                        BindingResult bindingResult,
+                        Model model,
+                        RedirectAttributes redirectAttributes) {
+        if (bindingResult.hasErrors()) {
+            model.addAttribute("companies", companyService.getAll());
+            model.addAttribute("contactTypes", contactTypeRepository.findAll());
+            return "contact-person/form";
+        }
+
+        contactPersonService.update(uuid, contactPerson);
+        redirectAttributes.addFlashAttribute("success", "Контактное лицо успешно обновлено");
+        return "redirect:/contact-persons";
+    }
+
+    @PostMapping("/{uuid}/delete")
+    public String delete(@PathVariable UUID uuid, RedirectAttributes redirectAttributes) {
+        contactPersonService.delete(uuid);
+        redirectAttributes.addFlashAttribute("success", "Контактное лицо успешно удалено");
+        return "redirect:/contact-persons";
     }
 } 

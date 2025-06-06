@@ -37,33 +37,37 @@ public class ContactPersonServiceImpl implements ContactPersonService {
         ContactPerson contactPerson = contactPersonMapper.toContactPerson(contactPersonDtoNew);
         contactPerson.setCompany(company);
 
-        // Создаем контакт с телефоном
-        ContactType phoneType = contactTypeRepository.findByCode("PHONE")
-                .orElseThrow(() -> new RuntimeException("Тип контакта PHONE не найден"));
-        Contact phoneContact = new Contact();
-        phoneContact.setType(phoneType);
-        phoneContact.setValue(contactPersonDtoNew.phone());
-        phoneContact.setContactPerson(contactPerson);
-        contactPerson.getContacts().add(phoneContact);
-
-        // Создаем контакт с email, если он указан
-        if (contactPersonDtoNew.email() != null) {
-            ContactType emailType = contactTypeRepository.findByCode("EMAIL")
-                    .orElseThrow(() -> new RuntimeException("Тип контакта EMAIL не найден"));
-            Contact emailContact = new Contact();
-            emailContact.setType(emailType);
-            emailContact.setValue(contactPersonDtoNew.email());
-            emailContact.setContactPerson(contactPerson);
-            contactPerson.getContacts().add(emailContact);
+        // Новая логика: обработка списка contacts
+        if (contactPersonDtoNew.contacts() != null) {
+            for (var contactDto : contactPersonDtoNew.contacts()) {
+                if (contactDto == null || (contactDto.contactTypeUuid() == null && (contactDto.newTypeName() == null || contactDto.newTypeName().isBlank()))) {
+                    continue; // пропускаем пустые
+                }
+                ContactType type;
+                if (contactDto.contactTypeUuid() != null) {
+                    type = contactTypeRepository.findById(contactDto.contactTypeUuid())
+                            .orElseThrow(() -> new RuntimeException("Тип контакта не найден: " + contactDto.contactTypeUuid()));
+                } else {
+                    // Создать новый тип
+                    type = new ContactType();
+                    type.setName(contactDto.newTypeName());
+                    type.setCode(contactDto.newTypeName().toUpperCase().replaceAll("\\s+", "_"));
+                    type = contactTypeRepository.save(type);
+                }
+                Contact contact = new Contact();
+                contact.setType(type);
+                contact.setValue(contactDto.value());
+                contact.setContactPerson(contactPerson);
+                contactPerson.getContacts().add(contact);
+            }
         }
-
         return contactPersonRepository.save(contactPerson);
     }
 
     @Override
     @Transactional
     public ContactPerson update(UUID id, ContactPersonDtoUpdate contactPersonDtoUpdate) {
-        ContactPerson existingContactPerson = getById(id);
+        ContactPerson existingContactPerson = findByUuid(id);
         contactPersonMapper.updateContactPersonFromDto(contactPersonDtoUpdate, existingContactPerson);
 
         // Обновляем контакты
@@ -103,12 +107,6 @@ public class ContactPersonServiceImpl implements ContactPersonService {
     }
 
     @Override
-    public ContactPerson getById(UUID id) {
-        return contactPersonRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + id));
-    }
-
-    @Override
     public List<ContactPerson> getAll() {
         return contactPersonRepository.findAll();
     }
@@ -116,5 +114,11 @@ public class ContactPersonServiceImpl implements ContactPersonService {
     @Override
     public List<ContactPerson> getByCompanyUuid(UUID companyUuid) {
         return contactPersonRepository.findByCompanyUuid(companyUuid);
+    }
+
+    @Override
+    public ContactPerson findByUuid(UUID uuid) {
+        return contactPersonRepository.findById(uuid)
+                .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с uuid: " + uuid));
     }
 } 

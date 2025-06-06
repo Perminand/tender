@@ -15,10 +15,10 @@ public interface ContactPersonService {
 
     void delete(UUID id);
 
-    ContactPerson getById(UUID id);
-
     List<ContactPerson> getAll();
 
     List<ContactPerson> getByCompanyUuid(UUID companyUuid);
+
+    ContactPerson findByUuid(UUID uuid);
 
 } 
