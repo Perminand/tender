@@ -8,9 +8,15 @@ import java.util.List;
 import java.util.UUID;
 
 public interface MaterialService {
+
     Material create(MaterialDtoNew materialDtoNew);
+
     Material update(UUID id, MaterialDtoUpdate materialDtoUpdate);
+
     void delete(UUID id);
+
     Material getById(UUID id);
+
     List<Material> getAll();
+
 } 

@@ -1,16 +1,16 @@
-package ru.perminov.tender.service.impl;
+package ru.perminov.tender.service.company.impl;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
-import ru.perminov.tender.mapper.CompanyMapper;
-import ru.perminov.tender.model.Company;
-import ru.perminov.tender.model.TypeCompany;
-import ru.perminov.tender.repository.CompanyRepository;
-import ru.perminov.tender.repository.TypeCompanyRepository;
-import ru.perminov.tender.service.CompanyService;
+import ru.perminov.tender.mapper.company.CompanyMapper;
+import ru.perminov.tender.model.company.Company;
+import ru.perminov.tender.model.company.TypeCompany;
+import ru.perminov.tender.repository.company.CompanyRepository;
+import ru.perminov.tender.repository.company.TypeCompanyRepository;
+import ru.perminov.tender.service.company.CompanyService;
 
 import java.util.List;
 import java.util.UUID;

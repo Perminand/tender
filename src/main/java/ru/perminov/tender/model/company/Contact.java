@@ -1,53 +1,46 @@
-package ru.perminov.tender.model;
+package ru.perminov.tender.model.company;
 
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import ru.perminov.tender.model.company.Company;
 
-import java.time.LocalDate;
-import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "contacts")
 @Getter
 @Setter
 @ToString
 @NoArgsConstructor
-public class Order {
+public class Contact {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID uuid;
 
-    @Column(nullable = false)
-    private Integer number;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false)
+    private ContactType type;
 
     @Column(nullable = false)
-    private LocalDate date;
+    private String value;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    private Company company;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Project project;
-
-    @ManyToMany
-    private List<Material> materials;
+    @JoinColumn(nullable = false)
+    private ContactPerson contactPerson;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Order order = (Order) o;
-        return uuid != null && uuid.equals(order.uuid);
+        Contact contact = (Contact) o;
+        return uuid != null && uuid.equals(contact.uuid);
     }
 
     @Override
     public int hashCode() {
         return getUuid() != null ? getUuid().hashCode() : 0;
     }
-}
+} 

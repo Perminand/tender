@@ -7,7 +7,7 @@ import ru.perminov.tender.dto.order.OrderDtoNew;
 import ru.perminov.tender.dto.order.OrderDtoUpdate;
 import ru.perminov.tender.mapper.OrderMapper;
 import ru.perminov.tender.model.Order;
-import ru.perminov.tender.repository.CompanyRepository;
+import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.MaterialRepository;
 import ru.perminov.tender.repository.OrderRepository;
 import ru.perminov.tender.repository.ProjectRepository;

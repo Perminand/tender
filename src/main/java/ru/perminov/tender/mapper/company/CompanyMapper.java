@@ -1,11 +1,11 @@
-package ru.perminov.tender.mapper;
+package ru.perminov.tender.mapper.company;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
-import ru.perminov.tender.model.Company;
+import ru.perminov.tender.model.company.Company;
 
 @Mapper(componentModel = "spring")
 public interface CompanyMapper {

@@ -8,8 +8,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
-import ru.perminov.tender.model.Company;
-import ru.perminov.tender.service.CompanyService;
+import ru.perminov.tender.model.company.Company;
+import ru.perminov.tender.service.company.CompanyService;
 
 import java.util.List;
 import java.util.UUID;
