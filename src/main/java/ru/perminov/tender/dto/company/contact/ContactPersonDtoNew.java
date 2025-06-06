@@ -17,8 +17,6 @@ public record ContactPersonDtoNew(
     @NotBlank(message = "Имя не может быть пустым")
     String firstName,
 
-    String middleName,
-
     @NotBlank(message = "Должность не может быть пустой")
     String position,
 

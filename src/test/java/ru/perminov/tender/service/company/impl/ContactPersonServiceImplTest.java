@@ -76,7 +76,6 @@ class ContactPersonServiceImplTest {
                 companyUuid,
                 "Иванов",
                 "Иван",
-                null,
                 "Менеджер",
                 "+79001234567",
                 "ivan@example.com"
@@ -85,7 +84,6 @@ class ContactPersonServiceImplTest {
         contactPersonDtoUpdate = new ContactPersonDtoUpdate(
                 "Петров",
                 "Петр",
-                null,
                 "Директор",
                 "+79001234567",
                 "petr@example.com"

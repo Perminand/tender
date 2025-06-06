@@ -8,9 +8,7 @@ public record ContactPersonDtoUpdate(
     String lastName,
 
     String firstName,
-
-    String middleName,
-
+    
     String position,
 
     @Pattern(regexp = "^\\+?[1-9]\\d{10,14}$", message = "Неверный формат телефона")

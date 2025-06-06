@@ -22,7 +22,6 @@ class ContactPersonMapperTest {
                 companyUuid,
                 "Иванов",
                 "Иван",
-                null,
                 "Менеджер",
                 "+79001234567",
                 "ivan@example.com"
@@ -52,7 +51,6 @@ class ContactPersonMapperTest {
         ContactPersonDtoUpdate dto = new ContactPersonDtoUpdate(
                 "Петров",
                 "Петр",
-                null,
                 "Директор",
                 "+79001234567",
                 "petr@example.com"
