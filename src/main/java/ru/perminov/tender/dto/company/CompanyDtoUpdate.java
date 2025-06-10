@@ -1,8 +1,14 @@
 package ru.perminov.tender.dto.company;
 
 import jakarta.validation.constraints.Pattern;
+import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
+
+import java.util.List;
+import java.util.UUID;
 
 public record CompanyDtoUpdate(
+
+        UUID uuid,
 
     @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
     String inn,
@@ -31,6 +37,14 @@ public record CompanyDtoUpdate(
 
     String correspondentAccount,
 
-    String bik
+    String bik,
 
-) {}
+    List<ContactPersonDtoUpdate> contactPersons
+
+) {
+    public CompanyDtoUpdate {
+        if (contactPersons == null) {
+            contactPersons = List.of();
+        }
+    }
+}

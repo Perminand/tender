@@ -29,9 +29,9 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.create(companyDtoNew));
     }
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Company> update(@PathVariable UUID id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
-        log.info("Пришел PATCH запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
+        log.info("Пришел PUT запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
         return ResponseEntity.ok(companyService.update(id, companyDtoUpdate));
     }
 

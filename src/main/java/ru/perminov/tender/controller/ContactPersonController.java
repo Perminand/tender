@@ -33,7 +33,7 @@ public class ContactPersonController {
 
     @GetMapping("/new")
     public String newForm(Model model) {
-        model.addAttribute("contactPerson", new ContactPersonDtoNew(null, null, null, null, null, null, new ArrayList<>()));
+        model.addAttribute("contactPerson", new ContactPersonDtoNew(null, null, null, null, null, null));
         model.addAttribute("companies", companyService.getAll());
         model.addAttribute("contactTypes", contactTypeRepository.findAll());
         return "contact-person/form";

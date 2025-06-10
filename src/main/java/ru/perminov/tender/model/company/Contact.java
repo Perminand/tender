@@ -31,6 +31,9 @@ public class Contact {
     @JoinColumn(nullable = false)
     private ContactPerson contactPerson;
 
+    @Transient
+    private String newTypeName;
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

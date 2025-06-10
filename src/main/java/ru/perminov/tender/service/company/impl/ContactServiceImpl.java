@@ -8,8 +8,10 @@ import ru.perminov.tender.dto.company.contact.ContactDtoUpdate;
 import ru.perminov.tender.mapper.company.ContactMapper;
 import ru.perminov.tender.model.company.Contact;
 import ru.perminov.tender.model.company.ContactPerson;
+import ru.perminov.tender.model.company.ContactType;
 import ru.perminov.tender.repository.company.ContactPersonRepository;
 import ru.perminov.tender.repository.company.ContactRepository;
+import ru.perminov.tender.repository.company.ContactTypeRepository;
 import ru.perminov.tender.service.company.ContactService;
 
 import java.util.List;
@@ -22,7 +24,34 @@ public class ContactServiceImpl implements ContactService {
 
     private final ContactRepository contactRepository;
     private final ContactPersonRepository contactPersonRepository;
+    private final ContactTypeRepository contactTypeRepository;
     private final ContactMapper contactMapper;
+
+    @Override
+    @Transactional
+    public Contact create(ContactDtoNew dto, UUID contactPersonId) {
+        Contact contact = contactMapper.toContact(dto);
+        
+        ContactPerson contactPerson = contactPersonRepository.findById(contactPersonId)
+                .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactPersonId));
+        contact.setContactPerson(contactPerson);
+
+        // Если выбран существующий тип контакта
+        if (dto.contactTypeUuid() != null) {
+            ContactType contactType = contactTypeRepository.findById(dto.contactTypeUuid())
+                    .orElseThrow(() -> new RuntimeException("Тип контакта не найден с id: " + dto.contactTypeUuid()));
+            contact.setType(contactType);
+        }
+        // Если создается новый тип контакта
+        else if (dto.newTypeName() != null && !dto.newTypeName().isBlank()) {
+            ContactType newType = new ContactType();
+            newType.setName(dto.newTypeName());
+            contactTypeRepository.save(newType);
+            contact.setType(newType);
+        }
+
+        return contactRepository.save(contact);
+    }
 
     @Override
     @Transactional

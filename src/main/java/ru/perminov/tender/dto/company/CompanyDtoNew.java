@@ -2,8 +2,14 @@ package ru.perminov.tender.dto.company;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import ru.perminov.tender.dto.company.contact.ContactPersonDtoNew;
+
+import java.util.List;
+import java.util.UUID;
 
 public record CompanyDtoNew(
+
+        UUID uuid,
 
     @NotBlank(message = "ИНН не может быть пустым")
     @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
@@ -38,6 +44,14 @@ public record CompanyDtoNew(
 
     String correspondentAccount,
 
-    String bik
+    String bik,
 
-) {} 
+    List<ContactPersonDtoNew> contactPersons
+
+) {
+    public CompanyDtoNew {
+        if (contactPersons == null) {
+            contactPersons = List.of();
+        }
+    }
+} 

@@ -12,10 +12,12 @@ public interface ContactMapper {
     @Mapping(target = "contactPerson", ignore = true)
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "uuid", ignore = true)
+    @Mapping(target = "value", source = "value")
     Contact toContact(ContactDtoNew dto);
 
     @Mapping(target = "contactPerson", ignore = true)
     @Mapping(target = "type", ignore = true)
     @Mapping(target = "uuid", ignore = true)
+    @Mapping(target = "value", source = "value")
     void updateContactFromDto(ContactDtoUpdate dto, @MappingTarget Contact contact);
 } 

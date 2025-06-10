@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head>
+    <title>Список компаний</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container">
+            <div class="row mb-3">
+                <div class="col">
+                    <h2>Список компаний</h2>
+                </div>
+                <div class="col text-end">
+                    <a th:href="@{/companies/new}" class="btn btn-primary">
+                        <i class="bi bi-plus-circle"></i> Добавить компанию
+                    </a>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>ИНН</th>
+                            <th>КПП</th>
+                            <th>ОГРН</th>
+                            <th>Тип</th>
+                            <th>Директор</th>
+                            <th>Телефон</th>
+                            <th>Email</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="company : ${companies}">
+                            <td th:text="${company.name}"></td>
+                            <td th:text="${company.inn}"></td>
+                            <td th:text="${company.kpp}"></td>
+                            <td th:text="${company.ogrn}"></td>
+                            <td th:text="${company.type.name}"></td>
+                            <td th:text="${company.director}"></td>
+                            <td th:text="${company.phone}"></td>
+                            <td th:text="${company.email}"></td>
+                            <td>
+                                <div class="btn-group">
+                                    <a th:href="@{/companies/{id}/edit(id=${company.uuid})}" 
+                                       class="btn btn-sm btn-outline-primary" title="Редактировать">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <form th:action="@{/companies/{id}/delete(id=${company.uuid})}" 
+                                          method="post" 
+                                          style="display: inline;"
+                                          onsubmit="return confirm('Вы уверены, что хотите удалить эту компанию?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Удалить">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

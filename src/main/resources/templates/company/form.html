@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head>
+    <title th:text="${company.uuid == null ? 'Новая компания' : 'Редактирование компании'}"></title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-8 offset-md-2">
+                    <div class="card">
+                        <div class="card-header">
+                            <h2 class="card-title" th:text="${company.uuid == null ? 'Новая компания' : 'Редактирование компании'}"></h2>
+                        </div>
+                        <div class="card-body">
+                            <form th:action="@{${company.uuid == null ? '/companies' : '/companies/' + company.uuid}}"
+                                  th:object="${company}"
+                                  method="post">
+                                
+                                <div class="mb-3">
+                                    <label for="name" class="form-label">Название компании</label>
+                                    <input type="text" class="form-control" id="name" th:field="*{name}" required>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="inn" class="form-label">ИНН</label>
+                                    <input type="text" class="form-control" id="inn" th:field="*{inn}" required>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('inn')}" th:errors="*{inn}"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="kpp" class="form-label">КПП</label>
+                                    <input type="text" class="form-control" id="kpp" th:field="*{kpp}" required>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('kpp')}" th:errors="*{kpp}"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="ogrn" class="form-label">ОГРН</label>
+                                    <input type="text" class="form-control" id="ogrn" th:field="*{ogrn}" required>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('ogrn')}" th:errors="*{ogrn}"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="typeId" class="form-label">Тип компании</label>
+                                    <div class="input-group">
+                                        <select class="form-select" id="typeId" th:field="*{typeId}" required>
+                                            <option value="">Выберите тип компании</option>
+                                            <option th:each="type : ${types}"
+                                                    th:value="${type.uuid}"
+                                                    th:text="${type.name}"></option>
+                                            <option value="new">Создать новый тип...</option>
+                                        </select>
+                                        <input type="text" class="form-control new-type-input d-none" 
+                                               id="newTypeName"
+                                               placeholder="Название нового типа">
+                                    </div>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('typeId')}" th:errors="*{typeId}"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="address" class="form-label">Адрес</label>
+                                    <input type="text" class="form-control" id="address" th:field="*{address}" required>
+                                    <div class="invalid-feedback" th:if="${#fields.hasErrors('address')}" th:errors="*{address}"></div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="director" class="form-label">Директор</label>
+                                    <input type="text" class="form-control" id="director" th:field="*{director}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label">Телефон</label>
+                                    <input type="tel" class="form-control" id="phone" th:field="*{phone}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="email" th:field="*{email}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="bankName" class="form-label">Название банка</label>
+                                    <input type="text" class="form-control" id="bankName" th:field="*{bankName}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="bankAccount" class="form-label">Расчетный счет</label>
+                                    <input type="text" class="form-control" id="bankAccount" th:field="*{bankAccount}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="correspondentAccount" class="form-label">Корреспондентский счет</label>
+                                    <input type="text" class="form-control" id="correspondentAccount" th:field="*{correspondentAccount}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="bik" class="form-label">БИК</label>
+                                    <input type="text" class="form-control" id="bik" th:field="*{bik}">
+                                </div>
+
+                                <div class="mb-3">
+                                    <h4>Контактные лица</h4>
+                                    <div id="contactPersons">
+                                        <div class="contact-person mb-3 p-3 border rounded" th:each="person, stat : ${company.contactPersons}">
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Имя</label>
+                                                    <input type="text" class="form-control" th:field="*{contactPersons[__${stat.index}__].firstName}" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Фамилия</label>
+                                                    <input type="text" class="form-control" th:field="*{contactPersons[__${stat.index}__].lastName}" required>
+                                                </div>
+                                            </div>
+                                            <div class="row mt-2">
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Должность</label>
+                                                    <input type="text" class="form-control" th:field="*{contactPersons[__${stat.index}__].position}">
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label class="form-label">Контакты</label>
+                                                    <div class="contacts">
+                                                        <div class="contact mb-2" th:each="contact, contactStat : ${person.contacts}">
+                                                            <div class="input-group">
+                                                                <select class="form-select contact-type-select" th:field="*{contactPersons[__${stat.index}__].contacts[__${contactStat.index}__].type.uuid}" required>
+                                                                    <option value="">Выберите тип контакта</option>
+                                                                    <option th:each="type : ${contactTypes}"
+                                                                            th:value="${type.uuid}"
+                                                                            th:text="${type.name}"></option>
+                                                                    <option value="new">Создать новый тип...</option>
+                                                                </select>
+                                                                <input type="text" class="form-control new-type-input d-none" 
+                                                                       th:field="*{contactPersons[__${stat.index}__].contacts[__${contactStat.index}__].newTypeName}"
+                                                                       placeholder="Название нового типа">
+                                                                <input type="text" class="form-control" th:field="*{contactPersons[__${stat.index}__].contacts[__${contactStat.index}__].value}" required>
+                                                                <button type="button" class="btn btn-outline-danger remove-contact">
+                                                                    <i class="bi bi-trash"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-contact">
+                                                        <i class="bi bi-plus-circle"></i> Добавить контакт
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <button type="button" class="btn btn-outline-danger btn-sm mt-2 remove-person">
+                                                <i class="bi bi-trash"></i> Удалить контактное лицо
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-outline-primary mt-2" id="addPerson">
+                                        <i class="bi bi-plus-circle"></i> Добавить контактное лицо
+                                    </button>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <a th:href="@{/companies}" class="btn btn-secondary">Отмена</a>
+                                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="scripts">
+        <script th:inline="javascript">
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM loaded');
+                
+                const form = document.querySelector('form');
+                console.log('Form found:', form);
+                
+                const contactPersonsContainer = document.getElementById('contactPersons');
+                const addContactPersonBtn = document.getElementById('addPerson');
+                let personIndex = 0;
+                let contactIndex = 0;
+
+                // Обработчик для выбора типа компании
+                const typeSelect = document.querySelector('select[name="typeId"]');
+                console.log('Type select found:', typeSelect);
+                
+                const newTypeNameInput = document.getElementById('newTypeName');
+                console.log('New type name input found:', newTypeNameInput);
+
+                if (typeSelect) {
+                    console.log('Adding change event listener to type select');
+                    typeSelect.addEventListener('change', function() {
+                        console.log('Type select changed');
+                        console.log('Selected value:', this.value);
+                        console.log('Selected text:', this.options[this.selectedIndex].text);
+                        
+                        if (this.value === 'new') {
+                            console.log('New type selected, showing inputs');
+                            if (newTypeNameInput) {
+                                newTypeNameInput.classList.remove('d-none');
+                                newTypeNameInput.required = true;
+                            } else {
+                                console.error('New type name input not found');
+                            }
+                        } else {
+                            console.log('Existing type selected, hiding inputs');
+                            if (newTypeNameInput) {
+                                newTypeNameInput.classList.add('d-none');
+                                newTypeNameInput.required = false;
+                            }
+                        }
+                    });
+                } else {
+                    console.error('Type select not found');
+                }
+
+                // Добавляем обработчик отправки формы
+                if (form) {
+                    console.log('Adding submit event listener to form');
+                    form.addEventListener('submit', function(e) {
+                        console.log('Form submit');
+                        console.log('Type select value:', typeSelect ? typeSelect.value : 'not found');
+                        
+                        if (typeSelect && typeSelect.value === 'new') {
+                            console.log('New type selected on submit');
+                            e.preventDefault();
+                            
+                            if (!newTypeNameInput) {
+                                console.error('New type input not found');
+                                return;
+                            }
+                            
+                            const newType = {
+                                name: newTypeNameInput.value
+                            };
+                            console.log('Creating new type:', newType);
+
+                            // Отправляем запрос на создание нового типа
+                            fetch('/api/company/type-companies', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(newType)
+                            })
+                            .then(response => {
+                                console.log('Response status:', response.status);
+                                if (!response.ok) {
+                                    throw new Error('Network response was not ok');
+                                }
+                                return response.json();
+                            })
+                            .then(data => {
+                                console.log('New type created:', data);
+                                // Добавляем новый тип в список и выбираем его
+                                const option = new Option(data.name, data.uuid);
+                                typeSelect.insertBefore(option, typeSelect.lastElementChild);
+                                typeSelect.value = data.uuid;
+                                newTypeNameInput.classList.add('d-none');
+                                newTypeNameInput.required = false;
+                                form.submit();
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                alert('Ошибка при создании нового типа компании: ' + error.message);
+                            });
+                        }
+                    });
+                } else {
+                    console.error('Form not found');
+                }
+
+                // Обработчик для выбора типа контакта
+                function handleContactTypeSelect(select) {
+                    const newTypeInput = select.closest('.input-group').querySelector('.new-type-input');
+                    if (select.value === 'new') {
+                        newTypeInput.classList.remove('d-none');
+                        newTypeInput.required = true;
+                    } else {
+                        newTypeInput.classList.add('d-none');
+                        newTypeInput.required = false;
+                    }
+                }
+
+                // Добавляем обработчики для существующих селектов
+                document.querySelectorAll('.contact-type-select').forEach(select => {
+                    select.addEventListener('change', function() {
+                        handleContactTypeSelect(this);
+                    });
+                });
+
+                // Шаблон для контакта
+                const contactTemplate = `
+                    <div class="contact mb-2">
+                        <div class="input-group">
+                            <select class="form-select contact-type-select" name="contactPersons[${personIndex}].contacts[${contactIndex}].type.uuid" required>
+                                <option value="">Выберите тип контакта</option>
+                                <option th:each="type : ${contactTypes}"
+                                        th:value="${type.uuid}"
+                                        th:text="${type.name}"></option>
+                                <option value="new">Создать новый тип...</option>
+                            </select>
+                            <input type="text" class="form-control new-type-input d-none" 
+                                   name="contactPersons[${personIndex}].contacts[${contactIndex}].newTypeName"
+                                   placeholder="Название нового типа">
+                            <input type="text" class="form-control" name="contactPersons[${personIndex}].contacts[${contactIndex}].value" required>
+                            <button type="button" class="btn btn-outline-danger remove-contact">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Добавление контакта
+                function addContact(container) {
+                    const contactDiv = document.createElement('div');
+                    contactDiv.innerHTML = contactTemplate;
+                    container.appendChild(contactDiv.firstElementChild);
+
+                    // Добавляем обработчик для нового селекта
+                    const select = contactDiv.querySelector('.contact-type-select');
+                    select.addEventListener('change', function() {
+                        handleContactTypeSelect(this);
+                    });
+
+                    // Добавляем обработчик для кнопки удаления
+                    const removeBtn = contactDiv.querySelector('.remove-contact');
+                    removeBtn.addEventListener('click', function() {
+                        this.closest('.contact').remove();
+                    });
+
+                    contactIndex++;
+                }
+
+                // Добавление нового контактного лица
+                addContactPersonBtn.addEventListener('click', function() {
+                    const personTemplate = `
+                        <div class="contact-person mb-3 p-3 border rounded">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <label class="form-label">Имя</label>
+                                    <input type="text" class="form-control" name="contactPersons[${personIndex}].firstName" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Фамилия</label>
+                                    <input type="text" class="form-control" name="contactPersons[${personIndex}].lastName" required>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-md-6">
+                                    <label class="form-label">Должность</label>
+                                    <input type="text" class="form-control" name="contactPersons[${personIndex}].position">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Контакты</label>
+                                    <div class="contacts"></div>
+                                    <button type="button" class="btn btn-outline-primary btn-sm mt-2 add-contact">
+                                        <i class="bi bi-plus-circle"></i> Добавить контакт
+                                    </button>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline-danger btn-sm mt-2 remove-person">
+                                <i class="bi bi-trash"></i> Удалить контактное лицо
+                            </button>
+                        </div>
+                    `;
+                    contactPersonsContainer.insertAdjacentHTML('beforeend', personTemplate);
+                    personIndex++;
+                });
+
+                // Удаление контактного лица
+                contactPersonsContainer.addEventListener('click', function(e) {
+                    if (e.target.closest('.remove-person')) {
+                        e.target.closest('.contact-person').remove();
+                    }
+                });
+
+                // Добавление контакта
+                contactPersonsContainer.addEventListener('click', function(e) {
+                    if (e.target.closest('.add-contact')) {
+                        const contactsContainer = e.target.closest('.col-md-6').querySelector('.contacts');
+                        addContact(contactsContainer);
+                    }
+                });
+
+                // Удаление контакта
+                contactPersonsContainer.addEventListener('click', function(e) {
+                    if (e.target.closest('.remove-contact')) {
+                        e.target.closest('.contact').remove();
+                    }
+                });
+            });
+        </script>
+    </th:block>
+</body>
+</html> 

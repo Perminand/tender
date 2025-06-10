@@ -39,7 +39,7 @@ public class Company {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "type_id")
-    private TypeCompany type;
+    private CompanyType type;
 
     private String director;
 

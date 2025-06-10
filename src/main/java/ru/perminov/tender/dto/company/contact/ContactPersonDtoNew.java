@@ -23,10 +23,11 @@ public record ContactPersonDtoNew(
         @NotBlank(message = "Должность не может быть пустой")
         String position,
 
-
-        @NotNull(message = "Тип контакта не может быть пустым")
-        UUID contactTypeUuid,
-
         List<ContactDtoNew> contacts
 ) {
+    public ContactPersonDtoNew {
+        if (contacts == null) {
+            contacts = List.of();
+        }
+    }
 }

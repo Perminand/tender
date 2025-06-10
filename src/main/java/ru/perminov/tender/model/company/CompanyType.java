@@ -14,7 +14,7 @@ import java.util.UUID;
 @Setter
 @ToString
 @NoArgsConstructor
-public class TypeCompany {
+public class CompanyType {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -22,14 +22,12 @@ public class TypeCompany {
 
     private String name;
 
-    private String code;
-
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        TypeCompany typeCompany = (TypeCompany) o;
-        return uuid != null && uuid.equals(typeCompany.uuid);
+        CompanyType companyType = (CompanyType) o;
+        return uuid != null && uuid.equals(companyType.uuid);
     }
 
     @Override
