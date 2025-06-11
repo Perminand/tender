@@ -29,10 +29,11 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.create(companyDtoNew));
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Company> update(@PathVariable UUID id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
+    @PostMapping("/{id}")
+    public ResponseEntity<Void> update(@PathVariable UUID id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
         log.info("Пришел PUT запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
-        return ResponseEntity.ok(companyService.update(id, companyDtoUpdate));
+        companyService.update(id, companyDtoUpdate);
+        return ResponseEntity.ok().build();
     }
 
     @DeleteMapping("/{id}")
@@ -53,4 +54,4 @@ public class CompanyController {
         log.info("Пришел GET запрос на получение всех компаний");
         return ResponseEntity.ok(companyService.getAll());
     }
-} 
+}

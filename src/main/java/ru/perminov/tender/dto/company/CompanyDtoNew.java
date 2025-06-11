@@ -30,7 +30,7 @@ public record CompanyDtoNew(
     String address,
 
     @NotBlank(message = "Тип компании не может быть пустым")
-    String typeId,
+    String newTypeName,
 
     String director,
 
@@ -38,12 +38,16 @@ public record CompanyDtoNew(
 
     String email,
 
+    @NotBlank
     String bankName,
 
+    @NotBlank
     String bankAccount,
 
+    @NotBlank
     String correspondentAccount,
 
+    @NotBlank
     String bik,
 
     List<ContactPersonDtoNew> contactPersons

@@ -70,14 +70,6 @@ public class ContactPersonServiceImpl implements ContactPersonService {
         ContactPerson existingContactPerson = findByUuid(id);
         contactPersonMapper.updateContactPersonFromDto(contactPersonDtoUpdate, existingContactPerson);
 
-        // Обновляем контакты
-        if (contactPersonDtoUpdate.phone() != null) {
-            updateOrCreateContact(existingContactPerson, "PHONE", contactPersonDtoUpdate.phone());
-        }
-        if (contactPersonDtoUpdate.email() != null) {
-            updateOrCreateContact(existingContactPerson, "EMAIL", contactPersonDtoUpdate.email());
-        }
-
         return contactPersonRepository.save(existingContactPerson);
     }
 

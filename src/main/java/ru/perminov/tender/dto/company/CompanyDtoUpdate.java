@@ -25,6 +25,8 @@ public record CompanyDtoUpdate(
 
     String typeId,
 
+        String newTypeName,
+
     String director,
 
     String phone,
