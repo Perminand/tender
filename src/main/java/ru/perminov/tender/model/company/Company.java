@@ -15,7 +15,6 @@ import java.util.UUID;
 @Table(name = "companies")
 @Getter
 @Setter
-@ToString
 @NoArgsConstructor
 public class Company {
 
@@ -38,7 +37,7 @@ public class Company {
     @Column(nullable = false)
     private String address;
 
-    private Integer test;
+    private String test;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "type_id")
@@ -73,5 +72,26 @@ public class Company {
     @Override
     public int hashCode() {
         return getUuid() != null ? getUuid().hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "Company{" +
+                "uuid=" + uuid +
+                ", inn='" + inn + '\'' +
+                ", kpp='" + kpp + '\'' +
+                ", ogrn='" + ogrn + '\'' +
+                ", name='" + name + '\'' +
+                ", address='" + address + '\'' +
+                ", type=" + type +
+                ", director='" + director + '\'' +
+                ", phone='" + phone + '\'' +
+                ", email='" + email + '\'' +
+                ", bankName='" + bankName + '\'' +
+                ", bankAccount='" + bankAccount + '\'' +
+                ", correspondentAccount='" + correspondentAccount + '\'' +
+                ", bik='" + bik + '\'' +
+                ", contactPersons=" + contactPersons +
+                '}';
     }
 }
