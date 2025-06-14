@@ -38,6 +38,8 @@ public class Company {
     @Column(nullable = false)
     private String address;
 
+    private Integer test;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "type_id")
     private CompanyType type;
