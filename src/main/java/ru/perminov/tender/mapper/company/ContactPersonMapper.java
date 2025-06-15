@@ -5,6 +5,7 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoNew;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
+import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.model.company.ContactPerson;
 
 @Mapper(componentModel = "spring", uses = {ContactMapper.class})
@@ -25,4 +26,12 @@ public interface ContactPersonMapper {
     @Mapping(target = "firstName", source = "firstName")
     @Mapping(target = "position", source = "position")
     void updateContactPersonFromDto(ContactPersonDtoUpdate dto, @MappingTarget ContactPerson contactPerson);
-} 
+
+    @Mapping(target = "uuid", ignore = true)
+    @Mapping(target = "lastName", source = "contactPersonDto.lastName")
+    @Mapping(target = "firstName", source = "contactPersonDto.firstName")
+    @Mapping(target = "position", source = "contactPersonDto.position")
+    @Mapping(target = "company", source = "company")
+    @Mapping(target = "contacts", ignore = true)
+    ContactPerson newContactPersonFromDto(Company company, ContactPersonDtoNew contactPersonDto);
+}

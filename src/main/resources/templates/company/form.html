@@ -41,10 +41,11 @@
                                             <option value="">Выберите тип компании</option>
                                             <option th:each="type : ${types}"
                                                     th:value="${type.uuid}"
-                                                    th:text="${type.name}"></option>
+                                                    th:text="${type.name}"
+                                                    th:selected="${type.uuid.toString() == company.typeId}"></option>
                                             <option value="new">Создать новый тип...</option>
                                         </select>
-                                        <input type="text" class="form-control new-type-input d-none" id="newTypeName" name="newTypeName" placeholder="Название нового типа">
+                                        <input type="text" class="form-control new-type-input d-none" id="typeName" name="typeName" placeholder="Название нового типа">
                                     </div>
                                 </div>
                                 <div class="mb-3">
@@ -130,7 +131,7 @@
                                 <select class="form-select contact-type-select" name="contactTypeUuid" required>
                                     ${getContactTypeOptions()}
                             </select>
-                                <input type="text" class="form-control new-type-input d-none" name="newTypeName" placeholder="Название нового типа">
+                                <input type="text" class="form-control new-type-input d-none" name="typeName" placeholder="Название нового типа">
                                 <input type="text" class="form-control" name="value" required>
                             <button type="button" class="btn btn-outline-danger remove-contact">
                                 <i class="bi bi-trash"></i>
@@ -224,16 +225,16 @@
 
                 // --- Показывать поле для нового типа компании ---
                 const typeSelect = document.getElementById('typeId');
-                const newTypeNameInput = document.getElementById('newTypeName');
-                if (typeSelect && newTypeNameInput) {
+                const typeNameInput = document.getElementById('typeName');
+                if (typeSelect && typeNameInput) {
                     typeSelect.addEventListener('change', function() {
                         if (this.value === 'new') {
-                            newTypeNameInput.classList.remove('d-none');
-                            newTypeNameInput.required = true;
+                            typeNameInput.classList.remove('d-none');
+                            typeNameInput.required = true;
                         } else {
-                            newTypeNameInput.classList.add('d-none');
-                            newTypeNameInput.required = false;
-                            newTypeNameInput.value = '';
+                            typeNameInput.classList.add('d-none');
+                            typeNameInput.required = false;
+                            typeNameInput.value = '';
                         }
                     });
                 }
@@ -247,7 +248,7 @@
 
                     const company = {};
                     // Простые поля
-                    ["name","inn","kpp","ogrn","typeId","newTypeName","address","director","phone","email","bankName","bankAccount","correspondentAccount","bik"].forEach(id => {
+                    ["name","inn","kpp","ogrn","typeId","typeName","address","director","phone","email","bankName","bankAccount","correspondentAccount","bik"].forEach(id => {
                         const el = form.querySelector(`[name="${id}"]`);
                         if (el) company[id] = el.value;
                     });
@@ -261,9 +262,10 @@
                             contacts: []
                         };
                         personDiv.querySelectorAll('.contact').forEach(contactDiv => {
+                            const contactTypeSelect = contactDiv.querySelector('[name="contactTypeUuid"]');
                             const contact = {
-                                contactTypeUuid: contactDiv.querySelector('[name="contactTypeUuid"]').value || null,
-                                newTypeName: contactDiv.querySelector('[name="newTypeName"]').value || null,
+                                contactTypeUuid: contactTypeSelect.value === 'new' ? null : contactTypeSelect.value,
+                                typeName: contactDiv.querySelector('[name="typeName"]').value || null,
                                 value: contactDiv.querySelector('[name="value"]').value || null
                             };
                             person.contacts.push(contact);

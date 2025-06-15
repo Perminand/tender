@@ -11,7 +11,7 @@ import ru.perminov.tender.model.company.Company;
 public interface CompanyMapper {
     
     @Mapping(target = "type", ignore = true)
-    @Mapping(target = "contactPersons", source = "contactPersons")
+    @Mapping(target = "contactPersons", ignore = true)
     Company toCompany(CompanyDtoNew dto);
 
     @Mapping(target = "type", ignore = true)

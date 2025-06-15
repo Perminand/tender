@@ -10,7 +10,6 @@ import lombok.ToString;
 import java.util.UUID;
 
 @Entity
-@Table(name = "type_companies")
 @Getter
 @Setter
 @ToString

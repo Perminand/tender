@@ -12,7 +12,7 @@ import java.util.UUID;
 @Table(name = "contacts")
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "contactPerson")
 @NoArgsConstructor
 public class Contact {
 
@@ -30,9 +30,6 @@ public class Contact {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(nullable = false)
     private ContactPerson contactPerson;
-
-    @Transient
-    private String newTypeName;
 
     @Override
     public boolean equals(Object o) {

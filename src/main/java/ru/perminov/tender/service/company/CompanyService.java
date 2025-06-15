@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface CompanyService {
 
-    Company create(CompanyDtoNew companyDtoNew);
+    void create(CompanyDtoNew companyDtoNew);
 
     void update(UUID id, CompanyDtoUpdate companyDtoUpdate);
 

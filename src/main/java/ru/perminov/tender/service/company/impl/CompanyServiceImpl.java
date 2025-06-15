@@ -1,11 +1,18 @@
 package ru.perminov.tender.service.company.impl;
 
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
+import ru.perminov.tender.dto.company.contact.ContactDtoUpdate;
+import ru.perminov.tender.dto.company.contact.ContactPersonDtoNew;
+import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
 import ru.perminov.tender.mapper.company.CompanyMapper;
+import ru.perminov.tender.mapper.company.ContactMapper;
+import ru.perminov.tender.mapper.company.ContactPersonMapper;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.model.company.CompanyType;
 import ru.perminov.tender.model.company.Contact;
@@ -13,6 +20,8 @@ import ru.perminov.tender.model.company.ContactPerson;
 import ru.perminov.tender.model.company.ContactType;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.company.CompanyTypeRepository;
+import ru.perminov.tender.repository.company.ContactPersonRepository;
+import ru.perminov.tender.repository.company.ContactRepository;
 import ru.perminov.tender.repository.company.ContactTypeRepository;
 import ru.perminov.tender.service.company.CompanyService;
 
@@ -28,39 +37,62 @@ public class CompanyServiceImpl implements CompanyService {
     private final CompanyTypeRepository typeCompanyRepository;
     private final ContactTypeRepository contactTypeRepository;
     private final CompanyMapper companyMapper;
+    private final ContactRepository contactRepository;
+    private final ContactPersonMapper contactPersonMapper;
+    private final ContactPersonRepository contactPersonRepository;
 
     @Override
     @Transactional
-    public Company create(CompanyDtoNew companyDtoNew) {
+    public void create(CompanyDtoNew companyDtoNew) {
+        // Создаем и сохраняем компанию
         Company company = companyMapper.toCompany(companyDtoNew);
-        CompanyType type = typeCompanyRepository.findByName(companyDtoNew.newTypeName())
-                        .orElseGet(() -> {
-                            CompanyType newType  =  new CompanyType(null, companyDtoNew.newTypeName());
-                        return typeCompanyRepository.save(newType);
-                        });
-        company.setType(type);
+        company.setType(createOrUpdateType(companyDtoNew));
+
 
         // Обработка контактных лиц и их контактов
-        if (company.getContactPersons() != null) {
-            for (var contactPerson : company.getContactPersons()) {
+        if (companyDtoNew.contactPersons() != null && !companyDtoNew.contactPersons().isEmpty()) {
+            for (ContactPersonDtoNew contactPersonDto : companyDtoNew.contactPersons()) {
+                // Создаем контактное лицо
+                ContactPerson contactPerson = contactPersonMapper.newContactPersonFromDto(company, contactPersonDto);
                 contactPerson.setCompany(company);
-                if (contactPerson.getContacts() != null) {
-                    for (var contact : contactPerson.getContacts()) {
+
+                // Обрабатываем контакты
+                if (contactPersonDto.contacts() != null && !contactPersonDto.contacts().isEmpty()) {
+                    for (var contactDto : contactPersonDto.contacts()) {
+                        Contact contact = new Contact();
                         contact.setContactPerson(contactPerson);
-                        if (contact.getType() == null && contact.getNewTypeName() != null && !contact.getNewTypeName().isBlank()) {
-                            // Создаем новый тип контакта
-                            ContactType newType = new ContactType();
-                            newType.setName(contact.getNewTypeName());
-                            newType.setCode(contact.getNewTypeName().toUpperCase().replaceAll("\\s+", "_"));
-                            newType = contactTypeRepository.save(newType);
-                            contact.setType(newType);
+                        contact.setValue(contactDto.value());
+
+                        String contactCode = contactDto.typeName().toUpperCase().replaceAll("\\s+", "_");
+                        // Устанавливаем тип контакта
+                        if (contactDto.contactTypeUuid() != null) {
+                            ContactType contactType = contactTypeRepository.findById(contactDto.contactTypeUuid())
+                                    .orElseThrow(() -> new RuntimeException("Тип контакта не найден: " + contactDto.contactTypeUuid()));
+                            contact.setType(contactType);
+                        } else if (!contactDto.typeName().isBlank()) {
+                            if (!contactTypeRepository.existsByCode(contactCode)) {
+                                ContactType newType = new ContactType();
+                                newType.setName(contactDto.typeName());
+                                newType.setCode(contactCode);
+                                newType = contactTypeRepository.save(newType);
+                                contact.setType(newType);
+                            }
+                            else {
+                                throw new DuplicateKeyException("Имя типа контакта уже используется в базе: "
+                                        + contactDto.typeName());
+                            }
                         }
+                        // Добавляем контакт в коллекцию контактного лица
+
+                        contactPerson.getContacts().add(contact);
                     }
                 }
+
+                // Сохраняем контактное лицо (каскадно сохранятся и контакты)
+                contactPersonRepository.save(contactPerson);
             }
         }
-
-        return companyRepository.save(company);
+        companyRepository.save(company);
     }
 
     @Override
@@ -70,39 +102,18 @@ public class CompanyServiceImpl implements CompanyService {
         companyMapper.updateCompanyFromDto(companyDtoUpdate, existingCompany);
         CompanyType type;
         if (companyDtoUpdate.typeId() != null) {
-            if(!companyDtoUpdate.typeId().equals("new")) {
+            if (!companyDtoUpdate.typeId().equals("new")) {
                 type = typeCompanyRepository.findById(UUID.fromString(companyDtoUpdate.typeId()))
                         .orElseGet(() -> {
-                            CompanyType newType = new CompanyType(null, companyDtoUpdate.newTypeName());
+                            CompanyType newType = new CompanyType(null, companyDtoUpdate.typeName());
                             return typeCompanyRepository.save(newType);
                         });
             } else {
-                type = new CompanyType(null, companyDtoUpdate.newTypeName());
+                type = new CompanyType(null, companyDtoUpdate.typeName());
                 typeCompanyRepository.save(type);
             }
             existingCompany.setType(type);
         }
-
-        // Обработка контактных лиц и их контактов
-        if (existingCompany.getContactPersons() != null) {
-            for (ContactPerson contactPerson : existingCompany.getContactPersons()) {
-                contactPerson.setCompany(existingCompany);
-                if (contactPerson.getContacts() != null) {
-                    for (Contact contact : contactPerson.getContacts()) {
-                        contact.setContactPerson(contactPerson);
-                        if (contact.getType() == null && contact.getNewTypeName() != null && !contact.getNewTypeName().isBlank()) {
-                            // Создаем новый тип контакта
-                            ContactType newType = new ContactType();
-                            newType.setName(contact.getNewTypeName());
-                            newType.setCode(contact.getNewTypeName().toUpperCase().replaceAll("\\s+", "_"));
-                            newType = contactTypeRepository.save(newType);
-                            contact.setType(newType);
-                        }
-                    }
-                }
-            }
-        }
-
         companyRepository.save(existingCompany);
     }
 
@@ -121,5 +132,17 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     public List<Company> getAll() {
         return companyRepository.findAll();
+    }
+
+    private CompanyType createOrUpdateType(CompanyDtoNew dto) {
+        if (dto.typeId().equals("new")) {
+            return typeCompanyRepository.save(new CompanyType(null, dto.typeName()));
+        } else {
+            return typeCompanyRepository.findById(UUID.fromString(dto.typeId()))
+                    .orElseGet(() -> {
+                        CompanyType newType = new CompanyType(null, dto.typeName());
+                        return typeCompanyRepository.save(newType);
+                    });
+        }
     }
 } 

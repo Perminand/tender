@@ -29,11 +29,11 @@ public class ContactServiceImpl implements ContactService {
 
     @Override
     @Transactional
-    public Contact create(ContactDtoNew dto, UUID contactPersonId) {
+    public Contact create(ContactDtoNew dto, UUID contactPersonUuid) {
         Contact contact = contactMapper.toContact(dto);
         
-        ContactPerson contactPerson = contactPersonRepository.findById(contactPersonId)
-                .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactPersonId));
+        ContactPerson contactPerson = contactPersonRepository.findById(contactPersonUuid)
+                .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactPersonUuid));
         contact.setContactPerson(contactPerson);
 
         // Если выбран существующий тип контакта
@@ -43,9 +43,9 @@ public class ContactServiceImpl implements ContactService {
             contact.setType(contactType);
         }
         // Если создается новый тип контакта
-        else if (dto.newTypeName() != null && !dto.newTypeName().isBlank()) {
+        else if (dto.typeName() != null && !dto.typeName().isBlank()) {
             ContactType newType = new ContactType();
-            newType.setName(dto.newTypeName());
+            newType.setName(dto.typeName());
             contactTypeRepository.save(newType);
             contact.setType(newType);
         }
@@ -59,9 +59,9 @@ public class ContactServiceImpl implements ContactService {
         Contact existingContact = getById(id);
         contactMapper.updateContactFromDto(contactDtoUpdate, existingContact);
 
-        if (contactDtoUpdate.contactPersonId() != null) {
-            ContactPerson contactPerson = contactPersonRepository.findById(contactDtoUpdate.contactPersonId())
-                    .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactDtoUpdate.contactPersonId()));
+        if (contactDtoUpdate.uuid() != null) {
+            ContactPerson contactPerson = contactPersonRepository.findById(contactDtoUpdate.uuid())
+                    .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactDtoUpdate.uuid()));
             existingContact.setContactPerson(contactPerson);
         }
 

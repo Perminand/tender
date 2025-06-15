@@ -40,7 +40,8 @@ public class ContactPersonServiceImpl implements ContactPersonService {
         // Новая логика: обработка списка contacts
         if (contactPersonDtoNew.contacts() != null) {
             for (var contactDto : contactPersonDtoNew.contacts()) {
-                if (contactDto == null || (contactDto.contactTypeUuid() == null && (contactDto.newTypeName() == null || contactDto.newTypeName().isBlank()))) {
+                if (contactDto == null || (contactDto.contactTypeUuid() == null && (contactDto.typeName() == null
+                        || contactDto.typeName().isBlank()))) {
                     continue; // пропускаем пустые
                 }
                 ContactType type;
@@ -50,8 +51,8 @@ public class ContactPersonServiceImpl implements ContactPersonService {
                 } else {
                     // Создать новый тип
                     type = new ContactType();
-                    type.setName(contactDto.newTypeName());
-                    type.setCode(contactDto.newTypeName().toUpperCase().replaceAll("\\s+", "_"));
+                    type.setName(contactDto.typeName());
+                    type.setCode(contactDto.typeName().toUpperCase().replaceAll("\\s+", "_"));
                     type = contactTypeRepository.save(type);
                 }
                 Contact contact = new Contact();

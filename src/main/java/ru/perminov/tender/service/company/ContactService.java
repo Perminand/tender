@@ -9,7 +9,7 @@ import java.util.UUID;
 
 public interface ContactService {
 
-    Contact create(ContactDtoNew dto, UUID contactPersonId);
+    Contact create(ContactDtoNew dto, UUID contactPersonUuid);
 
     Contact update(UUID id, ContactDtoUpdate contactDtoUpdate);
 

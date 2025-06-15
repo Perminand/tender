@@ -14,7 +14,7 @@ import java.util.UUID;
 @Table(name = "contact_persons")
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "company")
 @NoArgsConstructor
 public class ContactPerson {
 
@@ -48,4 +48,4 @@ public class ContactPerson {
     public int hashCode() {
         return getUuid() != null ? getUuid().hashCode() : 0;
     }
-} 
+}

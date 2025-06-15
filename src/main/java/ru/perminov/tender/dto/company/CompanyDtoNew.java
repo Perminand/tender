@@ -29,8 +29,9 @@ public record CompanyDtoNew(
     @NotBlank(message = "Адрес не может быть пустым")
     String address,
 
-    @NotBlank(message = "Тип компании не может быть пустым")
-    String newTypeName,
+    String typeId,
+
+    String typeName,
 
     String director,
 

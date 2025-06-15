@@ -8,7 +8,7 @@ import java.util.UUID;
 
 public record CompanyDtoUpdate(
 
-        UUID uuid,
+    UUID uuid,
 
     @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
     String inn,
@@ -25,7 +25,7 @@ public record CompanyDtoUpdate(
 
     String typeId,
 
-        String newTypeName,
+    String typeName,
 
     String director,
 

@@ -42,8 +42,9 @@ public class CompanyWebController {
             "", // kpp
             "", // ogrn
             "", // name
-            "", // address
-            "", // typeId
+            "",
+                "",// address
+            "", // typeName
             "", // director
             "", // phone
             "", // email

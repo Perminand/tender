@@ -24,14 +24,15 @@ public class CompanyController {
     private final CompanyService companyService;
 
     @PostMapping
-    public ResponseEntity<Company> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
+    public ResponseEntity<Void> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
         log.info("Пришел POST запрос на создание компании: {}", companyDtoNew);
-        return ResponseEntity.ok(companyService.create(companyDtoNew));
+        companyService.create(companyDtoNew);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}")
     public ResponseEntity<Void> update(@PathVariable UUID id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
-        log.info("Пришел PUT запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
+        log.info("Пришел POST запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
         companyService.update(id, companyDtoUpdate);
         return ResponseEntity.ok().build();
     }
