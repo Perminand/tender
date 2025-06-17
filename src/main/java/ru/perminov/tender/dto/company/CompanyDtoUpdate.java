@@ -2,46 +2,49 @@ package ru.perminov.tender.dto.company;
 
 import jakarta.validation.constraints.Pattern;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
+import ru.perminov.tender.model.company.CompanyType;
 
 import java.util.List;
 import java.util.UUID;
 
 public record CompanyDtoUpdate(
 
-    UUID uuid,
+        UUID uuid,
 
-    @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
+        @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
     String inn,
 
-    @Pattern(regexp = "^\\d{9}$", message = "КПП должен содержать 9 цифр")
+        @Pattern(regexp = "^\\d{9}$", message = "КПП должен содержать 9 цифр")
     String kpp,
 
-    @Pattern(regexp = "^\\d{13}|\\d{15}$", message = "ОГРН должен содержать 13 или 15 цифр")
+        @Pattern(regexp = "^\\d{13}|\\d{15}$", message = "ОГРН должен содержать 13 или 15 цифр")
     String ogrn,
 
-    String name,
+        String name,
 
-    String address,
+        String address,
 
-    String typeId,
+        CompanyType companyType,
 
-    String typeName,
+        String typeId,
 
-    String director,
+        String typeName,
 
-    String phone,
+        String director,
 
-    String email,
+        String phone,
 
-    String bankName,
+        String email,
 
-    String bankAccount,
+        String bankName,
 
-    String correspondentAccount,
+        String bankAccount,
 
-    String bik,
+        String correspondentAccount,
 
-    List<ContactPersonDtoUpdate> contactPersons
+        String bik,
+
+        List<ContactPersonDtoUpdate> contactPersons
 
 ) {
     public CompanyDtoUpdate {

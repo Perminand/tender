@@ -34,20 +34,20 @@ public class ContactServiceImpl implements ContactService {
         
         ContactPerson contactPerson = contactPersonRepository.findById(contactPersonUuid)
                 .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactPersonUuid));
-        contact.setContactPerson(contactPerson);
+//        contact.setContactPerson(contactPerson);
 
         // Если выбран существующий тип контакта
         if (dto.contactTypeUuid() != null) {
             ContactType contactType = contactTypeRepository.findById(dto.contactTypeUuid())
                     .orElseThrow(() -> new RuntimeException("Тип контакта не найден с id: " + dto.contactTypeUuid()));
-            contact.setType(contactType);
+            contact.setContactType(contactType);
         }
         // Если создается новый тип контакта
         else if (dto.typeName() != null && !dto.typeName().isBlank()) {
             ContactType newType = new ContactType();
             newType.setName(dto.typeName());
             contactTypeRepository.save(newType);
-            contact.setType(newType);
+            contact.setContactType(newType);
         }
 
         return contactRepository.save(contact);
@@ -62,7 +62,7 @@ public class ContactServiceImpl implements ContactService {
         if (contactDtoUpdate.uuid() != null) {
             ContactPerson contactPerson = contactPersonRepository.findById(contactDtoUpdate.uuid())
                     .orElseThrow(() -> new RuntimeException("Контактное лицо не найдено с id: " + contactDtoUpdate.uuid()));
-            existingContact.setContactPerson(contactPerson);
+//            existingContact.setContactPerson(contactPerson);
         }
 
         return contactRepository.save(existingContact);
@@ -87,6 +87,6 @@ public class ContactServiceImpl implements ContactService {
 
     @Override
     public List<Contact> getByContactPersonUuid(UUID contactPersonUuid) {
-        return contactRepository.findByContactPersonUuid(contactPersonUuid);
+        return null;
     }
 } 

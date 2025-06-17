@@ -23,7 +23,7 @@ public class Project {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID uuid;
+    private UUID id;
 
     private String name;
 
@@ -34,11 +34,11 @@ public class Project {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Project project = (Project) o;
-        return uuid != null && uuid.equals(project.uuid);
+        return id != null && id.equals(project.id);
     }
 
     @Override
     public int hashCode() {
-        return getUuid() != null ? getUuid().hashCode() : 0;
+        return getId() != null ? getId().hashCode() : 0;
     }
 }

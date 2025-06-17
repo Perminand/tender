@@ -15,31 +15,26 @@ import java.util.UUID;
 @Table(name = "companies")
 @Getter
 @Setter
+@ToString
 @NoArgsConstructor
 public class Company {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID uuid;
+    private UUID id;
 
-    @Column(nullable = false, unique = true)
     private String inn;
 
-    @Column(nullable = false)
     private String kpp;
 
-    @Column(nullable = false, unique = true)
     private String ogrn;
 
-    @Column(nullable = false)
     private String name;
 
-    @Column(nullable = false)
     private String address;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "type_id")
-    private CompanyType type;
+    private CompanyType companyType;
 
     private String director;
 
@@ -49,7 +44,6 @@ public class Company {
 
     private String bankName;
 
-    @Column(unique = true)
     private String bankAccount;
 
     private String correspondentAccount;
@@ -64,32 +58,12 @@ public class Company {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Company company = (Company) o;
-        return uuid != null && uuid.equals(company.uuid);
+        return id != null && id.equals(company.id);
     }
 
     @Override
     public int hashCode() {
-        return getUuid() != null ? getUuid().hashCode() : 0;
+        return getId() != null ? getId().hashCode() : 0;
     }
 
-    @Override
-    public String toString() {
-        return "Company{" +
-                "uuid=" + uuid +
-                ", inn='" + inn + '\'' +
-                ", kpp='" + kpp + '\'' +
-                ", ogrn='" + ogrn + '\'' +
-                ", name='" + name + '\'' +
-                ", address='" + address + '\'' +
-                ", type=" + type +
-                ", director='" + director + '\'' +
-                ", phone='" + phone + '\'' +
-                ", email='" + email + '\'' +
-                ", bankName='" + bankName + '\'' +
-                ", bankAccount='" + bankAccount + '\'' +
-                ", correspondentAccount='" + correspondentAccount + '\'' +
-                ", bik='" + bik + '\'' +
-                ", contactPersons=" + contactPersons +
-                '}';
-    }
 }

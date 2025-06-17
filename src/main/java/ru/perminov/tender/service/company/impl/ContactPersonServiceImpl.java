@@ -56,7 +56,7 @@ public class ContactPersonServiceImpl implements ContactPersonService {
                     type = contactTypeRepository.save(type);
                 }
                 Contact contact = new Contact();
-                contact.setType(type);
+                contact.setContactType(type);
                 contact.setValue(contactDto.value());
                 contact.setContactPerson(contactPerson);
                 contactPerson.getContacts().add(contact);
@@ -79,15 +79,15 @@ public class ContactPersonServiceImpl implements ContactPersonService {
                 .orElseThrow(() -> new RuntimeException("Тип контакта " + typeCode + " не найден"));
 
         contactPerson.getContacts().stream()
-                .filter(contact -> contact.getType().getCode().equals(typeCode))
+                .filter(contact -> contact.getContactType().getCode().equals(typeCode))
                 .findFirst()
                 .ifPresentOrElse(
                         contact -> contact.setValue(value),
                         () -> {
                             Contact newContact = new Contact();
-                            newContact.setType(contactType);
+                            newContact.setContactType(contactType);
                             newContact.setValue(value);
-                            newContact.setContactPerson(contactPerson);
+//                            newContact.setContactPerson(contactPerson);
                             contactPerson.getContacts().add(newContact);
                         }
                 );
@@ -106,7 +106,8 @@ public class ContactPersonServiceImpl implements ContactPersonService {
 
     @Override
     public List<ContactPerson> getByCompanyUuid(UUID companyUuid) {
-        return contactPersonRepository.findByCompanyUuid(companyUuid);
+        return null;
+//        return contactPersonRepository.findByCompanyId(companyUuid);
     }
 
     @Override

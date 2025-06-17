@@ -18,7 +18,7 @@ public class ContactType {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID uuid;
+    private UUID id;
 
     @Column(nullable = false, unique = true)
     private String code;
@@ -31,11 +31,11 @@ public class ContactType {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ContactType that = (ContactType) o;
-        return uuid != null && uuid.equals(that.uuid);
+        return id != null && id.equals(that.id);
     }
 
     @Override
     public int hashCode() {
-        return getUuid() != null ? getUuid().hashCode() : 0;
+        return getId() != null ? getId().hashCode() : 0;
     }
 } 

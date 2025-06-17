@@ -10,6 +10,7 @@ import lombok.ToString;
 import java.util.UUID;
 
 @Entity
+@Table(name = "company_types")
 @Getter
 @Setter
 @ToString
@@ -19,7 +20,7 @@ public class CompanyType {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID uuid;
+    private UUID id;
 
     private String name;
 
@@ -28,12 +29,12 @@ public class CompanyType {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CompanyType companyType = (CompanyType) o;
-        return uuid != null && uuid.equals(companyType.uuid);
+        return id != null && id.equals(companyType.id);
     }
 
     @Override
     public int hashCode() {
-        return getUuid() != null ? getUuid().hashCode() : 0;
+        return getId() != null ? getId().hashCode() : 0;
     }
 }
  

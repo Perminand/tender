@@ -6,9 +6,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.perminov.tender.dto.company.CompanyDto;
+import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
-import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.service.company.CompanyService;
 
 import java.util.List;
@@ -24,17 +25,15 @@ public class CompanyController {
     private final CompanyService companyService;
 
     @PostMapping
-    public ResponseEntity<Void> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
+    public ResponseEntity<CompanyDto> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
         log.info("Пришел POST запрос на создание компании: {}", companyDtoNew);
-        companyService.create(companyDtoNew);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(companyService.create(companyDtoNew));
     }
 
     @PostMapping("/{id}")
-    public ResponseEntity<Void> update(@PathVariable UUID id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
+    public ResponseEntity<CompanyDto> update(@PathVariable String id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
         log.info("Пришел POST запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
-        companyService.update(id, companyDtoUpdate);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok(companyService.update(UUID.fromString(id), companyDtoUpdate));
     }
 
     @DeleteMapping("/{id}")
@@ -45,13 +44,13 @@ public class CompanyController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Company> getById(@PathVariable UUID id) {
+    public ResponseEntity<CompanyDtoForUpdate> getById(@PathVariable String id) {
         log.info("Пришел GET запрос на получение компании uuid: {}", id);
-        return ResponseEntity.ok(companyService.getById(id));
+        return ResponseEntity.ok(companyService.getById(UUID.fromString(id)));
     }
 
     @GetMapping
-    public ResponseEntity<List<Company>> getAll() {
+    public ResponseEntity<List<CompanyDto>> getAll() {
         log.info("Пришел GET запрос на получение всех компаний");
         return ResponseEntity.ok(companyService.getAll());
     }

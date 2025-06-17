@@ -1,7 +1,7 @@
 package ru.perminov.tender.service.company;
 
-import ru.perminov.tender.dto.typecompany.CompanyTypeDtoNew;
-import ru.perminov.tender.dto.typecompany.CompanyTypeDtoUpdate;
+import ru.perminov.tender.dto.companyType.CompanyTypeDtoNew;
+import ru.perminov.tender.dto.companyType.CompanyTypeDtoUpdate;
 import ru.perminov.tender.model.company.CompanyType;
 
 import java.util.List;

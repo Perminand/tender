@@ -4,8 +4,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.perminov.tender.dto.typecompany.CompanyTypeDtoNew;
-import ru.perminov.tender.dto.typecompany.CompanyTypeDtoUpdate;
+import ru.perminov.tender.dto.companyType.CompanyTypeDtoNew;
+import ru.perminov.tender.dto.companyType.CompanyTypeDtoUpdate;
 import ru.perminov.tender.model.company.CompanyType;
 import ru.perminov.tender.service.company.CompanyTypeService;
 

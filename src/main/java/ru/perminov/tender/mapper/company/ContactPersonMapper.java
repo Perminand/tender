@@ -11,27 +11,24 @@ import ru.perminov.tender.model.company.ContactPerson;
 @Mapper(componentModel = "spring", uses = {ContactMapper.class})
 public interface ContactPersonMapper {
     
-    @Mapping(target = "company", ignore = true)
     @Mapping(target = "contacts", ignore = true)
-    @Mapping(target = "uuid", ignore = true)
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "lastName", source = "lastName")
     @Mapping(target = "firstName", source = "firstName")
     @Mapping(target = "position", source = "position")
     ContactPerson toContactPerson(ContactPersonDtoNew dto);
 
-    @Mapping(target = "company", ignore = true)
     @Mapping(target = "contacts", ignore = true)
-    @Mapping(target = "uuid", ignore = true)
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "lastName", source = "lastName")
     @Mapping(target = "firstName", source = "firstName")
     @Mapping(target = "position", source = "position")
     void updateContactPersonFromDto(ContactPersonDtoUpdate dto, @MappingTarget ContactPerson contactPerson);
 
-    @Mapping(target = "uuid", ignore = true)
+    @Mapping(target = "id", ignore = true)
     @Mapping(target = "lastName", source = "contactPersonDto.lastName")
     @Mapping(target = "firstName", source = "contactPersonDto.firstName")
     @Mapping(target = "position", source = "contactPersonDto.position")
-    @Mapping(target = "company", source = "company")
     @Mapping(target = "contacts", ignore = true)
     ContactPerson newContactPersonFromDto(Company company, ContactPersonDtoNew contactPersonDto);
 }

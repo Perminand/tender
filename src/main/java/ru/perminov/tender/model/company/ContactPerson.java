@@ -20,7 +20,7 @@ public class ContactPerson {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID uuid;
+    private UUID id;
 
     @Column(nullable = false)
     private String firstName;
@@ -30,22 +30,23 @@ public class ContactPerson {
 
     private String position;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    private Company company;
-
     @OneToMany(mappedBy = "contactPerson", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Contact> contacts = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "company_id", nullable = false)
+    private Company company;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         ContactPerson that = (ContactPerson) o;
-        return uuid != null && uuid.equals(that.uuid);
+        return id != null && id.equals(that.id);
     }
 
     @Override
     public int hashCode() {
-        return getUuid() != null ? getUuid().hashCode() : 0;
+        return getId() != null ? getId().hashCode() : 0;
     }
 }

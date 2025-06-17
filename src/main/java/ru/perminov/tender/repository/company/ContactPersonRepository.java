@@ -9,5 +9,4 @@ import java.util.UUID;
 
 @Repository
 public interface ContactPersonRepository extends JpaRepository<ContactPerson, UUID> {
-    List<ContactPerson> findByCompanyUuid(UUID companyUuid);
-} 
+}

@@ -23,7 +23,7 @@ public class Material {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID uuid;
+    private UUID id;
 
     private String name;
 
@@ -38,11 +38,11 @@ public class Material {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Material material = (Material) o;
-        return uuid != null && uuid.equals(material.uuid);
+        return id != null && id.equals(material.id);
     }
 
     @Override
     public int hashCode() {
-        return getUuid() != null ? getUuid().hashCode() : 0;
+        return getId() != null ? getId().hashCode() : 0;
     }
 }

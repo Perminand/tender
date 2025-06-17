@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface ContactTypeRepository extends JpaRepository<ContactType, UUID> {
     Optional<ContactType> findByCode(String code);
 
-    Optional<ContactType> findByUuid(UUID uuid);
+    Optional<ContactType> findById(UUID id);
 
     boolean existsByCode(String contactCode);
 }

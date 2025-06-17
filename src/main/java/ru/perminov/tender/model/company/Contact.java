@@ -18,17 +18,15 @@ public class Contact {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID uuid;
+    private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
-    private ContactType type;
+    private ContactType contactType;
 
-    @Column(nullable = false)
     private String value;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
+    @JoinColumn(name = "contact_person_id", nullable = false)
     private ContactPerson contactPerson;
 
     @Override
@@ -36,11 +34,11 @@ public class Contact {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Contact contact = (Contact) o;
-        return uuid != null && uuid.equals(contact.uuid);
+        return id != null && id.equals(contact.id);
     }
 
     @Override
     public int hashCode() {
-        return getUuid() != null ? getUuid().hashCode() : 0;
+        return getId() != null ? getId().hashCode() : 0;
     }
 } 

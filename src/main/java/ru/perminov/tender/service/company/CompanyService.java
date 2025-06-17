@@ -1,22 +1,23 @@
 package ru.perminov.tender.service.company;
 
+import ru.perminov.tender.dto.company.CompanyDto;
+import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
-import ru.perminov.tender.model.company.Company;
 
 import java.util.List;
 import java.util.UUID;
 
 public interface CompanyService {
 
-    void create(CompanyDtoNew companyDtoNew);
+    CompanyDto create(CompanyDtoNew companyDtoNew);
 
-    void update(UUID id, CompanyDtoUpdate companyDtoUpdate);
+    CompanyDto update(UUID id, CompanyDtoUpdate companyDtoUpdate);
 
     void delete(UUID id);
 
-    Company getById(UUID id);
+    CompanyDtoForUpdate getById(UUID id);
 
-    List<Company> getAll();
+    List<CompanyDto> getAll();
 
 }

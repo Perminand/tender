@@ -1,4 +1,4 @@
-package ru.perminov.tender.dto.typecompany;
+package ru.perminov.tender.dto.companyType;
  
 public record CompanyTypeDtoUpdate(
     String name

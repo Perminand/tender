@@ -1,4 +1,4 @@
-package ru.perminov.tender.dto.typecompany;
+package ru.perminov.tender.dto.companyType;
 
 import jakarta.validation.constraints.NotBlank;
  

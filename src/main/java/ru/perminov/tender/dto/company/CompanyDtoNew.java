@@ -49,7 +49,8 @@ public record CompanyDtoNew(
     String correspondentAccount,
 
     @NotBlank
-    String bik,
+        @Pattern(regexp = "^\\d{9}$", message = "КПП должен содержать 9 цифр")
+        String bik,
 
     List<ContactPersonDtoNew> contactPersons
 
