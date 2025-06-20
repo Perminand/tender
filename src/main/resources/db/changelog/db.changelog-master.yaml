@@ -7,3 +7,11 @@ databaseChangeLog:
             path: changes/V001_create-companies-table.sql
             relativeToChangelogFile: true
             comments: "create table companies"
+  - changeSet:
+      id: 2
+      author: aperminov
+      changes:
+        - sqlFile:
+            path: changes/V002_add_legal_name_to_companies.sql
+            relativeToChangelogFile: true
+            comments: "create table legalName"

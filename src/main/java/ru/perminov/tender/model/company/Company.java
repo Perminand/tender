@@ -31,6 +31,8 @@ public class Company {
 
     private String name;
 
+    private String legalName;
+
     private String address;
 
     @ManyToOne(fetch = FetchType.LAZY)

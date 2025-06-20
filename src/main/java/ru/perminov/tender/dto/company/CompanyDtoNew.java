@@ -26,6 +26,8 @@ public record CompanyDtoNew(
     @NotBlank(message = "Название компании не может быть пустым")
     String name,
 
+    String legalName,
+
     @NotBlank(message = "Адрес не может быть пустым")
     String address,
 

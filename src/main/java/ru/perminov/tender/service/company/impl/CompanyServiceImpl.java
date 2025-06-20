@@ -122,8 +122,7 @@ public class CompanyServiceImpl implements CompanyService {
     public CompanyDtoForUpdate getById(UUID id) {
         Company company = companyRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Company not found with id: " + id));
-        CompanyDtoForUpdate companyDtoForUpdate = companyMapper.toCompanyDtoForUpdate(company);
-        return  companyDtoForUpdate;
+        return companyMapper.toCompanyDtoForUpdate(company);
     }
 
     @Override

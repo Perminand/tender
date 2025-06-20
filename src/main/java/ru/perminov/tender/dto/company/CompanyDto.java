@@ -13,6 +13,8 @@ public record CompanyDto(
 
         String name,
 
+        String legalName,
+
         String address,
 
         String typeId,

@@ -22,6 +22,8 @@ public record CompanyDtoUpdate(
 
         String name,
 
+        String legalName,
+        
         String address,
 
         CompanyType companyType,
