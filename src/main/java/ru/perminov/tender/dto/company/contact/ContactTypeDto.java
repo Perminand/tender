@@ -17,8 +17,6 @@ public record ContactTypeDto (
 
     UUID idm,
 
-    String code,
-
     String name
 
     ){

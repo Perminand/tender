@@ -4,7 +4,6 @@ import java.util.UUID;
 
 public record ContactDtoUpdate(
     UUID uuid,
-    UUID typeUuid,
-    String typeName,
+    ContactTypeDtoUpdate contactTypeDtoUpdate,
     String value
 ) {} 

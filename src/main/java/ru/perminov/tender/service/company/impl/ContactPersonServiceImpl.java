@@ -52,7 +52,6 @@ public class ContactPersonServiceImpl implements ContactPersonService {
                     // Создать новый тип
                     type = new ContactType();
                     type.setName(contactDto.typeName());
-                    type.setCode(contactDto.typeName().toUpperCase().replaceAll("\\s+", "_"));
                     type = contactTypeRepository.save(type);
                 }
                 Contact contact = new Contact();
@@ -72,25 +71,6 @@ public class ContactPersonServiceImpl implements ContactPersonService {
         contactPersonMapper.updateContactPersonFromDto(contactPersonDtoUpdate, existingContactPerson);
 
         return contactPersonRepository.save(existingContactPerson);
-    }
-
-    private void updateOrCreateContact(ContactPerson contactPerson, String typeCode, String value) {
-        ContactType contactType = contactTypeRepository.findByCode(typeCode)
-                .orElseThrow(() -> new RuntimeException("Тип контакта " + typeCode + " не найден"));
-
-        contactPerson.getContacts().stream()
-                .filter(contact -> contact.getContactType().getCode().equals(typeCode))
-                .findFirst()
-                .ifPresentOrElse(
-                        contact -> contact.setValue(value),
-                        () -> {
-                            Contact newContact = new Contact();
-                            newContact.setContactType(contactType);
-                            newContact.setValue(value);
-//                            newContact.setContactPerson(contactPerson);
-                            contactPerson.getContacts().add(newContact);
-                        }
-                );
     }
 
     @Override

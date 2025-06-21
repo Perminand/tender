@@ -32,8 +32,7 @@ create table IF NOT EXISTS contact_persons (
 
 create table IF NOT EXISTS contact_types (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    name VARCHAR(50) NOT NULL UNIQUE,
-    code VARCHAR(50) NOT NULL UNIQUE
+    name VARCHAR(50) NOT NULL UNIQUE
 );
 
 create table IF NOT EXISTS contacts (

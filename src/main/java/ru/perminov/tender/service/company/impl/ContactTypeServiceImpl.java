@@ -27,8 +27,8 @@ public class ContactTypeServiceImpl implements ContactTypeService {
     @Override
     @Transactional
     public ContactTypeDto create(ContactTypeDtoNew contactTypeDtoNew) {
-        if (contactTypeRepository.existsByCode(contactTypeDtoNew.code())) {
-            throw new DuplicateKeyException("Тип контакта с кодом '" + contactTypeDtoNew.code() + "' уже существует");
+        if (contactTypeRepository.existsByName(contactTypeDtoNew.name())) {
+            throw new DuplicateKeyException("Тип контакта с именем '" + contactTypeDtoNew.name() + "' уже существует");
         }
 
         ContactType contactType = contactTypeMapper.toContactType(contactTypeDtoNew);
@@ -43,9 +43,9 @@ public class ContactTypeServiceImpl implements ContactTypeService {
                 ()-> new EntityNotFoundException("Тип контакта не найден id: " + id)
         );
         
-        if (!contactTypeDtoUpdate.code().equals(existingContactType.getCode()) && 
-            contactTypeRepository.existsByCode(contactTypeDtoUpdate.code())) {
-            throw new DuplicateKeyException("Тип контакта с кодом '" + contactTypeDtoUpdate.code() + "' уже существует");
+        if (!contactTypeDtoUpdate.name().equals(existingContactType.getName()) &&
+            contactTypeRepository.existsByName(contactTypeDtoUpdate.name())) {
+            throw new DuplicateKeyException("Тип контакта с именем '" + contactTypeDtoUpdate.name() + "' уже существует");
         }
 
         contactTypeMapper.updateContactTypeFromDto(contactTypeDtoUpdate, existingContactType);

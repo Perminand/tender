@@ -15,6 +15,11 @@ interface CompanyType {
   name: string;
 }
 
+interface ContactType {
+  id: any;
+  name: string;
+}
+
 const contactTypes = [
   { value: 'Телефон', label: 'Телефон' },
   { value: 'Email', label: 'Email' },
@@ -48,9 +53,7 @@ type FormData = {
 const defaultValues: FormData = {
   name: '', legalName: '', inn: '', kpp: '', ogrn: '', address: '', head: '', phone: '', email: '', companyType: null,
   bankDetails: [{ bankName: '', bik: '', checkingAccount: '', correspondentAccount: '' }],
-  contactPersons: [
-    { firstName: '', lastName: '', position: '', contacts: [{ type: 'Телефон', value: '' }] },
-  ],
+  contactPersons: [],
 };
 
 const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
@@ -62,6 +65,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const [companyTypes, setCompanyTypes] = useState<CompanyType[]>([]);
   const [openNewTypeDialog, setOpenNewTypeDialog] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
+  const [allContactTypes, setAllContactTypes] = useState<ContactType[]>([]);
   const [isLoadingFns, setIsLoadingFns] = useState(false);
   const [fnsError, setFnsError] = useState<string | null>(null);
   const [fnsSuccess, setFnsSuccess] = useState(false);
@@ -82,7 +86,24 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   useEffect(() => {
     fetch('/api/company/type-companies')
       .then(res => res.json())
-      .then(data => setCompanyTypes(data));
+      .then(data => setCompanyTypes(data))
+      .catch(error => {
+        console.error('Ошибка при загрузке типов компаний:', error);
+        setCompanyTypes([]);
+      });
+    
+    fetch('/api/contact-types')
+      .then(res => {
+        if (!res.ok) {
+          throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        return res.json();
+      })
+      .then(data => setAllContactTypes(Array.isArray(data) ? data : []))
+      .catch(error => {
+        console.error('Ошибка при загрузке типов контактов:', error);
+        setAllContactTypes([]);
+      });
   }, []);
 
   useEffect(() => {
@@ -102,7 +123,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
             email: data.email || '',
             companyType: data.companyType?.id || null,
             bankDetails: data.bankDetails && data.bankDetails.length > 0 ? data.bankDetails : defaultValues.bankDetails,
-            contactPersons: data.contactPersons && data.contactPersons.length > 0 ? data.contactPersons : defaultValues.contactPersons
+            contactPersons: data.contactPersons || []
           };
           reset(formData);
         });
@@ -203,6 +224,19 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
             ...data,
             typeId: data.companyType,
             director: data.head,
+            contactPersons: data.contactPersons.map(person => ({
+                ...person,
+                contacts: person.contacts.map(contact => {
+                    const contactTypeObject = allContactTypes.find(ct => ct.name === contact.type);
+                    return {
+                        value: contact.value,
+                        contactTypeDtoUpdate: {
+                            id: contactTypeObject?.id,
+                            name: contactTypeObject?.name
+                        }
+                    };
+                })
+            }))
         };
         // @ts-ignore
         delete payload.head;
@@ -421,7 +455,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Контактные лица</Typography>
         {contactPersons.map((person, personIndex) => (
-          <PersonFields key={person.id} {...{ control, register, errors, person, personIndex, removePerson, contactPersons }} />
+          <PersonFields key={person.id} {...{ control, register, errors, person, personIndex, removePerson, contactPersons, allContactTypes, setAllContactTypes }} />
         ))}
         <Button startIcon={<AddIcon />} onClick={() => appendPerson({ firstName: '', lastName: '', position: '', contacts: [{ type: 'Телефон', value: '' }] })} sx={{ mt: 2 }}>
           Добавить контактное лицо
@@ -440,7 +474,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   );
 };
 
-const PersonFields = ({ control, register, errors, person, personIndex, removePerson, contactPersons }: any) => {
+const PersonFields = ({ control, register, errors, person, personIndex, removePerson, contactPersons, allContactTypes, setAllContactTypes }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `contactPersons[${personIndex}].contacts`
@@ -449,21 +483,56 @@ const PersonFields = ({ control, register, errors, person, personIndex, removePe
   return (
     <Box sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
       <Grid container spacing={2} alignItems="center">
-        <Grid item xs={12} sm={3}><TextField label="Имя" fullWidth {...register(`contactPersons[${personIndex}].firstName`)} /></Grid>
+        <Grid item xs={12} sm={3}>
+          <TextField
+            label="Имя *"
+            fullWidth
+            {...register(`contactPersons[${personIndex}].firstName`, { required: "Имя не может быть пустым" })}
+            error={!!errors.contactPersons?.[personIndex]?.firstName}
+            helperText={errors.contactPersons?.[personIndex]?.firstName?.message}
+          />
+        </Grid>
         <Grid item xs={12} sm={3}><TextField label="Фамилия" fullWidth {...register(`contactPersons[${personIndex}].lastName`)} /></Grid>
         <Grid item xs={12} sm={3}><TextField label="Должность" fullWidth {...register(`contactPersons[${personIndex}].position`)} /></Grid>
         <Grid item xs={12} sm={2}>
-          <IconButton onClick={() => removePerson(personIndex)} disabled={contactPersons.length <= 1}>
+          <IconButton onClick={() => removePerson(personIndex)}>
             <DeleteIcon />
           </IconButton>
         </Grid>
-        <Grid item xs={12}><ContactList {...{ control, register, nestIndex: personIndex, errors, fields, append, remove }} /></Grid>
+        <Grid item xs={12}><ContactList {...{ control, register, nestIndex: personIndex, errors, fields, append, remove, allContactTypes, setAllContactTypes }} /></Grid>
       </Grid>
     </Box>
   );
 };
 
-const ContactList: React.FC<any> = ({ control, register, nestIndex, errors, fields, append, remove }) => {
+const ContactList = ({ control, nestIndex, register, errors, fields, append, remove, allContactTypes, setAllContactTypes }: any) => {
+  const [openNewContactTypeDialog, setOpenNewContactTypeDialog] = useState(false);
+  const [newContactTypeName, setNewContactTypeName] = useState('');
+  const createNewContactTypeOption: ContactType = { id: 'CREATE_NEW', name: 'Создать новый тип' };
+
+  const handleCloseDialog = () => {
+    setOpenNewContactTypeDialog(false);
+    setNewContactTypeName('');
+  };
+
+  const handleSaveNewType = async (fieldOnChange: (value: any) => void) => {
+    if (newContactTypeName.trim()) {
+      try {
+        const res = await fetch('/api/contact-types', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newContactTypeName }),
+        });
+        if (res.ok) {
+          const newType = await res.json();
+          setAllContactTypes((prev: ContactType[]) => [...prev, newType]);
+          fieldOnChange(newType.name);
+        }
+      } catch (e) { console.error(e); }
+      handleCloseDialog();
+    }
+  };
+
   return (
     <Box>
       {fields.map((item: { id: string }, k: number) => (
@@ -472,15 +541,52 @@ const ContactList: React.FC<any> = ({ control, register, nestIndex, errors, fiel
             <Controller
               name={`contactPersons[${nestIndex}].contacts[${k}].type`}
               control={control}
-              defaultValue={contactTypes[0].value}
-              render={({ field }) => (
-                <TextField {...field} select fullWidth label="Тип">
-                  {contactTypes.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
-                </TextField>
-              )}
+              defaultValue="Телефон"
+              render={({ field }) => {
+                const selectedValue = Array.isArray(allContactTypes) ? allContactTypes.find((option: ContactType) => option.name === field.value) || null : null;
+                return (
+                  <>
+                    <Autocomplete<ContactType>
+                      value={selectedValue}
+                      onChange={(_: any, newValue: ContactType | null) => {
+                        if (newValue?.id === 'CREATE_NEW') {
+                          setOpenNewContactTypeDialog(true);
+                        } else {
+                          field.onChange(newValue?.name || '');
+                        }
+                      }}
+                      options={Array.isArray(allContactTypes) ? [...allContactTypes, createNewContactTypeOption] : [createNewContactTypeOption]}
+                      getOptionLabel={(option: ContactType) => option.name}
+                      isOptionEqualToValue={(option: ContactType, value: ContactType) => option.id === value.id}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          label="Тип"
+                        />
+                      )}
+                    />
+                    <Dialog open={openNewContactTypeDialog} onClose={handleCloseDialog}>
+                      <DialogTitle>Создать новый тип контакта</DialogTitle>
+                      <DialogContent><TextField autoFocus margin="dense" label="Название типа" type="text" fullWidth value={newContactTypeName} onChange={(e) => setNewContactTypeName(e.target.value)} /></DialogContent>
+                      <DialogActions>
+                        <Button onClick={handleCloseDialog}>Отмена</Button>
+                        <Button onClick={() => handleSaveNewType(field.onChange)}>Сохранить</Button>
+                      </DialogActions>
+                    </Dialog>
+                  </>
+                )
+              }}
             />
           </Grid>
-          <Grid item xs={6}><TextField label="Значение" fullWidth {...register(`contactPersons[${nestIndex}].contacts[${k}].value`)} /></Grid>
+          <Grid item xs={6}>
+            <TextField
+              label="Значение *"
+              fullWidth
+              {...register(`contactPersons[${nestIndex}].contacts[${k}].value`, { required: "Значение не может быть пустым" })}
+              error={!!errors.contactPersons?.[nestIndex]?.contacts?.[k]?.value}
+              helperText={errors.contactPersons?.[nestIndex]?.contacts?.[k]?.value?.message}
+            />
+          </Grid>
           <Grid item xs={1}>
             <IconButton onClick={() => remove(k)} disabled={fields.length <= 1}><DeleteIcon /></IconButton>
           </Grid>

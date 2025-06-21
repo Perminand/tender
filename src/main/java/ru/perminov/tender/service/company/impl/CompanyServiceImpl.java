@@ -1,16 +1,12 @@
 package ru.perminov.tender.service.company.impl;
 
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
-import ru.perminov.tender.dto.company.contact.ContactDtoNew;
-import ru.perminov.tender.dto.company.contact.ContactPersonDtoNew;
 import ru.perminov.tender.mapper.company.CompanyMapper;
 import ru.perminov.tender.mapper.company.ContactPersonMapper;
 import ru.perminov.tender.model.company.BankDetails;
@@ -22,6 +18,7 @@ import ru.perminov.tender.model.company.ContactType;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.company.CompanyTypeRepository;
 import ru.perminov.tender.repository.company.ContactPersonRepository;
+import ru.perminov.tender.repository.company.ContactRepository;
 import ru.perminov.tender.repository.company.ContactTypeRepository;
 import ru.perminov.tender.service.company.CompanyService;
 
@@ -39,6 +36,7 @@ public class CompanyServiceImpl implements CompanyService {
     private final CompanyMapper companyMapper;
     private final ContactPersonMapper contactPersonMapper;
     private final ContactPersonRepository contactPersonRepository;
+    private final ContactRepository contactRepository;
 
     @Override
     @Transactional
@@ -81,7 +79,16 @@ public class CompanyServiceImpl implements CompanyService {
         if (companyDtoUpdate.contactPersons() != null) {
             company.getContactPersons().clear();
             List<ContactPerson> newContactPersons = contactPersonMapper.toContactPersonList(companyDtoUpdate.contactPersons());
-            newContactPersons.forEach(cp -> cp.setCompany(company));
+            newContactPersons.forEach(cp -> {
+                cp.setCompany(company);
+                for (Contact c : cp.getContacts()) {
+                    ContactType contactType = contactTypeRepository.findByName(c.getContactType().getName()).orElse(
+                                new ContactType(null,c.getContactType().getName())
+                    );
+                    c.setContactType(contactType);
+                    c.setContactPerson(cp);
+                }
+            });
             company.getContactPersons().addAll(newContactPersons);
         }
 
