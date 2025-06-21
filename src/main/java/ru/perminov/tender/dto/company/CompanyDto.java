@@ -1,6 +1,7 @@
 package ru.perminov.tender.dto.company;
 
 import java.util.UUID;
+import java.util.List;
 
 public record CompanyDto(
         UUID id,
@@ -25,6 +26,8 @@ public record CompanyDto(
 
         String phone,
 
-        String email
+        String email,
+
+        List<BankDetailsDto> bankDetails
 ) {
 }

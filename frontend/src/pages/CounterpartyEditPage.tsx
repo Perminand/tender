@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import {
   Box, Button, Grid, Paper, TextField, Typography, MenuItem, IconButton, Divider, Autocomplete,
-  Dialog, DialogActions, DialogContent, DialogTitle
+  Dialog, DialogActions, DialogContent, DialogTitle, Alert, Snackbar, CircularProgress
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { useNavigate } from 'react-router-dom';
+import SearchIcon from '@mui/icons-material/Search';
+import { useNavigate, useParams } from 'react-router-dom';
+import { searchCompanyByInn } from '../utils/fnsApi';
 
 interface CompanyType {
   id: string;
@@ -21,6 +23,13 @@ const contactTypes = [
 type Contact = { type: string; value: string };
 type ContactPerson = { firstName: string; lastName: string; position: string; contacts: Contact[] };
 
+type BankDetails = {
+  bankName: string;
+  bik: string;
+  checkingAccount: string;
+  correspondentAccount: string;
+};
+
 type FormData = {
   name: string;
   legalName: string;
@@ -28,34 +37,47 @@ type FormData = {
   kpp: string;
   ogrn: string;
   address: string;
-  director: string;
+  head: string;
   phone: string;
   email: string;
-  companyType: string;
-  bankName: string;
-  checkingAccount: string;
-  correspondentAccount: string;
-  bik: string;
+  companyType: string | null;
+  bankDetails: BankDetails[];
   contactPersons: ContactPerson[];
 };
 
 const defaultValues: FormData = {
-  name: '', legalName: '', inn: '', kpp: '', ogrn: '', address: '', director: '', phone: '', email: '', companyType: '',
-  bankName: '', checkingAccount: '', correspondentAccount: '', bik: '',
+  name: '', legalName: '', inn: '', kpp: '', ogrn: '', address: '', head: '', phone: '', email: '', companyType: null,
+  bankDetails: [{ bankName: '', bik: '', checkingAccount: '', correspondentAccount: '' }],
   contactPersons: [
-    { firstName: '', lastName: '', position: '', contacts: [{ type: '', value: '' }] },
+    { firstName: '', lastName: '', position: '', contacts: [{ type: 'Телефон', value: '' }] },
   ],
 };
 
 const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const navigate = useNavigate();
-  const { control, handleSubmit, register, formState: { errors } } = useForm<FormData>({ defaultValues });
+  const { id } = useParams<{ id: string }>();
+  const { control, handleSubmit, register, formState: { errors }, setValue, watch, getValues, reset } = useForm<FormData>({ defaultValues });
   const { fields: contactPersons, append: appendPerson, remove: removePerson } = useFieldArray({ control, name: 'contactPersons' });
+  const { fields: bankDetails, append: appendBankDetails, remove: removeBankDetails } = useFieldArray({ control, name: 'bankDetails' });
   const [companyTypes, setCompanyTypes] = useState<CompanyType[]>([]);
   const [openNewTypeDialog, setOpenNewTypeDialog] = useState(false);
   const [newTypeName, setNewTypeName] = useState('');
+  const [isLoadingFns, setIsLoadingFns] = useState(false);
+  const [fnsError, setFnsError] = useState<string | null>(null);
+  const [fnsSuccess, setFnsSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [bikLoading, setBikLoading] = useState<Record<number, boolean>>({});
+  const [bikErrors, setBikErrors] = useState<Record<number, string | null>>({});
 
   const createNewTypeOption: CompanyType = { id: 'CREATE_NEW', name: 'Создать новый тип' };
+  const watchedInn = watch('inn');
+
+  const watchedCompanyTypeId = useWatch({ control, name: 'companyType' });
+  const isIp = React.useMemo(() => {
+    if (!watchedCompanyTypeId) return false;
+    const currentType = companyTypes.find(t => t.id === watchedCompanyTypeId);
+    return currentType?.name.toLowerCase().includes('индивидуальный предприниматель') ?? false;
+  }, [watchedCompanyTypeId, companyTypes]);
 
   useEffect(() => {
     fetch('/api/company/type-companies')
@@ -63,27 +85,206 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       .then(data => setCompanyTypes(data));
   }, []);
 
-  const onSubmit = (data: FormData) => {
-    // TODO: интеграция с backend
-    alert(JSON.stringify(data, null, 2));
-    navigate('/counterparties');
+  useEffect(() => {
+    if (isEdit && id) {
+      fetch(`/api/companies/${id}`)
+        .then(res => res.json())
+        .then((data) => {
+          const formData: FormData = {
+            name: data.name || '',
+            legalName: data.legalName || '',
+            inn: data.inn || '',
+            kpp: data.kpp || '',
+            ogrn: data.ogrn || '',
+            address: data.address || '',
+            head: data.director || '',
+            phone: data.phone || '',
+            email: data.email || '',
+            companyType: data.companyType?.id || null,
+            bankDetails: data.bankDetails && data.bankDetails.length > 0 ? data.bankDetails : defaultValues.bankDetails,
+            contactPersons: data.contactPersons && data.contactPersons.length > 0 ? data.contactPersons : defaultValues.contactPersons
+          };
+          reset(formData);
+        });
+    }
+  }, [id, isEdit, reset]);
+
+  const handleFetchFnsData = async () => {
+    if (!watchedInn || watchedInn.length < 10) {
+      setFnsError('Введите корректный ИНН (минимум 10 цифр)');
+      return;
+    }
+
+    setIsLoadingFns(true);
+    setFnsError(null);
+
+    try {
+      const companyData = await searchCompanyByInn(watchedInn);
+      setValue('name', companyData.name || '');
+      setValue('legalName', companyData.shortName || '');
+      setValue('ogrn', companyData.ogrn || '');
+      setValue('kpp', companyData.kpp || '');
+      setValue('address', companyData.address || '');
+      setValue('head', companyData.head || '');
+      setValue('phone', companyData.phone || '');
+      setValue('email', companyData.email || '');
+      if (companyData.legalForm) {
+        let foundType = companyTypes.find(
+          (type) => type.name.toUpperCase() === companyData.legalForm?.toUpperCase()
+        );
+        if (!foundType && companyData.legalForm.trim()) {
+          try {
+            const response = await fetch('/api/company/type-companies', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name: companyData.legalForm }),
+            });
+            if (response.ok) {
+              const createdType: CompanyType = await response.json();
+              setCompanyTypes(prev => [...prev, createdType]);
+              foundType = createdType;
+            } else {
+              console.error("Failed to auto-create company type");
+            }
+          } catch (e) {
+            console.error("Error auto-creating company type:", e);
+          }
+        }
+        if (foundType) {
+          setValue('companyType', foundType.id);
+        }
+      }
+      setFnsSuccess(true);
+    } catch (error) {
+      if (error instanceof Error) {
+        setFnsError(error.message);
+      } else {
+        setFnsError('Неизвестная ошибка при получении данных');
+      }
+    } finally {
+      setIsLoadingFns(false);
+    }
   };
+
+  const handleBikBlur = async (index: number) => {
+    const bik = getValues(`bankDetails.${index}.bik`);
+    setBikErrors(prev => ({ ...prev, [index]: null }));
+    if (!bik || bik.length !== 9) {
+      setValue(`bankDetails.${index}.bankName`, '');
+      setValue(`bankDetails.${index}.correspondentAccount`, '');
+      return;
+    }
+    setBikLoading(prev => ({ ...prev, [index]: true }));
+    try {
+      const response = await fetch(`/api/banks/bik/${bik}`);
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error('Банк не найден');
+        }
+        throw new Error('Ошибка сервера');
+      }
+      const data: BankDetails = await response.json();
+      setValue(`bankDetails.${index}.bankName`, data.bankName, { shouldValidate: true });
+      setValue(`bankDetails.${index}.correspondentAccount`, data.correspondentAccount, { shouldValidate: true });
+    } catch (error) {
+      if (error instanceof Error) {
+        setBikErrors(prev => ({ ...prev, [index]: error.message }));
+      }
+    } finally {
+      setBikLoading(prev => ({ ...prev, [index]: false }));
+    }
+  };
+
+    const onSubmit = async (data: FormData) => {
+        const url = isEdit ? `/api/companies/${id}` : '/api/companies';
+        const method = isEdit ? 'POST' : 'POST';
+
+        const payload = {
+            ...data,
+            typeId: data.companyType,
+            director: data.head,
+        };
+        // @ts-ignore
+        delete payload.head;
+        // @ts-ignore
+        delete payload.companyType;
+
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                setSaveError(`Не удалось сохранить контрагента. ${errorText}`);
+                return;
+            }
+            navigate('/counterparties');
+        } catch (error) {
+            if (error instanceof Error) {
+                setSaveError(error.message);
+            } else {
+                setSaveError('Произошла неизвестная ошибка');
+            }
+        }
+    };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Typography variant="h4" gutterBottom>{isEdit ? 'Редактирование контрагента' : 'Новый контрагент'}</Typography>
+      
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Основная информация</Typography>
         <Grid container spacing={2}>
-          <Grid item xs={12} sm={3}><TextField label="ИНН *" fullWidth {...register('inn', { required: 'ИНН не может быть пустым', pattern: { value: /^(\d{10}|\d{12})$/, message: 'ИНН должен содержать 10 или 12 цифр' } })} error={!!errors.inn} helperText={errors.inn?.message} /></Grid>
-          <Grid item xs={12} sm={3}><TextField label="КПП *" fullWidth {...register('kpp', { required: 'КПП не может быть пустым', pattern: { value: /^\d{9}$/, message: 'КПП должен содержать 9 цифр' } })} error={!!errors.kpp} helperText={errors.kpp?.message} /></Grid>
-          <Grid item xs={12} sm={4}><TextField label="ОГРН *" fullWidth {...register('ogrn', { required: 'ОГРН не может быть пустым', pattern: { value: /^(\d{13}|\d{15})$/, message: 'ОГРН должен содержать 13 или 15 цифр' } })} error={!!errors.ogrn} helperText={errors.ogrn?.message} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="Название *" fullWidth {...register('name', { required: 'Название компании не может быть пустым' })} error={!!errors.name} helperText={errors.name?.message} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="Фирменное наименование" fullWidth {...register('legalName')} /></Grid>
-          <Grid item xs={12} sm={8}><TextField label="Адрес *" fullWidth {...register('address', { required: 'Адрес не может быть пустым' })} error={!!errors.address} helperText={errors.address?.message} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="Директор" fullWidth {...register('director')} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="Телефон" fullWidth {...register('phone')} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="Email" fullWidth {...register('email')} /></Grid>
+          <Grid item xs={12} sm={3}>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <TextField 
+                InputLabelProps={{ shrink: !!watch('inn') }}
+                label="ИНН *" 
+                fullWidth 
+                {...register('inn', { 
+                  required: 'ИНН не может быть пустым', 
+                  pattern: { value: /^(\d{10}|\d{12})$/, message: 'ИНН должен содержать 10 или 12 цифр' } 
+                })} 
+                error={!!errors.inn} 
+                helperText={errors.inn?.message}
+                disabled={isEdit}
+              />
+              {!isEdit && (
+                <Button
+                  variant="outlined"
+                  onClick={handleFetchFnsData}
+                  disabled={isLoadingFns || !watchedInn || watchedInn.length < 10}
+                  sx={{ minWidth: 'auto', px: 1 }}
+                >
+                  {isLoadingFns ? <CircularProgress size={20} /> : <SearchIcon />}
+                </Button>
+              )}
+            </Box>
+          </Grid>
+          <Grid item xs={12} sm={3}>
+            <TextField 
+              InputLabelProps={{ shrink: !!watch('kpp') }} 
+              label={isIp ? "КПП" : "КПП *"} 
+              fullWidth 
+              {...register('kpp', { 
+                required: isIp ? false : 'КПП не может быть пустым', 
+                pattern: { value: /^\d{9}$/, message: 'КПП должен содержать 9 цифр' } 
+              })} 
+              error={!!errors.kpp} 
+              helperText={errors.kpp?.message} 
+              disabled={isIp}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}><TextField InputLabelProps={{ shrink: !!watch('ogrn') }} label="ОГРН *" fullWidth {...register('ogrn', { required: 'ОГРН не может быть пустым', pattern: { value: /^(\d{13}|\d{15})$/, message: 'ОГРН должен содержать 13 или 15 цифр' } })} error={!!errors.ogrn} helperText={errors.ogrn?.message} /></Grid>
+          <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('name') }} label="Название *" fullWidth {...register('name', { required: 'Название компании не может быть пустым' })} error={!!errors.name} helperText={errors.name?.message} /></Grid>
+          <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('legalName') }} label="Фирменное наименование" fullWidth {...register('legalName')} /></Grid>
+          <Grid item xs={12} sm={8}><TextField InputLabelProps={{ shrink: !!watch('address') }} label="Адрес *" fullWidth {...register('address', { required: 'Адрес не может быть пустым' })} error={!!errors.address} helperText={errors.address?.message} /></Grid>
+          <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('head') }} label="Руководитель" fullWidth {...register('head')} /></Grid>
+          <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('phone') }} label="Телефон" fullWidth {...register('phone')} /></Grid>
+          <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('email') }} label="Email" fullWidth {...register('email')} /></Grid>
           <Grid item xs={12} sm={6}>
             <Controller
               name="companyType"
@@ -94,68 +295,50 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                   setOpenNewTypeDialog(false);
                   setNewTypeName('');
                 };
-
                 const handleSaveNewType = async () => {
-                  if (!newTypeName.trim()) return;
-                  try {
-                    const response = await fetch('/api/company/type-companies', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ name: newTypeName }),
-                    });
-                    if (!response.ok) throw new Error('Failed to create company type');
-                    const createdType: CompanyType = await response.json();
-                    setCompanyTypes(prev => [...prev, createdType]);
-                    field.onChange(createdType.id);
+                  if (newTypeName.trim()) {
+                    try {
+                      const res = await fetch('/api/company/type-companies', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: newTypeName }),
+                      });
+                      if (res.ok) {
+                        const newType = await res.json();
+                        setCompanyTypes(prev => [...prev, newType]);
+                        field.onChange(newType.id);
+                      }
+                    } catch (e) { console.error(e); }
                     handleCloseDialog();
-                  } catch (e) {
-                    console.error("Failed to create company type:", e);
                   }
                 };
-                
+                const selectedValue = companyTypes.find(option => option.id === field.value) || null;
                 return (
                   <>
                     <Autocomplete
-                      value={companyTypes.find(opt => opt.id === field.value) || null}
+                      value={selectedValue}
+                      onChange={(_, newValue) => {
+                        if (newValue?.id === 'CREATE_NEW') {
+                          setOpenNewTypeDialog(true);
+                        } else {
+                          field.onChange(newValue?.id || null);
+                        }
+                      }}
                       options={[...companyTypes, createNewTypeOption]}
                       getOptionLabel={(option) => option.name}
                       isOptionEqualToValue={(option, value) => option.id === value.id}
-                      onChange={(_, newValue) => {
-                        if (newValue && newValue.id === 'CREATE_NEW') {
-                          setOpenNewTypeDialog(true);
-                        } else {
-                          field.onChange(newValue ? newValue.id : null);
-                        }
-                      }}
-                      renderOption={(props, option) => (
-                        <li {...props} style={{ color: option.id === 'CREATE_NEW' ? '#1976d2' : 'inherit' }}>
-                          {option.name}
-                        </li>
-                      )}
                       renderInput={(params) => (
                         <TextField
                           {...params}
-                          label="Тип контрагента"
-                          variant="outlined"
+                          label="Тип контрагента *"
                           error={!!error}
                           helperText={error?.message}
                         />
                       )}
                     />
                     <Dialog open={openNewTypeDialog} onClose={handleCloseDialog}>
-                      <DialogTitle>Создать новый тип контрагента</DialogTitle>
-                      <DialogContent>
-                        <TextField
-                          autoFocus
-                          margin="dense"
-                          label="Название типа"
-                          type="text"
-                          fullWidth
-                          variant="standard"
-                          value={newTypeName}
-                          onChange={(e) => setNewTypeName(e.target.value)}
-                        />
-                      </DialogContent>
+                      <DialogTitle>Создать новый тип</DialogTitle>
+                      <DialogContent><TextField autoFocus margin="dense" label="Название типа" type="text" fullWidth value={newTypeName} onChange={(e) => setNewTypeName(e.target.value)} /></DialogContent>
                       <DialogActions>
                         <Button onClick={handleCloseDialog}>Отмена</Button>
                         <Button onClick={handleSaveNewType}>Сохранить</Button>
@@ -168,69 +351,144 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
           </Grid>
         </Grid>
       </Paper>
+
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Банковские реквизиты</Typography>
-        <Grid container spacing={2}>
-          <Grid item xs={12} sm={6}><TextField label="Название банка *" fullWidth {...register('bankName', { required: 'Название банка не может быть пустым' })} error={!!errors.bankName} helperText={errors.bankName?.message} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="Расчетный счет *" fullWidth {...register('checkingAccount', { required: 'Расчетный счет не может быть пустым' })} error={!!errors.checkingAccount} helperText={errors.checkingAccount?.message} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="Корреспондентский счет *" fullWidth {...register('correspondentAccount', { required: 'Корр. счет не может быть пустым' })} error={!!errors.correspondentAccount} helperText={errors.correspondentAccount?.message} /></Grid>
-          <Grid item xs={12} sm={6}><TextField label="БИК *" fullWidth {...register('bik', { required: 'БИК не может быть пустым', pattern: { value: /^\d{9}$/, message: 'БИК должен содержать 9 цифр' } })} error={!!errors.bik} helperText={errors.bik?.message} /></Grid>
-        </Grid>
-      </Paper>
-      <Paper sx={{ p: 2, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>Контактные лица</Typography>
-        {contactPersons.map((person, idx) => (
-          <Box key={person.id} sx={{ mb: 2, border: '1px solid #eee', borderRadius: 2, p: 2 }}>
-            <Grid container spacing={2} alignItems="center">
-              <Grid item xs={12} sm={4}><TextField label="Имя *" fullWidth {...register(`contactPersons.${idx}.firstName` as const)} /></Grid>
-              <Grid item xs={12} sm={4}><TextField label="Фамилия *" fullWidth {...register(`contactPersons.${idx}.lastName` as const)} /></Grid>
-              <Grid item xs={12} sm={3}><TextField label="Должность" fullWidth {...register(`contactPersons.${idx}.position` as const)} /></Grid>
-              <Grid item xs={12} sm={1}>
-                <IconButton color="error" onClick={() => removePerson(idx)}><DeleteIcon /></IconButton>
+        {bankDetails.map((item, index) => (
+          <React.Fragment key={item.id}>
+            <Grid container spacing={2} sx={{ mt: index > 0 ? 2 : 0 }}>
+              <Grid item xs={12} sm={3}>
+                <TextField
+                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.bik`) }}
+                  label="БИК *"
+                  fullWidth
+                  {...register(`bankDetails.${index}.bik`, {
+                    required: 'БИК не может быть пустым',
+                    pattern: { value: /^\d{9}$/, message: 'БИК должен содержать 9 цифр' }
+                  })}
+                  onBlur={() => handleBikBlur(index)}
+                  error={!!errors.bankDetails?.[index]?.bik || !!bikErrors[index]}
+                  helperText={errors.bankDetails?.[index]?.bik?.message || bikErrors[index]}
+                  InputProps={{
+                    endAdornment: bikLoading[index] && <CircularProgress size={20} />
+                  }}
+                />
+              </Grid>
+              <Grid item xs={12} sm={5}>
+                <TextField
+                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.bankName`) }}
+                  label="Название банка *"
+                  fullWidth
+                  {...register(`bankDetails.${index}.bankName`, { required: 'Название банка не может быть пустым' })}
+                  error={!!errors.bankDetails?.[index]?.bankName}
+                  helperText={errors.bankDetails?.[index]?.bankName?.message}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField
+                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.correspondentAccount`) }}
+                  label="Корр. счет *"
+                  fullWidth
+                  {...register(`bankDetails.${index}.correspondentAccount`, { required: 'Корр. счет не может быть пустым' })}
+                  error={!!errors.bankDetails?.[index]?.correspondentAccount}
+                  helperText={errors.bankDetails?.[index]?.correspondentAccount?.message}
+                />
+              </Grid>
+              <Grid item xs={12} sm={8}>
+                <TextField
+                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.checkingAccount`) }}
+                  label="Расчетный счет *"
+                  fullWidth
+                  {...register(`bankDetails.${index}.checkingAccount`, { required: 'Расчетный счет не может быть пустым' })}
+                  error={!!errors.bankDetails?.[index]?.checkingAccount}
+                  helperText={errors.bankDetails?.[index]?.checkingAccount?.message}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4} sx={{ display: 'flex', alignItems: 'center' }}>
+                <IconButton onClick={() => removeBankDetails(index)} disabled={bankDetails.length <= 1}>
+                  <DeleteIcon />
+                </IconButton>
               </Grid>
             </Grid>
-            <Divider sx={{ my: 2 }} />
-            <ContactList control={control} register={register} nestIndex={idx} />
-          </Box>
+            {index < bankDetails.length - 1 && <Divider sx={{ my: 2 }} />}
+          </React.Fragment>
         ))}
-        <Button startIcon={<AddIcon />} onClick={() => appendPerson({ firstName: '', lastName: '', position: '', contacts: [{ type: '', value: '' }] })}>
+        <Button startIcon={<AddIcon />} onClick={() => appendBankDetails({ bankName: '', bik: '', checkingAccount: '', correspondentAccount: '' })} sx={{ mt: 2 }}>
+          Добавить счет
+        </Button>
+      </Paper>
+
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Контактные лица</Typography>
+        {contactPersons.map((person, personIndex) => (
+          <PersonFields key={person.id} {...{ control, register, errors, person, personIndex, removePerson, contactPersons }} />
+        ))}
+        <Button startIcon={<AddIcon />} onClick={() => appendPerson({ firstName: '', lastName: '', position: '', contacts: [{ type: 'Телефон', value: '' }] })} sx={{ mt: 2 }}>
           Добавить контактное лицо
         </Button>
       </Paper>
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <Button variant="outlined" onClick={() => navigate('/counterparties')}>Отмена</Button>
-        <Button variant="contained" type="submit">Сохранить</Button>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
+        <Button variant="outlined" color="secondary" onClick={() => navigate('/counterparties')}>Отмена</Button>
+        <Button type="submit" variant="contained">Сохранить</Button>
       </Box>
+
+      {saveError && <Snackbar open={!!saveError} autoHideDuration={6000} onClose={() => setSaveError(null)}><Alert severity="error">{saveError}</Alert></Snackbar>}
+      {fnsError && <Snackbar open={!!fnsError} autoHideDuration={6000} onClose={() => setFnsError(null)}><Alert severity="warning">{fnsError}</Alert></Snackbar>}
+      {fnsSuccess && <Snackbar open={fnsSuccess} autoHideDuration={3000} onClose={() => setFnsSuccess(false)}><Alert severity="success">Данные по ИНН успешно загружены.</Alert></Snackbar>}
     </form>
   );
 };
 
-const ContactList: React.FC<any> = ({ control, register, nestIndex }) => {
-  const { fields, append, remove } = useFieldArray({ control, name: `contactPersons.${nestIndex}.contacts` });
+const PersonFields = ({ control, register, errors, person, personIndex, removePerson, contactPersons }: any) => {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `contactPersons[${personIndex}].contacts`
+  });
+
   return (
-    <Box>
-      {fields.map((field, k) => (
-        <Grid container spacing={2} alignItems="center" key={field.id} sx={{ mb: 1 }}>
-          <Grid item xs={12} sm={5}>
-            <TextField label="Тип контакта" select fullWidth {...register(`contactPersons.${nestIndex}.contacts.${k}.type` as const)}>
-              {contactTypes.map((option) => (
-                <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
-              ))}
-            </TextField>
-          </Grid>
-          <Grid item xs={12} sm={5}>
-            <TextField label="Значение *" fullWidth {...register(`contactPersons.${nestIndex}.contacts.${k}.value` as const)} />
-          </Grid>
-          <Grid item xs={12} sm={2}>
-            <IconButton color="error" onClick={() => remove(k)}><DeleteIcon /></IconButton>
-          </Grid>
+    <Box sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
+      <Grid container spacing={2} alignItems="center">
+        <Grid item xs={12} sm={3}><TextField label="Имя" fullWidth {...register(`contactPersons[${personIndex}].firstName`)} /></Grid>
+        <Grid item xs={12} sm={3}><TextField label="Фамилия" fullWidth {...register(`contactPersons[${personIndex}].lastName`)} /></Grid>
+        <Grid item xs={12} sm={3}><TextField label="Должность" fullWidth {...register(`contactPersons[${personIndex}].position`)} /></Grid>
+        <Grid item xs={12} sm={2}>
+          <IconButton onClick={() => removePerson(personIndex)} disabled={contactPersons.length <= 1}>
+            <DeleteIcon />
+          </IconButton>
         </Grid>
-      ))}
-      <Button startIcon={<AddIcon />} onClick={() => append({ type: '', value: '' })}>
-        Добавить контакт
-      </Button>
+        <Grid item xs={12}><ContactList {...{ control, register, nestIndex: personIndex, errors, fields, append, remove }} /></Grid>
+      </Grid>
     </Box>
   );
 };
 
-export default CounterpartyEditPage; 
+const ContactList: React.FC<any> = ({ control, register, nestIndex, errors, fields, append, remove }) => {
+  return (
+    <Box>
+      {fields.map((item: { id: string }, k: number) => (
+        <Grid container spacing={1} key={item.id} sx={{ mb: 1 }}>
+          <Grid item xs={5}>
+            <Controller
+              name={`contactPersons[${nestIndex}].contacts[${k}].type`}
+              control={control}
+              defaultValue={contactTypes[0].value}
+              render={({ field }) => (
+                <TextField {...field} select fullWidth label="Тип">
+                  {contactTypes.map(option => <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>)}
+                </TextField>
+              )}
+            />
+          </Grid>
+          <Grid item xs={6}><TextField label="Значение" fullWidth {...register(`contactPersons[${nestIndex}].contacts[${k}].value`)} /></Grid>
+          <Grid item xs={1}>
+            <IconButton onClick={() => remove(k)} disabled={fields.length <= 1}><DeleteIcon /></IconButton>
+          </Grid>
+        </Grid>
+      ))}
+      <Button size="small" startIcon={<AddIcon />} onClick={() => append({ type: 'Телефон', value: '' })}>Добавить контакт</Button>
+    </Box>
+  );
+};
+
+export default CounterpartyEditPage;

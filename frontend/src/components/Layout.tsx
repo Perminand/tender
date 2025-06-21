@@ -16,6 +16,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         </Typography>
         <Button color="inherit" component={RouterLink} to="/counterparties">Контрагенты</Button>
         <Button color="inherit" component={RouterLink} to="/contact-types">ТИПЫ КОНТАКТОВ</Button>
+        <Button color="inherit" component={RouterLink} to="/settings">Настройки</Button>
       </Toolbar>
     </AppBar>
     <Box sx={{ p: 3 }}>{children}</Box>

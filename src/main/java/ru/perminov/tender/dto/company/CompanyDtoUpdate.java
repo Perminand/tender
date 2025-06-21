@@ -38,13 +38,7 @@ public record CompanyDtoUpdate(
 
         String email,
 
-        String bankName,
-
-        String bankAccount,
-
-        String correspondentAccount,
-
-        String bik,
+        List<BankDetailsDto> bankDetails,
 
         List<ContactPersonDtoUpdate> contactPersons
 
@@ -52,6 +46,9 @@ public record CompanyDtoUpdate(
     public CompanyDtoUpdate {
         if (contactPersons == null) {
             contactPersons = List.of();
+        }
+        if (bankDetails == null) {
+            bankDetails = List.of();
         }
     }
 }

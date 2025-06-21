@@ -20,6 +20,7 @@ import java.util.UUID;
 @RequestMapping("/api/companies")
 @RequiredArgsConstructor
 @Validated
+@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
 public class CompanyController {
 
     private final CompanyService companyService;

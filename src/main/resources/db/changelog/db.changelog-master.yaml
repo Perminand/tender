@@ -1,17 +1,11 @@
 databaseChangeLog:
-  - changeSet:
-      id: 1
-      author: aperminov
-      changes:
-        - sqlFile:
-            path: changes/V001_create-companies-table.sql
-            relativeToChangelogFile: true
-            comments: "create table companies"
-  - changeSet:
-      id: 2
-      author: aperminov
-      changes:
-        - sqlFile:
-            path: changes/V002_add_legal_name_to_companies.sql
-            relativeToChangelogFile: true
-            comments: "create table legalName"
+  
+  
+  - include:
+      file: db/changelog/changes/V001_create-companies-table.sql
+  - include:
+      file: db/changelog/changes/V002_add_legal_name_to_companies.sql
+  - include:
+      file: db/changelog/changes/V003_create_settings_table.sql
+  - include:
+      file: db/changelog/changes/V004_refactor_bank_details.sql

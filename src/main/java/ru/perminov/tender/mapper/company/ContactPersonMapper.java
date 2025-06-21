@@ -8,6 +8,8 @@ import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.model.company.ContactPerson;
 
+import java.util.List;
+
 @Mapper(componentModel = "spring", uses = {ContactMapper.class})
 public interface ContactPersonMapper {
     
@@ -18,8 +20,14 @@ public interface ContactPersonMapper {
     @Mapping(target = "position", source = "position")
     ContactPerson toContactPerson(ContactPersonDtoNew dto);
 
-    @Mapping(target = "contacts", ignore = true)
+    @Mapping(target = "company", ignore = true)
+    ContactPerson toContactPerson(ContactPersonDtoUpdate dto);
+
+    List<ContactPerson> toContactPersonList(List<ContactPersonDtoUpdate> dtos);
+
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "company", ignore = true)
+    @Mapping(target = "contacts", ignore = true)
     @Mapping(target = "lastName", source = "lastName")
     @Mapping(target = "firstName", source = "firstName")
     @Mapping(target = "position", source = "position")

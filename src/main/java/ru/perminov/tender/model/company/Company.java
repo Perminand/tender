@@ -44,16 +44,27 @@ public class Company {
 
     private String email;
 
-    private String bankName;
-
-    private String bankAccount;
-
-    private String correspondentAccount;
-
-    private String bik;
+    @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<BankDetails> bankDetails = new ArrayList<>();
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ContactPerson> contactPersons = new ArrayList<>();
+
+    public void setBankDetails(List<BankDetails> bankDetails) {
+        if (bankDetails != null) {
+            this.bankDetails.clear();
+            this.bankDetails.addAll(bankDetails);
+            this.bankDetails.forEach(bd -> bd.setCompany(this));
+        }
+    }
+
+    public void setContactPersons(List<ContactPerson> contactPersons) {
+        if (contactPersons != null) {
+            this.contactPersons.clear();
+            this.contactPersons.addAll(contactPersons);
+            this.contactPersons.forEach(cp -> cp.setCompany(this));
+        }
+    }
 
     @Override
     public boolean equals(Object o) {

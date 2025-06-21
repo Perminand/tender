@@ -15,7 +15,6 @@ public record CompanyDtoNew(
     @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
     String inn,
 
-    @NotBlank(message = "КПП не может быть пустым")
     @Pattern(regexp = "^\\d{9}$", message = "КПП должен содержать 9 цифр")
     String kpp,
 
@@ -41,18 +40,7 @@ public record CompanyDtoNew(
 
     String email,
 
-    @NotBlank
-    String bankName,
-
-    @NotBlank
-    String bankAccount,
-
-    @NotBlank
-    String correspondentAccount,
-
-    @NotBlank
-        @Pattern(regexp = "^\\d{9}$", message = "КПП должен содержать 9 цифр")
-        String bik,
+    List<BankDetailsDto> bankDetails,
 
     List<ContactPersonDtoNew> contactPersons
 
@@ -60,6 +48,9 @@ public record CompanyDtoNew(
     public CompanyDtoNew {
         if (contactPersons == null) {
             contactPersons = List.of();
+        }
+        if (bankDetails == null) {
+            bankDetails = List.of();
         }
     }
 } 

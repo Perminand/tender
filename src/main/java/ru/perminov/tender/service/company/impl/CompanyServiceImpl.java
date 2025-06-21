@@ -13,6 +13,7 @@ import ru.perminov.tender.dto.company.contact.ContactDtoNew;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoNew;
 import ru.perminov.tender.mapper.company.CompanyMapper;
 import ru.perminov.tender.mapper.company.ContactPersonMapper;
+import ru.perminov.tender.model.company.BankDetails;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.model.company.CompanyType;
 import ru.perminov.tender.model.company.Contact;
@@ -42,74 +43,49 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     @Transactional
     public CompanyDto create(CompanyDtoNew companyDtoNew) {
-        // Создаем и сохраняем компанию
         Company company = companyMapper.toCompany(companyDtoNew);
-        company.setCompanyType(createOrUpdateType(companyDtoNew));
-        company = companyRepository.save(company);
 
-        // Обработка контактных лиц и их контактов
-        if (companyDtoNew.contactPersons() != null && !companyDtoNew.contactPersons().isEmpty()) {
-            for (ContactPersonDtoNew contactPersonDto : companyDtoNew.contactPersons()) {
-                ContactPerson contactPerson = contactPersonMapper.newContactPersonFromDto(company, contactPersonDto);
-                contactPerson.setCompany(company);
-                contactPersonRepository.save(contactPerson);
+        // Устанавливаем тип компании
+        CompanyType companyType = typeCompanyRepository.findById(UUID.fromString(companyDtoNew.typeId()))
+                .orElseThrow(() -> new IllegalArgumentException("CompanyType not found with id: " + companyDtoNew.typeId()));
+        company.setCompanyType(companyType);
 
-                // Обрабатываем контакты
-                if (contactPersonDto.contacts() != null && !contactPersonDto.contacts().isEmpty()) {
-                    for (ContactDtoNew contactDto : contactPersonDto.contacts()) {
-                        Contact contact = new Contact();
-                        contact.setContactPerson(contactPerson);
-                        contact.setValue(contactDto.value());
-
-                        // Устанавливаем тип контакта
-                        if (contactDto.contactTypeUuid() != null) {
-                            ContactType contactType = contactTypeRepository.findById(contactDto.contactTypeUuid())
-                                    .orElseThrow(() -> new RuntimeException("Тип контакта не найден: " + contactDto.contactTypeUuid()));
-                            contact.setContactType(contactType);
-                        } else if (!contactDto.typeName().isBlank()) {
-                            String contactCode = contactDto.typeName().toUpperCase().replaceAll("\\s+", "_");
-                            if (!contactTypeRepository.existsByCode(contactCode)) {
-                                ContactType newType = new ContactType();
-                                newType.setName(contactDto.typeName());
-                                newType.setCode(contactCode);
-                                newType = contactTypeRepository.save(newType);
-                                contact.setContactType(newType);
-                            } else {
-                                throw new DuplicateKeyException("Имя типа контакта уже используется в базе: "
-                                        + contactDto.typeName());
-                            }
-                        }
-                        contactPerson.getContacts().add(contact);
-                    }
-                }
-                company.getContactPersons().add(contactPerson);
-            }
+        // Устанавливаем банковские реквизиты
+        if (companyDtoNew.bankDetails() != null && !companyDtoNew.bankDetails().isEmpty()) {
+            company.setBankDetails(companyMapper.toBankDetailsList(companyDtoNew.bankDetails()));
         }
-        company = companyRepository.save(company);
-        return companyMapper.toCompanyDto(company);
+
+        // Устанавливаем контактных лиц
+        if (companyDtoNew.contactPersons() != null && !companyDtoNew.contactPersons().isEmpty()) {
+            // Маппинг контактных лиц должен быть настроен в CompanyMapper
+        }
+
+        return companyMapper.toCompanyDto(companyRepository.save(company));
     }
 
     @Override
     @Transactional
     public CompanyDto update(UUID id, CompanyDtoUpdate companyDtoUpdate) {
-        Company existingCompany = companyRepository.findById(id).orElseThrow(()-> new EntityNotFoundException("Нет компании с id: "+ id));
-        companyMapper.updateCompanyFromDto(companyDtoUpdate, existingCompany);
-        CompanyType type;
-        if (companyDtoUpdate.typeId() != null) {
-            if (!companyDtoUpdate.typeId().equals("new")) {
-                type = typeCompanyRepository.findById(UUID.fromString(companyDtoUpdate.typeId()))
-                        .orElseGet(() -> {
-                            CompanyType newType = new CompanyType(null, companyDtoUpdate.typeName());
-                            return typeCompanyRepository.save(newType);
-                        });
-            } else {
-                type = new CompanyType(null, companyDtoUpdate.typeName());
-                typeCompanyRepository.save(type);
-            }
-            existingCompany.setCompanyType(type);
+        Company company = companyRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found with id: " + id));
+
+        companyMapper.updateCompanyFromDto(companyDtoUpdate, company);
+
+        if (companyDtoUpdate.bankDetails() != null) {
+            company.getBankDetails().clear();
+            List<BankDetails> newBankDetails = companyMapper.toBankDetailsList(companyDtoUpdate.bankDetails());
+            newBankDetails.forEach(bd -> bd.setCompany(company));
+            company.getBankDetails().addAll(newBankDetails);
         }
-        companyRepository.save(existingCompany);
-        return companyMapper.toCompanyDto(existingCompany);
+
+        if (companyDtoUpdate.contactPersons() != null) {
+            company.getContactPersons().clear();
+            List<ContactPerson> newContactPersons = contactPersonMapper.toContactPersonList(companyDtoUpdate.contactPersons());
+            newContactPersons.forEach(cp -> cp.setCompany(company));
+            company.getContactPersons().addAll(newContactPersons);
+        }
+
+        return companyMapper.toCompanyDto(companyRepository.save(company));
     }
 
     @Override
@@ -119,15 +95,19 @@ public class CompanyServiceImpl implements CompanyService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CompanyDtoForUpdate getById(UUID id) {
         Company company = companyRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("Company not found with id: " + id));
+                .orElseThrow(() -> new IllegalArgumentException("Company not found with id: " + id));
         return companyMapper.toCompanyDtoForUpdate(company);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CompanyDto> getAll() {
-        return companyRepository.findAll().stream().map(companyMapper::toCompanyDto).toList();
+        return companyRepository.findAll().stream()
+                .map(companyMapper::toCompanyDto)
+                .toList();
     }
 
     private CompanyType createOrUpdateType(CompanyDtoNew dto) {

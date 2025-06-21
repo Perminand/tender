@@ -31,12 +31,6 @@ public record CompanyDtoForUpdate(
 
         String email,
 
-        String bankName,
-
-        String bankAccount,
-
-        String correspondentAccount,
-
-        String bik
+        List<BankDetailsDto> bankDetails
 ) {
 }
