@@ -21,17 +21,19 @@ public interface ContactPersonMapper {
     ContactPerson toContactPerson(ContactPersonDtoNew dto);
 
     @Mapping(target = "company", ignore = true)
+    @Mapping(target = "contacts", ignore = true)
     ContactPerson toContactPerson(ContactPersonDtoUpdate dto);
 
-    @Mapping(target = "contacts", source = "contacts")
+    @Mapping(target = "contacts", ignore = true)
     List<ContactPerson> toContactPersonList(List<ContactPersonDtoUpdate> dtos);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "company", ignore = true)
+    @Mapping(target = "contacts", ignore = true)
     void updateContactPersonFromDto(ContactPersonDtoUpdate dto, @MappingTarget ContactPerson contactPerson);
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "company", source = "company")
+    @Mapping(target = "company", ignore = true)
     @Mapping(target = "lastName", source = "contactPersonDto.lastName")
     @Mapping(target = "firstName", source = "contactPersonDto.firstName")
     @Mapping(target = "position", source = "contactPersonDto.position")

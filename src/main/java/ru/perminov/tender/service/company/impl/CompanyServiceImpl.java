@@ -102,7 +102,7 @@ public class CompanyServiceImpl implements CompanyService {
                 person.setCompany(company);
                 processAndSetContacts(person, personDto.contacts());
                 return person;
-            }).collect(Collectors.toList());
+            }).toList();
 
             company.getContactPersons().addAll(newContactPersons);
         }

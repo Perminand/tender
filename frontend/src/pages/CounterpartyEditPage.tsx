@@ -9,6 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate, useParams } from 'react-router-dom';
 import { searchCompanyByInn } from '../utils/fnsApi';
+import ConfirmationDialog from '../components/ConfirmationDialog';
 
 interface CompanyType {
   id: string;
@@ -52,7 +53,7 @@ type FormData = {
 
 const defaultValues: FormData = {
   name: '', legalName: '', inn: '', kpp: '', ogrn: '', address: '', head: '', phone: '', email: '', companyType: null,
-  bankDetails: [{ bankName: '', bik: '', checkingAccount: '', correspondentAccount: '' }],
+  bankDetails: [],
   contactPersons: [],
 };
 
@@ -72,6 +73,13 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [bikLoading, setBikLoading] = useState<Record<number, boolean>>({});
   const [bikErrors, setBikErrors] = useState<Record<number, string | null>>({});
+  const [bankAccountdialogOpen, setBankAccountDialogOpen] = useState(false);
+  const [bankAccountToDelete, setBankAccountToDelete] = useState<number | null>(null);
+  const [personDialogOpen, setPersonDialogOpen] = useState(false);
+  const [personToDelete, setPersonToDelete] = useState<number | null>(null);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<number | null>(null);
+  const [showBankDetails, setShowBankDetails] = useState(false);
 
   const createNewTypeOption: CompanyType = { id: 'CREATE_NEW', name: 'Создать новый тип' };
   const watchedInn = watch('inn');
@@ -122,9 +130,18 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
             phone: data.phone || '',
             email: data.email || '',
             companyType: data.companyType?.id || null,
-            bankDetails: data.bankDetails && data.bankDetails.length > 0 ? data.bankDetails : defaultValues.bankDetails,
-            contactPersons: data.contactPersons || []
+            bankDetails: data.bankDetails && data.bankDetails.length > 0 ? data.bankDetails : [],
+            contactPersons: data.contactPersons ? data.contactPersons.map(person => ({
+              ...person,
+              contacts: person.contacts ? person.contacts.map(contact => ({
+                type: contact.contactType?.name || contact.type || '',
+                value: contact.value || ''
+              })) : []
+            })) : []
           };
+          if (formData.bankDetails.length > 0) {
+            setShowBankDetails(true);
+          }
           reset(formData);
         });
     }
@@ -389,79 +406,133 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
 
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Банковские реквизиты</Typography>
-        {bankDetails.map((item, index) => (
-          <React.Fragment key={item.id}>
-            <Grid container spacing={2} sx={{ mt: index > 0 ? 2 : 0 }}>
-              <Grid item xs={12} sm={3}>
-                <TextField
-                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.bik`) }}
-                  label="БИК *"
-                  fullWidth
-                  {...register(`bankDetails.${index}.bik`, {
-                    required: 'БИК не может быть пустым',
-                    pattern: { value: /^\d{9}$/, message: 'БИК должен содержать 9 цифр' }
-                  })}
-                  onBlur={() => handleBikBlur(index)}
-                  error={!!errors.bankDetails?.[index]?.bik || !!bikErrors[index]}
-                  helperText={errors.bankDetails?.[index]?.bik?.message || bikErrors[index]}
-                  InputProps={{
-                    endAdornment: bikLoading[index] && <CircularProgress size={20} />
-                  }}
-                />
-              </Grid>
-              <Grid item xs={12} sm={5}>
-                <TextField
-                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.bankName`) }}
-                  label="Название банка *"
-                  fullWidth
-                  {...register(`bankDetails.${index}.bankName`, { required: 'Название банка не может быть пустым' })}
-                  error={!!errors.bankDetails?.[index]?.bankName}
-                  helperText={errors.bankDetails?.[index]?.bankName?.message}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.correspondentAccount`) }}
-                  label="Корр. счет *"
-                  fullWidth
-                  {...register(`bankDetails.${index}.correspondentAccount`, { required: 'Корр. счет не может быть пустым' })}
-                  error={!!errors.bankDetails?.[index]?.correspondentAccount}
-                  helperText={errors.bankDetails?.[index]?.correspondentAccount?.message}
-                />
-              </Grid>
-              <Grid item xs={12} sm={8}>
-                <TextField
-                  InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.checkingAccount`) }}
-                  label="Расчетный счет *"
-                  fullWidth
-                  {...register(`bankDetails.${index}.checkingAccount`, { required: 'Расчетный счет не может быть пустым' })}
-                  error={!!errors.bankDetails?.[index]?.checkingAccount}
-                  helperText={errors.bankDetails?.[index]?.checkingAccount?.message}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4} sx={{ display: 'flex', alignItems: 'center' }}>
-                <IconButton onClick={() => removeBankDetails(index)} disabled={bankDetails.length <= 1}>
-                  <DeleteIcon />
-                </IconButton>
-              </Grid>
-            </Grid>
-            {index < bankDetails.length - 1 && <Divider sx={{ my: 2 }} />}
-          </React.Fragment>
-        ))}
-        <Button startIcon={<AddIcon />} onClick={() => appendBankDetails({ bankName: '', bik: '', checkingAccount: '', correspondentAccount: '' })} sx={{ mt: 2 }}>
-          Добавить счет
-        </Button>
+        {!showBankDetails ? (
+            <Button
+                startIcon={<AddIcon />}
+                onClick={() => {
+                    setShowBankDetails(true);
+                    if (bankDetails.length === 0) {
+                        appendBankDetails({ bankName: '', bik: '', checkingAccount: '', correspondentAccount: '' });
+                    }
+                }}
+                sx={{ mt: 2 }}
+            >
+                Добавить банковские реквизиты
+            </Button>
+        ) : (
+            <>
+                {bankDetails.map((item, index) => (
+                    <React.Fragment key={item.id}>
+                        <Grid container spacing={2} sx={{ mt: index > 0 ? 2 : 0 }}>
+                            <Grid item xs={12} sm={3}>
+                                <TextField
+                                    InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.bik`) }}
+                                    label="БИК *"
+                                    fullWidth
+                                    {...register(`bankDetails.${index}.bik`, {
+                                        required: 'БИК не может быть пустым',
+                                        pattern: { value: /^\d{9}$/, message: 'БИК должен содержать 9 цифр' }
+                                    })}
+                                    onBlur={() => handleBikBlur(index)}
+                                    error={!!errors.bankDetails?.[index]?.bik || !!bikErrors[index]}
+                                    helperText={errors.bankDetails?.[index]?.bik?.message || bikErrors[index]}
+                                    InputProps={{
+                                        endAdornment: bikLoading[index] && <CircularProgress size={20} />
+                                    }}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={5}>
+                                <TextField
+                                    InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.bankName`) }}
+                                    label="Название банка *"
+                                    fullWidth
+                                    {...register(`bankDetails.${index}.bankName`, { required: 'Название банка не может быть пустым' })}
+                                    error={!!errors.bankDetails?.[index]?.bankName}
+                                    helperText={errors.bankDetails?.[index]?.bankName?.message}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={4}>
+                                <TextField
+                                    InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.correspondentAccount`) }}
+                                    label="Корр. счет *"
+                                    fullWidth
+                                    {...register(`bankDetails.${index}.correspondentAccount`, { required: 'Корр. счет не может быть пустым' })}
+                                    error={!!errors.bankDetails?.[index]?.correspondentAccount}
+                                    helperText={errors.bankDetails?.[index]?.correspondentAccount?.message}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={8}>
+                                <TextField
+                                    InputLabelProps={{ shrink: !!watch(`bankDetails.${index}.checkingAccount`) }}
+                                    label="Расчетный счет *"
+                                    fullWidth
+                                    {...register(`bankDetails.${index}.checkingAccount`, { required: 'Расчетный счет не может быть пустым' })}
+                                    error={!!errors.bankDetails?.[index]?.checkingAccount}
+                                    helperText={errors.bankDetails?.[index]?.checkingAccount?.message}
+                                />
+                            </Grid>
+                            <Grid item xs={12} sm={4} sx={{ display: 'flex', alignItems: 'center' }}>
+                                <IconButton onClick={() => {
+                                    setBankAccountToDelete(index);
+                                    setBankAccountDialogOpen(true);
+                                }}>
+                                    <DeleteIcon />
+                                </IconButton>
+                            </Grid>
+                        </Grid>
+                        {index < bankDetails.length - 1 && <Divider sx={{ my: 2 }} />}
+                    </React.Fragment>
+                ))}
+                <Button startIcon={<AddIcon />} onClick={() => appendBankDetails({ bankName: '', bik: '', checkingAccount: '', correspondentAccount: '' })} sx={{ mt: 2 }}>
+                    Добавить счет
+                </Button>
+            </>
+        )}
       </Paper>
+
+      <ConfirmationDialog
+          open={bankAccountdialogOpen}
+          onClose={() => setBankAccountDialogOpen(false)}
+          onConfirm={() => {
+              if (bankAccountToDelete !== null) {
+                  removeBankDetails(bankAccountToDelete);
+                  setBankAccountDialogOpen(false);
+                  setBankAccountToDelete(null);
+              }
+          }}
+          title="Подтвердите удаление"
+          description="Вы уверены, что хотите удалить этот банковский счет?"
+      />
 
       <Paper sx={{ p: 2, mb: 3 }}>
         <Typography variant="h6" gutterBottom>Контактные лица</Typography>
         {contactPersons.map((person, personIndex) => (
-          <PersonFields key={person.id} {...{ control, register, errors, person, personIndex, removePerson, contactPersons, allContactTypes, setAllContactTypes }} />
+          <PersonFields 
+            key={person.id} 
+            {...{ control, register, errors, person, personIndex, allContactTypes, setAllContactTypes, onDeletePerson: () => {
+              setPersonToDelete(personIndex);
+              setPersonDialogOpen(true);
+            } }}
+          />
         ))}
         <Button startIcon={<AddIcon />} onClick={() => appendPerson({ firstName: '', lastName: '', position: '', contacts: [{ type: 'Телефон', value: '' }] })} sx={{ mt: 2 }}>
           Добавить контактное лицо
         </Button>
       </Paper>
+
+      <ConfirmationDialog
+        open={personDialogOpen}
+        onClose={() => setPersonDialogOpen(false)}
+        onConfirm={() => {
+          if (personToDelete !== null) {
+            removePerson(personToDelete);
+            setPersonDialogOpen(false);
+            setPersonToDelete(null);
+          }
+        }}
+        title="Подтвердите удаление"
+        description="Вы уверены, что хотите удалить это контактное лицо?"
+      />
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
         <Button variant="outlined" color="secondary" onClick={() => navigate('/counterparties')}>Отмена</Button>
@@ -475,11 +546,19 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   );
 };
 
-const PersonFields = ({ control, register, errors, person, personIndex, removePerson, contactPersons, allContactTypes, setAllContactTypes }: any) => {
+const PersonFields = ({ control, register, errors, person, personIndex, allContactTypes, setAllContactTypes, onDeletePerson }: any) => {
   const { fields, append, remove } = useFieldArray({
     control,
     name: `contactPersons[${personIndex}].contacts`
   });
+  const [contactToDelete, setContactToDelete] = useState<number | null>(null);
+  const [contactDialogOpen, setContactDialogOpen] = useState(false);
+
+  const handleDeleteContact = (index: number) => {
+    remove(index);
+    setContactDialogOpen(false);
+    setContactToDelete(null);
+  };
 
   return (
     <Box sx={{ mb: 2, p: 2, border: '1px solid #ddd', borderRadius: 1 }}>
@@ -496,17 +575,36 @@ const PersonFields = ({ control, register, errors, person, personIndex, removePe
         <Grid item xs={12} sm={3}><TextField label="Фамилия" fullWidth {...register(`contactPersons[${personIndex}].lastName`)} /></Grid>
         <Grid item xs={12} sm={3}><TextField label="Должность" fullWidth {...register(`contactPersons[${personIndex}].position`)} /></Grid>
         <Grid item xs={12} sm={2}>
-          <IconButton onClick={() => removePerson(personIndex)}>
+          <IconButton onClick={onDeletePerson}>
             <DeleteIcon />
           </IconButton>
         </Grid>
-        <Grid item xs={12}><ContactList {...{ control, register, nestIndex: personIndex, errors, fields, append, remove, allContactTypes, setAllContactTypes }} /></Grid>
+        <Grid item xs={12}>
+          <ContactList 
+            {...{ control, register, nestIndex: personIndex, errors, fields, append, allContactTypes, setAllContactTypes }} 
+            onDeleteContact={(index) => {
+              setContactToDelete(index);
+              setContactDialogOpen(true);
+            }}
+          />
+        </Grid>
       </Grid>
+      <ConfirmationDialog
+        open={contactDialogOpen}
+        onClose={() => setContactDialogOpen(false)}
+        onConfirm={() => {
+          if (contactToDelete !== null) {
+            handleDeleteContact(contactToDelete);
+          }
+        }}
+        title="Подтвердите удаление"
+        description="Вы уверены, что хотите удалить этот контакт?"
+      />
     </Box>
   );
 };
 
-const ContactList = ({ control, nestIndex, register, errors, fields, append, remove, allContactTypes, setAllContactTypes }: any) => {
+const ContactList = ({ control, nestIndex, register, errors, fields, append, remove, allContactTypes, setAllContactTypes, onDeleteContact }: any) => {
   const [openNewContactTypeDialog, setOpenNewContactTypeDialog] = useState(false);
   const [newContactTypeName, setNewContactTypeName] = useState('');
   const createNewContactTypeOption: ContactType = { id: 'CREATE_NEW', name: 'Создать новый тип' };
@@ -554,7 +652,6 @@ const ContactList = ({ control, nestIndex, register, errors, fields, append, rem
             <Controller
               name={`contactPersons[${nestIndex}].contacts[${k}].type`}
               control={control}
-              defaultValue="Телефон"
               render={({ field }) => {
                 const selectedValue = Array.isArray(allContactTypes) ? allContactTypes.find((option: ContactType) => option.name === field.value) || null : null;
                 return (
@@ -601,7 +698,9 @@ const ContactList = ({ control, nestIndex, register, errors, fields, append, rem
             />
           </Grid>
           <Grid item xs={1}>
-            <IconButton onClick={() => remove(k)} disabled={fields.length <= 1}><DeleteIcon /></IconButton>
+            <IconButton onClick={() => onDeleteContact(k)}>
+                <DeleteIcon />
+            </IconButton>
           </Grid>
         </Grid>
       ))}
