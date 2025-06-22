@@ -11,3 +11,7 @@ databaseChangeLog:
       file: db/changelog/changes/V004_refactor_bank_details.sql
   - include:
       file: db/changelog/changes/V005_refactor_banks_and_accounts.sql
+  - include:
+      file: db/changelog/changes/V006_add_fields_to_materials.sql
+  - include:
+      file: db/changelog/changes/V007_create_categories_and_update_materials.sql

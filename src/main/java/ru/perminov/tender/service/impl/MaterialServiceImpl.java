@@ -6,7 +6,9 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
 import ru.perminov.tender.mapper.MaterialMapper;
+import ru.perminov.tender.model.Category;
 import ru.perminov.tender.model.Material;
+import ru.perminov.tender.repository.CategoryRepository;
 import ru.perminov.tender.repository.MaterialRepository;
 import ru.perminov.tender.service.MaterialService;
 
@@ -19,6 +21,7 @@ import java.util.UUID;
 public class MaterialServiceImpl implements MaterialService {
 
     private final MaterialRepository materialRepository;
+    private final CategoryRepository categoryRepository;
     private final MaterialMapper materialMapper;
 
     @Override
@@ -28,6 +31,13 @@ public class MaterialServiceImpl implements MaterialService {
             throw new RuntimeException("Материал с именем '" + materialDtoNew.name() + "' уже существует");
         }
         Material material = materialMapper.toMaterial(materialDtoNew);
+        
+        if (materialDtoNew.categoryId() != null) {
+            Category category = categoryRepository.findById(materialDtoNew.categoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + materialDtoNew.categoryId()));
+            material.setCategory(category);
+        }
+        
         return materialRepository.save(material);
     }
 
@@ -36,6 +46,15 @@ public class MaterialServiceImpl implements MaterialService {
     public Material update(UUID id, MaterialDtoUpdate materialDtoUpdate) {
         Material existingMaterial = getById(id);
         materialMapper.updateMaterialFromDto(materialDtoUpdate, existingMaterial);
+        
+        if (materialDtoUpdate.categoryId() != null) {
+            Category category = categoryRepository.findById(materialDtoUpdate.categoryId())
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + materialDtoUpdate.categoryId()));
+            existingMaterial.setCategory(category);
+        } else {
+            existingMaterial.setCategory(null);
+        }
+        
         return materialRepository.save(existingMaterial);
     }
 

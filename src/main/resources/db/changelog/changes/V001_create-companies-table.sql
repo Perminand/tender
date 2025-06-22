@@ -15,11 +15,7 @@ create table IF NOT EXISTS companies (
     company_type_id UUID NOT NULL REFERENCES company_types(id) ON DELETE CASCADE,
     director VARCHAR(255),
     phone VARCHAR(12),
-    email VARCHAR(50),
-    bank_name VARCHAR(255),
-    bank_account VARCHAR(20),
-    correspondent_account VARCHAR(20),
-    bik VARCHAR(9)
+    email VARCHAR(50)
 );
 
 create table IF NOT EXISTS contact_persons (

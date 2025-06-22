@@ -1,0 +1,57 @@
+package ru.perminov.tender.controller;
+
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import ru.perminov.tender.dto.CategoryDtoNew;
+import ru.perminov.tender.dto.CategoryDtoUpdate;
+import ru.perminov.tender.model.Category;
+import ru.perminov.tender.service.CategoryService;
+
+import java.util.List;
+import java.util.UUID;
+
+@Slf4j
+@RestController
+@RequestMapping("/api/categories")
+@RequiredArgsConstructor
+@Validated
+@CrossOrigin
+public class CategoryController {
+
+    private final CategoryService categoryService;
+
+    @PostMapping
+    public ResponseEntity<Category> create(@RequestBody @Valid CategoryDtoNew categoryDtoNew) {
+        log.info("Пришел POST запрос на создание категории: {}", categoryDtoNew);
+        return ResponseEntity.ok(categoryService.create(categoryDtoNew));
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<Category> update(@PathVariable UUID id, @RequestBody @Valid CategoryDtoUpdate categoryDtoUpdate) {
+        log.info("Пришел PATCH запрос на изменение категории uuid: {} содержимое: {}", id, categoryDtoUpdate);
+        return ResponseEntity.ok(categoryService.update(id, categoryDtoUpdate));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        log.info("Пришел DELETE запрос на удаление категории uuid: {}", id);
+        categoryService.delete(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<Category> getById(@PathVariable UUID id) {
+        log.info("Пришел GET запрос на получение категории uuid: {}", id);
+        return ResponseEntity.ok(categoryService.getById(id));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<Category>> getAll() {
+        log.info("Пришел GET запрос на получение всех категорий");
+        return ResponseEntity.ok(categoryService.getAll());
+    }
+} 
