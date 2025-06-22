@@ -218,7 +218,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
 
     const onSubmit = async (data: FormData) => {
         const url = isEdit ? `/api/companies/${id}` : '/api/companies';
-        const method = isEdit ? 'POST' : 'POST';
+        const method = isEdit ? 'PUT' : 'POST';
 
         const payload = {
             ...data,
@@ -228,11 +228,12 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                 ...person,
                 contacts: person.contacts.map(contact => {
                     const contactTypeObject = allContactTypes.find(ct => ct.name === contact.type);
+                    
                     return {
                         value: contact.value,
-                        contactTypeDtoUpdate: {
+                        contactType: {
                             id: contactTypeObject?.id,
-                            name: contactTypeObject?.name
+                            name: contactTypeObject?.name || contact.type
                         }
                     };
                 })
@@ -516,19 +517,31 @@ const ContactList = ({ control, nestIndex, register, errors, fields, append, rem
   };
 
   const handleSaveNewType = async (fieldOnChange: (value: any) => void) => {
+    console.log('handleSaveNewType вызвана с:', { newContactTypeName, fieldOnChange });
     if (newContactTypeName.trim()) {
       try {
+        console.log('Отправляем запрос на создание типа контакта:', newContactTypeName);
         const res = await fetch('/api/contact-types', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: newContactTypeName }),
         });
+        console.log('Ответ сервера:', res.status, res.statusText);
+        
         if (res.ok) {
           const newType = await res.json();
+          console.log('Создан новый тип контакта:', newType);
           setAllContactTypes((prev: ContactType[]) => [...prev, newType]);
           fieldOnChange(newType.name);
+        } else {
+          const errorText = await res.text();
+          console.error('Ошибка создания типа контакта:', errorText);
+          alert(`Ошибка создания типа контакта: ${errorText}`);
         }
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error('Ошибка создания типа контакта:', e);
+        alert(`Ошибка создания типа контакта: ${e}`);
+      }
       handleCloseDialog();
     }
   };

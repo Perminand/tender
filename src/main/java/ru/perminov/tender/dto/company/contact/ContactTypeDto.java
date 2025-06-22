@@ -15,7 +15,7 @@ import java.util.UUID;
 
 public record ContactTypeDto (
 
-    UUID idm,
+    UUID id,
 
     String name
 

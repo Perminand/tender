@@ -31,6 +31,6 @@ public record CompanyDtoForUpdate(
 
         String email,
 
-        List<BankDetailsDto> bankDetails
+        List<BankAccountDto> bankDetails
 ) {
 }

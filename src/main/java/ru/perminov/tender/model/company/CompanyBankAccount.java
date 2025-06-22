@@ -2,35 +2,35 @@ package ru.perminov.tender.model.company;
 
 import jakarta.persistence.*;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.UUID;
 
 @Entity
-@Table(name = "bank_details")
+@Table(name = "company_bank_accounts")
 @Getter
 @Setter
-@NoArgsConstructor
-public class BankDetails {
+public class CompanyBankAccount {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    private String bankName;
-    private String bik;
+    @Column(nullable = false)
     private String checkingAccount;
-    private String correspondentAccount;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "company_id", nullable = false)
     private Company company;
+
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
+    @JoinColumn(name = "bank_bik", nullable = false)
+    private Bank bank;
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        BankDetails that = (BankDetails) o;
+        CompanyBankAccount that = (CompanyBankAccount) o;
         return id != null && id.equals(that.id);
     }
 

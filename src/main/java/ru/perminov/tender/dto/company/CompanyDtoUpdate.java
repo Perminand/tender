@@ -12,25 +12,21 @@ public record CompanyDtoUpdate(
         UUID uuid,
 
         @Pattern(regexp = "^\\d{10}|\\d{12}$", message = "ИНН должен содержать 10 или 12 цифр")
-    String inn,
+        String inn,
 
         @Pattern(regexp = "^\\d{9}$", message = "КПП должен содержать 9 цифр")
-    String kpp,
+        String kpp,
 
         @Pattern(regexp = "^\\d{13}|\\d{15}$", message = "ОГРН должен содержать 13 или 15 цифр")
-    String ogrn,
+        String ogrn,
 
         String name,
 
         String legalName,
-        
+
         String address,
 
-        CompanyType companyType,
-
         String typeId,
-
-        String typeName,
 
         String director,
 
@@ -38,7 +34,7 @@ public record CompanyDtoUpdate(
 
         String email,
 
-        List<BankDetailsDto> bankDetails,
+        List<BankAccountDto> bankDetails,
 
         List<ContactPersonDtoUpdate> contactPersons
 

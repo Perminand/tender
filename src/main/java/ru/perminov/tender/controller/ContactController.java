@@ -6,8 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.perminov.tender.dto.company.contact.ContactDtoNew;
-import ru.perminov.tender.dto.company.contact.ContactDtoUpdate;
 import ru.perminov.tender.model.company.Contact;
 import ru.perminov.tender.service.company.ContactService;
 
@@ -21,13 +19,6 @@ import java.util.UUID;
 public class ContactController {
 
     private final ContactService contactService;
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Contact> update(@PathVariable UUID id, @Valid @RequestBody ContactDtoUpdate contactDtoUpdate) {
-        log.info("Получен запрос на обновление контакта с id {}: {}", id, contactDtoUpdate);
-        Contact contact = contactService.update(id, contactDtoUpdate);
-        return ResponseEntity.ok(contact);
-    }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
@@ -56,4 +47,4 @@ public class ContactController {
         List<Contact> contacts = contactService.getByContactPersonUuid(contactPersonUuid);
         return ResponseEntity.ok(contacts);
     }
-} 
+}

@@ -3,18 +3,23 @@ package ru.perminov.tender.service.company.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.perminov.tender.dto.company.BankAccountDto;
 import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
+import ru.perminov.tender.dto.company.contact.ContactDetailsDto;
+import ru.perminov.tender.dto.company.contact.ContactTypeDetailsDto;
 import ru.perminov.tender.mapper.company.CompanyMapper;
 import ru.perminov.tender.mapper.company.ContactPersonMapper;
-import ru.perminov.tender.model.company.BankDetails;
+import ru.perminov.tender.model.company.Bank;
 import ru.perminov.tender.model.company.Company;
+import ru.perminov.tender.model.company.CompanyBankAccount;
 import ru.perminov.tender.model.company.CompanyType;
 import ru.perminov.tender.model.company.Contact;
 import ru.perminov.tender.model.company.ContactPerson;
 import ru.perminov.tender.model.company.ContactType;
+import ru.perminov.tender.repository.company.BankRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.company.CompanyTypeRepository;
 import ru.perminov.tender.repository.company.ContactPersonRepository;
@@ -24,6 +29,7 @@ import ru.perminov.tender.service.company.CompanyService;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +43,7 @@ public class CompanyServiceImpl implements CompanyService {
     private final ContactPersonMapper contactPersonMapper;
     private final ContactPersonRepository contactPersonRepository;
     private final ContactRepository contactRepository;
+    private final BankRepository bankRepository;
 
     @Override
     @Transactional
@@ -48,14 +55,22 @@ public class CompanyServiceImpl implements CompanyService {
                 .orElseThrow(() -> new IllegalArgumentException("CompanyType not found with id: " + companyDtoNew.typeId()));
         company.setCompanyType(companyType);
 
-        // Устанавливаем банковские реквизиты
+        // Обработка банковских счетов
         if (companyDtoNew.bankDetails() != null && !companyDtoNew.bankDetails().isEmpty()) {
-            company.setBankDetails(companyMapper.toBankDetailsList(companyDtoNew.bankDetails()));
+            List<CompanyBankAccount> accounts = processBankAccounts(companyDtoNew.bankDetails(), company);
+            company.setBankAccounts(accounts);
         }
 
         // Устанавливаем контактных лиц
         if (companyDtoNew.contactPersons() != null && !companyDtoNew.contactPersons().isEmpty()) {
-            // Маппинг контактных лиц должен быть настроен в CompanyMapper
+            company.setContactPersons(
+                companyDtoNew.contactPersons().stream().map(personDto -> {
+                    ContactPerson person = contactPersonMapper.toContactPerson(personDto);
+                    person.setCompany(company);
+                    processAndSetContacts(person, personDto.contacts());
+                    return person;
+                }).collect(Collectors.toList())
+            );
         }
 
         return companyMapper.toCompanyDto(companyRepository.save(company));
@@ -69,26 +84,26 @@ public class CompanyServiceImpl implements CompanyService {
 
         companyMapper.updateCompanyFromDto(companyDtoUpdate, company);
 
+        // Обработка банковских счетов
         if (companyDtoUpdate.bankDetails() != null) {
-            company.getBankDetails().clear();
-            List<BankDetails> newBankDetails = companyMapper.toBankDetailsList(companyDtoUpdate.bankDetails());
-            newBankDetails.forEach(bd -> bd.setCompany(company));
-            company.getBankDetails().addAll(newBankDetails);
+            company.getBankAccounts().clear();
+            List<CompanyBankAccount> accounts = processBankAccounts(companyDtoUpdate.bankDetails(), company);
+            company.getBankAccounts().addAll(accounts);
         }
 
         if (companyDtoUpdate.contactPersons() != null) {
+            // Сначала удаляем старых контактных лиц, чтобы избежать дубликатов и orhpaned entities
+            contactPersonRepository.deleteAll(company.getContactPersons());
             company.getContactPersons().clear();
-            List<ContactPerson> newContactPersons = contactPersonMapper.toContactPersonList(companyDtoUpdate.contactPersons());
-            newContactPersons.forEach(cp -> {
-                cp.setCompany(company);
-                for (Contact c : cp.getContacts()) {
-                    ContactType contactType = contactTypeRepository.findByName(c.getContactType().getName()).orElse(
-                                new ContactType(null,c.getContactType().getName())
-                    );
-                    c.setContactType(contactType);
-                    c.setContactPerson(cp);
-                }
-            });
+
+            // Создаем и добавляем новых
+            List<ContactPerson> newContactPersons = companyDtoUpdate.contactPersons().stream().map(personDto -> {
+                ContactPerson person = contactPersonMapper.toContactPerson(personDto);
+                person.setCompany(company);
+                processAndSetContacts(person, personDto.contacts());
+                return person;
+            }).collect(Collectors.toList());
+
             company.getContactPersons().addAll(newContactPersons);
         }
 
@@ -126,6 +141,56 @@ public class CompanyServiceImpl implements CompanyService {
                         CompanyType newType = new CompanyType(null, dto.typeName());
                         return typeCompanyRepository.save(newType);
                     });
+        }
+    }
+
+    private List<CompanyBankAccount> processBankAccounts(List<BankAccountDto> accountDtos, Company company) {
+        return accountDtos.stream().map(dto -> {
+            Bank bank = bankRepository.findById(dto.getBik())
+                .orElseGet(() -> {
+                    Bank newBank = new Bank(dto.getBik(), dto.getBankName(), dto.getCorrespondentAccount());
+                    return bankRepository.save(newBank);
+                });
+
+            CompanyBankAccount account = new CompanyBankAccount();
+            account.setCompany(company);
+            account.setBank(bank);
+            account.setCheckingAccount(dto.getCheckingAccount());
+            return account;
+        }).collect(Collectors.toList());
+    }
+
+    private void processAndSetContacts(ContactPerson contactPerson, List<ContactDetailsDto> contactDtos) {
+        if (contactDtos == null || contactDtos.isEmpty()) {
+            return;
+        }
+
+        for (ContactDetailsDto contactDto : contactDtos) {
+            Contact contact = new Contact();
+            contact.setValue(contactDto.value());
+            contact.setContactPerson(contactPerson);
+
+            ContactTypeDetailsDto typeDto = contactDto.contactType();
+            if (typeDto != null) {
+                ContactType contactType = null;
+                // Сначала пытаемся найти по ID, если он есть
+                if (typeDto.id() != null) {
+                    contactType = contactTypeRepository.findById(typeDto.id())
+                        .orElse(null); // Не кидаем ошибку, а пробуем найти по имени
+                }
+                
+                // Если по ID не нашли, но есть имя, ищем по имени или создаем новый
+                if (contactType == null && typeDto.name() != null && !typeDto.name().isBlank()) {
+                    contactType = contactTypeRepository.findByName(typeDto.name())
+                        .orElseGet(() -> {
+                            ContactType newType = new ContactType();
+                            newType.setName(typeDto.name());
+                            return contactTypeRepository.save(newType);
+                        });
+                }
+                contact.setContactType(contactType);
+            }
+            contactPerson.getContacts().add(contact);
         }
     }
 } 

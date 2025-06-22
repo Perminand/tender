@@ -9,3 +9,5 @@ databaseChangeLog:
       file: db/changelog/changes/V003_create_settings_table.sql
   - include:
       file: db/changelog/changes/V004_refactor_bank_details.sql
+  - include:
+      file: db/changelog/changes/V005_refactor_banks_and_accounts.sql

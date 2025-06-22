@@ -28,6 +28,6 @@ public record CompanyDto(
 
         String email,
 
-        List<BankDetailsDto> bankDetails
+        List<BankAccountDto> bankDetails
 ) {
 }

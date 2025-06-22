@@ -12,5 +12,5 @@ public record ContactPersonDtoUpdate(
         String firstName,
         String position,
         Company company,
-    List<ContactDtoUpdate> contacts
+    List<ContactDetailsDto> contacts
 ) {} 

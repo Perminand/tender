@@ -7,7 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.company.contact.ContactTypeDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDtoNew;
-import ru.perminov.tender.dto.company.contact.ContactTypeDtoUpdate;
 import ru.perminov.tender.mapper.company.ContactTypeMapper;
 import ru.perminov.tender.model.company.ContactType;
 import ru.perminov.tender.repository.company.ContactTypeRepository;
@@ -34,23 +33,6 @@ public class ContactTypeServiceImpl implements ContactTypeService {
         ContactType contactType = contactTypeMapper.toContactType(contactTypeDtoNew);
         contactType = contactTypeRepository.save(contactType);
         return contactTypeMapper.toContactTypeDto(contactType);
-    }
-
-    @Override
-    @Transactional
-    public ContactTypeDto update(UUID id, ContactTypeDtoUpdate contactTypeDtoUpdate) {
-        ContactType existingContactType = contactTypeRepository.findById(id).orElseThrow(
-                ()-> new EntityNotFoundException("Тип контакта не найден id: " + id)
-        );
-        
-        if (!contactTypeDtoUpdate.name().equals(existingContactType.getName()) &&
-            contactTypeRepository.existsByName(contactTypeDtoUpdate.name())) {
-            throw new DuplicateKeyException("Тип контакта с именем '" + contactTypeDtoUpdate.name() + "' уже существует");
-        }
-
-        contactTypeMapper.updateContactTypeFromDto(contactTypeDtoUpdate, existingContactType);
-        existingContactType = contactTypeRepository.save(existingContactType);
-        return contactTypeMapper.toContactTypeDto(existingContactType);
     }
 
     @Override

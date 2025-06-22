@@ -31,7 +31,7 @@ public class CompanyController {
         return ResponseEntity.ok(companyService.create(companyDtoNew));
     }
 
-    @PostMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<CompanyDto> update(@PathVariable String id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
         log.info("Пришел POST запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
         return ResponseEntity.ok(companyService.update(UUID.fromString(id), companyDtoUpdate));

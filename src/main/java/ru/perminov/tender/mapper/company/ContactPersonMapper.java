@@ -10,7 +10,7 @@ import ru.perminov.tender.model.company.ContactPerson;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring", uses = {ContactMapper.class})
+@Mapper(componentModel = "spring")
 public interface ContactPersonMapper {
     
     @Mapping(target = "contacts", ignore = true)
@@ -23,17 +23,15 @@ public interface ContactPersonMapper {
     @Mapping(target = "company", ignore = true)
     ContactPerson toContactPerson(ContactPersonDtoUpdate dto);
 
+    @Mapping(target = "contacts", source = "contacts")
     List<ContactPerson> toContactPersonList(List<ContactPersonDtoUpdate> dtos);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "company", ignore = true)
-    @Mapping(target = "contacts", ignore = true)
-    @Mapping(target = "lastName", source = "lastName")
-    @Mapping(target = "firstName", source = "firstName")
-    @Mapping(target = "position", source = "position")
     void updateContactPersonFromDto(ContactPersonDtoUpdate dto, @MappingTarget ContactPerson contactPerson);
 
     @Mapping(target = "id", ignore = true)
+    @Mapping(target = "company", source = "company")
     @Mapping(target = "lastName", source = "contactPersonDto.lastName")
     @Mapping(target = "firstName", source = "contactPersonDto.firstName")
     @Mapping(target = "position", source = "contactPersonDto.position")

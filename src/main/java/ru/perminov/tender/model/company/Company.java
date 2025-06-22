@@ -45,16 +45,16 @@ public class Company {
     private String email;
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<BankDetails> bankDetails = new ArrayList<>();
+    private List<CompanyBankAccount> bankAccounts = new ArrayList<>();
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ContactPerson> contactPersons = new ArrayList<>();
 
-    public void setBankDetails(List<BankDetails> bankDetails) {
-        if (bankDetails != null) {
-            this.bankDetails.clear();
-            this.bankDetails.addAll(bankDetails);
-            this.bankDetails.forEach(bd -> bd.setCompany(this));
+    public void setBankAccounts(List<CompanyBankAccount> bankAccounts) {
+        if (bankAccounts != null) {
+            this.bankAccounts.clear();
+            this.bankAccounts.addAll(bankAccounts);
+            this.bankAccounts.forEach(ba -> ba.setCompany(this));
         }
     }
 

@@ -18,6 +18,10 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ContactType {
 
+    public ContactType(String name) {
+        this.name = name;
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

@@ -23,7 +23,7 @@ public record ContactPersonDtoNew(
         @NotBlank(message = "Должность не может быть пустой")
         String position,
 
-        List<ContactDtoNew> contacts
+        List<ContactDetailsDto> contacts
 ) {
     public ContactPersonDtoNew {
         if (contacts == null) {

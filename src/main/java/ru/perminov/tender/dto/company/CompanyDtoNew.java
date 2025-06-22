@@ -40,7 +40,7 @@ public record CompanyDtoNew(
 
     String email,
 
-    List<BankDetailsDto> bankDetails,
+    List<BankAccountDto> bankDetails,
 
     List<ContactPersonDtoNew> contactPersons
 

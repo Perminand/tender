@@ -1,7 +1,7 @@
 package ru.perminov.tender.service;
 
-import ru.perminov.tender.dto.company.BankDetailsDto;
+import ru.perminov.tender.dto.company.BankAccountDto;
  
 public interface BankService {
-    BankDetailsDto getBankDetailsByBik(String bik);
+    BankAccountDto getBankDetailsByBik(String bik);
 } 

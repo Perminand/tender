@@ -38,29 +38,7 @@ public class ContactPersonServiceImpl implements ContactPersonService {
         contactPerson.setCompany(company);
 
         // Новая логика: обработка списка contacts
-        if (contactPersonDtoNew.contacts() != null) {
-            for (var contactDto : contactPersonDtoNew.contacts()) {
-                if (contactDto == null || (contactDto.contactTypeUuid() == null && (contactDto.typeName() == null
-                        || contactDto.typeName().isBlank()))) {
-                    continue; // пропускаем пустые
-                }
-                ContactType type;
-                if (contactDto.contactTypeUuid() != null) {
-                    type = contactTypeRepository.findById(contactDto.contactTypeUuid())
-                            .orElseThrow(() -> new RuntimeException("Тип контакта не найден: " + contactDto.contactTypeUuid()));
-                } else {
-                    // Создать новый тип
-                    type = new ContactType();
-                    type.setName(contactDto.typeName());
-                    type = contactTypeRepository.save(type);
-                }
-                Contact contact = new Contact();
-                contact.setContactType(type);
-                contact.setValue(contactDto.value());
-                contact.setContactPerson(contactPerson);
-                contactPerson.getContacts().add(contact);
-            }
-        }
+
         return contactPersonRepository.save(contactPerson);
     }
 
