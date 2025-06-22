@@ -1,7 +1,7 @@
 package ru.perminov.tender.dto.material;
 
 import jakarta.validation.constraints.NotBlank;
-
+import java.util.List;
 import java.util.UUID;
 
 public record MaterialDtoNew(
@@ -11,11 +11,11 @@ public record MaterialDtoNew(
 
     String description,
 
-    String type,
+    UUID materialTypeId,
 
     String link,
 
-    String unit,
+    List<UUID> unitIds,
 
     String code,
 

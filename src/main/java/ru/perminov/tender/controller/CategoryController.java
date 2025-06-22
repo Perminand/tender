@@ -19,7 +19,7 @@ import java.util.UUID;
 @RequestMapping("/api/categories")
 @RequiredArgsConstructor
 @Validated
-@CrossOrigin
+@CrossOrigin(origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"})
 public class CategoryController {
 
     private final CategoryService categoryService;
@@ -30,9 +30,9 @@ public class CategoryController {
         return ResponseEntity.ok(categoryService.create(categoryDtoNew));
     }
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Category> update(@PathVariable UUID id, @RequestBody @Valid CategoryDtoUpdate categoryDtoUpdate) {
-        log.info("Пришел PATCH запрос на изменение категории uuid: {} содержимое: {}", id, categoryDtoUpdate);
+        log.info("Пришел PUT запрос на изменение категории uuid: {} содержимое: {}", id, categoryDtoUpdate);
         return ResponseEntity.ok(categoryService.update(id, categoryDtoUpdate));
     }
 

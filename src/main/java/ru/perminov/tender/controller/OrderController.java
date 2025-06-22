@@ -19,6 +19,7 @@ import java.util.UUID;
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 @Validated
+@CrossOrigin(origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"})
 public class OrderController {
 
     private final OrderService orderService;
@@ -29,9 +30,9 @@ public class OrderController {
         return ResponseEntity.ok(orderService.create(orderDtoNew));
     }
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Order> update(@PathVariable UUID id, @RequestBody OrderDtoUpdate orderDtoUpdate) {
-        log.info("Пришел PATCH запрос на изменение заявки uuid: {} содержимое: {}", id, orderDtoUpdate);
+        log.info("Пришел PUT запрос на изменение заявки uuid: {} содержимое: {}", id, orderDtoUpdate);
         return ResponseEntity.ok(orderService.update(id, orderDtoUpdate));
     }
 

@@ -23,62 +23,63 @@ import {
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-interface ContactType {
+interface Unit {
   id: string;
   name: string;
+  shortName: string;
 }
 
-const ContactTypesPage: React.FC = () => {
-  const [contactTypes, setContactTypes] = useState<ContactType[]>([]);
+const UnitListPage: React.FC = () => {
+  const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingContactType, setEditingContactType] = useState<ContactType | null>(null);
-  const [formData, setFormData] = useState({ name: '' });
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
+  const [formData, setFormData] = useState({ name: '', shortName: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  const fetchContactTypes = async () => {
+  const fetchUnits = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types');
+      const response = await fetch('http://localhost:8080/api/units');
       if (response.ok) {
         const data = await response.json();
-        setContactTypes(data);
+        setUnits(data);
       }
     } catch (error) {
-      console.error('Error fetching contact types:', error);
+      console.error('Error fetching units:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchContactTypes();
+    fetchUnits();
   }, []);
 
-  const handleOpenDialog = (contactType?: ContactType) => {
-    if (contactType) {
-      setEditingContactType(contactType);
-      setFormData({ name: contactType.name });
+  const handleOpenDialog = (unit?: Unit) => {
+    if (unit) {
+      setEditingUnit(unit);
+      setFormData({ name: unit.name, shortName: unit.shortName });
     } else {
-      setEditingContactType(null);
-      setFormData({ name: '' });
+      setEditingUnit(null);
+      setFormData({ name: '', shortName: '' });
     }
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingContactType(null);
-    setFormData({ name: '' });
+    setEditingUnit(null);
+    setFormData({ name: '', shortName: '' });
   };
 
   const handleSubmit = async () => {
     try {
-      const url = editingContactType 
-        ? `http://localhost:8080/api/contact-types/${editingContactType.id}`
-        : 'http://localhost:8080/api/contact-types';
+      const url = editingUnit 
+        ? `http://localhost:8080/api/units/${editingUnit.id}`
+        : 'http://localhost:8080/api/units';
       
-      const method = editingContactType ? 'PUT' : 'POST';
+      const method = editingUnit ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
@@ -90,35 +91,36 @@ const ContactTypesPage: React.FC = () => {
 
       if (response.ok) {
         handleCloseDialog();
-        fetchContactTypes();
+        fetchUnits();
       } else {
-        console.error('Error saving contact type');
+        console.error('Error saving unit');
       }
     } catch (error) {
-      console.error('Error saving contact type:', error);
+      console.error('Error saving unit:', error);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот тип контакта?')) {
+    if (window.confirm('Вы уверены, что хотите удалить эту единицу измерения?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/contact-types/${id}`, {
+        const response = await fetch(`http://localhost:8080/api/units/${id}`, {
           method: 'DELETE',
         });
 
         if (response.ok) {
-          fetchContactTypes();
+          fetchUnits();
         } else {
-          console.error('Error deleting contact type');
+          console.error('Error deleting unit');
         }
       } catch (error) {
-        console.error('Error deleting contact type:', error);
+        console.error('Error deleting unit:', error);
       }
     }
   };
 
-  const filteredContactTypes = contactTypes.filter(contactType =>
-    contactType.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredUnits = units.filter(unit =>
+    unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    unit.shortName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -133,20 +135,20 @@ const ContactTypesPage: React.FC = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" component="h1">
-            Типы контактов
+            Единицы измерения
           </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="body1" color="text.secondary">
-            Управление типами контактов
+            Управление единицами измерения
           </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
           >
-            Добавить тип контакта
+            Добавить единицу измерения
           </Button>
         </Box>
 
@@ -166,22 +168,24 @@ const ContactTypesPage: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Название</TableCell>
+                    <TableCell>Сокращение</TableCell>
                     <TableCell align="right">Действия</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredContactTypes.map((contactType) => (
-                    <TableRow key={contactType.id}>
-                      <TableCell>{contactType.name}</TableCell>
+                  {filteredUnits.map((unit) => (
+                    <TableRow key={unit.id}>
+                      <TableCell>{unit.name}</TableCell>
+                      <TableCell>{unit.shortName}</TableCell>
                       <TableCell align="right">
                         <IconButton
-                          onClick={() => handleOpenDialog(contactType)}
+                          onClick={() => handleOpenDialog(unit)}
                           color="primary"
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton
-                          onClick={() => handleDelete(contactType.id)}
+                          onClick={() => handleDelete(unit.id)}
                           color="error"
                         >
                           <DeleteIcon />
@@ -198,7 +202,7 @@ const ContactTypesPage: React.FC = () => {
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editingContactType ? 'Редактировать тип контакта' : 'Добавить тип контакта'}
+          {editingUnit ? 'Редактировать единицу измерения' : 'Добавить единицу измерения'}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -207,13 +211,21 @@ const ContactTypesPage: React.FC = () => {
             variant="outlined"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            sx={{ mt: 2 }}
+            sx={{ mt: 2, mb: 2 }}
+          />
+          <TextField
+            fullWidth
+            label="Сокращение"
+            variant="outlined"
+            value={formData.shortName}
+            onChange={(e) => setFormData({ ...formData, shortName: e.target.value })}
+            placeholder="шт., кг, м"
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Отмена</Button>
           <Button onClick={handleSubmit} variant="contained">
-            {editingContactType ? 'Сохранить' : 'Добавить'}
+            {editingUnit ? 'Сохранить' : 'Добавить'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -221,4 +233,4 @@ const ContactTypesPage: React.FC = () => {
   );
 };
 
-export default ContactTypesPage; 
+export default UnitListPage; 

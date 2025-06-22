@@ -7,6 +7,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.EqualsAndHashCode;
@@ -19,6 +21,7 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -38,17 +41,31 @@ public class Material {
 
     private String description;
 
-    private String type;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "material_type_id")
+    private MaterialType materialType; // тип материала
 
     private String link;
 
-    private String unit; // единица измерения
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "material_units",
+            joinColumns = @JoinColumn(name = "material_id"),
+            inverseJoinColumns = @JoinColumn(name = "unit_id")
+    )
+    private Set<Unit> units; // единицы измерения
 
     private String code; // код/артикул
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id")
     private Category category; // категория
+
+    @CreatedDate
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    private LocalDateTime updatedAt;
 
     @Override
     public boolean equals(Object o) {

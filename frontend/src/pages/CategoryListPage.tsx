@@ -23,44 +23,44 @@ import {
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-interface ContactType {
+interface Category {
   id: string;
   name: string;
 }
 
-const ContactTypesPage: React.FC = () => {
-  const [contactTypes, setContactTypes] = useState<ContactType[]>([]);
+const CategoryListPage: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingContactType, setEditingContactType] = useState<ContactType | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [formData, setFormData] = useState({ name: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  const fetchContactTypes = async () => {
+  const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types');
+      const response = await fetch('http://localhost:8080/api/categories');
       if (response.ok) {
         const data = await response.json();
-        setContactTypes(data);
+        setCategories(data);
       }
     } catch (error) {
-      console.error('Error fetching contact types:', error);
+      console.error('Error fetching categories:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchContactTypes();
+    fetchCategories();
   }, []);
 
-  const handleOpenDialog = (contactType?: ContactType) => {
-    if (contactType) {
-      setEditingContactType(contactType);
-      setFormData({ name: contactType.name });
+  const handleOpenDialog = (category?: Category) => {
+    if (category) {
+      setEditingCategory(category);
+      setFormData({ name: category.name });
     } else {
-      setEditingContactType(null);
+      setEditingCategory(null);
       setFormData({ name: '' });
     }
     setOpenDialog(true);
@@ -68,17 +68,17 @@ const ContactTypesPage: React.FC = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingContactType(null);
+    setEditingCategory(null);
     setFormData({ name: '' });
   };
 
   const handleSubmit = async () => {
     try {
-      const url = editingContactType 
-        ? `http://localhost:8080/api/contact-types/${editingContactType.id}`
-        : 'http://localhost:8080/api/contact-types';
+      const url = editingCategory 
+        ? `http://localhost:8080/api/categories/${editingCategory.id}`
+        : 'http://localhost:8080/api/categories';
       
-      const method = editingContactType ? 'PUT' : 'POST';
+      const method = editingCategory ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
@@ -90,35 +90,35 @@ const ContactTypesPage: React.FC = () => {
 
       if (response.ok) {
         handleCloseDialog();
-        fetchContactTypes();
+        fetchCategories();
       } else {
-        console.error('Error saving contact type');
+        console.error('Error saving category');
       }
     } catch (error) {
-      console.error('Error saving contact type:', error);
+      console.error('Error saving category:', error);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот тип контакта?')) {
+    if (window.confirm('Вы уверены, что хотите удалить эту категорию?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/contact-types/${id}`, {
+        const response = await fetch(`http://localhost:8080/api/categories/${id}`, {
           method: 'DELETE',
         });
 
         if (response.ok) {
-          fetchContactTypes();
+          fetchCategories();
         } else {
-          console.error('Error deleting contact type');
+          console.error('Error deleting category');
         }
       } catch (error) {
-        console.error('Error deleting contact type:', error);
+        console.error('Error deleting category:', error);
       }
     }
   };
 
-  const filteredContactTypes = contactTypes.filter(contactType =>
-    contactType.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredCategories = categories.filter(category =>
+    category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -133,20 +133,20 @@ const ContactTypesPage: React.FC = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" component="h1">
-            Типы контактов
+            Категории
           </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="body1" color="text.secondary">
-            Управление типами контактов
+            Управление категориями материалов
           </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
           >
-            Добавить тип контакта
+            Добавить категорию
           </Button>
         </Box>
 
@@ -170,18 +170,18 @@ const ContactTypesPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredContactTypes.map((contactType) => (
-                    <TableRow key={contactType.id}>
-                      <TableCell>{contactType.name}</TableCell>
+                  {filteredCategories.map((category) => (
+                    <TableRow key={category.id}>
+                      <TableCell>{category.name}</TableCell>
                       <TableCell align="right">
                         <IconButton
-                          onClick={() => handleOpenDialog(contactType)}
+                          onClick={() => handleOpenDialog(category)}
                           color="primary"
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton
-                          onClick={() => handleDelete(contactType.id)}
+                          onClick={() => handleDelete(category.id)}
                           color="error"
                         >
                           <DeleteIcon />
@@ -198,7 +198,7 @@ const ContactTypesPage: React.FC = () => {
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editingContactType ? 'Редактировать тип контакта' : 'Добавить тип контакта'}
+          {editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -213,7 +213,7 @@ const ContactTypesPage: React.FC = () => {
         <DialogActions>
           <Button onClick={handleCloseDialog}>Отмена</Button>
           <Button onClick={handleSubmit} variant="contained">
-            {editingContactType ? 'Сохранить' : 'Добавить'}
+            {editingCategory ? 'Сохранить' : 'Добавить'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -221,4 +221,4 @@ const ContactTypesPage: React.FC = () => {
   );
 };
 
-export default ContactTypesPage; 
+export default CategoryListPage; 

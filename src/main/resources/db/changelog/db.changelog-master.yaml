@@ -15,3 +15,9 @@ databaseChangeLog:
       file: db/changelog/changes/V006_add_fields_to_materials.sql
   - include:
       file: db/changelog/changes/V007_create_categories_and_update_materials.sql
+  - include:
+      file: db/changelog/changes/V008_create_material_types_and_update_materials.sql
+  - include:
+      file: db/changelog/changes/V009_create_units_table.sql
+  - include:
+      file: db/changelog/changes/V010_create_material_units_table.sql

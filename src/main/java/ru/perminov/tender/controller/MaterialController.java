@@ -19,6 +19,7 @@ import java.util.UUID;
 @RequestMapping("/api/materials")
 @RequiredArgsConstructor
 @Validated
+@CrossOrigin(origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"})
 public class MaterialController {
 
     private final MaterialService materialService;
@@ -29,9 +30,9 @@ public class MaterialController {
         return ResponseEntity.ok(materialService.create(materialDtoNew));
     }
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Material> update(@PathVariable UUID id, @RequestBody @Valid MaterialDtoUpdate materialDtoUpdate) {
-        log.info("Пришел PATCH запрос на изменение материала uuid: {} содержимое: {}", id, materialDtoUpdate);
+        log.info("Пришел PUT запрос на изменение материала uuid: {} содержимое: {}", id, materialDtoUpdate);
         return ResponseEntity.ok(materialService.update(id, materialDtoUpdate));
     }
 

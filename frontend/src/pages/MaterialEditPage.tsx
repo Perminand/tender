@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
-  Box, Button, Grid, Paper, TextField, Typography, Alert, Snackbar, Autocomplete, Dialog, DialogActions, DialogContent, DialogTitle
+  Box, Button, Grid, Paper, TextField, Typography, Alert, Snackbar, Autocomplete, Dialog, DialogActions, DialogContent, DialogTitle, Chip
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -10,13 +10,24 @@ interface Category {
   name: string;
 }
 
+interface MaterialType {
+  id: string;
+  name: string;
+}
+
+interface Unit {
+  id: string;
+  name: string;
+  shortName: string;
+}
+
 interface Material {
   id: string;
   name: string;
   description: string;
-  type: string;
+  materialType: MaterialType | null;
   link: string;
-  unit: string;
+  units: Unit[];
   code: string;
   category: Category | null;
   createdAt: string;
@@ -26,9 +37,9 @@ interface Material {
 type FormData = {
   name: string;
   description: string;
-  type: string;
+  materialTypeId: string | null;
   link: string;
-  unit: string;
+  unitIds: string[];
   code: string;
   categoryId: string | null;
 };
@@ -36,9 +47,9 @@ type FormData = {
 const defaultValues: FormData = {
   name: '',
   description: '',
-  type: '',
+  materialTypeId: null,
   link: '',
-  unit: '',
+  unitIds: [],
   code: '',
   categoryId: null,
 };
@@ -46,11 +57,17 @@ const defaultValues: FormData = {
 const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
-  const { control, handleSubmit, register, formState: { errors }, reset, getValues } = useForm<FormData>({ defaultValues });
+  const { control, handleSubmit, register, formState: { errors }, reset, getValues, setValue } = useForm<FormData>({ defaultValues });
   const [saveError, setSaveError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
   const [openNewCategoryDialog, setOpenNewCategoryDialog] = useState(false);
+  const [openNewMaterialTypeDialog, setOpenNewMaterialTypeDialog] = useState(false);
+  const [openNewUnitDialog, setOpenNewUnitDialog] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [newMaterialTypeName, setNewMaterialTypeName] = useState('');
+  const [newUnitData, setNewUnitData] = useState({ name: '', shortName: '' });
 
   useEffect(() => {
     // Загрузка категорий
@@ -60,6 +77,24 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       .catch(error => {
         console.error('Ошибка при загрузке категорий:', error);
         setCategories([]);
+      });
+
+    // Загрузка типов материалов
+    fetch('/api/material-types')
+      .then(res => res.json())
+      .then(data => setMaterialTypes(data))
+      .catch(error => {
+        console.error('Ошибка при загрузке типов материалов:', error);
+        setMaterialTypes([]);
+      });
+
+    // Загрузка единиц измерения
+    fetch('/api/units')
+      .then(res => res.json())
+      .then(data => setUnits(data))
+      .catch(error => {
+        console.error('Ошибка при загрузке единиц измерения:', error);
+        setUnits([]);
       });
   }, []);
 
@@ -71,9 +106,9 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
           const formData: FormData = {
             name: data.name || '',
             description: data.description || '',
-            type: data.type || '',
+            materialTypeId: data.materialType?.id || null,
             link: data.link || '',
-            unit: data.unit || '',
+            unitIds: data.units?.map(u => u.id) || [],
             code: data.code || '',
             categoryId: data.category?.id || null,
           };
@@ -88,7 +123,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
 
   const onSubmit = async (data: FormData) => {
     const url = isEdit ? `/api/materials/${id}` : '/api/materials';
-    const method = isEdit ? 'PATCH' : 'POST';
+    const method = isEdit ? 'PUT' : 'POST';
 
     try {
       const response = await fetch(url, {
@@ -102,7 +137,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         setSaveError(`Не удалось сохранить материал. ${errorText}`);
         return;
       }
-      navigate('/materials');
+      navigate('/reference/materials');
     } catch (error) {
       if (error instanceof Error) {
         setSaveError(error.message);
@@ -113,10 +148,22 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   };
 
   const createNewCategoryOption: Category = { id: 'CREATE_NEW', name: 'Создать новую категорию' };
+  const createNewMaterialTypeOption: MaterialType = { id: 'CREATE_NEW', name: 'Создать новый тип' };
+  const createNewUnitOption: Unit = { id: 'CREATE_NEW', name: 'Создать новую единицу измерения', shortName: '' };
 
-  const handleCloseDialog = () => {
+  const handleCloseCategoryDialog = () => {
     setOpenNewCategoryDialog(false);
     setNewCategoryName('');
+  };
+
+  const handleCloseMaterialTypeDialog = () => {
+    setOpenNewMaterialTypeDialog(false);
+    setNewMaterialTypeName('');
+  };
+
+  const handleCloseUnitDialog = () => {
+    setOpenNewUnitDialog(false);
+    setNewUnitData({ name: '', shortName: '' });
   };
 
   const handleSaveNewCategory = async () => {
@@ -130,15 +177,53 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         if (res.ok) {
           const newCategory = await res.json();
           setCategories(prev => [...prev, newCategory]);
-          reset({ 
-            ...getValues(), 
-            categoryId: newCategory.id 
-          });
+          setValue('categoryId', newCategory.id);
         }
-      } catch (e) { 
-        console.error(e); 
+      } catch (e) {
+        console.error(e);
       }
-      handleCloseDialog();
+      handleCloseCategoryDialog();
+    }
+  };
+
+  const handleSaveNewMaterialType = async () => {
+    if (newMaterialTypeName.trim()) {
+      try {
+        const res = await fetch('/api/material-types', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: newMaterialTypeName }),
+        });
+        if (res.ok) {
+          const newMaterialType = await res.json();
+          setMaterialTypes(prev => [...prev, newMaterialType]);
+          setValue('materialTypeId', newMaterialType.id);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      handleCloseMaterialTypeDialog();
+    }
+  };
+
+  const handleSaveNewUnit = async () => {
+    if (newUnitData.name.trim() && newUnitData.shortName.trim()) {
+      try {
+        const res = await fetch('/api/units', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newUnitData),
+        });
+        if (res.ok) {
+          const newUnit = await res.json();
+          setUnits(prev => [...prev, newUnit]);
+          const currentUnitIds = getValues('unitIds') || [];
+          setValue('unitIds', [...currentUnitIds, newUnit.id]);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      handleCloseUnitDialog();
     }
   };
 
@@ -155,94 +240,16 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
             <TextField
               label="Название *"
               fullWidth
-              {...register('name', { 
-                required: 'Название не может быть пустым' 
-              })}
+              {...register('name', { required: 'Название обязательно' })}
               error={!!errors.name}
               helperText={errors.name?.message}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
             <TextField
-              label="Код/артикул"
+              label="Код/Артикул"
               fullWidth
               {...register('code')}
-              placeholder="ГОСТ, артикул и т.д."
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <Controller
-              name="categoryId"
-              control={control}
-              render={({ field }) => {
-                const selectedValue = categories.find(option => option.id === field.value) || null;
-                return (
-                  <>
-                    <Autocomplete
-                      value={selectedValue}
-                      onChange={(_, newValue) => {
-                        if (newValue?.id === 'CREATE_NEW') {
-                          setOpenNewCategoryDialog(true);
-                        } else {
-                          field.onChange(newValue?.id || null);
-                        }
-                      }}
-                      options={[...categories, createNewCategoryOption]}
-                      getOptionLabel={(option) => option.name}
-                      isOptionEqualToValue={(option, value) => option.id === value.id}
-                      renderInput={(params) => (
-                        <TextField
-                          {...params}
-                          label="Категория"
-                          placeholder="Выберите категорию"
-                        />
-                      )}
-                    />
-                    <Dialog open={openNewCategoryDialog} onClose={handleCloseDialog}>
-                      <DialogTitle>Создать новую категорию</DialogTitle>
-                      <DialogContent>
-                        <TextField 
-                          autoFocus 
-                          margin="dense" 
-                          label="Название категории" 
-                          type="text" 
-                          fullWidth 
-                          value={newCategoryName} 
-                          onChange={(e) => setNewCategoryName(e.target.value)} 
-                        />
-                      </DialogContent>
-                      <DialogActions>
-                        <Button onClick={handleCloseDialog}>Отмена</Button>
-                        <Button onClick={handleSaveNewCategory}>Сохранить</Button>
-                      </DialogActions>
-                    </Dialog>
-                  </>
-                );
-              }}
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Тип"
-              fullWidth
-              {...register('type')}
-              placeholder="Тип материала"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Единица измерения"
-              fullWidth
-              {...register('unit')}
-              placeholder="шт., кг, м, м², м³, л"
-            />
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <TextField
-              label="Ссылка"
-              fullWidth
-              {...register('link')}
-              placeholder="https://example.com"
             />
           </Grid>
           <Grid item xs={12}>
@@ -252,30 +259,176 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               multiline
               rows={3}
               {...register('description')}
-              placeholder="Подробное описание материала"
+            />
+          </Grid>
+          <Grid item xs={12}>
+            <TextField
+              label="Ссылка"
+              fullWidth
+              {...register('link')}
             />
           </Grid>
         </Grid>
       </Paper>
-
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
-        <Button variant="outlined" color="secondary" onClick={() => navigate('/materials')}>
-          Отмена
-        </Button>
+      
+      <Paper sx={{ p: 2 }}>
+        <Typography variant="h6" gutterBottom>Классификация</Typography>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={4}>
+            <Controller
+              name="categoryId"
+              control={control}
+              render={({ field }) => (
+                <Autocomplete
+                  options={[...categories, createNewCategoryOption]}
+                  getOptionLabel={(option) => option.name}
+                  value={categories.find(c => c.id === field.value) || null}
+                  onChange={(event, newValue) => {
+                    if (newValue?.id === 'CREATE_NEW') {
+                      setOpenNewCategoryDialog(true);
+                    } else {
+                      field.onChange(newValue?.id || null);
+                    }
+                  }}
+                  renderInput={(params) => <TextField {...params} label="Категория" />}
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Controller
+              name="materialTypeId"
+              control={control}
+              render={({ field }) => (
+                <Autocomplete
+                  options={[...materialTypes, createNewMaterialTypeOption]}
+                  getOptionLabel={(option) => option.name}
+                  value={materialTypes.find(mt => mt.id === field.value) || null}
+                  onChange={(event, newValue) => {
+                    if (newValue?.id === 'CREATE_NEW') {
+                      setOpenNewMaterialTypeDialog(true);
+                    } else {
+                      field.onChange(newValue?.id || null);
+                    }
+                  }}
+                  renderInput={(params) => <TextField {...params} label="Тип материала" />}
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} sm={4}>
+            <Controller
+              name="unitIds"
+              control={control}
+              render={({ field }) => (
+                <Autocomplete
+                  multiple
+                  options={[...units, createNewUnitOption]}
+                  getOptionLabel={(option) => option.name}
+                  value={units.filter(u => field.value?.includes(u.id))}
+                  onChange={(event, newValue) => {
+                    if (newValue.some(option => option.id === 'CREATE_NEW')) {
+                      setOpenNewUnitDialog(true);
+                    } else {
+                      field.onChange(newValue.map(v => v.id));
+                    }
+                  }}
+                  renderTags={(value, getTagProps) =>
+                    value.map((option, index) => (
+                      <Chip variant="outlined" label={option.name} {...getTagProps({ index })} />
+                    ))
+                  }
+                  renderInput={(params) => <TextField {...params} label="Единицы измерения" />}
+                />
+              )}
+            />
+          </Grid>
+        </Grid>
+      </Paper>
+      
+      <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
         <Button type="submit" variant="contained">
-          Сохранить
+          {isEdit ? 'Сохранить' : 'Создать'}
+        </Button>
+        <Button variant="outlined" onClick={() => navigate('/reference/materials')}>
+          Отмена
         </Button>
       </Box>
 
       {saveError && (
-        <Snackbar 
-          open={!!saveError} 
-          autoHideDuration={6000} 
-          onClose={() => setSaveError(null)}
-        >
-          <Alert severity="error">{saveError}</Alert>
+        <Snackbar open={!!saveError} autoHideDuration={6000} onClose={() => setSaveError(null)}>
+          <Alert onClose={() => setSaveError(null)} severity="error" sx={{ width: '100%' }}>
+            {saveError}
+          </Alert>
         </Snackbar>
       )}
+
+      {/* Dialogs for creating new entities */}
+      <Dialog open={openNewCategoryDialog} onClose={handleCloseCategoryDialog}>
+        <DialogTitle>Создать новую категорию</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название категории"
+            type="text"
+            fullWidth
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseCategoryDialog}>Отмена</Button>
+          <Button onClick={handleSaveNewCategory}>Сохранить</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openNewMaterialTypeDialog} onClose={handleCloseMaterialTypeDialog}>
+        <DialogTitle>Создать новый тип материала</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название типа материала"
+            type="text"
+            fullWidth
+            value={newMaterialTypeName}
+            onChange={(e) => setNewMaterialTypeName(e.target.value)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseMaterialTypeDialog}>Отмена</Button>
+          <Button onClick={handleSaveNewMaterialType}>Сохранить</Button>
+        </DialogActions>
+      </Dialog>
+      
+      <Dialog open={openNewUnitDialog} onClose={handleCloseUnitDialog}>
+        <DialogTitle>Создать новую единицу измерения</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Полное название"
+            type="text"
+            fullWidth
+            value={newUnitData.name}
+            onChange={(e) => setNewUnitData({ ...newUnitData, name: e.target.value })}
+            sx={{ mb: 2 }}
+          />
+          <TextField
+            margin="dense"
+            label="Краткое название"
+            type="text"
+            fullWidth
+            value={newUnitData.shortName}
+            onChange={(e) => setNewUnitData({ ...newUnitData, shortName: e.target.value })}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseUnitDialog}>Отмена</Button>
+          <Button onClick={handleSaveNewUnit}>Сохранить</Button>
+        </DialogActions>
+      </Dialog>
     </form>
   );
 };

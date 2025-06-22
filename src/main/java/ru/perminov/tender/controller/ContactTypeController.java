@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.company.contact.ContactTypeDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDtoNew;
+import ru.perminov.tender.dto.company.contact.ContactTypeDtoUpdate;
 import ru.perminov.tender.service.company.ContactTypeService;
 
 import java.util.List;
@@ -37,6 +38,12 @@ public class ContactTypeController {
     public ResponseEntity<ContactTypeDto> create(@Valid @RequestBody ContactTypeDtoNew contactTypeDtoNew) {
         log.info("Получен запрос на создание типа контакта: {}", contactTypeDtoNew);
         return ResponseEntity.ok(contactTypeService.create(contactTypeDtoNew));
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ContactTypeDto> update(@PathVariable UUID id, @Valid @RequestBody ContactTypeDtoUpdate contactTypeDtoUpdate) {
+        log.info("Получен запрос на обновление типа контакта с id {}: {}", id, contactTypeDtoUpdate);
+        return ResponseEntity.ok(contactTypeService.update(id, contactTypeDtoUpdate));
     }
 
     @DeleteMapping("/{id}")

@@ -23,44 +23,44 @@ import {
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-interface ContactType {
+interface MaterialType {
   id: string;
   name: string;
 }
 
-const ContactTypesPage: React.FC = () => {
-  const [contactTypes, setContactTypes] = useState<ContactType[]>([]);
+const MaterialTypeListPage: React.FC = () => {
+  const [materialTypes, setMaterialTypes] = useState<MaterialType[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingContactType, setEditingContactType] = useState<ContactType | null>(null);
+  const [editingMaterialType, setEditingMaterialType] = useState<MaterialType | null>(null);
   const [formData, setFormData] = useState({ name: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  const fetchContactTypes = async () => {
+  const fetchMaterialTypes = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types');
+      const response = await fetch('http://localhost:8080/api/material-types');
       if (response.ok) {
         const data = await response.json();
-        setContactTypes(data);
+        setMaterialTypes(data);
       }
     } catch (error) {
-      console.error('Error fetching contact types:', error);
+      console.error('Error fetching material types:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchContactTypes();
+    fetchMaterialTypes();
   }, []);
 
-  const handleOpenDialog = (contactType?: ContactType) => {
-    if (contactType) {
-      setEditingContactType(contactType);
-      setFormData({ name: contactType.name });
+  const handleOpenDialog = (materialType?: MaterialType) => {
+    if (materialType) {
+      setEditingMaterialType(materialType);
+      setFormData({ name: materialType.name });
     } else {
-      setEditingContactType(null);
+      setEditingMaterialType(null);
       setFormData({ name: '' });
     }
     setOpenDialog(true);
@@ -68,17 +68,17 @@ const ContactTypesPage: React.FC = () => {
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingContactType(null);
+    setEditingMaterialType(null);
     setFormData({ name: '' });
   };
 
   const handleSubmit = async () => {
     try {
-      const url = editingContactType 
-        ? `http://localhost:8080/api/contact-types/${editingContactType.id}`
-        : 'http://localhost:8080/api/contact-types';
+      const url = editingMaterialType 
+        ? `http://localhost:8080/api/material-types/${editingMaterialType.id}`
+        : 'http://localhost:8080/api/material-types';
       
-      const method = editingContactType ? 'PUT' : 'POST';
+      const method = editingMaterialType ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
@@ -90,35 +90,35 @@ const ContactTypesPage: React.FC = () => {
 
       if (response.ok) {
         handleCloseDialog();
-        fetchContactTypes();
+        fetchMaterialTypes();
       } else {
-        console.error('Error saving contact type');
+        console.error('Error saving material type');
       }
     } catch (error) {
-      console.error('Error saving contact type:', error);
+      console.error('Error saving material type:', error);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот тип контакта?')) {
+    if (window.confirm('Вы уверены, что хотите удалить этот тип материала?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/contact-types/${id}`, {
+        const response = await fetch(`http://localhost:8080/api/material-types/${id}`, {
           method: 'DELETE',
         });
 
         if (response.ok) {
-          fetchContactTypes();
+          fetchMaterialTypes();
         } else {
-          console.error('Error deleting contact type');
+          console.error('Error deleting material type');
         }
       } catch (error) {
-        console.error('Error deleting contact type:', error);
+        console.error('Error deleting material type:', error);
       }
     }
   };
 
-  const filteredContactTypes = contactTypes.filter(contactType =>
-    contactType.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredMaterialTypes = materialTypes.filter(materialType =>
+    materialType.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -133,20 +133,20 @@ const ContactTypesPage: React.FC = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" component="h1">
-            Типы контактов
+            Типы материалов
           </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="body1" color="text.secondary">
-            Управление типами контактов
+            Управление типами материалов
           </Typography>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
           >
-            Добавить тип контакта
+            Добавить тип материала
           </Button>
         </Box>
 
@@ -170,18 +170,18 @@ const ContactTypesPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredContactTypes.map((contactType) => (
-                    <TableRow key={contactType.id}>
-                      <TableCell>{contactType.name}</TableCell>
+                  {filteredMaterialTypes.map((materialType) => (
+                    <TableRow key={materialType.id}>
+                      <TableCell>{materialType.name}</TableCell>
                       <TableCell align="right">
                         <IconButton
-                          onClick={() => handleOpenDialog(contactType)}
+                          onClick={() => handleOpenDialog(materialType)}
                           color="primary"
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton
-                          onClick={() => handleDelete(contactType.id)}
+                          onClick={() => handleDelete(materialType.id)}
                           color="error"
                         >
                           <DeleteIcon />
@@ -198,7 +198,7 @@ const ContactTypesPage: React.FC = () => {
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
-          {editingContactType ? 'Редактировать тип контакта' : 'Добавить тип контакта'}
+          {editingMaterialType ? 'Редактировать тип материала' : 'Добавить тип материала'}
         </DialogTitle>
         <DialogContent>
           <TextField
@@ -213,7 +213,7 @@ const ContactTypesPage: React.FC = () => {
         <DialogActions>
           <Button onClick={handleCloseDialog}>Отмена</Button>
           <Button onClick={handleSubmit} variant="contained">
-            {editingContactType ? 'Сохранить' : 'Добавить'}
+            {editingMaterialType ? 'Сохранить' : 'Добавить'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -221,4 +221,4 @@ const ContactTypesPage: React.FC = () => {
   );
 };
 
-export default ContactTypesPage; 
+export default MaterialTypeListPage; 

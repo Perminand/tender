@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequestMapping("/api/companies")
 @RequiredArgsConstructor
 @Validated
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"})
 public class CompanyController {
 
     private final CompanyService companyService;
@@ -33,7 +33,7 @@ public class CompanyController {
 
     @PutMapping("/{id}")
     public ResponseEntity<CompanyDto> update(@PathVariable String id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
-        log.info("Пришел POST запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
+        log.info("Пришел PUT запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
         return ResponseEntity.ok(companyService.update(UUID.fromString(id), companyDtoUpdate));
     }
 

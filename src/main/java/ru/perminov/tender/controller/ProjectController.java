@@ -19,6 +19,7 @@ import java.util.UUID;
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
 @Validated
+@CrossOrigin(origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"})
 public class ProjectController {
 
     private final ProjectService projectService;
@@ -29,9 +30,9 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.create(projectDtoNew));
     }
 
-    @PatchMapping("/{id}")
+    @PutMapping("/{id}")
     public ResponseEntity<Project> update(@PathVariable UUID id, @RequestBody @Valid ProjectDtoUpdate projectDtoUpdate) {
-        log.info("Пришел PATCH запрос на изменение проекта uuid: {} содержимое: {}", id, projectDtoUpdate);
+        log.info("Пришел PUT запрос на изменение проекта uuid: {} содержимое: {}", id, projectDtoUpdate);
         return ResponseEntity.ok(projectService.update(id, projectDtoUpdate));
     }
 

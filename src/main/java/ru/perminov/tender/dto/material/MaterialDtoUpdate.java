@@ -1,5 +1,6 @@
 package ru.perminov.tender.dto.material;
 
+import java.util.List;
 import java.util.UUID;
 
 public record MaterialDtoUpdate(
@@ -8,11 +9,11 @@ public record MaterialDtoUpdate(
 
     String description,
 
-    String type,
+    UUID materialTypeId,
 
     String link,
 
-    String unit,
+    List<UUID> unitIds,
 
     String code,
 

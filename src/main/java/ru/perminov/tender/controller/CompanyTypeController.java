@@ -16,7 +16,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/company/type-companies")
 @RequiredArgsConstructor
-@CrossOrigin(origins = {"http://localhost:5173", "http://localhost:3000"})
+@CrossOrigin(origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"})
 public class CompanyTypeController {
 
     private final CompanyTypeService companyTypeService;
