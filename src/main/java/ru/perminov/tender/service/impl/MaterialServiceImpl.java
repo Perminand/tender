@@ -1,11 +1,15 @@
 package ru.perminov.tender.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ru.perminov.tender.dto.material.MaterialDto;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
+import ru.perminov.tender.dto.ImportResultDto;
 import ru.perminov.tender.mapper.MaterialMapper;
 import ru.perminov.tender.model.Category;
 import ru.perminov.tender.model.Material;
@@ -17,6 +21,7 @@ import ru.perminov.tender.repository.MaterialTypeRepository;
 import ru.perminov.tender.repository.UnitRepository;
 import ru.perminov.tender.service.MaterialService;
 
+import java.io.InputStream;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -109,5 +114,116 @@ public class MaterialServiceImpl implements MaterialService {
         return materialRepository.findAll().stream()
                 .map(materialMapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public ImportResultDto importFromExcel(MultipartFile file) {
+        ImportResultDto result = new ImportResultDto();
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) { // skipping header
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+                try {
+                    String name = getCellValueAsString(row.getCell(1));
+                    String description = getCellValueAsString(row.getCell(2));
+                    String materialTypeName = getCellValueAsString(row.getCell(3));
+                    String link = getCellValueAsString(row.getCell(4));
+                    String code = getCellValueAsString(row.getCell(5));
+                    String categoryName = getCellValueAsString(row.getCell(6));
+                    String unitsStr = getCellValueAsString(row.getCell(7));
+
+                    if (name == null || name.isBlank()) {
+                        result.addError(i + 1, "Название не может быть пустым.");
+                        continue;
+                    }
+                    if (materialRepository.existsByName(name)) {
+                        result.addError(i + 1, "Материал с названием '" + name + "' уже существует.");
+                        continue;
+                    }
+
+                    Material material = new Material();
+                    material.setName(name);
+                    material.setDescription(description);
+                    material.setLink(link);
+                    material.setCode(code);
+
+                    // Тип материала по имени
+                    if (materialTypeName != null && !materialTypeName.isBlank()) {
+                        MaterialType type = materialTypeRepository.findByName(materialTypeName)
+                                .orElse(null);
+                        if (type == null) {
+                            // создать новый тип
+                            type = new MaterialType();
+                            type.setName(materialTypeName);
+                            type = materialTypeRepository.save(type);
+                        }
+                        material.setMaterialType(type);
+                    } else {
+                        material.setMaterialType(null);
+                    }
+
+                    // Категория по имени
+                    if (categoryName != null && !categoryName.isBlank()) {
+                        Category category = categoryRepository.findByName(categoryName)
+                                .orElse(null);
+                        if (category == null) {
+                            // создать новую категорию
+                            category = new Category();
+                            category.setName(categoryName);
+                            category = categoryRepository.save(category);
+                        }
+                        material.setCategory(category);
+                    } else {
+                        material.setCategory(null);
+                    }
+
+                    // Единицы измерения по имени (через запятую)
+                    Set<Unit> units = new HashSet<>();
+                    if (unitsStr != null && !unitsStr.isBlank()) {
+                        String[] unitNames = unitsStr.split(",");
+                        for (String unitName : unitNames) {
+                            String trimmed = unitName.trim();
+                            if (!trimmed.isEmpty()) {
+                                Unit unit = unitRepository.findByName(trimmed).orElse(null);
+                                if (unit == null) {
+                                    // создать новую единицу измерения
+                                    unit = new Unit();
+                                    unit.setName(trimmed);
+                                    unit.setShortName(trimmed);
+                                    unit = unitRepository.save(unit);
+                                }
+                                units.add(unit);
+                            }
+                        }
+                    }
+                    material.setUnits(units);
+
+                    materialRepository.save(material);
+                    result.incrementImported();
+                } catch (Exception e) {
+                    result.addError(i + 1, "Ошибка в строке: " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка импорта файла: " + e.getMessage(), e);
+        }
+        return result;
+    }
+
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) {
+            return null;
+        }
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                return String.valueOf((long) cell.getNumericCellValue());
+            default:
+                return null;
+        }
     }
 } 

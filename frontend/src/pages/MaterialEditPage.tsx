@@ -4,6 +4,10 @@ import {
   Box, Button, Grid, Paper, TextField, Typography, Alert, Autocomplete, Chip
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
 
 // DTOs for related entities
 interface CategoryDto {
@@ -65,6 +69,15 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const [categories, setCategories] = useState<CategoryDto[]>([]);
   const [materialTypes, setMaterialTypes] = useState<MaterialTypeDto[]>([]);
   const [units, setUnits] = useState<UnitDto[]>([]);
+
+  // Dialogs for creating on the fly
+  const [openNewCategoryDialog, setOpenNewCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [openNewTypeDialog, setOpenNewTypeDialog] = useState(false);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [openNewUnitDialog, setOpenNewUnitDialog] = useState(false);
+  const [newUnitName, setNewUnitName] = useState('');
+  const [newUnitShortName, setNewUnitShortName] = useState('');
 
   // Fetch all dictionaries
   useEffect(() => {
@@ -136,6 +149,60 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
     }
   };
 
+  // Functions for creating on the fly
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const res = await fetch('http://localhost:8080/api/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newCategoryName })
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setCategories(prev => [...prev, created]);
+        setValue('categoryId', created.id);
+        setOpenNewCategoryDialog(false);
+        setNewCategoryName('');
+      }
+    } catch (e) { /* handle error */ }
+  };
+  const handleCreateType = async () => {
+    if (!newTypeName.trim()) return;
+    try {
+      const res = await fetch('http://localhost:8080/api/material-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newTypeName })
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setMaterialTypes(prev => [...prev, created]);
+        setValue('materialTypeId', created.id);
+        setOpenNewTypeDialog(false);
+        setNewTypeName('');
+      }
+    } catch (e) { /* handle error */ }
+  };
+  const handleCreateUnit = async () => {
+    if (!newUnitName.trim()) return;
+    try {
+      const res = await fetch('http://localhost:8080/api/units', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newUnitName, shortName: newUnitShortName || newUnitName })
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setUnits(prev => [...prev, created]);
+        setValue('unitIds', [...(Array.isArray(control._formValues.unitIds) ? control._formValues.unitIds : []), created.id]);
+        setOpenNewUnitDialog(false);
+        setNewUnitName('');
+        setNewUnitShortName('');
+      }
+    } catch (e) { /* handle error */ }
+  };
+
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <Typography variant="h4" gutterBottom>
@@ -190,13 +257,29 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               name="categoryId"
               control={control}
               render={({ field }) => (
-                <Autocomplete
-                  options={categories}
-                  getOptionLabel={(option) => option.name}
-                  value={categories.find(c => c.id === field.value) || null}
-                  onChange={(_, newValue) => field.onChange(newValue?.id || null)}
-                  renderInput={(params) => <TextField {...params} label="Категория" />}
-                />
+                <>
+                  <Autocomplete
+                    options={[...categories, { id: 'CREATE_NEW', name: 'Создать новую категорию' }]}
+                    getOptionLabel={(option) => option.name}
+                    value={categories.find(c => c.id === field.value) || null}
+                    onChange={(_, newValue) => {
+                      if (newValue?.id === 'CREATE_NEW') setOpenNewCategoryDialog(true);
+                      else field.onChange(newValue?.id || null);
+                    }}
+                    renderInput={(params) => <TextField {...params} label="Категория" />}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                  />
+                  <Dialog open={openNewCategoryDialog} onClose={() => setOpenNewCategoryDialog(false)}>
+                    <DialogTitle>Создать новую категорию</DialogTitle>
+                    <DialogContent>
+                      <TextField autoFocus label="Название категории" fullWidth value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={() => setOpenNewCategoryDialog(false)}>Отмена</Button>
+                      <Button onClick={handleCreateCategory} variant="contained">Создать</Button>
+                    </DialogActions>
+                  </Dialog>
+                </>
               )}
             />
           </Grid>
@@ -205,13 +288,29 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               name="materialTypeId"
               control={control}
               render={({ field }) => (
-                <Autocomplete
-                  options={materialTypes}
-                  getOptionLabel={(option) => option.name}
-                  value={materialTypes.find(mt => mt.id === field.value) || null}
-                  onChange={(_, newValue) => field.onChange(newValue?.id || null)}
-                  renderInput={(params) => <TextField {...params} label="Тип материала" />}
-                />
+                <>
+                  <Autocomplete
+                    options={[...materialTypes, { id: 'CREATE_NEW', name: 'Создать новый тип' }]}
+                    getOptionLabel={(option) => option.name}
+                    value={materialTypes.find(mt => mt.id === field.value) || null}
+                    onChange={(_, newValue) => {
+                      if (newValue?.id === 'CREATE_NEW') setOpenNewTypeDialog(true);
+                      else field.onChange(newValue?.id || null);
+                    }}
+                    renderInput={(params) => <TextField {...params} label="Тип материала" />}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                  />
+                  <Dialog open={openNewTypeDialog} onClose={() => setOpenNewTypeDialog(false)}>
+                    <DialogTitle>Создать новый тип материала</DialogTitle>
+                    <DialogContent>
+                      <TextField autoFocus label="Название типа" fullWidth value={newTypeName} onChange={e => setNewTypeName(e.target.value)} />
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={() => setOpenNewTypeDialog(false)}>Отмена</Button>
+                      <Button onClick={handleCreateType} variant="contained">Создать</Button>
+                    </DialogActions>
+                  </Dialog>
+                </>
               )}
             />
           </Grid>
@@ -224,19 +323,39 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
           name="unitIds"
           control={control}
           render={({ field }) => (
-            <Autocomplete
-              multiple
-              options={units}
-              getOptionLabel={(option) => `${option.name} (${option.shortName})`}
-              value={units.filter(u => field.value?.includes(u.id))}
-              onChange={(_, newValue) => field.onChange(newValue.map(v => v.id))}
-              renderTags={(value, getTagProps) =>
-                value.map((option, index) => (
-                  <Chip variant="outlined" label={option.name} {...getTagProps({ index })} />
-                ))
-              }
-              renderInput={(params) => <TextField {...params} label="Выберите одну или несколько единиц" />}
-            />
+            <>
+              <Autocomplete
+                multiple
+                options={[...units, { id: 'CREATE_NEW', name: 'Создать новую единицу', shortName: '' }]}
+                getOptionLabel={(option) => option.name}
+                value={units.filter(u => field.value?.includes(u.id))}
+                onChange={(_, newValue) => {
+                  if (Array.isArray(newValue) && newValue.some(v => v.id === 'CREATE_NEW')) {
+                    setOpenNewUnitDialog(true);
+                  } else {
+                    field.onChange(newValue.map(v => v.id));
+                  }
+                }}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    <Chip variant="outlined" label={option.name} {...getTagProps({ index })} />
+                  ))
+                }
+                renderInput={(params) => <TextField {...params} label="Выберите одну или несколько единиц" />}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+              />
+              <Dialog open={openNewUnitDialog} onClose={() => setOpenNewUnitDialog(false)}>
+                <DialogTitle>Создать новую единицу измерения</DialogTitle>
+                <DialogContent>
+                  <TextField autoFocus label="Название" fullWidth value={newUnitName} onChange={e => setNewUnitName(e.target.value)} sx={{ mb: 2 }} />
+                  <TextField label="Сокращение" fullWidth value={newUnitShortName} onChange={e => setNewUnitShortName(e.target.value)} />
+                </DialogContent>
+                <DialogActions>
+                  <Button onClick={() => setOpenNewUnitDialog(false)}>Отмена</Button>
+                  <Button onClick={handleCreateUnit} variant="contained">Создать</Button>
+                </DialogActions>
+              </Dialog>
+            </>
           )}
         />
       </Paper>

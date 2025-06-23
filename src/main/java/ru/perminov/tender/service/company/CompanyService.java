@@ -4,6 +4,7 @@ import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
+import ru.perminov.tender.service.company.impl.CompanyServiceImpl.ImportResult;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,5 +20,7 @@ public interface CompanyService {
     CompanyDtoForUpdate getById(UUID id);
 
     List<CompanyDto> getAll();
+
+    ImportResult importFromExcel(org.springframework.web.multipart.MultipartFile file);
 
 }

@@ -6,6 +6,13 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogActions from '@mui/material/DialogActions';
+import Snackbar from '@mui/material/Snackbar';
+import Alert from '@mui/material/Alert';
 
 interface CategoryDto {
   id: string;
@@ -41,6 +48,9 @@ const MaterialListPage: React.FC = () => {
   const [materials, setMaterials] = useState<MaterialDto[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredMaterials, setFilteredMaterials] = useState<MaterialDto[]>([]);
+  const [importLog, setImportLog] = useState<{imported: number, errors: {row: number, message: string}[]} | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -119,6 +129,39 @@ const MaterialListPage: React.FC = () => {
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files?.length) return;
+    const file = event.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('http://localhost:8080/api/materials/import', { method: 'POST', body: formData });
+      if (!response.ok) {
+        const text = await response.text();
+        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
+        setImportDialogOpen(true);
+        return;
+      }
+      const result = await response.json();
+      setImportLog(result);
+      setImportDialogOpen(true);
+      // обновить список материалов
+      const materialsResp = await fetch('http://localhost:8080/api/materials');
+      if (materialsResp.ok) {
+        const data = await materialsResp.json();
+        setMaterials(data);
+        setFilteredMaterials(data);
+      }
+    } catch (e) {
+      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+      setImportDialogOpen(true);
+    }
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -144,6 +187,21 @@ const MaterialListPage: React.FC = () => {
             >
               Экспорт в Excel
             </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<FileUploadIcon />}
+              onClick={handleImportClick}
+            >
+              Импорт из Excel
+            </Button>
+            <input
+              type="file"
+              accept=".xlsx"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleImport}
+            />
             <Button variant="contained" color="primary" onClick={() => navigate('/reference/materials/new')}>
               + Добавить материал
             </Button>
@@ -218,6 +276,34 @@ const MaterialListPage: React.FC = () => {
           </Box>
         )}
       </Box>
+      <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Результат импорта</DialogTitle>
+        <DialogContent>
+          <Typography>Успешно импортировано: <b>{importLog?.imported ?? 0}</b></Typography>
+          <Typography>Ошибок: <b>{importLog?.errors.length ?? 0}</b></Typography>
+          {importLog?.errors.length > 0 && (
+            <Table size="small" sx={{ mt: 2 }}>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Строка</TableCell>
+                  <TableCell>Ошибка</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {importLog.errors.map((err, idx) => (
+                  <TableRow key={idx}>
+                    <TableCell>{err.row}</TableCell>
+                    <TableCell>{err.message}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setImportDialogOpen(false)}>Закрыть</Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 };

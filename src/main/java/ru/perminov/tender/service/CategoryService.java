@@ -4,6 +4,8 @@ import ru.perminov.tender.dto.CategoryDto;
 import ru.perminov.tender.dto.CategoryDtoNew;
 import ru.perminov.tender.dto.CategoryDtoUpdate;
 import ru.perminov.tender.model.Category;
+import ru.perminov.tender.dto.ImportResultDto;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +22,6 @@ public interface CategoryService {
 
     List<Category> getAll();
 
-    int importFromExcel(org.springframework.web.multipart.MultipartFile file);
+    ImportResultDto importFromExcel(MultipartFile file);
 
 } 

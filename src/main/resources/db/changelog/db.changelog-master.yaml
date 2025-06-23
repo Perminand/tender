@@ -23,3 +23,5 @@ databaseChangeLog:
       file: db/changelog/changes/V010_create_material_units_table.sql
   - include:
       file: db/changelog/changes/V011_create_projects_table.sql
+  - include:
+      file: db/changelog/changes/V012_add_created_updated_at_to_materials.sql

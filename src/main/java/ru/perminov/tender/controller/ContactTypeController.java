@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import ru.perminov.tender.dto.ImportResultDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDtoNew;
 import ru.perminov.tender.dto.company.contact.ContactTypeDtoUpdate;
@@ -73,8 +74,8 @@ public class ContactTypeController {
     }
 
     @PostMapping("/import")
-    public ResponseEntity<String> importFromExcel(@RequestParam("file") MultipartFile file) {
-        int importedCount = contactTypeService.importFromExcel(file);
-        return ResponseEntity.ok("Импортировано: " + importedCount);
+    public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        ImportResultDto result = contactTypeService.importFromExcel(file);
+        return ResponseEntity.ok(result);
     }
 } 

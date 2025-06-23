@@ -40,6 +40,8 @@ const ContactTypesPage: React.FC = () => {
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({open: false, message: '', severity: 'success'});
+  const [importLog, setImportLog] = useState<{imported: number, errors: {row: number, message: string}[]} | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   const fetchContactTypes = async () => {
     try {
@@ -153,15 +155,19 @@ const ContactTypesPage: React.FC = () => {
     formData.append('file', file);
     try {
       const response = await fetch('http://localhost:8080/api/contact-types/import', { method: 'POST', body: formData });
-      if (response.ok) {
-        setSnackbar({open: true, message: 'Импорт успешно завершён', severity: 'success'});
-        fetchContactTypes();
-      } else {
+      if (!response.ok) {
         const text = await response.text();
-        setSnackbar({open: true, message: 'Ошибка импорта: ' + text, severity: 'error'});
+        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
+        setImportDialogOpen(true);
+        return;
       }
+      const result = await response.json();
+      setImportLog(result);
+      setImportDialogOpen(true);
+      fetchContactTypes();
     } catch (e) {
-      setSnackbar({open: true, message: 'Ошибка импорта', severity: 'error'});
+      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+      setImportDialogOpen(true);
     }
   };
 
@@ -287,6 +293,35 @@ const ContactTypesPage: React.FC = () => {
             <Button onClick={handleSubmit} variant="contained">
               {editingContactType ? 'Сохранить' : 'Добавить'}
             </Button>
+          </DialogActions>
+        </Dialog>
+
+        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Результат импорта</DialogTitle>
+          <DialogContent>
+            <Typography>Успешно импортировано: <b>{importLog?.imported ?? 0}</b></Typography>
+            <Typography>Ошибок: <b>{importLog?.errors.length ?? 0}</b></Typography>
+            {importLog?.errors.length > 0 && (
+              <Table size="small" sx={{ mt: 2 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Строка</TableCell>
+                    <TableCell>Ошибка</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {importLog.errors.map((err, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{err.row}</TableCell>
+                      <TableCell>{err.message}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setImportDialogOpen(false)}>Закрыть</Button>
           </DialogActions>
         </Dialog>
 

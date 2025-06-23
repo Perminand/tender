@@ -26,10 +26,18 @@ import ru.perminov.tender.repository.company.ContactPersonRepository;
 import ru.perminov.tender.repository.company.ContactRepository;
 import ru.perminov.tender.repository.company.ContactTypeRepository;
 import ru.perminov.tender.service.company.CompanyService;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -130,6 +138,91 @@ public class CompanyServiceImpl implements CompanyService {
         return companyRepository.findAll().stream()
                 .map(companyMapper::toCompanyDto)
                 .toList();
+    }
+
+    public static class ImportResult {
+        public int imported;
+        public java.util.List<Map<String, Object>> errors = new ArrayList<>();
+    }
+
+    @Override
+    @Transactional
+    public ImportResult importFromExcel(org.springframework.web.multipart.MultipartFile file) {
+        ImportResult result = new ImportResult();
+        try (java.io.InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) { // пропускаем header
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+                try {
+                    String inn = getCellStringValue(row.getCell(1));
+                    if (inn == null || inn.isBlank()) throw new RuntimeException("Пустой ИНН");
+                    if (companyRepository.findByInn(inn).isPresent()) throw new RuntimeException("Компания с таким ИНН уже существует");
+                    String kpp = getCellStringValue(row.getCell(2));
+                    String ogrn = getCellStringValue(row.getCell(3));
+                    String name = getCellStringValue(row.getCell(4));
+                    String legalName = getCellStringValue(row.getCell(5));
+                    String address = getCellStringValue(row.getCell(6));
+                    String typeName = getCellStringValue(row.getCell(7));
+                    String director = getCellStringValue(row.getCell(8));
+                    String phone = getCellStringValue(row.getCell(9));
+                    String email = getCellStringValue(row.getCell(10));
+
+                    if (typeName == null || typeName.isBlank()) throw new RuntimeException("Тип компании не указан");
+                    CompanyType companyType = typeCompanyRepository.findByName(typeName)
+                        .orElseGet(() -> typeCompanyRepository.save(new CompanyType(null, typeName)));
+
+                    Company company = new Company();
+                    company.setInn(inn);
+                    company.setKpp(kpp);
+                    company.setOgrn(ogrn);
+                    company.setName(name);
+                    company.setLegalName(legalName);
+                    company.setAddress(address);
+                    company.setCompanyType(companyType);
+                    company.setDirector(director);
+                    company.setPhone(phone);
+                    company.setEmail(email);
+                    companyRepository.save(company);
+                    result.imported++;
+                } catch (Exception e) {
+                    Map<String, Object> err = new HashMap<>();
+                    err.put("row", i + 1); // Excel строки с 1, а не с 0
+                    err.put("message", e.getMessage());
+                    result.errors.add(err);
+                }
+            }
+        } catch (Exception e) {
+            Map<String, Object> err = new HashMap<>();
+            err.put("row", 0);
+            err.put("message", "Ошибка файла: " + e.getMessage());
+            result.errors.add(err);
+        }
+        return result;
+    }
+
+    private String getCellStringValue(Cell cell) {
+        if (cell == null) return null;
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                double d = cell.getNumericCellValue();
+                if (d == (long) d) {
+                    return String.valueOf((long) d);
+                } else {
+                    return String.valueOf(d);
+                }
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            case BLANK:
+                return "";
+            default:
+                return cell.toString();
+        }
     }
 
     private CompanyType createOrUpdateType(CompanyDtoNew dto) {

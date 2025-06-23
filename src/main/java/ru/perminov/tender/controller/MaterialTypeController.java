@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.perminov.tender.dto.MaterialTypeDtoNew;
 import ru.perminov.tender.dto.MaterialTypeDtoUpdate;
+import ru.perminov.tender.dto.ImportResultDto;
 import ru.perminov.tender.model.MaterialType;
 import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.MaterialTypeService;
@@ -75,8 +76,8 @@ public class MaterialTypeController {
     }
 
     @PostMapping("/import")
-    public ResponseEntity<String> importFromExcel(@RequestParam("file") MultipartFile file) {
-        int importedCount = materialTypeService.importFromExcel(file);
-        return ResponseEntity.ok("Импортировано: " + importedCount);
+    public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        ImportResultDto result = materialTypeService.importFromExcel(file);
+        return ResponseEntity.ok(result);
     }
 } 

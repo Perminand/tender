@@ -8,7 +8,15 @@ import ru.perminov.tender.mapper.UnitMapper;
 import ru.perminov.tender.model.Unit;
 import ru.perminov.tender.repository.UnitRepository;
 import ru.perminov.tender.service.UnitService;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.web.multipart.MultipartFile;
+import ru.perminov.tender.dto.ImportResultDto;
 
+import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,27 +63,54 @@ public class UnitServiceImpl implements UnitService {
     }
 
     @Override
-    public int importFromExcel(org.springframework.web.multipart.MultipartFile file) {
-        try (java.io.InputStream is = file.getInputStream();
-             org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(is)) {
-            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
-            int count = 0;
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) { // пропускаем header
-                org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
+    public ImportResultDto importFromExcel(MultipartFile file) {
+        ImportResultDto result = new ImportResultDto();
+        try (InputStream is = file.getInputStream();
+             Workbook workbook = new XSSFWorkbook(is)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) { // skipping header
+                Row row = sheet.getRow(i);
                 if (row == null) continue;
-                String name = row.getCell(1) != null ? row.getCell(1).getStringCellValue() : null;
-                String shortName = row.getCell(2) != null ? row.getCell(2).getStringCellValue() : null;
-                if (name == null || name.isBlank() || shortName == null || shortName.isBlank()) continue;
-                if (unitRepository.existsByName(name)) continue;
-                Unit unit = new Unit();
-                unit.setName(name);
-                unit.setShortName(shortName);
-                unitRepository.save(unit);
-                count++;
+
+                try {
+                    String name = getCellValueAsString(row.getCell(1));
+                    String shortName = getCellValueAsString(row.getCell(2));
+
+                    if (name == null || name.isBlank()) {
+                        result.addError(i + 1, "Название не может быть пустым.");
+                        continue;
+                    }
+
+                    if (unitRepository.existsByName(name)) {
+                        result.addError(i + 1, "Единица измерения с названием '" + name + "' уже существует.");
+                        continue;
+                    }
+                    Unit unit = new Unit();
+                    unit.setName(name);
+                    unit.setShortName(shortName);
+                    unitRepository.save(unit);
+                    result.incrementImported();
+                } catch (Exception e) {
+                    result.addError(i + 1, "Ошибка в строке: " + e.getMessage());
+                }
             }
-            return count;
         } catch (Exception e) {
-            throw new RuntimeException("Ошибка импорта: " + e.getMessage(), e);
+            throw new RuntimeException("Ошибка импорта файла: " + e.getMessage(), e);
+        }
+        return result;
+    }
+
+    private String getCellValueAsString(Cell cell) {
+        if (cell == null) {
+            return null;
+        }
+        switch (cell.getCellType()) {
+            case STRING:
+                return cell.getStringCellValue();
+            case NUMERIC:
+                return String.valueOf((long) cell.getNumericCellValue());
+            default:
+                return null;
         }
     }
 } 

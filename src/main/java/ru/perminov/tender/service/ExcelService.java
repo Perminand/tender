@@ -196,7 +196,7 @@ public class ExcelService {
                 row.createCell(5).setCellValue(material.code() != null ? material.code() : "");
                 row.createCell(6).setCellValue(material.category() != null ? material.category().name() : "");
 
-                // Единицы измерения (множественные значения)
+                // Единицы измерения (только имена через запятую)
                 String unitsStr = "";
                 if (material.units() != null && !material.units().isEmpty()) {
                     unitsStr = material.units().stream()

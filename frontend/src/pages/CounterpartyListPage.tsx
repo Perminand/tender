@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container } from '@mui/material';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 
 interface Counterparty {
   id: number;
@@ -22,6 +23,10 @@ const CounterpartyListPage: React.FC = () => {
   const [counterparties, setCounterparties] = useState<Counterparty[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCounterparties, setFilteredCounterparties] = useState<Counterparty[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({open: false, message: '', severity: 'success'});
+  const [importLog, setImportLog] = useState<{imported: number, errors: {row: number, message: string}[]} | null>(null);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchCounterparties = async () => {
@@ -76,6 +81,48 @@ const CounterpartyListPage: React.FC = () => {
     }
   };
 
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files?.length) return;
+    const file = event.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('http://localhost:8080/api/companies/import', { method: 'POST', body: formData });
+      const result = await response.json();
+      setImportLog(result);
+      setImportDialogOpen(true);
+      // обновить список
+      const data = await fetch('http://localhost:8080/api/companies').then(r => r.json());
+      setCounterparties(data);
+      setFilteredCounterparties(data);
+    } catch (e) {
+      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+      setImportDialogOpen(true);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Вы уверены, что хотите удалить этого контрагента?')) return;
+    try {
+      const response = await fetch(`http://localhost:8080/api/companies/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        setSnackbar({open: true, message: 'Контрагент удалён', severity: 'success'});
+        const data = await fetch('http://localhost:8080/api/companies').then(r => r.json());
+        setCounterparties(data);
+        setFilteredCounterparties(data);
+      } else {
+        const text = await response.text();
+        setSnackbar({open: true, message: 'Ошибка удаления: ' + text, severity: 'error'});
+      }
+    } catch (e) {
+      setSnackbar({open: true, message: 'Ошибка удаления', severity: 'error'});
+    }
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -93,15 +140,28 @@ const CounterpartyListPage: React.FC = () => {
             Управление контрагентами
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button 
-              variant="outlined" 
-              color="primary" 
-              startIcon={<FileDownloadIcon />}
+            <Button
+              variant="outlined"
+              startIcon={<FileUploadIcon />}
               onClick={handleExport}
             >
               Экспорт в Excel
             </Button>
-            <Button variant="contained" color="primary" onClick={() => navigate('/reference/counterparties/new')}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleImportClick}
+            >
+              Импорт из Excel
+            </Button>
+            <input
+              type="file"
+              accept=".xlsx"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleImport}
+            />
+            <Button variant="contained" onClick={() => navigate('/reference/counterparties/new')}>
               + Добавить контрагента
             </Button>
           </Box>
@@ -149,7 +209,7 @@ const CounterpartyListPage: React.FC = () => {
                     <IconButton color="primary" onClick={() => navigate(`/reference/counterparties/${counterparty.id}/edit`)}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton color="error">
+                    <IconButton color="error" onClick={() => handleDelete(counterparty.id)}>
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
@@ -166,6 +226,41 @@ const CounterpartyListPage: React.FC = () => {
             </Typography>
           </Box>
         )}
+
+        <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({...snackbar, open: false})}>
+          <Alert onClose={() => setSnackbar({...snackbar, open: false})} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
+
+        <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
+          <DialogTitle>Результат импорта</DialogTitle>
+          <DialogContent>
+            <Typography>Успешно импортировано: <b>{importLog?.imported ?? 0}</b></Typography>
+            <Typography>Ошибок: <b>{importLog?.errors.length ?? 0}</b></Typography>
+            {importLog?.errors.length > 0 && (
+              <Table size="small" sx={{ mt: 2 }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Строка</TableCell>
+                    <TableCell>Ошибка</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {importLog.errors.map((err, idx) => (
+                    <TableRow key={idx}>
+                      <TableCell>{err.row}</TableCell>
+                      <TableCell>{err.message}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setImportDialogOpen(false)}>Закрыть</Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     </Container>
   );

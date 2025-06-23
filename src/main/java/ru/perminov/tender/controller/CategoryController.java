@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ru.perminov.tender.dto.CategoryDtoNew;
 import ru.perminov.tender.dto.CategoryDtoUpdate;
+import ru.perminov.tender.dto.ImportResultDto;
 import ru.perminov.tender.model.Category;
 import ru.perminov.tender.service.CategoryService;
 import ru.perminov.tender.service.ExcelService;
@@ -75,8 +76,8 @@ public class CategoryController {
     }
 
     @PostMapping("/import")
-    public ResponseEntity<String> importFromExcel(@RequestParam("file") MultipartFile file) {
-        int importedCount = categoryService.importFromExcel(file);
-        return ResponseEntity.ok("Импортировано: " + importedCount);
+    public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        ImportResultDto result = categoryService.importFromExcel(file);
+        return ResponseEntity.ok(result);
     }
 } 

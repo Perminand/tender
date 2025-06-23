@@ -4,6 +4,8 @@ import ru.perminov.tender.dto.MaterialTypeDto;
 import ru.perminov.tender.dto.MaterialTypeDtoNew;
 import ru.perminov.tender.dto.MaterialTypeDtoUpdate;
 import ru.perminov.tender.model.MaterialType;
+import ru.perminov.tender.dto.ImportResultDto;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +22,6 @@ public interface MaterialTypeService {
 
     List<MaterialType> getAll();
 
-    int importFromExcel(org.springframework.web.multipart.MultipartFile file);
+    ImportResultDto importFromExcel(MultipartFile file);
 
 } 

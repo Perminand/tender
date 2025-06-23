@@ -10,11 +10,13 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.perminov.tender.dto.material.MaterialDto;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
 import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.MaterialService;
+import ru.perminov.tender.dto.ImportResultDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -71,5 +73,11 @@ public class MaterialController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        ImportResultDto result = materialService.importFromExcel(file);
+        return ResponseEntity.ok(result);
     }
 } 
