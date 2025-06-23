@@ -20,7 +20,7 @@ import {
   Typography,
   Paper
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 interface MaterialType {
@@ -117,6 +117,27 @@ const MaterialTypeListPage: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/material-types/export');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'material_types.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Failed to export material types:", error);
+    }
+  };
+
   const filteredMaterialTypes = materialTypes.filter(materialType =>
     materialType.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -141,22 +162,20 @@ const MaterialTypeListPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             Управление типами материалов
           </Typography>
-          <Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExport}
+            >
+              Экспорт в Excel
+            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
-              sx={{ mr: 1 }}
             >
               Добавить тип материала
-            </Button>
-            <Button
-                variant="outlined"
-                startIcon={<DownloadIcon />}
-                href="http://localhost:8080/api/material-types/export"
-                target="_blank"
-            >
-              Экспорт
             </Button>
           </Box>
         </Box>
@@ -205,29 +224,31 @@ const MaterialTypeListPage: React.FC = () => {
             </TableContainer>
           </CardContent>
         </Card>
-      </Box>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingMaterialType ? 'Редактировать тип материала' : 'Добавить тип материала'}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Название"
-            variant="outlined"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Отмена</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingMaterialType ? 'Сохранить' : 'Добавить'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            {editingMaterialType ? 'Редактировать тип материала' : 'Добавить тип материала'}
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Название"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>Отмена</Button>
+            <Button onClick={handleSubmit} variant="contained">
+              {editingMaterialType ? 'Сохранить' : 'Добавить'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Container>
   );
 };

@@ -8,11 +8,8 @@ import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
-import ru.perminov.tender.dto.company.CompanyExportDto;
 import ru.perminov.tender.dto.company.contact.ContactDetailsDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDetailsDto;
-import ru.perminov.tender.dto.company.contact.ContactPersonDto;
-import ru.perminov.tender.dto.company.contact.ContactDto;
 import ru.perminov.tender.mapper.company.CompanyMapper;
 import ru.perminov.tender.mapper.company.ContactPersonMapper;
 import ru.perminov.tender.model.company.Bank;
@@ -195,69 +192,5 @@ public class CompanyServiceImpl implements CompanyService {
             }
             contactPerson.getContacts().add(contact);
         }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<CompanyExportDto> getAllForExport() {
-        return companyRepository.findAll().stream()
-                .map(this::mapToExportDto)
-                .toList();
-    }
-
-    private CompanyExportDto mapToExportDto(Company company) {
-        // Маппинг банковских реквизитов
-        List<BankAccountDto> bankDetails = company.getBankAccounts().stream()
-                .map(account -> {
-                    BankAccountDto dto = new BankAccountDto();
-                    dto.setBankName(account.getBank().getName());
-                    dto.setBik(account.getBank().getBik());
-                    dto.setCheckingAccount(account.getCheckingAccount());
-                    dto.setCorrespondentAccount(account.getBank().getCorrespondentAccount());
-                    return dto;
-                })
-                .toList();
-
-        // Маппинг контактных лиц
-        List<ContactPersonDto> contactPersons = company.getContactPersons().stream()
-                .map(person -> {
-                    List<ContactDto> contacts = person.getContacts().stream()
-                            .map(contact -> new ContactDto(
-                                    contact.getId(),
-                                    new ru.perminov.tender.dto.company.contact.ContactTypeDto(
-                                            contact.getContactType().getId(),
-                                            contact.getContactType().getName()
-                                    ),
-                                    contact.getValue()
-                            ))
-                            .toList();
-
-                    return new ContactPersonDto(
-                            person.getId(),
-                            person.getCompany().getId(),
-                            person.getLastName(),
-                            person.getFirstName(),
-                            person.getPosition(),
-                            contacts
-                    );
-                })
-                .toList();
-
-        return new CompanyExportDto(
-                company.getId(),
-                company.getInn(),
-                company.getKpp(),
-                company.getOgrn(),
-                company.getName(),
-                company.getLegalName(),
-                company.getAddress(),
-                company.getCompanyType() != null ? company.getCompanyType().getId().toString() : null,
-                company.getCompanyType() != null ? company.getCompanyType().getName() : null,
-                company.getDirector(),
-                company.getPhone(),
-                company.getEmail(),
-                bankDetails,
-                contactPersons
-        );
     }
 } 

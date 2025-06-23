@@ -63,9 +63,8 @@ public class MaterialController {
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportMaterials() {
-        log.info("Пришел GET запрос на экспорт номенклатуры");
         String filename = "materials.xlsx";
-        List<ru.perminov.tender.dto.material.MaterialExportDto> materials = materialService.getAllForExport();
+        List<Material> materials = materialService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportMaterialsToExcel(materials));
 
         return ResponseEntity.ok()

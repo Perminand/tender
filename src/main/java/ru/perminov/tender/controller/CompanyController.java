@@ -64,9 +64,8 @@ public class CompanyController {
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportCompanies() {
-        log.info("Пришел GET запрос на экспорт контрагентов");
         String filename = "companies.xlsx";
-        List<ru.perminov.tender.dto.company.CompanyExportDto> companies = companyService.getAllForExport();
+        List<CompanyDto> companies = companyService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportCompaniesToExcel(companies));
 
         return ResponseEntity.ok()

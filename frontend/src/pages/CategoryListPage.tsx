@@ -20,7 +20,7 @@ import {
   Typography,
   Paper
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, Download as DownloadIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 interface Category {
@@ -117,6 +117,27 @@ const CategoryListPage: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/categories/export');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'categories.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Failed to export categories:", error);
+    }
+  };
+
   const filteredCategories = categories.filter(category =>
     category.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -141,22 +162,20 @@ const CategoryListPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             Управление категориями материалов
           </Typography>
-          <Box>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExport}
+            >
+              Экспорт в Excel
+            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
-              sx={{ mr: 1 }}
             >
               Добавить категорию
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              href="http://localhost:8080/api/categories/export"
-              target="_blank"
-            >
-              Экспорт
             </Button>
           </Box>
         </Box>
@@ -205,29 +224,31 @@ const CategoryListPage: React.FC = () => {
             </TableContainer>
           </CardContent>
         </Card>
-      </Box>
 
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>
-          {editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}
-        </DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="Название"
-            variant="outlined"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            sx={{ mt: 2 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Отмена</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingCategory ? 'Сохранить' : 'Добавить'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
+          <DialogTitle>
+            {editingCategory ? 'Редактировать категорию' : 'Добавить категорию'}
+          </DialogTitle>
+          <DialogContent>
+            <TextField
+              autoFocus
+              margin="dense"
+              label="Название"
+              type="text"
+              fullWidth
+              variant="outlined"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            />
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleCloseDialog}>Отмена</Button>
+            <Button onClick={handleSubmit} variant="contained">
+              {editingCategory ? 'Сохранить' : 'Добавить'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+      </Box>
     </Container>
   );
 };

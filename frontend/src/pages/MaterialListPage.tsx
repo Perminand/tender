@@ -5,6 +5,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 interface Category {
   id: string;
@@ -78,6 +79,27 @@ const MaterialListPage: React.FC = () => {
     setFilteredMaterials(filtered);
   }, [searchTerm, materials]);
 
+  const handleExport = async () => {
+    try {
+      const response = await fetch('/api/materials/export');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'materials.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Failed to export materials:", error);
+    }
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -94,9 +116,19 @@ const MaterialListPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             Управление номенклатурой материалов
           </Typography>
-          <Button variant="contained" color="primary" onClick={() => navigate('/reference/materials/new')}>
-            + Добавить материал
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExport}
+            >
+              Экспорт в Excel
+            </Button>
+            <Button variant="contained" color="primary" onClick={() => navigate('/reference/materials/new')}>
+              + Добавить материал
+            </Button>
+          </Box>
         </Box>
 
         <Box sx={{ mb: 3 }}>

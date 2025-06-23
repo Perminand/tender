@@ -5,6 +5,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
 interface Counterparty {
   id: number;
@@ -54,6 +55,27 @@ const CounterpartyListPage: React.FC = () => {
     setFilteredCounterparties(filtered);
   }, [searchTerm, counterparties]);
 
+  const handleExport = async () => {
+    try {
+      const response = await fetch('http://localhost:8080/api/companies/export');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'companies.xlsx';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error("Failed to export companies:", error);
+    }
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -70,9 +92,19 @@ const CounterpartyListPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             Управление контрагентами
           </Typography>
-          <Button variant="contained" color="primary" onClick={() => navigate('/reference/counterparties/new')}>
-            + Добавить контрагента
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExport}
+            >
+              Экспорт в Excel
+            </Button>
+            <Button variant="contained" color="primary" onClick={() => navigate('/reference/counterparties/new')}>
+              + Добавить контрагента
+            </Button>
+          </Box>
         </Box>
 
         <Box sx={{ mb: 3 }}>

@@ -2,7 +2,6 @@ package ru.perminov.tender.service;
 
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
-import ru.perminov.tender.dto.material.MaterialExportDto;
 import ru.perminov.tender.model.Material;
 
 import java.util.List;
@@ -19,7 +18,5 @@ public interface MaterialService {
     Material getById(UUID id);
 
     List<Material> getAll();
-
-    List<MaterialExportDto> getAllForExport();
 
 } 

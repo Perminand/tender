@@ -16,6 +16,7 @@ import {
   ContactPhone as ContactPhoneIcon,
   Business as BusinessIcon,
   ShoppingCart as ShoppingCartIcon,
+  Architecture as ArchitectureIcon,
   ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -24,6 +25,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautif
 const initialBooks = [
   { id: 'counterparties', title: 'Контрагенты', description: 'Управление контрагентами', icon: <BusinessIcon sx={{ fontSize: 40 }} />, color: '#d32f2f', path: '/reference/counterparties' },
   { id: 'materials', title: 'Номенклатура', description: 'Управление номенклатурой', icon: <ShoppingCartIcon sx={{ fontSize: 40 }} />, color: '#ff9800', path: '/reference/materials' },
+  { id: 'project-objects', title: 'Объекты проекта', description: 'Управление объектами', icon: <ArchitectureIcon sx={{ fontSize: 40 }} />, color: '#9c27b0', path: '/reference/project-objects' },
   { id: 'categories', title: 'Категории', description: 'Управление категориями', icon: <CategoryIcon sx={{ fontSize: 40 }} />, color: '#1976d2', path: '/reference/categories' },
   { id: 'material-types', title: 'Типы материалов', description: 'Управление типами', icon: <InventoryIcon sx={{ fontSize: 40 }} />, color: '#388e3c', path: '/reference/material-types' },
   { id: 'units', title: 'Ед. измерения', description: 'Управление ед. изм.', icon: <StraightenIcon sx={{ fontSize: 40 }} />, color: '#f57c00', path: '/reference/units' },

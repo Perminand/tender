@@ -6,13 +6,11 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
-import ru.perminov.tender.dto.company.CompanyExportDto;
-import ru.perminov.tender.dto.company.BankAccountDto;
+import ru.perminov.tender.dto.ProjectObjectDto;
+import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDto;
-import ru.perminov.tender.dto.company.contact.ContactPersonDto;
-import ru.perminov.tender.dto.company.contact.ContactDto;
-import ru.perminov.tender.dto.material.MaterialExportDto;
 import ru.perminov.tender.model.Category;
+import ru.perminov.tender.model.Material;
 import ru.perminov.tender.model.MaterialType;
 import ru.perminov.tender.model.Unit;
 
@@ -137,20 +135,14 @@ public class ExcelService {
         }
     }
 
-    public ByteArrayInputStream exportCompaniesToExcel(List<CompanyExportDto> companies) {
-        String[] columns = {
-            "ID", "ИНН", "КПП", "ОГРН", "Название", "Юридическое название", 
-            "Адрес", "Тип компании", "Руководитель", "Телефон", "Email",
-            "Банковские реквизиты", "Контактные лица"
-        };
-        
+    public ByteArrayInputStream exportCompaniesToExcel(List<CompanyDto> companies) {
+        String[] columns = {"ID", "ИНН", "КПП", "ОГРН", "Название", "Юридическое название", "Адрес", "Тип компании", "Директор", "Телефон", "Email"};
         try (
                 Workbook workbook = new XSSFWorkbook();
                 ByteArrayOutputStream out = new ByteArrayOutputStream()
         ) {
-            Sheet sheet = workbook.createSheet("Контрагенты");
+            Sheet sheet = workbook.createSheet("Companies");
 
-            // Создаем заголовки
             Row headerRow = sheet.createRow(0);
             for (int col = 0; col < columns.length; col++) {
                 Cell cell = headerRow.createCell(col);
@@ -158,9 +150,8 @@ public class ExcelService {
             }
 
             int rowIdx = 1;
-            for (CompanyExportDto company : companies) {
+            for (CompanyDto company : companies) {
                 Row row = sheet.createRow(rowIdx++);
-                
                 row.createCell(0).setCellValue(company.id().toString());
                 row.createCell(1).setCellValue(company.inn() != null ? company.inn() : "");
                 row.createCell(2).setCellValue(company.kpp() != null ? company.kpp() : "");
@@ -172,66 +163,23 @@ public class ExcelService {
                 row.createCell(8).setCellValue(company.director() != null ? company.director() : "");
                 row.createCell(9).setCellValue(company.phone() != null ? company.phone() : "");
                 row.createCell(10).setCellValue(company.email() != null ? company.email() : "");
-                
-                // Банковские реквизиты
-                StringBuilder bankDetails = new StringBuilder();
-                if (company.bankDetails() != null) {
-                    for (BankAccountDto bank : company.bankDetails()) {
-                        if (bankDetails.length() > 0) bankDetails.append("; ");
-                        bankDetails.append(bank.getBankName())
-                                 .append(" (БИК: ").append(bank.getBik()).append(")");
-                    }
-                }
-                row.createCell(11).setCellValue(bankDetails.toString());
-                
-                // Контактные лица
-                StringBuilder contactPersons = new StringBuilder();
-                if (company.contactPersons() != null) {
-                    for (ContactPersonDto person : company.contactPersons()) {
-                        if (contactPersons.length() > 0) contactPersons.append("; ");
-                        contactPersons.append(person.lastName())
-                                    .append(" ").append(person.firstName())
-                                    .append(" (").append(person.position()).append(")");
-                        
-                        // Добавляем контакты
-                        if (person.contacts() != null && !person.contacts().isEmpty()) {
-                            contactPersons.append(" - ");
-                            for (ContactDto contact : person.contacts()) {
-                                contactPersons.append(contact.contactType().name())
-                                            .append(": ").append(contact.value()).append(", ");
-                            }
-                            contactPersons.setLength(contactPersons.length() - 2); // убираем последнюю запятую
-                        }
-                    }
-                }
-                row.createCell(12).setCellValue(contactPersons.toString());
-            }
-
-            // Автоматически подгоняем ширину столбцов
-            for (int i = 0; i < columns.length; i++) {
-                sheet.autoSizeColumn(i);
             }
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
-            throw new RuntimeException("fail to export companies to Excel file: " + e.getMessage());
+            throw new RuntimeException("fail to import data to Excel file: " + e.getMessage());
         }
     }
 
-    public ByteArrayInputStream exportMaterialsToExcel(List<MaterialExportDto> materials) {
-        String[] columns = {
-            "ID", "Название", "Описание", "Тип материала", "Ссылка", 
-            "Код/Артикул", "Категория", "Единицы измерения", "Дата создания", "Дата обновления"
-        };
-        
+    public ByteArrayInputStream exportMaterialsToExcel(List<Material> materials) {
+        String[] columns = {"ID", "Название", "Описание", "Тип материала", "Ссылка", "Код/Артикул", "Категория", "Единицы измерения", "Дата создания", "Дата обновления"};
         try (
                 Workbook workbook = new XSSFWorkbook();
                 ByteArrayOutputStream out = new ByteArrayOutputStream()
         ) {
-            Sheet sheet = workbook.createSheet("Номенклатура");
+            Sheet sheet = workbook.createSheet("Materials");
 
-            // Создаем заголовки
             Row headerRow = sheet.createRow(0);
             for (int col = 0; col < columns.length; col++) {
                 Cell cell = headerRow.createCell(col);
@@ -239,38 +187,63 @@ public class ExcelService {
             }
 
             int rowIdx = 1;
-            for (MaterialExportDto material : materials) {
+            for (Material material : materials) {
                 Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(material.getId().toString());
+                row.createCell(1).setCellValue(material.getName() != null ? material.getName() : "");
+                row.createCell(2).setCellValue(material.getDescription() != null ? material.getDescription() : "");
+                row.createCell(3).setCellValue(material.getMaterialType() != null ? material.getMaterialType().getName() : "");
+                row.createCell(4).setCellValue(material.getLink() != null ? material.getLink() : "");
+                row.createCell(5).setCellValue(material.getCode() != null ? material.getCode() : "");
+                row.createCell(6).setCellValue(material.getCategory() != null ? material.getCategory().getName() : "");
                 
-                row.createCell(0).setCellValue(material.id().toString());
-                row.createCell(1).setCellValue(material.name() != null ? material.name() : "");
-                row.createCell(2).setCellValue(material.description() != null ? material.description() : "");
-                row.createCell(3).setCellValue(material.materialTypeName() != null ? material.materialTypeName() : "");
-                row.createCell(4).setCellValue(material.link() != null ? material.link() : "");
-                row.createCell(5).setCellValue(material.code() != null ? material.code() : "");
-                row.createCell(6).setCellValue(material.categoryName() != null ? material.categoryName() : "");
-                
-                // Единицы измерения
-                String units = "";
-                if (material.unitNames() != null && !material.unitNames().isEmpty()) {
-                    units = String.join(", ", material.unitNames());
+                // Единицы измерения (множественные значения)
+                String unitsStr = "";
+                if (material.getUnits() != null && !material.getUnits().isEmpty()) {
+                    unitsStr = material.getUnits().stream()
+                            .map(Unit::getName)
+                            .reduce((a, b) -> a + ", " + b)
+                            .orElse("");
                 }
-                row.createCell(7).setCellValue(units);
+                row.createCell(7).setCellValue(unitsStr);
                 
-                // Даты
-                row.createCell(8).setCellValue(material.createdAt() != null ? material.createdAt().toString() : "");
-                row.createCell(9).setCellValue(material.updatedAt() != null ? material.updatedAt().toString() : "");
-            }
-
-            // Автоматически подгоняем ширину столбцов
-            for (int i = 0; i < columns.length; i++) {
-                sheet.autoSizeColumn(i);
+                row.createCell(8).setCellValue(material.getCreatedAt() != null ? material.getCreatedAt().toString() : "");
+                row.createCell(9).setCellValue(material.getUpdatedAt() != null ? material.getUpdatedAt().toString() : "");
             }
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
-            throw new RuntimeException("fail to export materials to Excel file: " + e.getMessage());
+            throw new RuntimeException("fail to import data to Excel file: " + e.getMessage());
+        }
+    }
+
+    public ByteArrayInputStream exportProjectObjectsToExcel(List<ProjectObjectDto> projectObjects) {
+        String[] columns = {"ID", "Название", "Описание"};
+        try (
+                Workbook workbook = new XSSFWorkbook();
+                ByteArrayOutputStream out = new ByteArrayOutputStream()
+        ) {
+            Sheet sheet = workbook.createSheet("ProjectObjects");
+
+            Row headerRow = sheet.createRow(0);
+            for (int col = 0; col < columns.length; col++) {
+                Cell cell = headerRow.createCell(col);
+                cell.setCellValue(columns[col]);
+            }
+
+            int rowIdx = 1;
+            for (ProjectObjectDto projectObject : projectObjects) {
+                Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(projectObject.id().toString());
+                row.createCell(1).setCellValue(projectObject.name() != null ? projectObject.name() : "");
+                row.createCell(2).setCellValue(projectObject.description() != null ? projectObject.description() : "");
+            }
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            throw new RuntimeException("fail to import data to Excel file: " + e.getMessage());
         }
     }
 } 

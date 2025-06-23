@@ -23,62 +23,63 @@ import {
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-interface ContactType {
+interface ProjectObject {
   id: string;
   name: string;
+  description: string;
 }
 
-const ContactTypesPage: React.FC = () => {
-  const [contactTypes, setContactTypes] = useState<ContactType[]>([]);
+const ProjectObjectListPage: React.FC = () => {
+  const [projectObjects, setProjectObjects] = useState<ProjectObject[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
-  const [editingContactType, setEditingContactType] = useState<ContactType | null>(null);
-  const [formData, setFormData] = useState({ name: '' });
+  const [editingProjectObject, setEditingProjectObject] = useState<ProjectObject | null>(null);
+  const [formData, setFormData] = useState({ name: '', description: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
-  const fetchContactTypes = async () => {
+  const fetchProjectObjects = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types');
+      const response = await fetch('http://localhost:8080/api/project-objects');
       if (response.ok) {
         const data = await response.json();
-        setContactTypes(data);
+        setProjectObjects(data);
       }
     } catch (error) {
-      console.error('Error fetching contact types:', error);
+      console.error('Error fetching project objects:', error);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchContactTypes();
+    fetchProjectObjects();
   }, []);
 
-  const handleOpenDialog = (contactType?: ContactType) => {
-    if (contactType) {
-      setEditingContactType(contactType);
-      setFormData({ name: contactType.name });
+  const handleOpenDialog = (projectObject?: ProjectObject) => {
+    if (projectObject) {
+      setEditingProjectObject(projectObject);
+      setFormData({ name: projectObject.name, description: projectObject.description });
     } else {
-      setEditingContactType(null);
-      setFormData({ name: '' });
+      setEditingProjectObject(null);
+      setFormData({ name: '', description: '' });
     }
     setOpenDialog(true);
   };
 
   const handleCloseDialog = () => {
     setOpenDialog(false);
-    setEditingContactType(null);
-    setFormData({ name: '' });
+    setEditingProjectObject(null);
+    setFormData({ name: '', description: '' });
   };
 
   const handleSubmit = async () => {
     try {
-      const url = editingContactType 
-        ? `http://localhost:8080/api/contact-types/${editingContactType.id}`
-        : 'http://localhost:8080/api/contact-types';
+      const url = editingProjectObject 
+        ? `http://localhost:8080/api/project-objects/${editingProjectObject.id}`
+        : 'http://localhost:8080/api/project-objects';
       
-      const method = editingContactType ? 'PUT' : 'POST';
+      const method = editingProjectObject ? 'PUT' : 'POST';
       
       const response = await fetch(url, {
         method,
@@ -90,36 +91,36 @@ const ContactTypesPage: React.FC = () => {
 
       if (response.ok) {
         handleCloseDialog();
-        fetchContactTypes();
+        fetchProjectObjects();
       } else {
-        console.error('Error saving contact type');
+        console.error('Error saving project object');
       }
     } catch (error) {
-      console.error('Error saving contact type:', error);
+      console.error('Error saving project object:', error);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (window.confirm('Вы уверены, что хотите удалить этот тип контакта?')) {
+    if (window.confirm('Вы уверены, что хотите удалить этот объект проекта?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/contact-types/${id}`, {
+        const response = await fetch(`http://localhost:8080/api/project-objects/${id}`, {
           method: 'DELETE',
         });
 
         if (response.ok) {
-          fetchContactTypes();
+          fetchProjectObjects();
         } else {
-          console.error('Error deleting contact type');
+          console.error('Error deleting project object');
         }
       } catch (error) {
-        console.error('Error deleting contact type:', error);
+        console.error('Error deleting project object:', error);
       }
     }
   };
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types/export');
+      const response = await fetch('http://localhost:8080/api/project-objects/export');
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -128,18 +129,19 @@ const ContactTypesPage: React.FC = () => {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'contact_types.xlsx';
+      a.download = 'project_objects.xlsx';
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error("Failed to export contact types:", error);
+      console.error("Failed to export project objects:", error);
     }
   };
 
-  const filteredContactTypes = contactTypes.filter(contactType =>
-    contactType.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredProjectObjects = projectObjects.filter(projectObject =>
+    projectObject.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    projectObject.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (loading) {
@@ -154,13 +156,13 @@ const ContactTypesPage: React.FC = () => {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="h4" component="h1">
-            Типы контактов
+            Объекты проекта
           </Typography>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="body1" color="text.secondary">
-            Управление типами контактов
+            Управление объектами проекта
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
@@ -175,7 +177,7 @@ const ContactTypesPage: React.FC = () => {
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
             >
-              Добавить тип
+              Добавить объект
             </Button>
           </Box>
         </Box>
@@ -196,22 +198,24 @@ const ContactTypesPage: React.FC = () => {
                 <TableHead>
                   <TableRow>
                     <TableCell>Название</TableCell>
+                    <TableCell>Описание</TableCell>
                     <TableCell align="right">Действия</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredContactTypes.map((contactType) => (
-                    <TableRow key={contactType.id}>
-                      <TableCell>{contactType.name}</TableCell>
+                  {filteredProjectObjects.map((projectObject) => (
+                    <TableRow key={projectObject.id}>
+                      <TableCell>{projectObject.name}</TableCell>
+                      <TableCell>{projectObject.description}</TableCell>
                       <TableCell align="right">
                         <IconButton
-                          onClick={() => handleOpenDialog(contactType)}
+                          onClick={() => handleOpenDialog(projectObject)}
                           color="primary"
                         >
                           <EditIcon />
                         </IconButton>
                         <IconButton
-                          onClick={() => handleDelete(contactType.id)}
+                          onClick={() => handleDelete(projectObject.id)}
                           color="error"
                         >
                           <DeleteIcon />
@@ -227,7 +231,7 @@ const ContactTypesPage: React.FC = () => {
 
         <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
           <DialogTitle>
-            {editingContactType ? 'Редактировать тип контакта' : 'Добавить тип контакта'}
+            {editingProjectObject ? 'Редактировать объект проекта' : 'Добавить объект проекта'}
           </DialogTitle>
           <DialogContent>
             <TextField
@@ -239,12 +243,24 @@ const ContactTypesPage: React.FC = () => {
               variant="outlined"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              sx={{ mb: 2 }}
+            />
+            <TextField
+              margin="dense"
+              label="Описание"
+              type="text"
+              fullWidth
+              variant="outlined"
+              multiline
+              rows={3}
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             />
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCloseDialog}>Отмена</Button>
             <Button onClick={handleSubmit} variant="contained">
-              {editingContactType ? 'Сохранить' : 'Добавить'}
+              {editingProjectObject ? 'Сохранить' : 'Добавить'}
             </Button>
           </DialogActions>
         </Dialog>
@@ -253,4 +269,4 @@ const ContactTypesPage: React.FC = () => {
   );
 };
 
-export default ContactTypesPage; 
+export default ProjectObjectListPage; 

@@ -21,3 +21,5 @@ databaseChangeLog:
       file: db/changelog/changes/V009_create_units_table.sql
   - include:
       file: db/changelog/changes/V010_create_material_units_table.sql
+  - include:
+      file: db/changelog/changes/V011_create_project_objects_table.sql

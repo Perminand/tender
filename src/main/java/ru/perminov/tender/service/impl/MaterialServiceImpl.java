@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
-import ru.perminov.tender.dto.material.MaterialExportDto;
 import ru.perminov.tender.model.Category;
 import ru.perminov.tender.model.Material;
 import ru.perminov.tender.model.MaterialType;
@@ -106,34 +105,5 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     public List<Material> getAll() {
         return materialRepository.findAll();
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<MaterialExportDto> getAllForExport() {
-        return materialRepository.findAll().stream()
-                .map(this::mapToExportDto)
-                .toList();
-    }
-
-    private MaterialExportDto mapToExportDto(Material material) {
-        List<String> unitNames = material.getUnits().stream()
-                .map(Unit::getName)
-                .toList();
-
-        return new MaterialExportDto(
-                material.getId(),
-                material.getName(),
-                material.getDescription(),
-                material.getMaterialType() != null ? material.getMaterialType().getId().toString() : null,
-                material.getMaterialType() != null ? material.getMaterialType().getName() : null,
-                material.getLink(),
-                material.getCode(),
-                material.getCategory() != null ? material.getCategory().getId().toString() : null,
-                material.getCategory() != null ? material.getCategory().getName() : null,
-                unitNames,
-                material.getCreatedAt(),
-                material.getUpdatedAt()
-        );
     }
 } 
