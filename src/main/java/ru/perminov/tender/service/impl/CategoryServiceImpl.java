@@ -55,4 +55,28 @@ public class CategoryServiceImpl implements CategoryService {
     public List<Category> getAll() {
         return categoryRepository.findAll();
     }
+
+    @Override
+    @Transactional
+    public int importFromExcel(org.springframework.web.multipart.MultipartFile file) {
+        try (java.io.InputStream is = file.getInputStream();
+             org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(is)) {
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+            int count = 0;
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) { // пропускаем header
+                org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
+                if (row == null) continue;
+                String name = row.getCell(1) != null ? row.getCell(1).getStringCellValue() : null;
+                if (name == null || name.isBlank()) continue;
+                if (categoryRepository.existsByName(name)) continue;
+                Category category = new Category();
+                category.setName(name);
+                categoryRepository.save(category);
+                count++;
+            }
+            return count;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка импорта: " + e.getMessage(), e);
+        }
+    }
 } 

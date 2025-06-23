@@ -7,6 +7,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.perminov.tender.dto.UnitDto;
 import ru.perminov.tender.dto.UnitDtoNew;
 import ru.perminov.tender.dto.UnitDtoUpdate;
@@ -71,5 +72,11 @@ public class UnitController {
                 .map(unitMapper::toUnitDto)
                 .toList();
         return ResponseEntity.ok(unitDtos);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<String> importFromExcel(@RequestParam("file") MultipartFile file) {
+        int importedCount = unitService.importFromExcel(file);
+        return ResponseEntity.ok("Импортировано: " + importedCount);
     }
 } 

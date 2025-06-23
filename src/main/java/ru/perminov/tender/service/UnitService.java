@@ -20,4 +20,6 @@ public interface UnitService {
 
     List<Unit> getAll();
 
+    int importFromExcel(org.springframework.web.multipart.MultipartFile file);
+
 } 

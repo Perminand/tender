@@ -88,14 +88,17 @@ const ReferenceBooksPage: React.FC = () => {
                             height: '100%',
                             display: 'flex',
                             flexDirection: 'column',
-                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            transition: 'transform 0.2s, box-shadow 0.2s, background 0.2s',
                             transform: snapshot.isDragging ? 'rotate(3deg)' : 'none',
                             boxShadow: snapshot.isDragging ? 8 : 1,
+                            cursor: 'pointer',
                             '&:hover': {
                               transform: 'translateY(-4px)',
-                              boxShadow: 4
+                              boxShadow: 4,
+                              background: 'rgba(0,0,0,0.04)'
                             }
                           }}
+                          onClick={() => navigate(book.path)}
                         >
                           <CardContent sx={{ flexGrow: 1, textAlign: 'center' }}>
                             <Box sx={{ color: book.color, mb: 2 }}>
@@ -108,23 +111,6 @@ const ReferenceBooksPage: React.FC = () => {
                               {book.description}
                             </Typography>
                           </CardContent>
-                          <CardActions sx={{ justifyContent: 'center', pb: 2 }}>
-                            <Button
-                              variant="outlined"
-                              endIcon={<ArrowForwardIcon />}
-                              onClick={() => navigate(book.path)}
-                              sx={{
-                                borderColor: book.color,
-                                color: book.color,
-                                '&:hover': {
-                                  borderColor: book.color,
-                                  backgroundColor: `${book.color}10`
-                                }
-                              }}
-                            >
-                              Открыть
-                            </Button>
-                          </CardActions>
                         </Card>
                       </Grid>
                     )}

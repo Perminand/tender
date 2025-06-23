@@ -20,4 +20,6 @@ public interface CategoryService {
 
     List<Category> getAll();
 
+    int importFromExcel(org.springframework.web.multipart.MultipartFile file);
+
 } 

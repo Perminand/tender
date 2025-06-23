@@ -53,4 +53,29 @@ public class UnitServiceImpl implements UnitService {
     public List<Unit> getAll() {
         return unitRepository.findAll();
     }
+
+    @Override
+    public int importFromExcel(org.springframework.web.multipart.MultipartFile file) {
+        try (java.io.InputStream is = file.getInputStream();
+             org.apache.poi.ss.usermodel.Workbook workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(is)) {
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+            int count = 0;
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) { // пропускаем header
+                org.apache.poi.ss.usermodel.Row row = sheet.getRow(i);
+                if (row == null) continue;
+                String name = row.getCell(1) != null ? row.getCell(1).getStringCellValue() : null;
+                String shortName = row.getCell(2) != null ? row.getCell(2).getStringCellValue() : null;
+                if (name == null || name.isBlank() || shortName == null || shortName.isBlank()) continue;
+                if (unitRepository.existsByName(name)) continue;
+                Unit unit = new Unit();
+                unit.setName(name);
+                unit.setShortName(shortName);
+                unitRepository.save(unit);
+                count++;
+            }
+            return count;
+        } catch (Exception e) {
+            throw new RuntimeException("Ошибка импорта: " + e.getMessage(), e);
+        }
+    }
 } 

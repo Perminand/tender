@@ -13,4 +13,5 @@ public interface ContactTypeService {
     void delete(UUID id);
     ContactTypeDto getById(UUID id);
     List<ContactTypeDto> getAll();
+    int importFromExcel(org.springframework.web.multipart.MultipartFile file);
 } 

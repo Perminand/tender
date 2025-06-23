@@ -20,7 +20,7 @@ import {
   Typography,
   Paper
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 interface ProjectDto {
@@ -188,7 +188,7 @@ const ProjectListPage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="outlined"
-              color="success"
+              startIcon={<FileDownloadIcon />}
               onClick={handleImportClick}
               sx={{ mr: 1 }}
             >
@@ -203,7 +203,7 @@ const ProjectListPage: React.FC = () => {
             />
             <Button
               variant="outlined"
-              startIcon={<FileDownloadIcon />}
+              startIcon={<FileUploadIcon />}
               onClick={handleExport}
             >
               Экспорт в Excel

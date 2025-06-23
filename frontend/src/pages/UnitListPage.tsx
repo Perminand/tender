@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Button,
@@ -18,9 +18,11 @@ import {
   TableRow,
   TextField,
   Typography,
-  Paper
+  Paper,
+  Snackbar,
+  Alert
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 interface Unit {
@@ -36,7 +38,9 @@ const UnitListPage: React.FC = () => {
   const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
   const [formData, setFormData] = useState({ name: '', shortName: '' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({open: false, message: '', severity: 'success'});
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchUnits = async () => {
     try {
@@ -139,6 +143,29 @@ const UnitListPage: React.FC = () => {
     }
   };
 
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files?.length) return;
+    const file = event.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const response = await fetch('http://localhost:8080/api/units/import', { method: 'POST', body: formData });
+      if (response.ok) {
+        setSnackbar({open: true, message: 'Импорт успешно завершён', severity: 'success'});
+        fetchUnits();
+      } else {
+        const text = await response.text();
+        setSnackbar({open: true, message: 'Ошибка импорта: ' + text, severity: 'error'});
+      }
+    } catch (e) {
+      setSnackbar({open: true, message: 'Ошибка импорта', severity: 'error'});
+    }
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
   const filteredUnits = units.filter(unit =>
     unit.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     unit.shortName.toLowerCase().includes(searchTerm.toLowerCase())
@@ -167,11 +194,25 @@ const UnitListPage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="outlined"
-              startIcon={<FileDownloadIcon />}
+              startIcon={<FileUploadIcon />}
               onClick={handleExport}
             >
               Экспорт в Excel
             </Button>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleImportClick}
+            >
+              Импорт из Excel
+            </Button>
+            <input
+              type="file"
+              accept=".xlsx"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleImport}
+            />
             <Button
               variant="contained"
               startIcon={<AddIcon />}
@@ -262,6 +303,12 @@ const UnitListPage: React.FC = () => {
             </Button>
           </DialogActions>
         </Dialog>
+
+        <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({...snackbar, open: false})}>
+          <Alert onClose={() => setSnackbar({...snackbar, open: false})} severity={snackbar.severity} sx={{ width: '100%' }}>
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Box>
     </Container>
   );

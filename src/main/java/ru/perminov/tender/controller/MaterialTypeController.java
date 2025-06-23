@@ -10,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ru.perminov.tender.dto.MaterialTypeDtoNew;
 import ru.perminov.tender.dto.MaterialTypeDtoUpdate;
 import ru.perminov.tender.model.MaterialType;
@@ -71,5 +72,11 @@ public class MaterialTypeController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
                 .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
+    }
+
+    @PostMapping("/import")
+    public ResponseEntity<String> importFromExcel(@RequestParam("file") MultipartFile file) {
+        int importedCount = materialTypeService.importFromExcel(file);
+        return ResponseEntity.ok("Импортировано: " + importedCount);
     }
 } 

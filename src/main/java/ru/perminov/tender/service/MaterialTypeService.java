@@ -20,4 +20,6 @@ public interface MaterialTypeService {
 
     List<MaterialType> getAll();
 
+    int importFromExcel(org.springframework.web.multipart.MultipartFile file);
+
 } 
