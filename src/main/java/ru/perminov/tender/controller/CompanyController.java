@@ -3,6 +3,10 @@ package ru.perminov.tender.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -10,6 +14,7 @@ import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
+import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.company.CompanyService;
 
 import java.util.List;
@@ -24,6 +29,7 @@ import java.util.UUID;
 public class CompanyController {
 
     private final CompanyService companyService;
+    private final ExcelService excelService;
 
     @PostMapping
     public ResponseEntity<CompanyDto> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
@@ -54,5 +60,18 @@ public class CompanyController {
     public ResponseEntity<List<CompanyDto>> getAll() {
         log.info("Пришел GET запрос на получение всех компаний");
         return ResponseEntity.ok(companyService.getAll());
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<Resource> exportCompanies() {
+        log.info("Пришел GET запрос на экспорт контрагентов");
+        String filename = "companies.xlsx";
+        List<ru.perminov.tender.dto.company.CompanyExportDto> companies = companyService.getAllForExport();
+        InputStreamResource file = new InputStreamResource(excelService.exportCompaniesToExcel(companies));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 }

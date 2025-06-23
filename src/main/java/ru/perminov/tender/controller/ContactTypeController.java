@@ -3,11 +3,16 @@ package ru.perminov.tender.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.company.contact.ContactTypeDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDtoNew;
 import ru.perminov.tender.dto.company.contact.ContactTypeDtoUpdate;
+import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.company.ContactTypeService;
 
 import java.util.List;
@@ -21,6 +26,7 @@ import java.util.UUID;
 public class ContactTypeController {
 
     private final ContactTypeService contactTypeService;
+    private final ExcelService excelService;
 
     @GetMapping
     public ResponseEntity<List<ContactTypeDto>> getAll() {
@@ -51,5 +57,17 @@ public class ContactTypeController {
         log.info("Получен запрос на удаление типа контакта с id {}", id);
         contactTypeService.delete(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<Resource> exportContactTypes() {
+        String filename = "contact_types.xlsx";
+        List<ContactTypeDto> contactTypes = contactTypeService.getAll();
+        InputStreamResource file = new InputStreamResource(excelService.exportContactTypesToExcel(contactTypes));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 } 

@@ -20,7 +20,7 @@ import {
   Typography,
   Paper
 } from '@mui/material';
-import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon } from '@mui/icons-material';
+import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, Download as DownloadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
 interface ContactType {
@@ -141,13 +141,24 @@ const ContactTypesPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             Управление типами контактов
           </Typography>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            Добавить тип контакта
-          </Button>
+          <Box>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => handleOpenDialog()}
+              sx={{ mr: 1 }}
+            >
+              Добавить тип
+            </Button>
+            <Button
+                variant="outlined"
+                startIcon={<DownloadIcon />}
+                href="http://localhost:8080/api/contact-types/export"
+                target="_blank"
+            >
+              Экспорт
+            </Button>
+          </Box>
         </Box>
 
         <Card>

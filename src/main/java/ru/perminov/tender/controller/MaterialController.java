@@ -3,12 +3,17 @@ package ru.perminov.tender.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
 import ru.perminov.tender.model.Material;
+import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.MaterialService;
 
 import java.util.List;
@@ -23,6 +28,7 @@ import java.util.UUID;
 public class MaterialController {
 
     private final MaterialService materialService;
+    private final ExcelService excelService;
 
     @PostMapping
     public ResponseEntity<Material> create(@RequestBody @Valid MaterialDtoNew materialDtoNew) {
@@ -53,5 +59,18 @@ public class MaterialController {
     public ResponseEntity<List<Material>> getAll() {
         log.info("Пришел GET запрос на получение всех материалов");
         return ResponseEntity.ok(materialService.getAll());
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<Resource> exportMaterials() {
+        log.info("Пришел GET запрос на экспорт номенклатуры");
+        String filename = "materials.xlsx";
+        List<ru.perminov.tender.dto.material.MaterialExportDto> materials = materialService.getAllForExport();
+        InputStreamResource file = new InputStreamResource(excelService.exportMaterialsToExcel(materials));
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 } 
