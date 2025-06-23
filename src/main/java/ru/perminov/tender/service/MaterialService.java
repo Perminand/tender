@@ -1,5 +1,6 @@
 package ru.perminov.tender.service;
 
+import ru.perminov.tender.dto.material.MaterialDto;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
 import ru.perminov.tender.model.Material;
@@ -9,14 +10,14 @@ import java.util.UUID;
 
 public interface MaterialService {
 
-    Material create(MaterialDtoNew materialDtoNew);
+    MaterialDto create(MaterialDtoNew materialDtoNew);
 
-    Material update(UUID id, MaterialDtoUpdate materialDtoUpdate);
+    MaterialDto update(UUID id, MaterialDtoUpdate materialDtoUpdate);
 
     void delete(UUID id);
 
-    Material getById(UUID id);
+    MaterialDto getById(UUID id);
 
-    List<Material> getAll();
+    List<MaterialDto> getAll();
 
 } 

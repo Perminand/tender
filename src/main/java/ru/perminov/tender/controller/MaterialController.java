@@ -10,9 +10,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import ru.perminov.tender.dto.material.MaterialDto;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
-import ru.perminov.tender.model.Material;
 import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.MaterialService;
 
@@ -31,13 +31,13 @@ public class MaterialController {
     private final ExcelService excelService;
 
     @PostMapping
-    public ResponseEntity<Material> create(@RequestBody @Valid MaterialDtoNew materialDtoNew) {
+    public ResponseEntity<MaterialDto> create(@RequestBody @Valid MaterialDtoNew materialDtoNew) {
         log.info("Пришел POST запрос на создание материала: {}", materialDtoNew);
         return ResponseEntity.ok(materialService.create(materialDtoNew));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Material> update(@PathVariable UUID id, @RequestBody @Valid MaterialDtoUpdate materialDtoUpdate) {
+    public ResponseEntity<MaterialDto> update(@PathVariable UUID id, @RequestBody @Valid MaterialDtoUpdate materialDtoUpdate) {
         log.info("Пришел PUT запрос на изменение материала uuid: {} содержимое: {}", id, materialDtoUpdate);
         return ResponseEntity.ok(materialService.update(id, materialDtoUpdate));
     }
@@ -46,17 +46,17 @@ public class MaterialController {
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         log.info("Пришел DELETE запрос на удаление материала uuid: {}", id);
         materialService.delete(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Material> getById(@PathVariable UUID id) {
+    public ResponseEntity<MaterialDto> getById(@PathVariable UUID id) {
         log.info("Пришел GET запрос на получение материала uuid: {}", id);
         return ResponseEntity.ok(materialService.getById(id));
     }
 
     @GetMapping
-    public ResponseEntity<List<Material>> getAll() {
+    public ResponseEntity<List<MaterialDto>> getAll() {
         log.info("Пришел GET запрос на получение всех материалов");
         return ResponseEntity.ok(materialService.getAll());
     }
@@ -64,7 +64,7 @@ public class MaterialController {
     @GetMapping("/export")
     public ResponseEntity<Resource> exportMaterials() {
         String filename = "materials.xlsx";
-        List<Material> materials = materialService.getAll();
+        List<MaterialDto> materials = materialService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportMaterialsToExcel(materials));
 
         return ResponseEntity.ok()

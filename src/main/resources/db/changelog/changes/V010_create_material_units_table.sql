@@ -4,7 +4,7 @@ ALTER TABLE materials DROP COLUMN IF EXISTS unit_id;
 
 -- Создание связующей таблицы для materials и units
 CREATE TABLE material_units (
-    material_id UUID NOT NULL,
+    material_id UUID NOT NULL ,
     unit_id UUID NOT NULL,
     PRIMARY KEY (material_id, unit_id),
     CONSTRAINT fk_material_units_on_material FOREIGN KEY (material_id) REFERENCES materials (id),

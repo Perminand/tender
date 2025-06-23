@@ -1,0 +1,35 @@
+package ru.perminov.tender.mapper;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+import ru.perminov.tender.dto.material.MaterialDto;
+import ru.perminov.tender.dto.material.MaterialDtoNew;
+import ru.perminov.tender.dto.material.MaterialDtoUpdate;
+import ru.perminov.tender.model.Material;
+
+@Mapper(
+        componentModel = "spring",
+        uses = {CategoryMapper.class, MaterialTypeMapper.class, UnitMapper.class},
+        nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE
+)
+public interface MaterialMapper {
+    MaterialDto toDto(Material material);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "materialType", ignore = true)
+    @Mapping(target = "units", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    Material toEntity(MaterialDtoNew dto);
+
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    @Mapping(target = "materialType", ignore = true)
+    @Mapping(target = "units", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "updatedAt", ignore = true)
+    void updateEntityFromDto(MaterialDtoUpdate dto, @MappingTarget Material entity);
+} 

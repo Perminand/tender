@@ -7,45 +7,45 @@ import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 
-interface Category {
+interface CategoryDto {
   id: string;
   name: string;
 }
 
-interface MaterialType {
+interface MaterialTypeDto {
   id: string;
   name: string;
 }
 
-interface Unit {
+interface UnitDto {
   id: string;
   name: string;
   shortName: string;
 }
 
-interface Material {
+interface MaterialDto {
   id: string;
   name: string;
   description: string;
-  materialType: MaterialType | null;
+  materialType: MaterialTypeDto | null;
   link: string;
-  units: Unit[];
+  units: UnitDto[];
   code: string;
-  category: Category | null;
+  category: CategoryDto | null;
   createdAt: string;
   updatedAt: string;
 }
 
 const MaterialListPage: React.FC = () => {
   const navigate = useNavigate();
-  const [materials, setMaterials] = useState<Material[]>([]);
+  const [materials, setMaterials] = useState<MaterialDto[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredMaterials, setFilteredMaterials] = useState<Material[]>([]);
+  const [filteredMaterials, setFilteredMaterials] = useState<MaterialDto[]>([]);
 
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const response = await fetch('/api/materials');
+        const response = await fetch('http://localhost:8080/api/materials');
         if (!response.ok) {
           throw new Error('Network response was not ok');
         }
@@ -73,7 +73,7 @@ const MaterialListPage: React.FC = () => {
             unit.shortName.toLowerCase().includes(searchLower)
         ) || false) ||
         material.description.toLowerCase().includes(searchLower) ||
-        material.link.toLowerCase().includes(searchLower)
+        (material.link && material.link.toLowerCase().includes(searchLower))
       );
     });
     setFilteredMaterials(filtered);
@@ -81,7 +81,7 @@ const MaterialListPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('/api/materials/export');
+      const response = await fetch('http://localhost:8080/api/materials/export');
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
@@ -97,6 +97,25 @@ const MaterialListPage: React.FC = () => {
       document.body.removeChild(a);
     } catch (error) {
       console.error("Failed to export materials:", error);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm('Вы уверены, что хотите удалить этот материал?')) {
+      try {
+        const response = await fetch(`http://localhost:8080/api/materials/${id}`, {
+          method: 'DELETE',
+        });
+
+        if (response.ok) {
+          setMaterials(materials.filter(m => m.id !== id));
+        } else {
+          console.error('Error deleting material');
+          // Тут можно добавить уведомление для пользователя
+        }
+      } catch (error) {
+        console.error('Error deleting material:', error);
+      }
     }
   };
 
@@ -181,7 +200,7 @@ const MaterialListPage: React.FC = () => {
                     <IconButton color="primary" onClick={() => navigate(`/reference/materials/${material.id}/edit`)}>
                       <EditIcon />
                     </IconButton>
-                    <IconButton color="error">
+                    <IconButton color="error" onClick={() => handleDelete(material.id)}>
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>

@@ -3,8 +3,10 @@ package ru.perminov.tender.service.impl;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.perminov.tender.dto.material.MaterialDto;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
+import ru.perminov.tender.mapper.MaterialMapper;
 import ru.perminov.tender.model.Category;
 import ru.perminov.tender.model.Material;
 import ru.perminov.tender.model.MaterialType;
@@ -18,6 +20,7 @@ import ru.perminov.tender.service.MaterialService;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -30,39 +33,34 @@ public class MaterialServiceImpl implements MaterialService {
     private final CategoryRepository categoryRepository;
     private final MaterialTypeRepository materialTypeRepository;
     private final UnitRepository unitRepository;
+    private final MaterialMapper materialMapper;
 
     @Override
     @Transactional
-    public Material create(MaterialDtoNew materialDtoNew) {
+    public MaterialDto create(MaterialDtoNew materialDtoNew) {
         if (materialRepository.existsByName(materialDtoNew.name())) {
             throw new RuntimeException("Материал с именем '" + materialDtoNew.name() + "' уже существует");
         }
-        Material material = new Material();
-        material.setName(materialDtoNew.name());
-        material.setDescription(materialDtoNew.description());
-        material.setLink(materialDtoNew.link());
-        material.setCode(materialDtoNew.code());
-
+        Material material = materialMapper.toEntity(materialDtoNew);
         updateRelations(material, materialDtoNew.categoryId(), materialDtoNew.materialTypeId(), materialDtoNew.unitIds());
-
-        return materialRepository.save(material);
+        Material savedMaterial = materialRepository.save(material);
+        return materialMapper.toDto(savedMaterial);
     }
 
     @Override
     @Transactional
-    public Material update(UUID id, MaterialDtoUpdate materialDtoUpdate) {
-        Material existingMaterial = getById(id);
-        existingMaterial.setName(materialDtoUpdate.name());
-        existingMaterial.setDescription(materialDtoUpdate.description());
-        existingMaterial.setLink(materialDtoUpdate.link());
-        existingMaterial.setCode(materialDtoUpdate.code());
+    public MaterialDto update(UUID id, MaterialDtoUpdate materialDtoUpdate) {
+        Material existingMaterial = materialRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Material not found with id: " + id));
 
+        materialMapper.updateEntityFromDto(materialDtoUpdate, existingMaterial);
         updateRelations(existingMaterial, materialDtoUpdate.categoryId(), materialDtoUpdate.materialTypeId(), materialDtoUpdate.unitIds());
 
-        return materialRepository.save(existingMaterial);
+        Material updatedMaterial = materialRepository.save(existingMaterial);
+        return materialMapper.toDto(updatedMaterial);
     }
 
-    private void updateRelations(Material material, UUID categoryId, UUID materialTypeId, List<UUID> unitIds) {
+    private void updateRelations(Material material, UUID categoryId, UUID materialTypeId, Set<UUID> unitIds) {
         if (categoryId != null) {
             Category category = categoryRepository.findById(categoryId)
                     .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
@@ -93,17 +91,23 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     @Transactional
     public void delete(UUID id) {
+        if (!materialRepository.existsById(id)) {
+            throw new RuntimeException("Material not found with id: " + id);
+        }
         materialRepository.deleteById(id);
     }
 
     @Override
-    public Material getById(UUID id) {
-        return materialRepository.findById(id)
+    public MaterialDto getById(UUID id) {
+        Material material = materialRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Material not found with id: " + id));
+        return materialMapper.toDto(material);
     }
 
     @Override
-    public List<Material> getAll() {
-        return materialRepository.findAll();
+    public List<MaterialDto> getAll() {
+        return materialRepository.findAll().stream()
+                .map(materialMapper::toDto)
+                .collect(Collectors.toList());
     }
 } 

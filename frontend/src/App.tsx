@@ -8,7 +8,7 @@ import UnitListPage from './pages/UnitListPage';
 import CategoryListPage from './pages/CategoryListPage';
 import MaterialTypeListPage from './pages/MaterialTypeListPage';
 import ContactTypesPage from './pages/ContactTypesPage';
-import ProjectObjectListPage from './pages/ProjectObjectListPage';
+import ProjectListPage from './pages/ProjectListPage';
 import ReferenceBooksPage from './pages/ReferenceBooksPage';
 import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
@@ -29,7 +29,7 @@ const App: React.FC = () => (
       <Route path="/reference/material-types" element={<MaterialTypeListPage />} />
       <Route path="/reference/units" element={<UnitListPage />} />
       <Route path="/reference/contact-types" element={<ContactTypesPage />} />
-      <Route path="/reference/project-objects" element={<ProjectObjectListPage />} />
+      <Route path="/reference/projects" element={<ProjectListPage />} />
       <Route path="/reference/counterparties" element={<CounterpartyListPage />} />
       <Route path="/reference/counterparties/new" element={<CounterpartyEditPage isEdit={false} />} />
       <Route path="/reference/counterparties/:id/edit" element={<CounterpartyEditPage isEdit={true} />} />

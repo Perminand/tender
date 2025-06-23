@@ -3,12 +3,17 @@ package ru.perminov.tender.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import ru.perminov.tender.dto.project.ProjectDto;
 import ru.perminov.tender.dto.project.ProjectDtoNew;
 import ru.perminov.tender.dto.project.ProjectDtoUpdate;
-import ru.perminov.tender.model.Project;
+import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.ProjectService;
 
 import java.util.List;
@@ -18,40 +23,51 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
-@Validated
 @CrossOrigin(origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:3000"})
 public class ProjectController {
-
     private final ProjectService projectService;
+    private final ExcelService excelService;
+
+    @GetMapping
+    public ResponseEntity<List<ProjectDto>> getAll() {
+        return ResponseEntity.ok(projectService.getAll());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<ProjectDto> getById(@PathVariable UUID id) {
+        return ResponseEntity.ok(projectService.getById(id));
+    }
 
     @PostMapping
-    public ResponseEntity<Project> create(@RequestBody @Valid ProjectDtoNew projectDtoNew) {
-        log.info("Пришел POST запрос на создание проекта: {}", projectDtoNew);
-        return ResponseEntity.ok(projectService.create(projectDtoNew));
+    public ResponseEntity<ProjectDto> create(@Valid @RequestBody ProjectDtoNew dto) {
+        return ResponseEntity.ok(projectService.create(dto));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Project> update(@PathVariable UUID id, @RequestBody @Valid ProjectDtoUpdate projectDtoUpdate) {
-        log.info("Пришел PUT запрос на изменение проекта uuid: {} содержимое: {}", id, projectDtoUpdate);
-        return ResponseEntity.ok(projectService.update(id, projectDtoUpdate));
+    public ResponseEntity<ProjectDto> update(@PathVariable UUID id, @Valid @RequestBody ProjectDtoUpdate dto) {
+        return ResponseEntity.ok(projectService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Пришел DELETE запрос на удаление проекта uuid: {}", id);
         projectService.delete(id);
-        return ResponseEntity.ok().build();
+        return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Project> getById(@PathVariable UUID id) {
-        log.info("Пришел GET запрос на получение проекта uuid: {}", id);
-        return ResponseEntity.ok(projectService.getById(id));
+    @GetMapping("/export")
+    public ResponseEntity<Resource> exportProjects() {
+        String filename = "projects.xlsx";
+        List<ProjectDto> projects = projectService.getAll();
+        InputStreamResource file = new InputStreamResource(excelService.exportProjectsToExcel(projects));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(file);
     }
 
-    @GetMapping
-    public ResponseEntity<List<Project>> getAll() {
-        log.info("Пришел GET запрос на получение всех проектов");
-        return ResponseEntity.ok(projectService.getAll());
+    @PostMapping("/import")
+    public ResponseEntity<String> importProjects(@RequestParam("file") MultipartFile file) {
+        int importedCount = projectService.importFromExcel(file);
+        return ResponseEntity.ok("Импортировано объектов: " + importedCount);
     }
 } 
