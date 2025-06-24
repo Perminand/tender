@@ -7,6 +7,8 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
 
 interface Warehouse {
   id: string;
@@ -20,6 +22,7 @@ const WarehouseListPage: React.FC = () => {
   const [openDialog, setOpenDialog] = useState(false);
   const [editingWarehouse, setEditingWarehouse] = useState<Warehouse | null>(null);
   const [formData, setFormData] = useState({ name: '' });
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchWarehouses();
@@ -73,6 +76,33 @@ const WarehouseListPage: React.FC = () => {
     }
   };
 
+  const handleExport = async () => {
+    const res = await fetch('/api/warehouses/export');
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'warehouses.xlsx';
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append('file', file);
+    await fetch('/api/warehouses/import', {
+      method: 'POST',
+      body: formData,
+    });
+    fetchWarehouses();
+  };
+
   const filteredWarehouses = warehouses.filter(w => w.name.toLowerCase().includes(searchTerm.toLowerCase()));
 
   return (
@@ -91,9 +121,34 @@ const WarehouseListPage: React.FC = () => {
           <Typography variant="body1" color="text.secondary">
             Управление складами
           </Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
-            Добавить склад
-          </Button>
+          <Box sx={{ display: 'flex', gap: 2 }}>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<FileUploadIcon />}
+              onClick={handleExport}
+            >
+              Экспорт в Excel
+            </Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleImportClick}
+            >
+              Импорт из Excel
+            </Button>
+            <input
+              type="file"
+              accept=".xlsx"
+              ref={fileInputRef}
+              style={{ display: 'none' }}
+              onChange={handleImport}
+            />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => handleOpenDialog()}>
+              Добавить склад
+            </Button>
+          </Box>
         </Box>
 
         <Paper sx={{ mb: 2 }}>

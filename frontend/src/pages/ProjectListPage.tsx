@@ -188,9 +188,15 @@ const ProjectListPage: React.FC = () => {
           <Box sx={{ display: 'flex', gap: 2 }}>
             <Button
               variant="outlined"
+              startIcon={<FileUploadIcon />}
+              onClick={handleExport}
+            >
+              Экспорт в Excel
+            </Button>
+            <Button
+              variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={handleImportClick}
-              sx={{ mr: 1 }}
             >
               Импорт из Excel
             </Button>
@@ -201,13 +207,6 @@ const ProjectListPage: React.FC = () => {
               style={{ display: 'none' }}
               onChange={handleImport}
             />
-            <Button
-              variant="outlined"
-              startIcon={<FileUploadIcon />}
-              onClick={handleExport}
-            >
-              Экспорт в Excel
-            </Button>
             <Button
               variant="contained"
               startIcon={<AddIcon />}
