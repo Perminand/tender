@@ -13,6 +13,7 @@ interface Material { id: string; name: string; }
 interface Unit { id: string; shortName: string; }
 interface Section { id: string; name: string; projectId: string; }
 interface WorkType { id: string; name: string; }
+interface Warehouse { id: string; name: string; }
 interface RequestMaterial {
   material?: Material | null;
   size?: string;
@@ -30,6 +31,7 @@ interface RequestDto {
   date?: string;
   status?: string;
   materials: RequestMaterial[];
+  warehouse?: Warehouse | null;
 }
 
 const statusOptions = [
@@ -62,12 +64,23 @@ export default function RequestEditPage() {
   const [sectionMaterialIdx, setSectionMaterialIdx] = useState<number | null>(null);
   const [workTypeMaterialIdx, setWorkTypeMaterialIdx] = useState<number | null>(null);
 
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [openWarehouseDialog, setOpenWarehouseDialog] = useState(false);
+  const [newWarehouse, setNewWarehouse] = useState('');
+  const [warehouseMaterialIdx, setWarehouseMaterialIdx] = useState<number | null>(null);
+
+  const [openProjectDialog, setOpenProjectDialog] = useState(false);
+  const [newProject, setNewProject] = useState('');
+  const [openStatusDialog, setOpenStatusDialog] = useState(false);
+  const [newStatus, setNewStatus] = useState('');
+
   useEffect(() => {
     axios.get('/api/companies').then(res => setCompanies(res.data));
     axios.get('/api/projects').then(res => setProjects(res.data));
     axios.get('/api/materials').then(res => setMaterials(res.data));
     axios.get('/api/units').then(res => setUnits(res.data));
     axios.get('/api/work-types').then(res => setWorkTypes(res.data));
+    axios.get('/api/warehouses').then(res => setWarehouses(res.data));
   }, []);
 
   useEffect(() => {
@@ -158,33 +171,111 @@ export default function RequestEditPage() {
     <Paper sx={{ p: 3, width: '100%', maxWidth: 1600, mx: 'auto', mt: 3, boxSizing: 'border-box' }}>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography variant="h6">{isEdit ? 'Редактирование заявки' : 'Создание заявки'}</Typography>
-        <Button onClick={() => navigate('/requests/registry')}>Отмена</Button>
       </Toolbar>
       <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
-        <TextField
-          name="organization"
-          label="Организация"
-          select
-          value={request.organization?.id || ''}
-          onChange={e => handleSelectChange('organization', e.target.value)}
-          required
-        >
-          {companies.map(c => (
-            <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          name="project"
-          label="Проект"
-          select
-          value={request.project?.id || ''}
-          onChange={e => handleSelectChange('project', e.target.value)}
-          required
-        >
-          {projects.map(p => (
-            <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>
-          ))}
-        </TextField>
+        <Autocomplete
+          value={companies.find(c => c.id === request.organization?.id) || null}
+          onChange={(_, value) => {
+            if (value && value.id === 'CREATE_NEW') {
+              window.open('/reference/counterparties/new', '_blank');
+            } else {
+              handleSelectChange('organization', value ? value.id : '');
+            }
+          }}
+          options={companies}
+          filterOptions={(options, state) => {
+            const filtered = options.filter(option =>
+              option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+            );
+            if (state.inputValue && filtered.length === 0) {
+              return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` }];
+            }
+            return filtered;
+          }}
+          getOptionLabel={(option: Company) => option ? option.name : ''}
+          isOptionEqualToValue={(option: Company, value: Company) => option.id === value.id}
+          renderInput={params => (
+            <TextField {...params} label="Организация" required />
+          )}
+        />
+        <Autocomplete
+          value={projects.find(p => p.id === request.project?.id) || null}
+          onChange={(_, value) => {
+            if (value && value.id === 'CREATE_NEW') {
+              setNewProject(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
+              setOpenProjectDialog(true);
+            } else {
+              handleSelectChange('project', value ? value.id : '');
+            }
+          }}
+          options={projects}
+          filterOptions={(options, state) => {
+            const filtered = options.filter(option =>
+              option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+            );
+            if (state.inputValue && filtered.length === 0) {
+              return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` }];
+            }
+            return filtered;
+          }}
+          getOptionLabel={(option: Project) => option ? option.name : ''}
+          isOptionEqualToValue={(option: Project, value: Project) => option.id === value.id}
+          renderInput={params => (
+            <TextField {...params} label="Проект" required />
+          )}
+        />
+        <Autocomplete
+          value={warehouses.find(w => w.id === request.warehouse?.id) || null}
+          onChange={(_, value) => {
+            if (value && value.id === 'CREATE_NEW') {
+              setNewWarehouse(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
+              setOpenWarehouseDialog(true);
+            } else {
+              setRequest({ ...request, warehouse: value });
+            }
+          }}
+          options={warehouses}
+          filterOptions={(options, state) => {
+            const filtered = options.filter(option =>
+              option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+            );
+            if (state.inputValue && filtered.length === 0) {
+              return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` }];
+            }
+            return filtered;
+          }}
+          getOptionLabel={(option: Warehouse) => option ? option.name : ''}
+          isOptionEqualToValue={(option: Warehouse, value: Warehouse) => option.id === value.id}
+          renderInput={params => (
+            <TextField {...params} label="Склад" required />
+          )}
+        />
+        <Autocomplete
+          value={statusOptions.find(opt => opt.value === request.status) || null}
+          onChange={(_, value) => {
+            if (value && value.value === 'CREATE_NEW') {
+              setNewStatus(value.label.replace(/^Создать "/, '').replace(/"$/, ''));
+              setOpenStatusDialog(true);
+            } else {
+              handleSelectChange('status', value ? value.value : '');
+            }
+          }}
+          options={statusOptions}
+          filterOptions={(options, state) => {
+            const filtered = options.filter(option =>
+              option.label.toLowerCase().includes(state.inputValue.toLowerCase())
+            );
+            if (state.inputValue && filtered.length === 0) {
+              return [{ value: 'CREATE_NEW', label: `Создать "${state.inputValue}"` }];
+            }
+            return filtered;
+          }}
+          getOptionLabel={option => option.label}
+          isOptionEqualToValue={(option, value) => option.value === value.value}
+          renderInput={params => (
+            <TextField {...params} label="Статус" required />
+          )}
+        />
         <TextField
           name="date"
           label="Дата"
@@ -194,27 +285,28 @@ export default function RequestEditPage() {
           InputLabelProps={{ shrink: true }}
           required
         />
-        <TextField
-          name="status"
-          label="Статус"
-          select
-          value={request.status || ''}
-          onChange={e => handleSelectChange('status', e.target.value)}
-          required
-        >
-          {statusOptions.map(opt => (
-            <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-          ))}
-        </TextField>
         <Typography variant="subtitle1" sx={{ mt: 2 }}>Материалы заявки</Typography>
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <TableContainer component={Paper} sx={{ mb: 2 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>#</TableCell>
+                <TableCell>Участок</TableCell>
+                <TableCell>Вид работ</TableCell>
+                <TableCell>Наименование материала</TableCell>
+                <TableCell>Размер</TableCell>
+                <TableCell>Кол-во</TableCell>
+                <TableCell>Ед. изм.</TableCell>
+                <TableCell>Примечание</TableCell>
+                <TableCell>Поставить к дате</TableCell>
+                <TableCell>Действия</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
           {request.materials.map((mat, idx) => (
-            <Paper key={idx} sx={{ p: 2, mb: 1, position: 'relative', display: 'flex', alignItems: 'flex-start' }} elevation={2}>
-              <Box sx={{ width: 40, minWidth: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', mr: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 600 }}>{idx + 1}</Typography>
-              </Box>
-              <Grid container spacing={2} alignItems="center" flex={1}>
-                <Grid item xs={2}>
+                <TableRow key={idx}>
+                  <TableCell>{idx + 1}</TableCell>
+                  <TableCell>
                   <Autocomplete
                     value={sections.find((s: Section) => s.id === mat.section) || null}
                     onChange={(_, value) => {
@@ -229,12 +321,12 @@ export default function RequestEditPage() {
                     getOptionLabel={(option: Section) => option ? option.name : ''}
                     isOptionEqualToValue={(option: Section, value: Section) => option.id === value.id}
                     renderInput={params => (
-                      <TextField {...params} size="small" label="Участок" fullWidth />
+                        <TextField {...params} size="small" label="Участок" />
                     )}
                     disabled={!request.project?.id}
                   />
-                </Grid>
-                <Grid item xs={2}>
+                  </TableCell>
+                  <TableCell>
                   <Autocomplete
                     value={workTypes.find(w => w.id === mat.workType) || null}
                     onChange={(_, value) => {
@@ -249,11 +341,11 @@ export default function RequestEditPage() {
                     getOptionLabel={option => option ? option.name : ''}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                     renderInput={params => (
-                      <TextField {...params} size="small" label="Вид работ" fullWidth />
+                        <TextField {...params} size="small" label="Вид работ" />
                     )}
                   />
-                </Grid>
-                <Grid item xs={3}>
+                  </TableCell>
+                  <TableCell>
                   <TextField
                     select
                     size="small"
@@ -266,8 +358,8 @@ export default function RequestEditPage() {
                       <MenuItem key={m.id} value={m.id}>{m.name}</MenuItem>
                     ))}
                   </TextField>
-                </Grid>
-                <Grid item xs={1}>
+                  </TableCell>
+                  <TableCell>
                   <TextField
                     size="small"
                     label="Размер"
@@ -275,8 +367,8 @@ export default function RequestEditPage() {
                     onChange={e => handleMaterialChange(idx, 'size', e.target.value)}
                     fullWidth
                   />
-                </Grid>
-                <Grid item xs={1}>
+                  </TableCell>
+                  <TableCell>
                   <TextField
                     size="small"
                     label="Кол-во"
@@ -285,8 +377,8 @@ export default function RequestEditPage() {
                     type="number"
                     fullWidth
                   />
-                </Grid>
-                <Grid item xs={1}>
+                  </TableCell>
+                  <TableCell>
                   <TextField
                     select
                     size="small"
@@ -299,8 +391,8 @@ export default function RequestEditPage() {
                       <MenuItem key={u.id} value={u.id}>{u.shortName}</MenuItem>
                     ))}
                   </TextField>
-                </Grid>
-                <Grid item xs={3}>
+                  </TableCell>
+                  <TableCell>
                   <TextField
                     size="small"
                     label="Примечание по заявке / Ссылка на Материал"
@@ -310,8 +402,8 @@ export default function RequestEditPage() {
                     multiline
                     minRows={2}
                   />
-                </Grid>
-                <Grid item xs={2}>
+                  </TableCell>
+                  <TableCell>
                   <TextField
                     size="small"
                     label="Поставить к дате"
@@ -321,26 +413,28 @@ export default function RequestEditPage() {
                     InputLabelProps={{ shrink: true }}
                     fullWidth
                   />
-                </Grid>
-                <Grid item xs={1}>
-                  <Button color="error" size="small" onClick={() => handleRemoveMaterial(idx)} sx={{ mt: { xs: 2, sm: 0 } }}>
+                  </TableCell>
+                  <TableCell>
+                    <Button color="error" size="small" onClick={() => handleRemoveMaterial(idx)}>
                     Удалить
                   </Button>
-                </Grid>
-              </Grid>
-            </Paper>
+                  </TableCell>
+                </TableRow>
           ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
           <Button onClick={handleAddMaterial} variant="outlined" size="small" sx={{ alignSelf: 'flex-end' }}>
             Добавить материал
           </Button>
         </Box>
-      </Box>
-      <Box mt={3} display="flex" gap={2}>
-        <Button variant="contained" color="primary" onClick={handleSave}>
+      <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
+        <Button variant="outlined" color="secondary" onClick={() => navigate('/requests/registry')}>Отмена</Button>
+        <Button variant="contained" color="primary" onClick={handleSave} sx={{ ml: 1 }}>
           Сохранить
         </Button>
         {isEdit && (
-          <Button variant="outlined" color="error" onClick={() => setConfirmDelete(true)}>
+          <Button variant="outlined" color="error" onClick={() => setConfirmDelete(true)} sx={{ ml: 2 }}>
             Удалить
           </Button>
         )}
@@ -432,6 +526,130 @@ export default function RequestEditPage() {
               } catch (error) {
                 console.error('Ошибка при создании вида работ:', error);
                 alert('Ошибка при создании вида работ');
+              }
+            }
+          }}>
+            Сохранить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог создания нового склада */}
+      <Dialog open={openWarehouseDialog} onClose={() => setOpenWarehouseDialog(false)}>
+        <DialogTitle>Создать новый склад</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название склада"
+            type="text"
+            fullWidth
+            value={newWarehouse}
+            onChange={e => setNewWarehouse(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenWarehouseDialog(false);
+            setNewWarehouse('');
+          }}>
+            Отмена
+          </Button>
+          <Button onClick={async () => {
+            if (newWarehouse.trim()) {
+              try {
+                const res = await axios.post('/api/warehouses', { name: newWarehouse });
+                setWarehouses(prev => [...prev, res.data]);
+                setRequest({ ...request, warehouse: res.data });
+                setNewWarehouse('');
+                setOpenWarehouseDialog(false);
+              } catch (error) {
+                console.error('Ошибка при создании склада:', error);
+                alert('Ошибка при создании склада');
+              }
+            }
+          }}>
+            Сохранить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог создания нового проекта */}
+      <Dialog open={openProjectDialog} onClose={() => setOpenProjectDialog(false)}>
+        <DialogTitle>Создать новый проект</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название проекта"
+            type="text"
+            fullWidth
+            value={newProject}
+            onChange={e => setNewProject(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenProjectDialog(false);
+            setNewProject('');
+          }}>
+            Отмена
+          </Button>
+          <Button onClick={async () => {
+            if (newProject.trim()) {
+              try {
+                const res = await axios.post('/api/projects', { name: newProject });
+                setProjects(prev => [...prev, res.data]);
+                handleSelectChange('project', res.data.id);
+                setNewProject('');
+                setOpenProjectDialog(false);
+              } catch (error) {
+                console.error('Ошибка при создании проекта:', error);
+                alert('Ошибка при создании проекта');
+              }
+            }
+          }}>
+            Сохранить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог создания нового статуса */}
+      <Dialog open={openStatusDialog} onClose={() => setOpenStatusDialog(false)}>
+        <DialogTitle>Создать новый статус</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название статуса"
+            type="text"
+            fullWidth
+            value={newStatus}
+            onChange={e => setNewStatus(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenStatusDialog(false);
+            setNewStatus('');
+          }}>
+            Отмена
+          </Button>
+          <Button onClick={async () => {
+            if (newStatus.trim()) {
+              try {
+                // Здесь предполагается, что у вас есть API для создания статуса
+                // Если нет — просто добавьте в локальный массив
+                const newOpt = { value: newStatus.toUpperCase(), label: newStatus };
+                statusOptions.push(newOpt);
+                handleSelectChange('status', newOpt.value);
+                setNewStatus('');
+                setOpenStatusDialog(false);
+              } catch (error) {
+                alert('Ошибка при создании статуса');
               }
             }
           }}>

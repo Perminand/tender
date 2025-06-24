@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.UUID;
 import ru.perminov.tender.dto.RequestMaterialDto;
 import ru.perminov.tender.dto.UnitDto;
+import ru.perminov.tender.dto.WarehouseDto;
 
 public record RequestDto(
     UUID id,
@@ -14,5 +15,9 @@ public record RequestDto(
     ProjectDto project,
     LocalDate date,
     String status,
-    List<RequestMaterialDto> materials
-) {} 
+    List<RequestMaterialDto> materials,
+    WarehouseDto warehouse
+) {
+    public WarehouseDto getWarehouse() { return warehouse; }
+    public void setWarehouse(WarehouseDto warehouse) { this.warehouse = warehouse; }
+} 

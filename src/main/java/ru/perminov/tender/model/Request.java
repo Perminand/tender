@@ -9,6 +9,7 @@ import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.model.Material;
 import ru.perminov.tender.model.Unit;
 import ru.perminov.tender.model.RequestMaterial;
+import ru.perminov.tender.model.Warehouse;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -41,4 +42,10 @@ public class Request {
 
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RequestMaterial> materials = new ArrayList<>();
+
+    @ManyToOne
+    private Warehouse warehouse;
+
+    public Warehouse getWarehouse() { return warehouse; }
+    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
 } 

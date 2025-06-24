@@ -360,11 +360,9 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         />
       </Paper>
 
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3 }}>
-        <Button onClick={() => navigate('/reference/materials')} sx={{ mr: 1 }}>
-          Отмена
-        </Button>
-        <Button type="submit" variant="contained">
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>
+        <Button variant="outlined" color="secondary" onClick={() => navigate('/reference/materials')}>Отмена</Button>
+        <Button type="submit" variant="contained" sx={{ ml: 1 }}>
           {isEdit ? 'Сохранить изменения' : 'Создать материал'}
         </Button>
       </Box>

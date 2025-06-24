@@ -31,3 +31,5 @@ databaseChangeLog:
       file: db/changelog/changes/V014_create_section_and_worktype_tables.sql
   - include:
       file: db/changelog/changes/V015_create_warehouses_table.sql
+  - include:
+      file: db/changelog/changes/V016_add_warehouse_to_requests.sql
