@@ -25,3 +25,9 @@ databaseChangeLog:
       file: db/changelog/changes/V011_create_projects_table.sql
   - include:
       file: db/changelog/changes/V012_add_created_updated_at_to_materials.sql
+  - include:
+      file: db/changelog/changes/V013_create_requests_and_request_materials.sql
+  - include:
+      file: db/changelog/changes/V014_create_section_and_worktype_tables.sql
+  - include:
+      file: db/changelog/changes/V015_create_warehouses_table.sql

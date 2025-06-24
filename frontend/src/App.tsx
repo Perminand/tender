@@ -12,6 +12,9 @@ import ProjectListPage from './pages/ProjectListPage';
 import ReferenceBooksPage from './pages/ReferenceBooksPage';
 import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
+import RequestRegistryPage from './pages/RequestRegistryPage';
+import RequestEditPage from './pages/RequestEditPage';
+import { WarehouseListPage } from './pages';
 
 const App: React.FC = () => (
   <Layout>
@@ -38,6 +41,11 @@ const App: React.FC = () => (
       <Route path="/reference/materials/:id/edit" element={<MaterialEditPage isEdit={true} />} />
       <Route path="/contact-types" element={<ContactTypesPage />} />
       <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/requests/registry" element={<RequestRegistryPage />} />
+      <Route path="/reference/requests/registry" element={<RequestRegistryPage />} />
+      <Route path="/requests/new" element={<RequestEditPage />} />
+      <Route path="/requests/:id/edit" element={<RequestEditPage />} />
+      <Route path="/reference/warehouses" element={<WarehouseListPage />} />
     </Routes>
   </Layout>
 );

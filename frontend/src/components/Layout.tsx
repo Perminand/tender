@@ -13,6 +13,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, color: 'inherit', textDecoration: 'none' }}>
           Тендерная система
         </Typography>
+        <Button color="inherit" component={RouterLink} to="/requests/registry">Реестр заявок</Button>
         <Button color="inherit" component={RouterLink} to="/reference">Справочники</Button>
         <Button color="inherit" component={RouterLink} to="/settings">Настройки</Button>
       </Toolbar>

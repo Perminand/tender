@@ -17,7 +17,8 @@ import {
   Business as BusinessIcon,
   ShoppingCart as ShoppingCartIcon,
   Architecture as ArchitectureIcon,
-  ArrowForward as ArrowForwardIcon
+  ArrowForward as ArrowForwardIcon,
+  Warehouse as WarehouseIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
@@ -29,7 +30,8 @@ const initialBooks = [
   { id: 'categories', title: 'Категории', description: 'Управление категориями', icon: <CategoryIcon sx={{ fontSize: 40 }} />, color: '#1976d2', path: '/reference/categories' },
   { id: 'material-types', title: 'Типы материалов', description: 'Управление типами', icon: <InventoryIcon sx={{ fontSize: 40 }} />, color: '#388e3c', path: '/reference/material-types' },
   { id: 'units', title: 'Ед. измерения', description: 'Управление ед. изм.', icon: <StraightenIcon sx={{ fontSize: 40 }} />, color: '#f57c00', path: '/reference/units' },
-  { id: 'contact-types', title: 'Типы контактов', description: 'Управление типами контактов', icon: <ContactPhoneIcon sx={{ fontSize: 40 }} />, color: '#7b1fa2', path: '/reference/contact-types' }
+  { id: 'contact-types', title: 'Типы контактов', description: 'Управление типами контактов', icon: <ContactPhoneIcon sx={{ fontSize: 40 }} />, color: '#7b1fa2', path: '/reference/contact-types' },
+  { id: 'warehouses', title: 'Склады', description: 'Управление складами', icon: <WarehouseIcon sx={{ fontSize: 40 }} />, color: '#607d8b', path: '/reference/warehouses' }
 ];
 
 const REFERENCE_ORDER_KEY = 'referenceBooksOrder';

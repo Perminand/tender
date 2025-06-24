@@ -1,0 +1,17 @@
+package ru.perminov.tender.dto;
+
+import ru.perminov.tender.dto.material.MaterialDto;
+import java.util.UUID;
+
+public record RequestMaterialDto(
+    UUID id,
+    Integer number,
+    String section,
+    String workType,
+    MaterialDto material,
+    String size,
+    Double quantity,
+    UnitDto unit,
+    String note,
+    String deliveryDate
+) {} 
