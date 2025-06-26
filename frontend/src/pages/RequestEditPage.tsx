@@ -115,6 +115,32 @@ export default function RequestEditPage() {
   const [projectNameFromImport, setProjectNameFromImport] = useState<string | null>(null);
 
   const [pendingImportMaterials, setPendingImportMaterials] = useState<any[] | null>(null);
+  const [pendingImportMaterialIndex, setPendingImportMaterialIndex] = useState<number>(4);
+  const [pendingImportedMaterials, setPendingImportedMaterials] = useState<any[]>([]);
+
+  const [newUnitName, setNewUnitName] = useState('');
+  const [openUnitDialog, setOpenUnitDialog] = useState(false);
+
+  // Функция для преобразования Excel-даты в ISO формат
+  const normalizeDate = (dateValue: any): string => {
+    if (typeof dateValue === 'number' || /^\d+$/.test(String(dateValue))) {
+      const excelDate = Number(dateValue);
+      const date = new Date((excelDate - 25569) * 86400 * 1000);
+      return date.toISOString().slice(0, 10);
+    }
+    if (typeof dateValue === 'string') {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
+      if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateValue)) {
+        const [day, month, year] = dateValue.split('.');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
+        const [day, month, year] = dateValue.split('/');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      }
+    }
+    return '';
+  };
 
   const handleMouseDown = (idx: number, e: React.MouseEvent) => {
     resizingCol.current = idx;
@@ -402,34 +428,6 @@ export default function RequestEditPage() {
     }));
     let formattedDate = request.date;
     if (importData.requestDate) {
-      // Функция для преобразования Excel-даты в ISO формат
-      const normalizeDate = (dateValue: any): string => {
-        if (typeof dateValue === 'number' || /^\d+$/.test(String(dateValue))) {
-          // Excel numeric date - преобразуем в ISO
-          const excelDate = Number(dateValue);
-          const date = new Date((excelDate - 25569) * 86400 * 1000);
-          return date.toISOString().slice(0, 10);
-        }
-        if (typeof dateValue === 'string') {
-          // Если строка уже в формате yyyy-MM-dd
-          if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-            return dateValue;
-          }
-          // Если строка в формате dd.MM.yyyy
-          if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateValue)) {
-            const [day, month, year] = dateValue.split('.');
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          }
-          // Если строка в формате dd/MM/yyyy
-          if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
-            const [day, month, year] = dateValue.split('/');
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          }
-        }
-        // Если не удалось распознать формат, возвращаем пустую строку
-        return '';
-      };
-      
       formattedDate = normalizeDate(importData.requestDate);
     }
     const normalize = (str: any) => (str || '').trim().toLowerCase();
@@ -482,38 +480,9 @@ export default function RequestEditPage() {
           }
           if (typeof cell === 'string' && cell.trim().toLowerCase().startsWith('организация')) {
             requestOrganization = String(row[j + 1] || '').trim();
-            console.log('[IMPORT] Организация из Excel:', requestOrganization);
           }
         }
       }
-
-      // Функция для преобразования Excel-даты в ISO формат
-      const normalizeDate = (dateValue: any): string => {
-        if (typeof dateValue === 'number' || /^\d+$/.test(String(dateValue))) {
-          // Excel numeric date - преобразуем в ISO
-          const excelDate = Number(dateValue);
-          const date = new Date((excelDate - 25569) * 86400 * 1000);
-          return date.toISOString().slice(0, 10);
-        }
-        if (typeof dateValue === 'string') {
-          // Если строка уже в формате yyyy-MM-dd
-          if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
-            return dateValue;
-          }
-          // Если строка в формате dd.MM.yyyy
-          if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateValue)) {
-            const [day, month, year] = dateValue.split('.');
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          }
-          // Если строка в формате dd/MM/yyyy
-          if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
-            const [day, month, year] = dateValue.split('/');
-            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-          }
-        }
-        // Если не удалось распознать формат, возвращаем пустую строку
-        return '';
-      };
 
       const formattedDate = normalizeDate(requestDate);
 
@@ -546,7 +515,6 @@ export default function RequestEditPage() {
           const cell = row[j];
           if (typeof cell === 'string' && cell.trim().toLowerCase().startsWith('проект')) {
             projectName = String(row[j + 1] || '').trim();
-            console.log('[IMPORT][PROJECT] Проект из Excel (рядом со словом):', projectName);
           }
         }
       }
@@ -577,46 +545,103 @@ export default function RequestEditPage() {
       }
 
       // --- Импорт материалов заявки ---
-      const importedMaterials: any[] = [];
-      let needCreateSection = false;
-      let sectionToCreate = '';
-      let rowsToImport: any[] = rows;
-      // Если участки не загружены, сохраняем строки для отложенного импорта
+      // 1. Найти строку с заголовками
+      const headerRowIndex = rows.findIndex(row =>
+        row.some(cell =>
+          typeof cell === 'string' &&
+          cell.toLowerCase().includes('наименование материала')
+        )
+      );
+      if (headerRowIndex === -1) {
+        alert('Не найдена строка с заголовками!');
+        return;
+      }
+      const headerRow = rows[headerRowIndex] as any[];
+      // 2. Построить отображение: название → индекс
+      const headerMap: Record<string, number> = {};
+      headerRow.forEach((cell, idx) => {
+        if (typeof cell === 'string') {
+          headerMap[cell.trim().toLowerCase()] = idx;
+        }
+      });
+      // 3. Функция для получения индекса по названию (с синонимами)
+      function getColIndex(...names: string[]): number | undefined {
+        for (const name of names) {
+          const idx = headerMap[name.toLowerCase()];
+          if (idx !== undefined) return idx;
+        }
+        return undefined;
+      }
+      const idxSection = getColIndex('участок (склад)', 'участок');
+      const idxWorkType = getColIndex('вид работ');
+      const idxMaterialName = getColIndex('наименование материала');
+      const idxSize = getColIndex('размер');
+      const idxQuantity = getColIndex('кол-во', 'количество');
+      const idxNote = getColIndex('примечание по заявке', 'примечание');
+      const idxDeliveryDate = getColIndex('поставить к дате');
+      const idxSupplierMaterialName = idxMaterialName;
+      const idxUnit = getColIndex('ед. изм.', 'единица измерения', 'unit');
+      let startIdx = headerRowIndex + 1;
+      if (pendingImportMaterialIndex > startIdx) startIdx = pendingImportMaterialIndex;
       if (!sections.length) {
         setPendingImportMaterials(rows);
+        setPendingImportMaterialIndex(startIdx);
+        setPendingImportedMaterials([]);
       } else {
-        for (let i = 4; i < rows.length; i++) {
+        let importedMaterials: any[] = [];
+        for (let i = startIdx; i < rows.length; i++) {
           const row = rows[i] as any[];
-          if (!row || row.every(cell => !cell || String(cell).trim() === '')) break;
+          if (!row || row.every((cell: any) => !cell || String(cell).trim() === '')) break;
           const number = String(row[0]).trim();
           if (!/^[0-9]+$/.test(number)) continue;
-          const sectionName = String(row[1] || '').trim();
+          const sectionName = idxSection !== undefined ? String(row[idxSection] || '').trim() : '';
           let sectionObj = sections.find(s => (s.name || '').trim().toLowerCase() === sectionName.toLowerCase());
           if (!sectionObj && sectionName) {
-            needCreateSection = true;
-            sectionToCreate = sectionName;
             setNewSection(sectionName);
             setOpenSectionDialog(true);
+            setPendingImportMaterialIndex(i);
+            setPendingImportedMaterials(importedMaterials);
+            break;
+          }
+          const workTypeName = idxWorkType !== undefined ? String(row[idxWorkType] || '').trim() : '';
+          let workTypeObj = workTypes.find(w => (w.name || '').trim().toLowerCase() === workTypeName.toLowerCase());
+          if (!workTypeObj && workTypeName) {
+            setNewWorkType(workTypeName);
+            setOpenWorkTypeDialog(true);
+            setPendingImportMaterialIndex(i);
+            setPendingImportedMaterials(importedMaterials);
+            break;
+          }
+          const unitName = idxUnit !== undefined ? String(row[idxUnit] || '').trim() : '';
+          let unitObj = units.find(u =>
+            ((u as any).shortName || '').trim().toLowerCase() === unitName.toLowerCase() ||
+            ((u as any).name || '').trim().toLowerCase() === unitName.toLowerCase()
+          );
+          if (!unitObj && unitName) {
+            setNewUnitName(unitName);
+            setOpenUnitDialog(true);
+            setPendingImportMaterialIndex(i);
+            setPendingImportedMaterials(importedMaterials);
             break;
           }
           importedMaterials.push({
             section: sectionObj ? sectionObj.id : '',
-            workType: String(row[2] || '').trim(),
-            materialName: String(row[3] || '').trim(),
-            supplierMaterialName: String(row[4] || '').trim(),
-            size: String(row[5] || '').trim(),
-            quantity: String(row[6] || '').trim(),
-            unitName: String(row[7] || '').trim(),
-            note: String(row[8] || '').trim(),
-            deliveryDate: String(row[9] || '').trim(),
+            workType: workTypeObj ? workTypeObj.id : '',
+            materialName: idxMaterialName !== undefined ? String(row[idxMaterialName] || '').trim() : '',
+            supplierMaterialName: idxSupplierMaterialName !== undefined ? String(row[idxSupplierMaterialName] || '').trim() : '',
+            size: idxSize !== undefined ? String(row[idxSize] || '').trim() : '',
+            quantity: idxQuantity !== undefined ? String(row[idxQuantity] || '').trim() : '',
+            note: idxNote !== undefined ? String(row[idxNote] || '').trim() : '',
+            deliveryDate: idxDeliveryDate !== undefined ? normalizeDate(row[idxDeliveryDate]) : '',
+            unit: unitObj ? unitObj.id : '',
           });
         }
-        if (!needCreateSection) {
-          setRequest(r => ({
-            ...r,
-            materials: importedMaterials
-          }));
-        }
+        setRequest(r => ({
+          ...r,
+          materials: importedMaterials
+        }));
+        setPendingImportMaterialIndex(headerRowIndex + 1);
+        setPendingImportedMaterials([]);
       }
     };
     reader.readAsArrayBuffer(file);
@@ -635,37 +660,95 @@ export default function RequestEditPage() {
     }
   }, [projects, projectNameFromImport]);
 
-  // useEffect для отложенного импорта материалов после загрузки sections
+  // useEffect для отложенного импорта материалов после загрузки sections и workTypes
   useEffect(() => {
     if (pendingImportMaterials && sections.length) {
-      const importedMaterials: any[] = [];
+      // Найти строку с заголовками
+      const headerRowIndex = pendingImportMaterials.findIndex(row =>
+        (row as any[]).some((cell: any) =>
+          typeof cell === 'string' &&
+          cell.toLowerCase().includes('наименование материала')
+        )
+      );
+      if (headerRowIndex === -1) {
+        alert('Не найдена строка с заголовками!');
+        return;
+      }
+      const headerRow = pendingImportMaterials[headerRowIndex] as any[];
+      const headerMap: Record<string, number> = {};
+      headerRow.forEach((cell: any, idx: number) => {
+        if (typeof cell === 'string') {
+          headerMap[cell.trim().toLowerCase()] = idx;
+        }
+      });
+      function getColIndex(...names: string[]): number | undefined {
+        for (const name of names) {
+          const idx = headerMap[name.toLowerCase()];
+          if (idx !== undefined) return idx;
+        }
+        return undefined;
+      }
+      const idxSection = getColIndex('участок (склад)', 'участок');
+      const idxWorkType = getColIndex('вид работ');
+      const idxMaterialName = getColIndex('наименование материала');
+      const idxSize = getColIndex('размер');
+      const idxQuantity = getColIndex('кол-во', 'количество');
+      const idxNote = getColIndex('примечание по заявке', 'примечание');
+      const idxDeliveryDate = getColIndex('поставить к дате');
+      const idxSupplierMaterialName = idxMaterialName;
+      const idxUnit = getColIndex('ед. изм.', 'единица измерения', 'unit');
+      let importedMaterials: any[] = pendingImportedMaterials ? [...pendingImportedMaterials] : [];
+      let startIdx = pendingImportMaterialIndex;
       let needCreateSection = false;
-      let sectionToCreate = '';
-      for (let i = 4; i < pendingImportMaterials.length; i++) {
+      for (let i = startIdx; i < pendingImportMaterials.length; i++) {
         const row = pendingImportMaterials[i] as any[];
-        if (!row || row.every(cell => !cell || String(cell).trim() === '')) break;
+        if (!row || row.every((cell: any) => !cell || String(cell).trim() === '')) break;
         const number = String(row[0]).trim();
         if (!/^[0-9]+$/.test(number)) continue;
-        const sectionName = String(row[1] || '').trim();
+        const sectionName = idxSection !== undefined ? String(row[idxSection] || '').trim() : '';
         let sectionObj = sections.find(s => (s.name || '').trim().toLowerCase() === sectionName.toLowerCase());
         if (!sectionObj && sectionName) {
-          needCreateSection = true;
-          sectionToCreate = sectionName;
           setNewSection(sectionName);
           setOpenSectionDialog(true);
+          setPendingImportMaterialIndex(i);
+          setPendingImportedMaterials(importedMaterials);
+          needCreateSection = true;
+          break;
+        }
+        const workTypeName = idxWorkType !== undefined ? String(row[idxWorkType] || '').trim() : '';
+        let workTypeObj = workTypes.find(w => (w.name || '').trim().toLowerCase() === workTypeName.toLowerCase());
+        if (!workTypeObj && workTypeName) {
+          setNewWorkType(workTypeName);
+          setOpenWorkTypeDialog(true);
+          setPendingImportMaterialIndex(i);
+          setPendingImportedMaterials(importedMaterials);
+          needCreateSection = true;
+          break;
+        }
+        const unitName = idxUnit !== undefined ? String(row[idxUnit] || '').trim() : '';
+        let unitObj = units.find(u =>
+          ((u as any).shortName || '').trim().toLowerCase() === unitName.toLowerCase() ||
+          ((u as any).name || '').trim().toLowerCase() === unitName.toLowerCase()
+        );
+        if (!unitObj && unitName) {
+          setNewUnitName(unitName);
+          setOpenUnitDialog(true);
+          setPendingImportMaterialIndex(i);
+          setPendingImportedMaterials(importedMaterials);
           break;
         }
         importedMaterials.push({
           section: sectionObj ? sectionObj.id : '',
-          workType: String(row[2] || '').trim(),
-          materialName: String(row[3] || '').trim(),
-          supplierMaterialName: String(row[4] || '').trim(),
-          size: String(row[5] || '').trim(),
-          quantity: String(row[6] || '').trim(),
-          unitName: String(row[7] || '').trim(),
-          note: String(row[8] || '').trim(),
-          deliveryDate: String(row[9] || '').trim(),
+          workType: workTypeObj ? workTypeObj.id : '',
+          materialName: idxMaterialName !== undefined ? String(row[idxMaterialName] || '').trim() : '',
+          supplierMaterialName: idxSupplierMaterialName !== undefined ? String(row[idxSupplierMaterialName] || '').trim() : '',
+          size: idxSize !== undefined ? String(row[idxSize] || '').trim() : '',
+          quantity: idxQuantity !== undefined ? String(row[idxQuantity] || '').trim() : '',
+          note: idxNote !== undefined ? String(row[idxNote] || '').trim() : '',
+          deliveryDate: idxDeliveryDate !== undefined ? normalizeDate(row[idxDeliveryDate]) : '',
+          unit: unitObj ? unitObj.id : '',
         });
+        setPendingImportMaterialIndex(i + 1);
       }
       if (!needCreateSection) {
         setRequest(r => ({
@@ -673,9 +756,11 @@ export default function RequestEditPage() {
           materials: importedMaterials
         }));
         setPendingImportMaterials(null);
+        setPendingImportMaterialIndex(headerRowIndex + 1);
+        setPendingImportedMaterials([]);
       }
     }
-  }, [sections, pendingImportMaterials]);
+  }, [sections, workTypes, pendingImportMaterials]);
 
   if (loading) {
     return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
@@ -824,7 +909,7 @@ export default function RequestEditPage() {
         />
         <Typography variant="subtitle1" sx={{ mt: 2 }}>Материалы заявки</Typography>
         <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto', width: '100%' }}>
-          <Table size="small" sx={{ minWidth: 800, width: '100%' }}>
+          <Table size="small" sx={{ minWidth: 1200, width: 'max-content' }}>
             <TableHead>
               <TableRow>
                   {['#','Участок','Вид работ','Наименование материала','Наименование у поставщика','Размер','Кол-во','Ед. изм.','Примечание','Поставить к дате','Действия'].map((label, idx) => (
@@ -857,7 +942,7 @@ export default function RequestEditPage() {
           {request.materials.map((mat, idx) => (
                 <TableRow key={idx}>
                   <TableCell>{idx + 1}</TableCell>
-                  <TableCell sx={{ width: colWidths[1], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                  <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <Autocomplete
                     value={sections.find((s: Section) => s.id === mat.section) || null}
                     onChange={(_, value, reason) => {
@@ -891,13 +976,12 @@ export default function RequestEditPage() {
                     disabled={!request.project?.id}
                   />
                   </TableCell>
-                  <TableCell sx={{ width: colWidths[2], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                  <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <Autocomplete
                     value={workTypes.find(w => w.id === mat.workType) || null}
                     onChange={(_, value, reason) => {
                       if (value && value.id === 'CREATE_NEW') {
                         setNewWorkType(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
-                        setWorkTypeMaterialIdx(idx);
                         setOpenWorkTypeDialog(true);
                       } else {
                         handleMaterialChange(idx, 'workType', value);
@@ -920,7 +1004,7 @@ export default function RequestEditPage() {
                     )}
                   />
                   </TableCell>
-                  <TableCell sx={{ width: colWidths[3], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                  <TableCell sx={{ minWidth: 180, maxWidth: 300 }}>
                   <Autocomplete
                     value={materials.find(m => m.id === mat.material?.id) || null}
                     onChange={(_, value, reason) => {
@@ -948,7 +1032,7 @@ export default function RequestEditPage() {
                     )}
                   />
                   </TableCell>
-                  <TableCell sx={{ width: colWidths[4], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                  <TableCell sx={{ minWidth: 180, maxWidth: 300 }}>
                       <TextField
                         size="small"
                         label="Наименование у поставщика"
@@ -958,7 +1042,7 @@ export default function RequestEditPage() {
                         InputLabelProps={{ shrink: true }}
                       />
                     </TableCell>
-                    <TableCell sx={{ width: colWidths[5], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <TextField
                     size="small"
                     label="Размер"
@@ -967,7 +1051,7 @@ export default function RequestEditPage() {
                     fullWidth
                   />
                   </TableCell>
-                    <TableCell sx={{ width: colWidths[6], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <TextField
                     size="small"
                     label="Кол-во"
@@ -977,7 +1061,7 @@ export default function RequestEditPage() {
                     fullWidth
                   />
                   </TableCell>
-                    <TableCell sx={{ width: colWidths[7], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <TextField
                     select
                     size="small"
@@ -991,7 +1075,7 @@ export default function RequestEditPage() {
                     ))}
                   </TextField>
                   </TableCell>
-                    <TableCell sx={{ width: colWidths[8], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <TextField
                     size="small"
                       label="Примечание"
@@ -1001,7 +1085,7 @@ export default function RequestEditPage() {
                       InputLabelProps={{ shrink: true }}
                   />
                   </TableCell>
-                    <TableCell sx={{ width: colWidths[9], minWidth: 40, maxWidth: 800, whiteSpace: 'nowrap' }}>
+                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <TextField
                     size="small"
                     label="Поставить к дате"
@@ -1112,17 +1196,13 @@ export default function RequestEditPage() {
             Отмена
           </Button>
           <Button onClick={async () => {
-            if (newWorkType.trim() && workTypeMaterialIdx !== null) {
+            if (newWorkType.trim()) {
               try {
-                const res = await axios.post('/api/work-types', { 
-                  name: newWorkType 
-                });
+                const res = await axios.post('/api/work-types', { name: newWorkType });
                 setWorkTypes(prev => [...prev, res.data]);
-                handleMaterialChange(workTypeMaterialIdx, 'workType', res.data.id);
-                setNewWorkType('');
                 setOpenWorkTypeDialog(false);
+                setNewWorkType('');
               } catch (error) {
-                console.error('Ошибка при создании вида работ:', error);
                 alert('Ошибка при создании вида работ');
               }
             }
@@ -1328,6 +1408,28 @@ export default function RequestEditPage() {
           }}>
             Создать
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог создания новой единицы измерения */}
+      <Dialog open={openUnitDialog} onClose={() => setOpenUnitDialog(false)}>
+        <DialogTitle>Создать новую единицу измерения</DialogTitle>
+        <DialogContent>
+          <TextField autoFocus label="Название или сокращение" fullWidth value={newUnitName} onChange={e => setNewUnitName(e.target.value)} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenUnitDialog(false)}>Отмена</Button>
+          <Button onClick={async () => {
+            // Создать новую единицу через API
+            const res = await axios.post('/api/units', { name: newUnitName, shortName: newUnitName });
+            if (res.data && res.data.id) {
+              // Обновить units
+              const unitsRes = await axios.get('/api/units');
+              setUnits(unitsRes.data);
+              setOpenUnitDialog(false);
+              setPendingImportMaterials(prev => prev ? [...prev] : prev); // Форсировать повторный запуск useEffect
+            }
+          }} variant="contained">Создать</Button>
         </DialogActions>
       </Dialog>
       </Box>
