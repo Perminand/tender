@@ -27,6 +27,8 @@ public record CompanyDtoNew(
 
     String legalName,
 
+    String shortName,
+
     @NotBlank(message = "Адрес не может быть пустым")
     String address,
 

@@ -65,6 +65,7 @@ public class MaterialTypeController {
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportMaterialTypes() {
+        log.info("Получен GET-запрос: экспортировать типы материалов в Excel");
         String filename = "material_types.xlsx";
         List<MaterialType> materialTypes = materialTypeService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportMaterialTypesToExcel(materialTypes));
@@ -77,6 +78,7 @@ public class MaterialTypeController {
 
     @PostMapping("/import")
     public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        log.info("Получен POST-запрос: импортировать типы материалов из Excel");
         ImportResultDto result = materialTypeService.importFromExcel(file);
         return ResponseEntity.ok(result);
     }

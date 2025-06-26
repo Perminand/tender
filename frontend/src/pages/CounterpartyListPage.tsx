@@ -16,6 +16,7 @@ interface Counterparty {
   kpp: string;
   ogrn: string;
   address: string;
+  shortName?: string;
 }
 
 const CounterpartyListPage: React.FC = () => {
@@ -199,7 +200,7 @@ const CounterpartyListPage: React.FC = () => {
             <TableBody>
               {filteredCounterparties.map((counterparty) => (
                 <TableRow key={counterparty.id}>
-                  <TableCell>{counterparty.name}</TableCell>
+                  <TableCell>{counterparty.shortName || counterparty.name}</TableCell>
                   <TableCell>{counterparty.legalName}</TableCell>
                   <TableCell>{counterparty.inn}</TableCell>
                   <TableCell>{counterparty.kpp}</TableCell>

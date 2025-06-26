@@ -46,6 +46,8 @@ public class Request {
     @ManyToOne
     private Warehouse warehouse;
 
+    private String requestNumber;
+
     public Warehouse getWarehouse() { return warehouse; }
     public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
 } 

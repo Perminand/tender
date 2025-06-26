@@ -8,6 +8,9 @@ import ru.perminov.tender.dto.material.MaterialDto;
 import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
 import ru.perminov.tender.model.Material;
+import ru.perminov.tender.model.SupplierMaterialName;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Mapper(
         componentModel = "spring",
@@ -15,7 +18,7 @@ import ru.perminov.tender.model.Material;
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE
 )
 public interface MaterialMapper {
-    MaterialDto toDto(Material material);
+    MaterialDto toDto(Material entity);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "category", ignore = true)
@@ -32,4 +35,5 @@ public interface MaterialMapper {
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
     void updateEntityFromDto(MaterialDtoUpdate dto, @MappingTarget Material entity);
+
 } 

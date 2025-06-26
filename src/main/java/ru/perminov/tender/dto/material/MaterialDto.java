@@ -7,6 +7,7 @@ import ru.perminov.tender.dto.UnitDto;
 import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
+import java.util.List;
 
 public record MaterialDto(
     UUID id,
@@ -19,4 +20,4 @@ public record MaterialDto(
     CategoryDto category,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
-) {} 
+) {}

@@ -35,37 +35,44 @@ public class CompanyController {
 
     @PostMapping
     public ResponseEntity<CompanyDto> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
-        log.info("Пришел POST запрос на создание компании: {}", companyDtoNew);
+        log.info("Получен POST-запрос: создать компанию. Данные: {}", companyDtoNew);
         return ResponseEntity.ok(companyService.create(companyDtoNew));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<CompanyDto> update(@PathVariable String id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
-        log.info("Пришел PUT запрос на изменение компании uuid: {} содержимое: {}", id, companyDtoUpdate);
+        log.info("Получен PUT-запрос: обновить компанию. id={}, данные: {}", id, companyDtoUpdate);
         return ResponseEntity.ok(companyService.update(UUID.fromString(id), companyDtoUpdate));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Пришел DELETE запрос на удаление компании uuid: {}", id);
+        log.info("Получен DELETE-запрос: удалить компанию. id={}", id);
         companyService.delete(id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<CompanyDtoForUpdate> getById(@PathVariable String id) {
-        log.info("Пришел GET запрос на получение компании uuid: {}", id);
+        log.info("Получен GET-запрос: получить компанию по id={}", id);
         return ResponseEntity.ok(companyService.getById(UUID.fromString(id)));
     }
 
     @GetMapping
     public ResponseEntity<List<CompanyDto>> getAll() {
-        log.info("Пришел GET запрос на получение всех компаний");
+        log.info("Получен GET-запрос: получить все компании");
         return ResponseEntity.ok(companyService.getAll());
+    }
+
+    @GetMapping("/by-short-name/{shortName}")
+    public ResponseEntity<CompanyDto> getByShortName(@PathVariable String shortName) {
+        log.info("Получен GET-запрос: найти компанию по короткому наименованию. shortName={}", shortName);
+        return ResponseEntity.ok(companyService.getByShortName(shortName));
     }
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportCompanies() {
+        log.info("Получен GET-запрос: экспортировать компании в Excel");
         String filename = "companies.xlsx";
         List<CompanyDto> companies = companyService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportCompaniesToExcel(companies));
@@ -78,6 +85,7 @@ public class CompanyController {
 
     @PostMapping("/import")
     public ResponseEntity<ImportResult> importFromExcel(@RequestParam("file") MultipartFile file) {
+        log.info("Получен POST-запрос: импортировать компании из Excel");
         ImportResult result = companyService.importFromExcel(file);
         return ResponseEntity.ok(result);
     }

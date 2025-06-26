@@ -7,7 +7,7 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { searchCompanyByInn } from '../utils/fnsApi';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 
@@ -39,6 +39,7 @@ type BankDetails = {
 type FormData = {
   name: string;
   legalName: string;
+  shortName: string;
   inn: string;
   kpp: string;
   ogrn: string;
@@ -52,13 +53,14 @@ type FormData = {
 };
 
 const defaultValues: FormData = {
-  name: '', legalName: '', inn: '', kpp: '', ogrn: '', address: '', head: '', phone: '', email: '', companyType: null,
+  name: '', legalName: '', shortName: '', inn: '', kpp: '', ogrn: '', address: '', head: '', phone: '', email: '', companyType: null,
   bankDetails: [],
   contactPersons: [],
 };
 
 const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams<{ id: string }>();
   const { control, handleSubmit, register, formState: { errors }, setValue, watch, getValues, reset } = useForm<FormData>({ defaultValues });
   const { fields: contactPersons, append: appendPerson, remove: removePerson } = useFieldArray({ control, name: 'contactPersons' });
@@ -121,7 +123,8 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         .then((data) => {
           const formData: FormData = {
             name: data.name || '',
-            legalName: data.legalName || '',
+            legalName: data.shortName || '',
+            shortName: data.shortName || '',
             inn: data.inn || '',
             kpp: data.kpp || '',
             ogrn: data.ogrn || '',
@@ -147,6 +150,21 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
     }
   }, [id, isEdit, reset]);
 
+  useEffect(() => {
+    if (!isEdit) {
+      const params = new URLSearchParams(location.search);
+      const shortNameFromQuery = params.get('shortName');
+      if (shortNameFromQuery) {
+        setValue('shortName', shortNameFromQuery);
+        setValue('legalName', shortNameFromQuery);
+      }
+      const nameFromQuery = params.get('name');
+      if (nameFromQuery) {
+        setValue('name', nameFromQuery);
+      }
+    }
+  }, [isEdit, location.search, setValue]);
+
   const handleFetchFnsData = async () => {
     if (!watchedInn || watchedInn.length < 10) {
       setFnsError('Введите корректный ИНН (минимум 10 цифр)');
@@ -160,6 +178,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       const companyData = await searchCompanyByInn(watchedInn);
       setValue('name', companyData.name || '');
       setValue('legalName', companyData.shortName || '');
+      setValue('shortName', companyData.shortName || '');
       setValue('ogrn', companyData.ogrn || '');
       setValue('kpp', companyData.kpp || '');
       setValue('address', companyData.address || '');
@@ -333,7 +352,8 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
           <Grid item xs={12} sm={4}><TextField InputLabelProps={{ shrink: !!watch('ogrn') }} label="ОГРН *" fullWidth {...register('ogrn', { required: 'ОГРН не может быть пустым', pattern: { value: /^(\d{13}|\d{15})$/, message: 'ОГРН должен содержать 13 или 15 цифр' } })} error={!!errors.ogrn} helperText={errors.ogrn?.message} /></Grid>
           <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('name') }} label="Название *" fullWidth {...register('name', { required: 'Название компании не может быть пустым' })} error={!!errors.name} helperText={errors.name?.message} /></Grid>
           <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('legalName') }} label="Фирменное наименование" fullWidth {...register('legalName')} /></Grid>
-          <Grid item xs={12} sm={8}><TextField InputLabelProps={{ shrink: !!watch('address') }} label="Адрес *" fullWidth {...register('address', { required: 'Адрес не может быть пустым' })} error={!!errors.address} helperText={errors.address?.message} /></Grid>
+          <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('shortName') }} label="Краткое наименование" fullWidth {...register('shortName')} /></Grid>
+          <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('address') }} label="Адрес *" fullWidth {...register('address', { required: 'Адрес не может быть пустым' })} error={!!errors.address} helperText={errors.address?.message} /></Grid>
           <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('head') }} label="Руководитель" fullWidth {...register('head')} /></Grid>
           <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('phone') }} label="Телефон" fullWidth {...register('phone')} /></Grid>
           <Grid item xs={12} sm={6}><TextField InputLabelProps={{ shrink: !!watch('email') }} label="Email" fullWidth {...register('email')} /></Grid>

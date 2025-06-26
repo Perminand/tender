@@ -21,6 +21,8 @@ public interface CompanyService {
 
     List<CompanyDto> getAll();
 
+    CompanyDto getByShortName(String shortName);
+
     ImportResult importFromExcel(org.springframework.web.multipart.MultipartFile file);
 
 }

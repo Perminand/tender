@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import {
-  Box, Button, Grid, Paper, TextField, Typography, Alert, Autocomplete, Chip
+  Box, Button, Grid, Paper, TextField, Typography, Alert, Autocomplete, Chip, IconButton, List, ListItem, ListItemText, ListItemSecondaryAction
 } from '@mui/material';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 // DTOs for related entities
 interface CategoryDto {
@@ -62,6 +64,7 @@ const defaultValues: FormData = {
 const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const { control, handleSubmit, register, formState: { errors }, reset, setValue } = useForm<FormData>({ defaultValues });
   const [saveError, setSaveError] = useState<string | null>(null);
 
@@ -78,6 +81,12 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const [openNewUnitDialog, setOpenNewUnitDialog] = useState(false);
   const [newUnitName, setNewUnitName] = useState('');
   const [newUnitShortName, setNewUnitShortName] = useState('');
+
+  // New states for supplier names
+  const [supplierNames, setSupplierNames] = useState<string[]>([]);
+  const [newSupplierName, setNewSupplierName] = useState('');
+  const [editSupplierIdx, setEditSupplierIdx] = useState<number | null>(null);
+  const [editSupplierValue, setEditSupplierValue] = useState('');
 
   // Fetch all dictionaries
   useEffect(() => {
@@ -120,6 +129,25 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         });
     }
   }, [id, isEdit, reset]);
+
+  useEffect(() => {
+    if (!isEdit && location.search) {
+      const params = new URLSearchParams(location.search);
+      const name = params.get('name');
+      if (name) {
+        setValue('name', name);
+      }
+    }
+  }, [isEdit, location.search, setValue]);
+
+  useEffect(() => {
+    if (isEdit && id) {
+      fetch(`/api/supplier-material-names/by-material/${id}`)
+        .then(res => res.json())
+        .then((data: any[]) => setSupplierNames(data.map(n => n.name)))
+        .catch(() => setSupplierNames([]));
+    }
+  }, [isEdit, id]);
 
   const onSubmit = async (data: FormData) => {
     const url = isEdit ? `http://localhost:8080/api/materials/${id}` : 'http://localhost:8080/api/materials';
@@ -221,6 +249,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               {...register('name', { required: 'Название обязательно' })}
               error={!!errors.name}
               helperText={errors.name?.message}
+              InputLabelProps={{ shrink: true }}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -228,6 +257,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               label="Код/Артикул"
               fullWidth
               {...register('code')}
+              InputLabelProps={{ shrink: true }}
             />
           </Grid>
           <Grid item xs={12}>
@@ -237,6 +267,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               multiline
               rows={3}
               {...register('description')}
+              InputLabelProps={{ shrink: true }}
             />
           </Grid>
           <Grid item xs={12}>
@@ -244,6 +275,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               label="Ссылка на сайт производителя"
               fullWidth
               {...register('link')}
+              InputLabelProps={{ shrink: true }}
             />
           </Grid>
         </Grid>
@@ -266,13 +298,13 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                       if (newValue?.id === 'CREATE_NEW') setOpenNewCategoryDialog(true);
                       else field.onChange(newValue?.id || null);
                     }}
-                    renderInput={(params) => <TextField {...params} label="Категория" />}
+                    renderInput={(params) => <TextField {...params} label="Категория" InputLabelProps={{ shrink: true }} />}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                   />
                   <Dialog open={openNewCategoryDialog} onClose={() => setOpenNewCategoryDialog(false)}>
                     <DialogTitle>Создать новую категорию</DialogTitle>
                     <DialogContent>
-                      <TextField autoFocus label="Название категории" fullWidth value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} />
+                      <TextField autoFocus label="Название категории" fullWidth value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} InputLabelProps={{ shrink: true }} />
                     </DialogContent>
                     <DialogActions>
                       <Button onClick={() => setOpenNewCategoryDialog(false)}>Отмена</Button>
@@ -297,13 +329,13 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                       if (newValue?.id === 'CREATE_NEW') setOpenNewTypeDialog(true);
                       else field.onChange(newValue?.id || null);
                     }}
-                    renderInput={(params) => <TextField {...params} label="Тип материала" />}
+                    renderInput={(params) => <TextField {...params} label="Тип материала" InputLabelProps={{ shrink: true }} />}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                   />
                   <Dialog open={openNewTypeDialog} onClose={() => setOpenNewTypeDialog(false)}>
                     <DialogTitle>Создать новый тип материала</DialogTitle>
                     <DialogContent>
-                      <TextField autoFocus label="Название типа" fullWidth value={newTypeName} onChange={e => setNewTypeName(e.target.value)} />
+                      <TextField autoFocus label="Название типа" fullWidth value={newTypeName} onChange={e => setNewTypeName(e.target.value)} InputLabelProps={{ shrink: true }} />
                     </DialogContent>
                     <DialogActions>
                       <Button onClick={() => setOpenNewTypeDialog(false)}>Отмена</Button>
@@ -341,14 +373,14 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                     <Chip variant="outlined" label={option.name} {...getTagProps({ index })} />
                   ))
                 }
-                renderInput={(params) => <TextField {...params} label="Выберите одну или несколько единиц" />}
+                renderInput={(params) => <TextField {...params} label="Выберите одну или несколько единиц" InputLabelProps={{ shrink: true }} />}
                 isOptionEqualToValue={(option, value) => option.id === value.id}
               />
               <Dialog open={openNewUnitDialog} onClose={() => setOpenNewUnitDialog(false)}>
                 <DialogTitle>Создать новую единицу измерения</DialogTitle>
                 <DialogContent>
-                  <TextField autoFocus label="Название" fullWidth value={newUnitName} onChange={e => setNewUnitName(e.target.value)} sx={{ mb: 2 }} />
-                  <TextField label="Сокращение" fullWidth value={newUnitShortName} onChange={e => setNewUnitShortName(e.target.value)} />
+                  <TextField autoFocus label="Название" fullWidth value={newUnitName} onChange={e => setNewUnitName(e.target.value)} sx={{ mb: 2 }} InputLabelProps={{ shrink: true }} />
+                  <TextField label="Сокращение" fullWidth value={newUnitShortName} onChange={e => setNewUnitShortName(e.target.value)} InputLabelProps={{ shrink: true }} />
                 </DialogContent>
                 <DialogActions>
                   <Button onClick={() => setOpenNewUnitDialog(false)}>Отмена</Button>
@@ -358,6 +390,89 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
             </>
           )}
         />
+      </Paper>
+
+      <Paper sx={{ p: 2, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Наименования у поставщиков</Typography>
+        <List>
+          {supplierNames.map((name, idx) => (
+            <ListItem key={idx}>
+              {editSupplierIdx === idx ? (
+                <TextField
+                  value={editSupplierValue}
+                  onChange={e => setEditSupplierValue(e.target.value)}
+                  size="small"
+                  sx={{ mr: 1 }}
+                  InputLabelProps={{ shrink: true }}
+                />
+              ) : (
+                <ListItemText primary={name} />
+              )}
+              <ListItemSecondaryAction>
+                {editSupplierIdx === idx ? (
+                  <>
+                    <IconButton edge="end" onClick={async () => {
+                      await fetch(`/api/supplier-material-names`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ materialId: id, name: editSupplierValue })
+                      });
+                      setSupplierNames(sn => sn.map((n, i) => i === idx ? editSupplierValue : n));
+                      setEditSupplierIdx(null);
+                      setEditSupplierValue('');
+                    }}>
+                      <EditIcon color="primary" />
+                    </IconButton>
+                    <IconButton edge="end" onClick={() => { setEditSupplierIdx(null); setEditSupplierValue(''); }}>
+                      <DeleteIcon color="error" />
+                    </IconButton>
+                  </>
+                ) : (
+                  <>
+                    <IconButton edge="end" onClick={() => { setEditSupplierIdx(idx); setEditSupplierValue(name); }}>
+                      <EditIcon />
+                    </IconButton>
+                    <IconButton edge="end" onClick={async () => {
+                      await fetch(`/api/supplier-material-names`, {
+                        method: 'DELETE',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ materialId: id, name })
+                      });
+                      setSupplierNames(sn => sn.filter((_, i) => i !== idx));
+                    }}>
+                      <DeleteIcon />
+                    </IconButton>
+                  </>
+                )}
+              </ListItemSecondaryAction>
+            </ListItem>
+          ))}
+          <ListItem>
+            <TextField
+              value={newSupplierName}
+              onChange={e => setNewSupplierName(e.target.value)}
+              size="small"
+              label="Добавить наименование"
+              sx={{ mr: 1 }}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button
+              variant="contained"
+              size="small"
+              onClick={async () => {
+                if (newSupplierName.trim()) {
+                  await fetch(`/api/supplier-material-names`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ materialId: id, name: newSupplierName })
+                  });
+                  setSupplierNames(sn => [...sn, newSupplierName]);
+                  setNewSupplierName('');
+                }
+              }}
+            >Добавить</Button>
+          </ListItem>
+        </List>
       </Paper>
 
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 3, gap: 2 }}>

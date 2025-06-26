@@ -179,9 +179,9 @@ const MaterialListPage: React.FC = () => {
             Управление номенклатурой материалов
           </Typography>
           <Box sx={{ display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              color="primary"
+            <Button 
+              variant="outlined" 
+              color="primary" 
               startIcon={<FileUploadIcon />}
               onClick={handleExport}
             >

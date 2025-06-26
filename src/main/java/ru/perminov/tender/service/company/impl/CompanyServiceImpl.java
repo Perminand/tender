@@ -140,6 +140,14 @@ public class CompanyServiceImpl implements CompanyService {
                 .toList();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public CompanyDto getByShortName(String shortName) {
+        Company company = companyRepository.findByShortName(shortName)
+                .orElseThrow(() -> new IllegalArgumentException("Company not found with shortName: " + shortName));
+        return companyMapper.toCompanyDto(company);
+    }
+
     public static class ImportResult {
         public int imported;
         public java.util.List<Map<String, Object>> errors = new ArrayList<>();
@@ -163,11 +171,12 @@ public class CompanyServiceImpl implements CompanyService {
                     String ogrn = getCellStringValue(row.getCell(3));
                     String name = getCellStringValue(row.getCell(4));
                     String legalName = getCellStringValue(row.getCell(5));
-                    String address = getCellStringValue(row.getCell(6));
-                    String typeName = getCellStringValue(row.getCell(7));
-                    String director = getCellStringValue(row.getCell(8));
-                    String phone = getCellStringValue(row.getCell(9));
-                    String email = getCellStringValue(row.getCell(10));
+                    String shortName = getCellStringValue(row.getCell(6));
+                    String address = getCellStringValue(row.getCell(7));
+                    String typeName = getCellStringValue(row.getCell(8));
+                    String director = getCellStringValue(row.getCell(9));
+                    String phone = getCellStringValue(row.getCell(10));
+                    String email = getCellStringValue(row.getCell(11));
 
                     if (typeName == null || typeName.isBlank()) throw new RuntimeException("Тип компании не указан");
                     CompanyType companyType = typeCompanyRepository.findByName(typeName)
@@ -179,6 +188,7 @@ public class CompanyServiceImpl implements CompanyService {
                     company.setOgrn(ogrn);
                     company.setName(name);
                     company.setLegalName(legalName);
+                    company.setShortName(shortName);
                     company.setAddress(address);
                     company.setCompanyType(companyType);
                     company.setDirector(director);

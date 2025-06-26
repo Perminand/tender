@@ -34,37 +34,38 @@ public class MaterialController {
 
     @PostMapping
     public ResponseEntity<MaterialDto> create(@RequestBody @Valid MaterialDtoNew materialDtoNew) {
-        log.info("Пришел POST запрос на создание материала: {}", materialDtoNew);
+        log.info("Получен POST-запрос: создать материал. Данные: {}", materialDtoNew);
         return ResponseEntity.ok(materialService.create(materialDtoNew));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<MaterialDto> update(@PathVariable UUID id, @RequestBody @Valid MaterialDtoUpdate materialDtoUpdate) {
-        log.info("Пришел PUT запрос на изменение материала uuid: {} содержимое: {}", id, materialDtoUpdate);
+        log.info("Получен PUT-запрос: обновить материал. id={}, данные: {}", id, materialDtoUpdate);
         return ResponseEntity.ok(materialService.update(id, materialDtoUpdate));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Пришел DELETE запрос на удаление материала uuid: {}", id);
+        log.info("Получен DELETE-запрос: удалить материал. id={}", id);
         materialService.delete(id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<MaterialDto> getById(@PathVariable UUID id) {
-        log.info("Пришел GET запрос на получение материала uuid: {}", id);
+        log.info("Получен GET-запрос: получить материал по id={}", id);
         return ResponseEntity.ok(materialService.getById(id));
     }
 
     @GetMapping
     public ResponseEntity<List<MaterialDto>> getAll() {
-        log.info("Пришел GET запрос на получение всех материалов");
+        log.info("Получен GET-запрос: получить все материалы");
         return ResponseEntity.ok(materialService.getAll());
     }
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportMaterials() {
+        log.info("Получен GET-запрос: экспортировать материалы в Excel");
         String filename = "materials.xlsx";
         List<MaterialDto> materials = materialService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportMaterialsToExcel(materials));
@@ -77,6 +78,7 @@ public class MaterialController {
 
     @PostMapping("/import")
     public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        log.info("Получен POST-запрос: импортировать материалы из Excel");
         ImportResultDto result = materialService.importFromExcel(file);
         return ResponseEntity.ok(result);
     }

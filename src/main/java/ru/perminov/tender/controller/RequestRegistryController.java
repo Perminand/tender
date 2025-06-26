@@ -1,6 +1,7 @@
 package ru.perminov.tender.controller;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -13,6 +14,7 @@ import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.util.List;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/requests/registry")
 @RequiredArgsConstructor
@@ -29,6 +31,8 @@ public class RequestRegistryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String materialName
     ) {
+        log.info("Получен GET-запрос: получить реестр заявок. Фильтры: организация={}, проект={}, статус={}, с даты={}, по дату={}, материал={}", 
+                organization, project, status, fromDate, toDate, materialName);
         return ResponseEntity.ok(
                 registryService.getRegistry(organization, project, status, fromDate, toDate, materialName)
         );
@@ -43,6 +47,8 @@ public class RequestRegistryController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String materialName
     ) {
+        log.info("Получен GET-запрос: экспортировать реестр заявок в Excel. Фильтры: организация={}, проект={}, статус={}, с даты={}, по дату={}, материал={}", 
+                organization, project, status, fromDate, toDate, materialName);
         ByteArrayInputStream in = registryService.exportRegistryToExcel(organization, project, status, fromDate, toDate, materialName);
         byte[] bytes = in.readAllBytes();
         return ResponseEntity.ok()

@@ -13,5 +13,6 @@ public record RequestMaterialDto(
     Double quantity,
     UnitDto unit,
     String note,
-    String deliveryDate
+    String deliveryDate,
+    String supplierMaterialName
 ) {} 

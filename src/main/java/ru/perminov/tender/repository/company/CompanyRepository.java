@@ -10,4 +10,5 @@ import java.util.Optional;
 @Repository
 public interface CompanyRepository extends JpaRepository<Company, UUID> {
     Optional<Company> findByInn(String inn);
+    Optional<Company> findByShortName(String shortName);
 } 

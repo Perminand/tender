@@ -15,9 +15,8 @@ public record RequestDto(
     ProjectDto project,
     LocalDate date,
     String status,
+    String requestNumber,
     List<RequestMaterialDto> materials,
     WarehouseDto warehouse
 ) {
-    public WarehouseDto getWarehouse() { return warehouse; }
-    public void setWarehouse(WarehouseDto warehouse) { this.warehouse = warehouse; }
-} 
+}

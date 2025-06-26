@@ -30,32 +30,38 @@ public class ProjectController {
 
     @GetMapping
     public ResponseEntity<List<ProjectDto>> getAll() {
+        log.info("Получен GET-запрос: получить все проекты");
         return ResponseEntity.ok(projectService.getAll());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ProjectDto> getById(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: получить проект по id={}", id);
         return ResponseEntity.ok(projectService.getById(id));
     }
 
     @PostMapping
     public ResponseEntity<ProjectDto> create(@Valid @RequestBody ProjectDtoNew dto) {
+        log.info("Получен POST-запрос: создать проект. Данные: {}", dto);
         return ResponseEntity.ok(projectService.create(dto));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ProjectDto> update(@PathVariable UUID id, @Valid @RequestBody ProjectDtoUpdate dto) {
+        log.info("Получен PUT-запрос: обновить проект. id={}, данные: {}", id, dto);
         return ResponseEntity.ok(projectService.update(id, dto));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
+        log.info("Получен DELETE-запрос: удалить проект. id={}", id);
         projectService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportProjects() {
+        log.info("Получен GET-запрос: экспортировать проекты в Excel");
         String filename = "projects.xlsx";
         List<ProjectDto> projects = projectService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportProjectsToExcel(projects));
@@ -67,6 +73,7 @@ public class ProjectController {
 
     @PostMapping("/import")
     public ResponseEntity<String> importProjects(@RequestParam("file") MultipartFile file) {
+        log.info("Получен POST-запрос: импортировать проекты из Excel");
         int importedCount = projectService.importFromExcel(file);
         return ResponseEntity.ok("Импортировано объектов: " + importedCount);
     }

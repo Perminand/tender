@@ -16,6 +16,8 @@ public record CompanyDto(
 
         String legalName,
 
+        String shortName,
+
         String address,
 
         String typeId,

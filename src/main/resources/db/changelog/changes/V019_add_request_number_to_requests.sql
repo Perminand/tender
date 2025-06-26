@@ -1,0 +1,1 @@
+ALTER TABLE requests ADD COLUMN request_number VARCHAR(50); 

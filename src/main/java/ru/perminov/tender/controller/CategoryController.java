@@ -65,6 +65,7 @@ public class CategoryController {
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportCategories() {
+        log.info("Получен GET-запрос: экспортировать категории в Excel");
         String filename = "categories.xlsx";
         List<Category> categories = categoryService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportCategoriesToExcel(categories));
@@ -77,6 +78,7 @@ public class CategoryController {
 
     @PostMapping("/import")
     public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        log.info("Получен POST-запрос: импортировать категории из Excel");
         ImportResultDto result = categoryService.importFromExcel(file);
         return ResponseEntity.ok(result);
     }

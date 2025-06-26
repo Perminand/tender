@@ -5,40 +5,28 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import ru.perminov.tender.model.company.Company;
 
 import java.util.UUID;
 
 @Entity
-@Table(name = "request_materials")
+@Table(name = "org_supplier_material_mapping")
 @Getter
 @Setter
 @ToString
 @NoArgsConstructor
-public class RequestMaterial {
+public class OrgSupplierMaterialMapping {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "request_id")
-    private Request request;
+    @JoinColumn(name = "organization_id")
+    private Company organization;
 
-    private Integer number;
-    private String section;
-    private String workType;
+    private String supplierName;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_id")
     private Material material;
-
-    private String size;
-    private Double quantity;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unit_id")
-    private Unit unit;
-
-    private String note;
-    private String deliveryDate;
-    private String supplierMaterialName;
 } 

@@ -63,6 +63,7 @@ public class ContactTypeController {
 
     @GetMapping("/export")
     public ResponseEntity<Resource> exportContactTypes() {
+        log.info("Получен GET-запрос: экспортировать типы контактов в Excel");
         String filename = "contact_types.xlsx";
         List<ContactTypeDto> contactTypes = contactTypeService.getAll();
         InputStreamResource file = new InputStreamResource(excelService.exportContactTypesToExcel(contactTypes));
@@ -75,6 +76,7 @@ public class ContactTypeController {
 
     @PostMapping("/import")
     public ResponseEntity<ImportResultDto> importFromExcel(@RequestParam("file") MultipartFile file) {
+        log.info("Получен POST-запрос: импортировать типы контактов из Excel");
         ImportResultDto result = contactTypeService.importFromExcel(file);
         return ResponseEntity.ok(result);
     }
