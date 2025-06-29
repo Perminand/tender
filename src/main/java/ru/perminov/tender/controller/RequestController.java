@@ -21,13 +21,39 @@ public class RequestController {
     @GetMapping
     public ResponseEntity<List<RequestDto>> getAll() {
         log.info("Получен GET-запрос: получить все заявки");
-        return ResponseEntity.ok(requestService.findAll());
+        List<RequestDto> requests = requestService.findAll();
+        log.info("Возвращено заявок: {}", requests.size());
+        for (RequestDto request : requests) {
+            log.info("Заявка {}: материалов = {}", request.id(), 
+                    request.materials() != null ? request.materials().size() : 0);
+        }
+        return ResponseEntity.ok(requests);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<RequestDto> getById(@PathVariable UUID id) {
         log.info("Получен GET-запрос: получить заявку по id={}", id);
-        return ResponseEntity.ok(requestService.findById(id));
+
+        RequestDto request = requestService.findById(id);
+        log.info("Заявка {}: материалов = {}", request.id(), 
+                request.materials() != null ? request.materials().size() : 0);
+        return ResponseEntity.ok(request);
+    }
+
+    @GetMapping("/test/{id}")
+    public ResponseEntity<String> testById(@PathVariable UUID id) {
+        log.info("Тестовый запрос для заявки id={}", id);
+        try {
+            RequestDto request = requestService.findById(id);
+            String result = String.format("Заявка %s: материалов = %d", 
+                    request.id(), 
+                    request.materials() != null ? request.materials().size() : 0);
+            log.info(result);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Ошибка при получении заявки: ", e);
+            return ResponseEntity.ok("Ошибка: " + e.getMessage());
+        }
     }
 
     @PostMapping

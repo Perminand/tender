@@ -14,7 +14,6 @@ public record RequestDto(
     CompanyDto organization,
     ProjectDto project,
     LocalDate date,
-    String status,
     String requestNumber,
     List<RequestMaterialDto> materials,
     WarehouseDto warehouse

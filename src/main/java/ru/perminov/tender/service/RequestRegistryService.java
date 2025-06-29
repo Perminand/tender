@@ -7,6 +7,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface RequestRegistryService {
-    List<RequestRegistryRowDto> getRegistry(String organization, String project, String status, LocalDate fromDate, LocalDate toDate, String materialName);
-    ByteArrayInputStream exportRegistryToExcel(String organization, String project, String status, LocalDate fromDate, LocalDate toDate, String materialName);
+    List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName);
+    ByteArrayInputStream exportRegistryToExcel(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName);
 } 

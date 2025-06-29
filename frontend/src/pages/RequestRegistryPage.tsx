@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import {
   Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Toolbar, Typography, Button, TextField, Box, CircularProgress
+  Toolbar, Typography, Button, TextField, Box, CircularProgress, Chip,
+  IconButton, Tooltip
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { Visibility, Edit, Download } from '@mui/icons-material';
 
 interface RequestRegistryRowDto {
   requestId: string;
@@ -12,32 +14,22 @@ interface RequestRegistryRowDto {
   requestDate: string;
   organization: string;
   project: string;
-  status: string;
-  materialName: string;
-  section: string;
-  workType: string;
-  size: string;
-  quantity: number;
-  unit: string;
+  warehouse: string;
+  materialsCount: number;
+  totalQuantity: number;
   note: string;
-  deliveryDate: string;
 }
 
 const columns = [
-  { key: 'requestNumber', label: 'Номер заявки' },
-  { key: 'requestDate', label: 'Дата заявки' },
-  { key: 'organization', label: 'Организация' },
-  { key: 'project', label: 'Проект' },
-  { key: 'status', label: 'Статус' },
-  { key: 'materialName', label: 'Материал' },
-  { key: 'section', label: 'Участок' },
-  { key: 'workType', label: 'Вид работ' },
-  { key: 'size', label: 'Размер' },
-  { key: 'quantity', label: 'Кол-во' },
-  { key: 'unit', label: 'Ед. изм.' },
-  { key: 'note', label: 'Примечание' },
-  { key: 'deliveryDate', label: 'Поставить к дате' },
-  { key: 'actions', label: 'Действия' },
+  { key: 'requestNumber', label: 'Номер заявки', width: '120px' },
+  { key: 'requestDate', label: 'Дата заявки', width: '100px' },
+  { key: 'organization', label: 'Организация', width: '200px' },
+  { key: 'project', label: 'Проект', width: '200px' },
+  { key: 'warehouse', label: 'Склад', width: '150px' },
+  { key: 'materialsCount', label: 'Кол-во материалов', width: '120px' },
+  { key: 'totalQuantity', label: 'Общее кол-во', width: '120px' },
+  { key: 'note', label: 'Примечание', width: '200px' },
+  { key: 'actions', label: 'Действия', width: '120px' },
 ];
 
 export default function RequestRegistryPage() {
@@ -46,7 +38,6 @@ export default function RequestRegistryPage() {
   const [filters, setFilters] = useState({
     organization: '',
     project: '',
-    status: '',
     fromDate: '',
     toDate: '',
     materialName: '',
@@ -56,12 +47,17 @@ export default function RequestRegistryPage() {
 
   const fetchData = async () => {
     setLoading(true);
-    const params = Object.fromEntries(
-      Object.entries(filters).filter(([_, v]) => v)
-    );
-    const res = await axios.get<RequestRegistryRowDto[]>('/api/requests/registry', { params });
-    setData(res.data);
-    setLoading(false);
+    try {
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([_, v]) => v)
+      );
+      const res = await axios.get<RequestRegistryRowDto[]>('/api/requests/registry', { params });
+      setData(res.data);
+    } catch (error) {
+      console.error('Ошибка при загрузке реестра заявок:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -78,87 +74,255 @@ export default function RequestRegistryPage() {
     fetchData();
   };
 
-  const handleExport = async () => {
-    const params = Object.fromEntries(
-      Object.entries(filters).filter(([_, v]) => v)
-    );
-    const res = await axios.get('/api/requests/registry/export', {
-      params,
-      responseType: 'blob',
+  const handleClearFilters = () => {
+    setFilters({
+      organization: '',
+      project: '',
+      fromDate: '',
+      toDate: '',
+      materialName: '',
     });
-    const url = window.URL.createObjectURL(new Blob([res.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', 'registry.xlsx');
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+  };
+
+  const handleExport = async () => {
+    try {
+      const params = Object.fromEntries(
+        Object.entries(filters).filter(([_, v]) => v)
+      );
+      const res = await axios.get('/api/requests/registry/export', {
+        params,
+        responseType: 'blob',
+      });
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `реестр_заявок_${new Date().toISOString().split('T')[0]}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      console.error('Ошибка при экспорте:', error);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return '';
+    return new Date(dateString).toLocaleDateString('ru-RU');
   };
 
   return (
     <Paper sx={{ p: 2 }}>
-      <Toolbar sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+      <Toolbar sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
         <Typography variant="h6" component="div">Реестр заявок</Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
           <Button
             variant="contained"
             color="primary"
             onClick={() => navigate('/requests/new')}
-            sx={{ mr: 2 }}
+            startIcon={<Edit />}
           >
             Создать заявку
           </Button>
-          <Box component="form" onSubmit={handleFilterSubmit} sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-            <TextField name="organization" label="Организация" size="small" value={filters.organization} onChange={handleFilterChange} />
-            <TextField name="project" label="Проект" size="small" value={filters.project} onChange={handleFilterChange} />
-            <TextField name="status" label="Статус" size="small" value={filters.status} onChange={handleFilterChange} />
-            <TextField name="fromDate" label="С даты" type="date" size="small" value={filters.fromDate} onChange={handleFilterChange} InputLabelProps={{ shrink: true }} />
-            <TextField name="toDate" label="По дату" type="date" size="small" value={filters.toDate} onChange={handleFilterChange} InputLabelProps={{ shrink: true }} />
-            <TextField name="materialName" label="Материал" size="small" value={filters.materialName} onChange={handleFilterChange} />
-            <Button type="submit" variant="contained" color="primary">Фильтровать</Button>
-            <Button type="button" variant="outlined" onClick={handleExport}>Экспорт в Excel</Button>
-          </Box>
+          <Tooltip title="Экспорт в Excel">
+            <IconButton
+              color="primary"
+              onClick={handleExport}
+              disabled={loading}
+            >
+              <Download />
+            </IconButton>
+          </Tooltip>
         </Box>
       </Toolbar>
+
+      {/* Фильтры */}
+      <Paper sx={{ p: 2, mb: 2, backgroundColor: '#f5f5f5' }}>
+        <Box component="form" onSubmit={handleFilterSubmit}>
+          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField
+              name="organization"
+              label="Организация"
+              size="small"
+              value={filters.organization}
+              onChange={handleFilterChange}
+              sx={{ minWidth: 200 }}
+            />
+            <TextField
+              name="project"
+              label="Проект"
+              size="small"
+              value={filters.project}
+              onChange={handleFilterChange}
+              sx={{ minWidth: 200 }}
+            />
+            <TextField
+              name="materialName"
+              label="Материал"
+              size="small"
+              value={filters.materialName}
+              onChange={handleFilterChange}
+              sx={{ minWidth: 200 }}
+            />
+            <TextField
+              name="fromDate"
+              label="С даты"
+              type="date"
+              size="small"
+              value={filters.fromDate}
+              onChange={handleFilterChange}
+              InputLabelProps={{ shrink: true }}
+            />
+            <TextField
+              name="toDate"
+              label="По дату"
+              type="date"
+              size="small"
+              value={filters.toDate}
+              onChange={handleFilterChange}
+              InputLabelProps={{ shrink: true }}
+            />
+            <Button type="submit" variant="contained" color="primary">
+              Фильтровать
+            </Button>
+            <Button type="button" variant="outlined" onClick={handleClearFilters}>
+              Сбросить
+            </Button>
+          </Box>
+        </Box>
+      </Paper>
+
+      {/* Таблица */}
       <TableContainer>
         <Table size="small">
           <TableHead>
-            <TableRow>
-              {columns.map(col => <TableCell key={col.key}>{col.label}</TableCell>)}
+            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
+              {columns.map(col => (
+                <TableCell 
+                  key={col.key}
+                  sx={{ 
+                    fontWeight: 'bold',
+                    width: col.width,
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {col.label}
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center">
+                <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
                   <CircularProgress size={24} />
                 </TableCell>
               </TableRow>
             ) : data.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center">
-                  Нет данных
+                <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Нет данных для отображения
+                  </Typography>
                 </TableCell>
               </TableRow>
             ) : data.map((row, idx) => (
-              <TableRow key={row.requestId + '-' + idx}>
-                {columns.slice(0, -1).map(col => (
-                  <TableCell key={col.key}>{(row as any)[col.key]}</TableCell>
-                ))}
+              <TableRow 
+                key={row.requestId + '-' + idx}
+                hover
+                sx={{ '&:hover': { backgroundColor: '#f8f9fa' } }}
+              >
                 <TableCell>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => navigate(`/requests/${row.requestId}/edit`)}
-                  >
-                    Редактировать
-                  </Button>
+                  <Typography variant="body2" fontWeight="medium">
+                    {row.requestNumber}
+                  </Typography>
+                </TableCell>
+                <TableCell>{formatDate(row.requestDate)}</TableCell>
+                <TableCell>{row.organization}</TableCell>
+                <TableCell>{row.project}</TableCell>
+                <TableCell>
+                  {row.warehouse ? (
+                    <Chip 
+                      label={row.warehouse} 
+                      size="small" 
+                      variant="outlined"
+                      color="primary"
+                    />
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      Не указан
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell align="center">
+                  <Chip 
+                    label={row.materialsCount} 
+                    size="small" 
+                    color="secondary"
+                  />
+                </TableCell>
+                <TableCell align="center">
+                  <Typography variant="body2" fontWeight="medium">
+                    {row.totalQuantity.toFixed(2)}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  {row.note ? (
+                    <Typography 
+                      variant="body2" 
+                      sx={{ 
+                        maxWidth: 200,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap'
+                      }}
+                      title={row.note}
+                    >
+                      {row.note}
+                    </Typography>
+                  ) : (
+                    <Typography variant="body2" color="text.secondary">
+                      -
+                    </Typography>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Tooltip title="Просмотреть">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => navigate(`/requests/${row.requestId}/edit`)}
+                      >
+                        <Visibility />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Редактировать">
+                      <IconButton
+                        size="small"
+                        color="secondary"
+                        onClick={() => navigate(`/requests/${row.requestId}/edit`)}
+                      >
+                        <Edit />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Статистика */}
+      {!loading && data.length > 0 && (
+        <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1 }}>
+          <Typography variant="body2" color="text.secondary">
+            Всего заявок: {data.length} | 
+            Общее количество материалов: {data.reduce((sum, row) => sum + row.materialsCount, 0)} |
+            Общая сумма: {data.reduce((sum, row) => sum + row.totalQuantity, 0).toFixed(2)}
+          </Typography>
+        </Box>
+      )}
     </Paper>
   );
 } 

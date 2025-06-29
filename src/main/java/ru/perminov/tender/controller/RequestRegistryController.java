@@ -26,15 +26,14 @@ public class RequestRegistryController {
     public ResponseEntity<List<RequestRegistryRowDto>> getRegistry(
             @RequestParam(required = false) String organization,
             @RequestParam(required = false) String project,
-            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String materialName
     ) {
-        log.info("Получен GET-запрос: получить реестр заявок. Фильтры: организация={}, проект={}, статус={}, с даты={}, по дату={}, материал={}", 
-                organization, project, status, fromDate, toDate, materialName);
+        log.info("Получен GET-запрос: получить реестр заявок. Фильтры: организация={}, проект={}, с даты={}, по дату={}, материал={}",
+                organization, project, fromDate, toDate, materialName);
         return ResponseEntity.ok(
-                registryService.getRegistry(organization, project, status, fromDate, toDate, materialName)
+                registryService.getRegistry(organization, project, fromDate, toDate, materialName)
         );
     }
 
@@ -42,14 +41,13 @@ public class RequestRegistryController {
     public ResponseEntity<byte[]> exportRegistry(
             @RequestParam(required = false) String organization,
             @RequestParam(required = false) String project,
-            @RequestParam(required = false) String status,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
             @RequestParam(required = false) String materialName
     ) {
-        log.info("Получен GET-запрос: экспортировать реестр заявок в Excel. Фильтры: организация={}, проект={}, статус={}, с даты={}, по дату={}, материал={}", 
-                organization, project, status, fromDate, toDate, materialName);
-        ByteArrayInputStream in = registryService.exportRegistryToExcel(organization, project, status, fromDate, toDate, materialName);
+        log.info("Получен GET-запрос: экспортировать реестр заявок в Excel. Фильтры: организация={}, проект={}, с даты={}, по дату={}, материал={}",
+                organization, project,  fromDate, toDate, materialName);
+        ByteArrayInputStream in = registryService.exportRegistryToExcel(organization, project, fromDate, toDate, materialName);
         byte[] bytes = in.readAllBytes();
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=registry.xlsx")

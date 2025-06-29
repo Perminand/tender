@@ -34,14 +34,18 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/V016_add_warehouse_to_requests.sql
   - include:
+      file: db/changelog/changes/V017_create_supplier_material_names.sql
+  - include:
+      file: db/changelog/changes/V018_create_org_supplier_material_mapping.sql
+  - include:
       file: db/changelog/changes/V019_add_request_number_to_requests.sql
   - include:
       file: db/changelog/changes/V020_alter_sections_unique_index.sql
   - include:
       file: db/changelog/changes/V021_add_supplier_material_name_to_request_materials.sql
   - include:
-      file: db/changelog/changes/V017_create_supplier_material_names.sql
-  - include:
       file: db/changelog/changes/V022_add_supplier_id_to_supplier_material_names.sql
   - include:
       file: db/changelog/changes/V023_add_short_name_to_companies.sql
+  - include:
+      file: db/changelog/changes/V024_remove_status_from_requests.sql

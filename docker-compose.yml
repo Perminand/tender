@@ -13,3 +13,17 @@ services:
       timeout: 5s
       interval: 5s
       retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tender-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://tender-db:5432/tender
+      - SPRING_DATASOURCE_USERNAME=tender
+      - SPRING_DATASOURCE_PASSWORD=tender
+    depends_on:
+      - tender-db

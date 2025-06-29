@@ -86,8 +86,6 @@ export default function RequestEditPage() {
 
   const [openProjectDialog, setOpenProjectDialog] = useState(false);
   const [newProject, setNewProject] = useState('');
-  const [openStatusDialog, setOpenStatusDialog] = useState(false);
-  const [newStatus, setNewStatus] = useState('');
 
   const [openCompanyDialog, setOpenCompanyDialog] = useState(false);
   const [newCompany, setNewCompany] = useState('');
@@ -251,8 +249,6 @@ export default function RequestEditPage() {
     } else if (name === 'project') {
       const project = projects.find(p => p.id === value) || null;
       setRequest({ ...request, project: project });
-    } else if (name === 'status') {
-      setRequest({ ...request, status: value });
     }
   };
 
@@ -546,8 +542,8 @@ export default function RequestEditPage() {
 
       // --- Импорт материалов заявки ---
       // 1. Найти строку с заголовками
-      const headerRowIndex = rows.findIndex(row =>
-        row.some(cell =>
+      const headerRowIndex = (rows as any[]).findIndex((row) =>
+        (row as any[]).some((cell: any) =>
           typeof cell === 'string' &&
           cell.toLowerCase().includes('наименование материала')
         )
@@ -559,7 +555,7 @@ export default function RequestEditPage() {
       const headerRow = rows[headerRowIndex] as any[];
       // 2. Построить отображение: название → индекс
       const headerMap: Record<string, number> = {};
-      headerRow.forEach((cell, idx) => {
+      headerRow.forEach((cell: any, idx: number) => {
         if (typeof cell === 'string') {
           headerMap[cell.trim().toLowerCase()] = idx;
         }
@@ -567,15 +563,19 @@ export default function RequestEditPage() {
       // 3. Функция для получения индекса по названию (с синонимами)
       function getColIndex(...names: string[]): number | undefined {
         for (const name of names) {
+          // Сначала точное совпадение
           const idx = headerMap[name.toLowerCase()];
           if (idx !== undefined) return idx;
+          // Потом по includes
+          for (const key in headerMap) {
+            if (key.includes(name.toLowerCase())) return headerMap[key];
+          }
         }
         return undefined;
       }
       const idxSection = getColIndex('участок (склад)', 'участок');
       const idxWorkType = getColIndex('вид работ');
       const idxMaterialName = getColIndex('наименование материала');
-      const idxSize = getColIndex('размер');
       const idxQuantity = getColIndex('кол-во', 'количество');
       const idxNote = getColIndex('примечание по заявке', 'примечание');
       const idxDeliveryDate = getColIndex('поставить к дате');
@@ -617,23 +617,26 @@ export default function RequestEditPage() {
             ((u as any).shortName || '').trim().toLowerCase() === unitName.toLowerCase() ||
             ((u as any).name || '').trim().toLowerCase() === unitName.toLowerCase()
           );
-          if (!unitObj && unitName) {
-            setNewUnitName(unitName);
-            setOpenUnitDialog(true);
-            setPendingImportMaterialIndex(i);
-            setPendingImportedMaterials(importedMaterials);
-            break;
+          console.log('[IMPORT][UNIT] Ищем единицу измерения:', unitName);
+          console.log('[IMPORT][UNIT] Список units:', units);
+          if (unitObj) {
+            console.log('[IMPORT][UNIT] Найдена единица измерения:', unitObj);
+          } else if (unitName) {
+            console.log('[IMPORT][UNIT] Единица измерения не найдена, будет создана:', unitName);
+          }
+          console.log('[IMPORT][NOTE] idxNote:', idxNote, 'значение:', idxNote !== undefined ? row[idxNote] : undefined);
+          if (idxNote === undefined) {
+            console.warn('[IMPORT][NOTE] Не найден индекс колонки "Примечание"!');
           }
           importedMaterials.push({
             section: sectionObj ? sectionObj.id : '',
             workType: workTypeObj ? workTypeObj.id : '',
             materialName: idxMaterialName !== undefined ? String(row[idxMaterialName] || '').trim() : '',
             supplierMaterialName: idxSupplierMaterialName !== undefined ? String(row[idxSupplierMaterialName] || '').trim() : '',
-            size: idxSize !== undefined ? String(row[idxSize] || '').trim() : '',
             quantity: idxQuantity !== undefined ? String(row[idxQuantity] || '').trim() : '',
             note: idxNote !== undefined ? String(row[idxNote] || '').trim() : '',
             deliveryDate: idxDeliveryDate !== undefined ? normalizeDate(row[idxDeliveryDate]) : '',
-            unit: unitObj ? unitObj.id : '',
+            unit: unitObj || null,
           });
         }
         setRequest(r => ({
@@ -691,7 +694,6 @@ export default function RequestEditPage() {
       const idxSection = getColIndex('участок (склад)', 'участок');
       const idxWorkType = getColIndex('вид работ');
       const idxMaterialName = getColIndex('наименование материала');
-      const idxSize = getColIndex('размер');
       const idxQuantity = getColIndex('кол-во', 'количество');
       const idxNote = getColIndex('примечание по заявке', 'примечание');
       const idxDeliveryDate = getColIndex('поставить к дате');
@@ -730,23 +732,26 @@ export default function RequestEditPage() {
           ((u as any).shortName || '').trim().toLowerCase() === unitName.toLowerCase() ||
           ((u as any).name || '').trim().toLowerCase() === unitName.toLowerCase()
         );
-        if (!unitObj && unitName) {
-          setNewUnitName(unitName);
-          setOpenUnitDialog(true);
-          setPendingImportMaterialIndex(i);
-          setPendingImportedMaterials(importedMaterials);
-          break;
+        console.log('[IMPORT][UNIT] Ищем единицу измерения:', unitName);
+        console.log('[IMPORT][UNIT] Список units:', units);
+        if (unitObj) {
+          console.log('[IMPORT][UNIT] Найдена единица измерения:', unitObj);
+        } else if (unitName) {
+          console.log('[IMPORT][UNIT] Единица измерения не найдена, будет создана:', unitName);
+        }
+        console.log('[IMPORT][NOTE] idxNote:', idxNote, 'значение:', idxNote !== undefined ? row[idxNote] : undefined);
+        if (idxNote === undefined) {
+          console.warn('[IMPORT][NOTE] Не найден индекс колонки "Примечание"!');
         }
         importedMaterials.push({
           section: sectionObj ? sectionObj.id : '',
           workType: workTypeObj ? workTypeObj.id : '',
           materialName: idxMaterialName !== undefined ? String(row[idxMaterialName] || '').trim() : '',
           supplierMaterialName: idxSupplierMaterialName !== undefined ? String(row[idxSupplierMaterialName] || '').trim() : '',
-          size: idxSize !== undefined ? String(row[idxSize] || '').trim() : '',
           quantity: idxQuantity !== undefined ? String(row[idxQuantity] || '').trim() : '',
           note: idxNote !== undefined ? String(row[idxNote] || '').trim() : '',
           deliveryDate: idxDeliveryDate !== undefined ? normalizeDate(row[idxDeliveryDate]) : '',
-          unit: unitObj ? unitObj.id : '',
+          unit: unitObj || null,
         });
         setPendingImportMaterialIndex(i + 1);
       }
@@ -761,6 +766,34 @@ export default function RequestEditPage() {
       }
     }
   }, [sections, workTypes, pendingImportMaterials]);
+
+  // Добавить функцию автоподстановки
+  const handleSupplierMaterialNameChange = async (idx: number, value: string) => {
+    const newMaterials = [...request.materials];
+    newMaterials[idx].supplierMaterialName = value;
+
+    // Если есть организация и значение, делаем запрос
+    if (request.organization?.id && value) {
+      try {
+        const res = await axios.get('/api/org-supplier-material-mapping', {
+          params: {
+            organizationId: request.organization.id,
+            supplierName: value
+          }
+        });
+        if (res.data && res.data.material) {
+          newMaterials[idx].material = res.data.material;
+        }
+      } catch (e) {
+        // Можно добавить обработку ошибок
+      }
+    }
+
+    setRequest(r => ({
+      ...r,
+      materials: newMaterials
+    }));
+  };
 
   if (loading) {
     return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
@@ -798,35 +831,6 @@ export default function RequestEditPage() {
           InputLabelProps={{ shrink: true }}
               fullWidth
           required
-        />
-          </Grid>
-          <Grid item xs={12} md={4} sx={{ ml: 'auto', textAlign: { xs: 'left', md: 'right' } }}>
-            <Autocomplete
-              value={statusOptions.find(opt => opt.value === request.status) || null}
-              onChange={(_, value) => {
-                if (value && value.value === 'CREATE_NEW') {
-                  setNewStatus(value.label.replace(/^Создать "/, '').replace(/"$/, ''));
-                  setOpenStatusDialog(true);
-                } else {
-                  handleSelectChange('status', value ? value.value : '');
-                }
-              }}
-              options={statusOptions}
-              filterOptions={(options, state) => {
-                const filtered = options.filter(option =>
-                  option.label.toLowerCase().includes(state.inputValue.toLowerCase())
-                );
-                if (state.inputValue && filtered.length === 0) {
-                  return [{ value: 'CREATE_NEW', label: `Создать "${state.inputValue}"` }];
-                }
-                return filtered;
-              }}
-              getOptionLabel={option => option.label}
-              isOptionEqualToValue={(option, value) => option.value === value.value}
-              renderInput={params => (
-                <TextField {...params} label="Статус" required InputLabelProps={{ shrink: true }} />
-              )}
-              fullWidth
             />
           </Grid>
         </Grid>
@@ -912,13 +916,13 @@ export default function RequestEditPage() {
           <Table size="small" sx={{ minWidth: 1200, width: 'max-content' }}>
             <TableHead>
               <TableRow>
-                  {['#','Участок','Вид работ','Наименование материала','Наименование у поставщика','Размер','Кол-во','Ед. изм.','Примечание','Поставить к дате','Действия'].map((label, idx) => (
+                  {['#','Участок','Вид работ','Наименование материала','Наименование у поставщика','Кол-во','Ед. изм.','Примечание','Поставить к дате','Действия'].map((label, idx) => (
                   <TableCell
                     key={label}
                     sx={{ position: 'relative', width: colWidths[idx], minWidth: 40, maxWidth: 800, userSelect: 'none', whiteSpace: 'nowrap' }}
                   >
                     {label}
-                      {idx !== 0 && idx !== 10 && (
+                    {idx !== 0 && idx !== 9 && (
                       <span
                         style={{
                           position: 'absolute',
@@ -1033,22 +1037,29 @@ export default function RequestEditPage() {
                   />
                   </TableCell>
                   <TableCell sx={{ minWidth: 180, maxWidth: 300 }}>
-                      <TextField
-                        size="small"
-                        label="Наименование у поставщика"
-                        value={mat.supplierMaterialName || ''}
-                        onChange={e => handleMaterialChange(idx, 'supplierMaterialName', e.target.value)}
-                        fullWidth
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
-                  <TextField
-                    size="small"
-                    label="Размер"
-                    value={mat.size || ''}
-                    onChange={e => handleMaterialChange(idx, 'size', e.target.value)}
-                    fullWidth
+                    <Autocomplete
+                      freeSolo
+                      value={mat.supplierMaterialName || ''}
+                      onChange={async (_, value) => {
+                        // value — строка из списка или введённая вручную
+                        handleSupplierMaterialNameChange(idx, value || '');
+                      }}
+                      onInputChange={(_, value) => {
+                        // Для поддержки ручного ввода
+                        handleSupplierMaterialNameChange(idx, value || '');
+                      }}
+                      options={
+                        // supplierNamesOptions[idx] — массив строк для текущего материала
+                        (supplierNamesOptions[idx] || [])
+                      }
+                      renderInput={params => (
+                        <TextField {...params} size="small" label="Наименование у поставщика" InputLabelProps={{ shrink: true }} />
+                      )}
+                      filterOptions={(options, state) => {
+                        // Только полное совпадение или все варианты
+                        if (!state.inputValue) return options;
+                        return options.filter(opt => opt === state.inputValue);
+                      }}
                   />
                   </TableCell>
                     <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
@@ -1295,88 +1306,6 @@ export default function RequestEditPage() {
         </DialogActions>
       </Dialog>
 
-      {/* Диалог создания нового статуса */}
-      <Dialog open={openStatusDialog} onClose={() => setOpenStatusDialog(false)}>
-        <DialogTitle>Создать новый статус</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Название статуса"
-            type="text"
-            fullWidth
-            value={newStatus}
-            onChange={e => setNewStatus(e.target.value)}
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setOpenStatusDialog(false);
-            setNewStatus('');
-          }}>
-            Отмена
-          </Button>
-          <Button onClick={async () => {
-            if (newStatus.trim()) {
-              try {
-                // Здесь предполагается, что у вас есть API для создания статуса
-                // Если нет — просто добавьте в локальный массив
-                const newOpt = { value: newStatus.toUpperCase(), label: newStatus };
-                statusOptions.push(newOpt);
-                handleSelectChange('status', newOpt.value);
-                setNewStatus('');
-                setOpenStatusDialog(false);
-              } catch (error) {
-                alert('Ошибка при создании статуса');
-              }
-            }
-          }}>
-            Сохранить
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Диалог создания нового материала */}
-      <Dialog open={openMaterialDialog} onClose={() => setOpenMaterialDialog(false)}>
-        <DialogTitle>Создать новый материал</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Название материала"
-            type="text"
-            fullWidth
-            value={newMaterial}
-            onChange={e => setNewMaterial(e.target.value)}
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setOpenMaterialDialog(false);
-            setNewMaterial('');
-          }}>
-            Отмена
-          </Button>
-          <Button onClick={async () => {
-            if (newMaterial.trim() && materialDialogIdx !== null) {
-              try {
-                const res = await axios.post('/api/materials', { name: newMaterial });
-                setMaterials(prev => [...prev, res.data]);
-                handleMaterialChange(materialDialogIdx, 'material', res.data.id);
-                setNewMaterial('');
-                setOpenMaterialDialog(false);
-              } catch (error) {
-                alert('Ошибка при создании материала');
-              }
-            }
-          }}>
-            Сохранить
-          </Button>
-        </DialogActions>
-      </Dialog>
-
       {/* Диалог создания новой организации */}
       <Dialog open={openCompanyDialog} onClose={() => setOpenCompanyDialog(false)}>
         <DialogTitle>Создать новую организацию</DialogTitle>
@@ -1427,7 +1356,7 @@ export default function RequestEditPage() {
               const unitsRes = await axios.get('/api/units');
               setUnits(unitsRes.data);
               setOpenUnitDialog(false);
-              setPendingImportMaterials(prev => prev ? [...prev] : prev); // Форсировать повторный запуск useEffect
+              console.log('[IMPORT][UNIT] Единица измерения создана:', newUnitName);
             }
           }} variant="contained">Создать</Button>
         </DialogActions>

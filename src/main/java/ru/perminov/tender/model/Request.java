@@ -37,9 +37,6 @@ public class Request {
 
     private LocalDate date;
 
-    @Enumerated(EnumType.STRING)
-    private RequestStatus status;
-
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RequestMaterial> materials = new ArrayList<>();
 
@@ -47,7 +44,4 @@ public class Request {
     private Warehouse warehouse;
 
     private String requestNumber;
-
-    public Warehouse getWarehouse() { return warehouse; }
-    public void setWarehouse(Warehouse warehouse) { this.warehouse = warehouse; }
-} 
+}

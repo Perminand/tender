@@ -21,46 +21,79 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
     private final RequestRepository requestRepository;
 
     @Override
-    public List<RequestRegistryRowDto> getRegistry(String organization, String project, String status, LocalDate fromDate, LocalDate toDate, String materialName) {
+    public List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName) {
         List<Request> requests = requestRepository.findAll();
         List<RequestRegistryRowDto> result = new ArrayList<>();
+        
         for (Request request : requests) {
-            if (organization != null && !request.getOrganization().getName().contains(organization)) continue;
-            if (project != null && !request.getProject().getName().contains(project)) continue;
-            if (status != null && !request.getStatus().name().equalsIgnoreCase(status)) continue;
-            if (fromDate != null && request.getDate().isBefore(fromDate)) continue;
-            if (toDate != null && request.getDate().isAfter(toDate)) continue;
-            for (var material : request.getMaterials()) {
-                if (materialName != null && !material.getMaterial().getName().contains(materialName)) continue;
-                result.add(new RequestRegistryRowDto(
-                        request.getId(),
-                        request.getId().toString(), // requestNumber (можно заменить на отдельное поле)
-                        request.getDate(),
-                        request.getOrganization().getName(),
-                        request.getProject().getName(),
-                        request.getStatus().name(),
-                        material.getMaterial().getName(),
-                        material.getSection(),
-                        material.getWorkType(),
-                        material.getSize(),
-                        material.getQuantity(),
-                        material.getUnit() != null ? material.getUnit().getShortName() : null,
-                        material.getNote(),
-                        material.getDeliveryDate()
-                ));
+            // Фильтрация по организации
+            if (organization != null && !request.getOrganization().getName().toLowerCase().contains(organization.toLowerCase())) {
+                continue;
             }
+            
+            // Фильтрация по проекту
+            if (project != null && !request.getProject().getName().toLowerCase().contains(project.toLowerCase())) {
+                continue;
+            }
+            
+            // Фильтрация по датам
+            if (fromDate != null && request.getDate().isBefore(fromDate)) {
+                continue;
+            }
+            if (toDate != null && request.getDate().isAfter(toDate)) {
+                continue;
+            }
+            
+            // Фильтрация по материалу (если указан)
+            if (materialName != null) {
+                boolean hasMatchingMaterial = request.getMaterials().stream()
+                    .anyMatch(material -> material.getMaterial().getName().toLowerCase().contains(materialName.toLowerCase()));
+                if (!hasMatchingMaterial) {
+                    continue;
+                }
+            }
+            
+            // Подсчет количества материалов и общей суммы
+            int materialsCount = request.getMaterials().size();
+            double totalQuantity = request.getMaterials().stream()
+                .mapToDouble(material -> material.getQuantity() != null ? material.getQuantity() : 0.0)
+                .sum();
+            
+            // Получение примечания (берем первое непустое примечание из материалов)
+            String note = request.getMaterials().stream()
+                .map(material -> material.getNote())
+                .filter(n -> n != null && !n.trim().isEmpty())
+                .findFirst()
+                .orElse("");
+            
+            result.add(new RequestRegistryRowDto(
+                request.getId(),
+                request.getRequestNumber() != null ? request.getRequestNumber() : request.getId().toString(),
+                request.getDate(),
+                request.getOrganization().getLegalName() != null && !request.getOrganization().getLegalName().isBlank()
+                    ? request.getOrganization().getLegalName()
+                    : (request.getOrganization().getShortName() != null && !request.getOrganization().getShortName().isBlank()
+                        ? request.getOrganization().getShortName()
+                        : request.getOrganization().getName()),
+                request.getProject().getName(),
+                request.getWarehouse() != null ? request.getWarehouse().getName() : "",
+                materialsCount,
+                totalQuantity,
+                note
+            ));
         }
+        
         return result;
     }
 
     @Override
-    public ByteArrayInputStream exportRegistryToExcel(String organization, String project, String status, LocalDate fromDate, LocalDate toDate, String materialName) {
-        List<RequestRegistryRowDto> rows = getRegistry(organization, project, status, fromDate, toDate, materialName);
+    public ByteArrayInputStream exportRegistryToExcel(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName) {
+        List<RequestRegistryRowDto> rows = getRegistry(organization, project, fromDate, toDate, materialName);
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Реестр заявок");
             int rowIdx = 0;
             Row header = sheet.createRow(rowIdx++);
-            String[] headers = {"ID заявки", "Номер заявки", "Дата заявки", "Организация", "Проект", "Статус", "Материал", "Участок", "Вид работ", "Размер", "Кол-во", "Ед. изм.", "Примечание", "Поставить к дате"};
+            String[] headers = {"ID заявки", "Номер заявки", "Дата заявки", "Организация", "Проект", "Склад", "Кол-во материалов", "Общее кол-во", "Примечание"};
             for (int i = 0; i < headers.length; i++) {
                 header.createCell(i).setCellValue(headers[i]);
             }
@@ -71,15 +104,10 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
                 row.createCell(2).setCellValue(dto.requestDate() != null ? dto.requestDate().toString() : "");
                 row.createCell(3).setCellValue(dto.organization() != null ? dto.organization() : "");
                 row.createCell(4).setCellValue(dto.project() != null ? dto.project() : "");
-                row.createCell(5).setCellValue(dto.status() != null ? dto.status() : "");
-                row.createCell(6).setCellValue(dto.materialName() != null ? dto.materialName() : "");
-                row.createCell(7).setCellValue(dto.section() != null ? dto.section() : "");
-                row.createCell(8).setCellValue(dto.workType() != null ? dto.workType() : "");
-                row.createCell(9).setCellValue(dto.size() != null ? dto.size() : "");
-                row.createCell(10).setCellValue(dto.quantity() != null ? dto.quantity() : 0);
-                row.createCell(11).setCellValue(dto.unit() != null ? dto.unit() : "");
-                row.createCell(12).setCellValue(dto.note() != null ? dto.note() : "");
-                row.createCell(13).setCellValue(dto.deliveryDate() != null ? dto.deliveryDate() : "");
+                row.createCell(5).setCellValue(dto.warehouse() != null ? dto.warehouse() : "");
+                row.createCell(6).setCellValue(dto.materialsCount() != null ? dto.materialsCount() : 0);
+                row.createCell(7).setCellValue(dto.totalQuantity() != null ? dto.totalQuantity() : 0.0);
+                row.createCell(8).setCellValue(dto.note() != null ? dto.note() : "");
             }
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);
