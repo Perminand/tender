@@ -14,7 +14,6 @@ interface RequestRegistryRowDto {
   requestDate: string;
   organization: string;
   project: string;
-  warehouse: string;
   materialsCount: number;
   totalQuantity: number;
   note: string;
@@ -25,7 +24,6 @@ const columns = [
   { key: 'requestDate', label: 'Дата заявки', width: '100px' },
   { key: 'organization', label: 'Организация', width: '200px' },
   { key: 'project', label: 'Проект', width: '200px' },
-  { key: 'warehouse', label: 'Склад', width: '150px' },
   { key: 'materialsCount', label: 'Кол-во материалов', width: '120px' },
   { key: 'totalQuantity', label: 'Общее кол-во', width: '120px' },
   { key: 'note', label: 'Примечание', width: '200px' },
@@ -239,20 +237,6 @@ export default function RequestRegistryPage() {
                 <TableCell>{formatDate(row.requestDate)}</TableCell>
                 <TableCell>{row.organization}</TableCell>
                 <TableCell>{row.project}</TableCell>
-                <TableCell>
-                  {row.warehouse ? (
-                    <Chip 
-                      label={row.warehouse} 
-                      size="small" 
-                      variant="outlined"
-                      color="primary"
-                    />
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      Не указан
-                    </Typography>
-                  )}
-                </TableCell>
                 <TableCell align="center">
                   <Chip 
                     label={row.materialsCount} 

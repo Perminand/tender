@@ -15,7 +15,6 @@ import Layout from './components/Layout';
 import RequestRegistryPage from './pages/RequestRegistryPage';
 import RequestEditPage from './pages/RequestEditPage';
 import SupplierMaterialNamesPage from './pages/SupplierMaterialNamesPage';
-import { WarehouseListPage } from './pages';
 
 const App: React.FC = () => (
   <Layout>
@@ -46,7 +45,6 @@ const App: React.FC = () => (
       <Route path="/reference/requests/registry" element={<RequestRegistryPage />} />
       <Route path="/requests/new" element={<RequestEditPage />} />
       <Route path="/requests/:id/edit" element={<RequestEditPage />} />
-      <Route path="/reference/warehouses" element={<WarehouseListPage />} />
       <Route path="/reference/supplier-material-names" element={<SupplierMaterialNamesPage />} />
     </Routes>
   </Layout>

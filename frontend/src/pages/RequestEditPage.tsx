@@ -20,7 +20,6 @@ interface Material { id: string; name: string; }
 interface Unit { id: string; shortName: string; }
 interface Section { id: string; name: string; projectId: string; }
 interface WorkType { id: string; name: string; }
-interface Warehouse { id: string; name: string; }
 interface RequestMaterial {
   material?: Material | null;
   size?: string;
@@ -39,7 +38,7 @@ interface RequestDto {
   date?: string;
   status?: string;
   materials: RequestMaterial[];
-  warehouse?: Warehouse | null;
+  warehouse?: Company | null;
   requestNumber?: string;
 }
 
@@ -78,11 +77,6 @@ export default function RequestEditPage() {
   const [newWorkType, setNewWorkType] = useState('');
   const [sectionMaterialIdx, setSectionMaterialIdx] = useState<number | null>(null);
   const [workTypeMaterialIdx, setWorkTypeMaterialIdx] = useState<number | null>(null);
-
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
-  const [openWarehouseDialog, setOpenWarehouseDialog] = useState(false);
-  const [newWarehouse, setNewWarehouse] = useState('');
-  const [warehouseMaterialIdx, setWarehouseMaterialIdx] = useState<number | null>(null);
 
   const [openProjectDialog, setOpenProjectDialog] = useState(false);
   const [newProject, setNewProject] = useState('');
@@ -176,7 +170,6 @@ export default function RequestEditPage() {
     axios.get('/api/materials').then(res => setMaterials(res.data));
     axios.get('/api/units').then(res => setUnits(res.data));
     axios.get('/api/work-types').then(res => setWorkTypes(res.data));
-    axios.get('/api/warehouses').then(res => setWarehouses(res.data));
   }, []);
 
   useEffect(() => {
@@ -885,32 +878,6 @@ export default function RequestEditPage() {
             <TextField {...params} label="Проект" required />
           )}
         />
-        <Autocomplete
-          value={warehouses.find(w => w.id === request.warehouse?.id) || null}
-          onChange={(_, value) => {
-            if (value && value.id === 'CREATE_NEW') {
-              setNewWarehouse(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
-              setOpenWarehouseDialog(true);
-            } else {
-              setRequest({ ...request, warehouse: value });
-            }
-          }}
-          options={warehouses}
-          filterOptions={(options, state) => {
-            const filtered = options.filter(option =>
-              option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-            );
-            if (state.inputValue && filtered.length === 0) {
-              return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` }];
-            }
-            return filtered;
-          }}
-          getOptionLabel={(option: Warehouse) => option ? option.name : ''}
-          isOptionEqualToValue={(option: Warehouse, value: Warehouse) => option.id === value.id}
-          renderInput={params => (
-            <TextField {...params} label="Склад" required />
-          )}
-        />
         <Typography variant="subtitle1" sx={{ mt: 2 }}>Материалы заявки</Typography>
         <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto', width: '100%' }}>
           <Table size="small" sx={{ minWidth: 1200, width: 'max-content' }}>
@@ -1215,47 +1182,6 @@ export default function RequestEditPage() {
                 setNewWorkType('');
               } catch (error) {
                 alert('Ошибка при создании вида работ');
-              }
-            }
-          }}>
-            Сохранить
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Диалог создания нового склада */}
-      <Dialog open={openWarehouseDialog} onClose={() => setOpenWarehouseDialog(false)}>
-        <DialogTitle>Создать новый склад</DialogTitle>
-        <DialogContent>
-          <TextField
-            autoFocus
-            margin="dense"
-            label="Название склада"
-            type="text"
-            fullWidth
-            value={newWarehouse}
-            onChange={e => setNewWarehouse(e.target.value)}
-            sx={{ mt: 1 }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => {
-            setOpenWarehouseDialog(false);
-            setNewWarehouse('');
-          }}>
-            Отмена
-          </Button>
-          <Button onClick={async () => {
-            if (newWarehouse.trim()) {
-              try {
-                const res = await axios.post('/api/warehouses', { name: newWarehouse });
-                setWarehouses(prev => [...prev, res.data]);
-                setRequest({ ...request, warehouse: res.data });
-                setNewWarehouse('');
-                setOpenWarehouseDialog(false);
-              } catch (error) {
-                console.error('Ошибка при создании склада:', error);
-                alert('Ошибка при создании склада');
               }
             }
           }}>

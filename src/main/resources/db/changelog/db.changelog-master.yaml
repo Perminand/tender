@@ -49,3 +49,5 @@ databaseChangeLog:
       file: db/changelog/changes/V023_add_short_name_to_companies.sql
   - include:
       file: db/changelog/changes/V024_remove_status_from_requests.sql
+  - include:
+      file: db/changelog/data/V001_insert_test_data.sql
