@@ -5,9 +5,6 @@ import ru.perminov.tender.dto.project.ProjectDto;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
-import ru.perminov.tender.dto.RequestMaterialDto;
-import ru.perminov.tender.dto.UnitDto;
-import ru.perminov.tender.dto.WarehouseDto;
 
 public record RequestDto(
     UUID id,
@@ -16,6 +13,7 @@ public record RequestDto(
     LocalDate date,
     String requestNumber,
     List<RequestMaterialDto> materials,
-    WarehouseDto warehouse
+    WarehouseDto warehouse,
+    String applicant
 ) {
 }

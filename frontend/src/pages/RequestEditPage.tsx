@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Paper, Typography, Box, Button, CircularProgress, TextField, MenuItem, Toolbar, Dialog, DialogTitle, DialogActions,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, DialogContent, DialogContentText, Container, InputAdornment
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, DialogContent, DialogContentText, Container, InputAdornment, IconButton
 } from '@mui/material';
 import axios from 'axios';
 import { Autocomplete } from '@mui/material';
@@ -13,23 +13,26 @@ import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
+import AddIcon from '@mui/icons-material/Add';
 
 interface Company { id: string; name: string; shortName?: string; legalName?: string; }
 interface Project { id: string; name: string; }
-interface Material { id: string; name: string; }
+interface Material { id: string; name: string; characteristics?: string; }
 interface Unit { id: string; shortName: string; }
 interface Section { id: string; name: string; projectId: string; }
 interface WorkType { id: string; name: string; }
+interface Warehouse { id: string; name: string; projectId: string; }
 interface RequestMaterial {
   material?: Material | null;
-  size?: string;
+  characteristics?: string;
   quantity?: string;
   unit?: Unit | null;
   note?: string;
   deliveryDate?: string;
-  section?: string;
   workType?: string;
   supplierMaterialName?: string;
+  estimatePrice?: string;
+  materialLink?: string;
 }
 interface RequestDto {
   id?: string;
@@ -38,9 +41,12 @@ interface RequestDto {
   date?: string;
   status?: string;
   materials: RequestMaterial[];
-  warehouse?: Company | null;
+  warehouse?: Warehouse | null;
   requestNumber?: string;
+  applicant?: string;
 }
+
+interface Characteristic { id: string; name: string; description?: string; }
 
 const statusOptions = [
   { value: 'DRAFT', label: 'Черновик' },
@@ -113,26 +119,24 @@ export default function RequestEditPage() {
   const [newUnitName, setNewUnitName] = useState('');
   const [openUnitDialog, setOpenUnitDialog] = useState(false);
 
-  // Функция для преобразования Excel-даты в ISO формат
-  const normalizeDate = (dateValue: any): string => {
-    if (typeof dateValue === 'number' || /^\d+$/.test(String(dateValue))) {
-      const excelDate = Number(dateValue);
-      const date = new Date((excelDate - 25569) * 86400 * 1000);
-      return date.toISOString().slice(0, 10);
-    }
-    if (typeof dateValue === 'string') {
-      if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) return dateValue;
-      if (/^\d{2}\.\d{2}\.\d{4}$/.test(dateValue)) {
-        const [day, month, year] = dateValue.split('.');
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateValue)) {
-        const [day, month, year] = dateValue.split('/');
-        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
-      }
-    }
-    return '';
-  };
+  const [openRemoveMaterialDialog, setOpenRemoveMaterialDialog] = useState(false);
+  const [removeMaterialIdx, setRemoveMaterialIdx] = useState<number | null>(null);
+
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+  const [openWarehouseDialog, setOpenWarehouseDialog] = useState(false);
+  const [newWarehouse, setNewWarehouse] = useState('');
+
+  const [characteristics, setCharacteristics] = useState<Characteristic[]>([]);
+  const [openCharacteristicDialog, setOpenCharacteristicDialog] = useState(false);
+  const [newCharacteristic, setNewCharacteristic] = useState('');
+  const [characteristicMaterialIdx, setCharacteristicMaterialIdx] = useState<number | null>(null);
+
+  // Добавим справочник связок (можно получать с бэка или формировать из уже введённых строк)
+  const supplierMaterialLinks = request.materials.map(mat => ({
+    supplierName: mat.supplierMaterialName,
+    material: mat.material,
+    characteristics: mat.characteristics
+  })).filter(link => link.supplierName && link.material);
 
   const handleMouseDown = (idx: number, e: React.MouseEvent) => {
     resizingCol.current = idx;
@@ -170,6 +174,8 @@ export default function RequestEditPage() {
     axios.get('/api/materials').then(res => setMaterials(res.data));
     axios.get('/api/units').then(res => setUnits(res.data));
     axios.get('/api/work-types').then(res => setWorkTypes(res.data));
+    axios.get('/api/warehouses').then(res => setWarehouses(res.data));
+    axios.get('/api/characteristics').then(res => setCharacteristics(res.data));
   }, []);
 
   useEffect(() => {
@@ -241,15 +247,19 @@ export default function RequestEditPage() {
       setRequest({ ...request, organization: company });
     } else if (name === 'project') {
       const project = projects.find(p => p.id === value) || null;
-      setRequest({ ...request, project: project });
+      setRequest({ ...request, project: project, warehouse: null });
+    } else if (name === 'warehouse') {
+      const warehouse = warehouses.find(w => w.id === value) || null;
+      setRequest({ ...request, warehouse });
     }
   };
 
   const handleMaterialChange = (idx: number, field: string, value: any) => {
     const newMaterials = [...request.materials];
     if (field === 'material') {
-      newMaterials[idx].material = materials.find(m => m.id === value) || null;
-      // При выборе материала автоматически загружаем и заполняем название у поставщика
+      const selectedMaterial = materials.find(m => m.id === value) || null;
+      newMaterials[idx].material = selectedMaterial;
+      
       if (value && request.organization?.id) {
         axios.get('/api/supplier-material-names/by-material-and-supplier', {
           params: { materialId: value, supplierId: request.organization.id }
@@ -268,11 +278,7 @@ export default function RequestEditPage() {
         newMaterials[idx].supplierMaterialName = '';
       }
     } else if (field === 'unit') {
-      newMaterials[idx].unit = units.find(u => (u as any).shortName === value || (u as any).name === value) || null;
-    } else if (field === 'section') {
-      newMaterials[idx].section = value?.id || value || '';
-    } else if (field === 'workType') {
-      newMaterials[idx].workType = value?.id || value || '';
+      newMaterials[idx].unit = units.find(u => u.id === value) || null;
     } else {
       (newMaterials[idx] as any)[field] = value;
     }
@@ -284,16 +290,25 @@ export default function RequestEditPage() {
       ...request,
       materials: [
         ...request.materials,
-        { material: null, size: '', quantity: '', unit: null, note: '', deliveryDate: '', section: '', workType: '', supplierMaterialName: '' }
+        { material: null, characteristics: '', quantity: '', unit: null, note: '', deliveryDate: '', workType: '', supplierMaterialName: '', estimatePrice: '', materialLink: '' }
       ]
     });
   };
 
   const handleRemoveMaterial = (idx: number) => {
-    setRequest({
-      ...request,
-      materials: request.materials.filter((_, i) => i !== idx)
-    });
+    setRemoveMaterialIdx(idx);
+    setOpenRemoveMaterialDialog(true);
+  };
+
+  const confirmRemoveMaterial = () => {
+    if (removeMaterialIdx !== null) {
+      setRequest(prev => ({
+        ...prev,
+        materials: prev.materials.filter((_, i) => i !== removeMaterialIdx)
+      }));
+    }
+    setOpenRemoveMaterialDialog(false);
+    setRemoveMaterialIdx(null);
   };
 
   const handleSave = async () => {
@@ -761,31 +776,20 @@ export default function RequestEditPage() {
   }, [sections, workTypes, pendingImportMaterials]);
 
   // Добавить функцию автоподстановки
-  const handleSupplierMaterialNameChange = async (idx: number, value: string) => {
+  const handleSupplierMaterialNameChange = (idx: number, value: string) => {
+    // Найти связку по supplierMaterialName
+    const existing = supplierMaterialLinks.find(link => link.supplierName === value);
     const newMaterials = [...request.materials];
-    newMaterials[idx].supplierMaterialName = value;
-
-    // Если есть организация и значение, делаем запрос
-    if (request.organization?.id && value) {
-      try {
-        const res = await axios.get('/api/org-supplier-material-mapping', {
-          params: {
-            organizationId: request.organization.id,
-            supplierName: value
-          }
-        });
-        if (res.data && res.data.material) {
-          newMaterials[idx].material = res.data.material;
-        }
-      } catch (e) {
-        // Можно добавить обработку ошибок
-      }
+    if (existing) {
+      newMaterials[idx].supplierMaterialName = value;
+      newMaterials[idx].material = existing.material;
+      newMaterials[idx].characteristics = existing.characteristics;
+    } else {
+      newMaterials[idx].supplierMaterialName = value;
+      newMaterials[idx].material = null;
+      newMaterials[idx].characteristics = '';
     }
-
-    setRequest(r => ({
-      ...r,
-      materials: newMaterials
-    }));
+    setRequest({ ...request, materials: newMaterials });
   };
 
   if (loading) {
@@ -824,6 +828,16 @@ export default function RequestEditPage() {
           InputLabelProps={{ shrink: true }}
               fullWidth
           required
+            />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <TextField
+              name="applicant"
+              label="Заявитель"
+              value={request.applicant || ''}
+              onChange={handleChange}
+              required
+              fullWidth
             />
           </Grid>
         </Grid>
@@ -878,18 +892,45 @@ export default function RequestEditPage() {
             <TextField {...params} label="Проект" required />
           )}
         />
+        <Autocomplete
+          value={warehouses.find(w => w.id === request.warehouse?.id) || null}
+          onChange={(_, value) => {
+            if (value && value.id === 'CREATE_NEW') {
+              setNewWarehouse(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
+              setOpenWarehouseDialog(true);
+            } else {
+              handleSelectChange('warehouse', value ? value.id : '');
+            }
+          }}
+          options={warehouses.filter(w => w.projectId === request.project?.id)}
+          filterOptions={(options, state) => {
+            const filtered = options.filter(option =>
+              option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+            );
+            if (state.inputValue && filtered.length === 0) {
+              return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"`, projectId: request.project?.id || '' }];
+            }
+            return filtered;
+          }}
+          getOptionLabel={(option: Warehouse) => option ? option.name : ''}
+          isOptionEqualToValue={(option: Warehouse, value: Warehouse) => option.id === value.id}
+          renderInput={params => (
+            <TextField {...params} label="Склад" required />
+          )}
+          disabled={!request.project?.id}
+        />
         <Typography variant="subtitle1" sx={{ mt: 2 }}>Материалы заявки</Typography>
         <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto', width: '100%' }}>
           <Table size="small" sx={{ minWidth: 1200, width: 'max-content' }}>
             <TableHead>
               <TableRow>
-                  {['#','Участок','Вид работ','Наименование материала','Наименование у поставщика','Кол-во','Ед. изм.','Примечание','Поставить к дате','Действия'].map((label, idx) => (
+                  {['#','Вид работ','Наименование материала','Характеристики','Наименование у поставщика','Кол-во','Ед. изм.','Сметная цена','Сметная стоимость','Ссылка','Примечание','Поставить к дате','Действия'].map((label, idx) => (
                   <TableCell
                     key={label}
                     sx={{ position: 'relative', width: colWidths[idx], minWidth: 40, maxWidth: 800, userSelect: 'none', whiteSpace: 'nowrap' }}
                   >
                     {label}
-                    {idx !== 0 && idx !== 9 && (
+                    {idx !== 0 && idx !== 12 && (
                       <span
                         style={{
                           position: 'absolute',
@@ -910,64 +951,16 @@ export default function RequestEditPage() {
               </TableRow>
             </TableHead>
             <TableBody>
-          {request.materials.map((mat, idx) => (
+          {request.materials.map((mat, idx) => {
+            const estimateTotal = (parseFloat(mat.estimatePrice || '0') * parseFloat(mat.quantity || '0')).toFixed(2);
+            return (
                 <TableRow key={idx}>
                   <TableCell>{idx + 1}</TableCell>
                   <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
                   <Autocomplete
-                    value={sections.find((s: Section) => s.id === mat.section) || null}
-                    onChange={(_, value, reason) => {
-                      if (!request.project?.id) {
-                        alert('Сначала выберите проект');
-                        return;
-                      }
-                      if (value && value.id === 'CREATE_NEW') {
-                        setNewSection(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
-                        setSectionMaterialIdx(idx);
-                        setOpenSectionDialog(true);
-                      } else {
-                        handleMaterialChange(idx, 'section', value);
-                      }
-                    }}
-                    options={sections}
-                    filterOptions={(options, state) => {
-                      const filtered = options.filter(option =>
-                        option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-                      );
-                      if (state.inputValue && filtered.length === 0) {
-                        return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"`, projectId: request.project?.id || '' }];
-                      }
-                      return filtered;
-                    }}
-                    getOptionLabel={(option: Section) => option ? option.name : ''}
-                    isOptionEqualToValue={(option: Section, value: Section) => option.id === value.id}
-                    renderInput={params => (
-                        <TextField {...params} size="small" label="Участок" />
-                    )}
-                    disabled={!request.project?.id}
-                  />
-                  </TableCell>
-                  <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
-                  <Autocomplete
                     value={workTypes.find(w => w.id === mat.workType) || null}
-                    onChange={(_, value, reason) => {
-                      if (value && value.id === 'CREATE_NEW') {
-                        setNewWorkType(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
-                        setOpenWorkTypeDialog(true);
-                      } else {
-                        handleMaterialChange(idx, 'workType', value);
-                      }
-                    }}
+                    onChange={(_, value) => handleMaterialChange(idx, 'workType', value ? value.id : '')}
                     options={workTypes}
-                    filterOptions={(options, state) => {
-                      const filtered = options.filter(option =>
-                        option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-                      );
-                      if (state.inputValue && filtered.length === 0) {
-                        return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` }];
-                      }
-                      return filtered;
-                    }}
                     getOptionLabel={option => option ? option.name : ''}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                     renderInput={params => (
@@ -978,15 +971,28 @@ export default function RequestEditPage() {
                   <TableCell sx={{ minWidth: 180, maxWidth: 300 }}>
                   <Autocomplete
                     value={materials.find(m => m.id === mat.material?.id) || null}
-                    onChange={(_, value, reason) => {
+                    onChange={(_, value) => handleMaterialChange(idx, 'material', value ? value.id : '')}
+                    options={materials}
+                    getOptionLabel={option => option ? option.name : ''}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    renderInput={params => (
+                      <TextField {...params} size="small" label="Наименование материала" InputLabelProps={{ shrink: true }} />
+                    )}
+                  />
+                </TableCell>
+                <TableCell>
+                  <Autocomplete
+                    value={characteristics.find(c => c.name === mat.characteristics) || null}
+                    onChange={(_, value) => {
                       if (value && value.id === 'CREATE_NEW') {
-                        const inputName = value.name.replace(/^Создать "/, '').replace(/"$/, '');
-                        window.open(`/reference/materials/new?name=${encodeURIComponent(inputName)}`, '_blank');
+                        setNewCharacteristic(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
+                        setCharacteristicMaterialIdx(idx);
+                        setOpenCharacteristicDialog(true);
                       } else {
-                        handleMaterialChange(idx, 'material', value ? value.id : '');
+                        handleMaterialChange(idx, 'characteristics', value ? value.name : '');
                       }
                     }}
-                    options={materials}
+                    options={characteristics}
                     filterOptions={(options, state) => {
                       const filtered = options.filter(option =>
                         option.name.toLowerCase().includes(state.inputValue.toLowerCase())
@@ -996,10 +1002,10 @@ export default function RequestEditPage() {
                       }
                       return filtered;
                     }}
-                    getOptionLabel={option => option ? option.name : ''}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    getOptionLabel={(option: Characteristic) => option ? option.name : ''}
+                    isOptionEqualToValue={(option: Characteristic, value: Characteristic) => option.id === value.id}
                     renderInput={params => (
-                        <TextField {...params} size="small" label="Наименование материала" InputLabelProps={{ shrink: true }} />
+                      <TextField {...params} size="small" label="Характеристики" />
                     )}
                   />
                   </TableCell>
@@ -1007,29 +1013,19 @@ export default function RequestEditPage() {
                     <Autocomplete
                       freeSolo
                       value={mat.supplierMaterialName || ''}
-                      onChange={async (_, value) => {
-                        // value — строка из списка или введённая вручную
-                        handleSupplierMaterialNameChange(idx, value || '');
-                      }}
-                      onInputChange={(_, value) => {
-                        // Для поддержки ручного ввода
-                        handleSupplierMaterialNameChange(idx, value || '');
-                      }}
-                      options={
-                        // supplierNamesOptions[idx] — массив строк для текущего материала
-                        (supplierNamesOptions[idx] || [])
-                      }
+                      onChange={e => handleSupplierMaterialNameChange(idx, e.target.value)}
+                      onInputChange={(_, value) => handleSupplierMaterialNameChange(idx, value || '')}
+                      options={supplierNamesOptions[idx] || []}
                       renderInput={params => (
                         <TextField {...params} size="small" label="Наименование у поставщика" InputLabelProps={{ shrink: true }} />
                       )}
                       filterOptions={(options, state) => {
-                        // Только полное совпадение или все варианты
                         if (!state.inputValue) return options;
                         return options.filter(opt => opt === state.inputValue);
                       }}
-                  />
+                    />
                   </TableCell>
-                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
+                <TableCell>
                   <TextField
                     size="small"
                     label="Кол-во"
@@ -1039,7 +1035,7 @@ export default function RequestEditPage() {
                     fullWidth
                   />
                   </TableCell>
-                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
+                <TableCell>
                   <TextField
                     select
                     size="small"
@@ -1053,7 +1049,35 @@ export default function RequestEditPage() {
                     ))}
                   </TextField>
                   </TableCell>
-                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    label="Сметная цена"
+                    value={mat.estimatePrice || ''}
+                    onChange={e => handleMaterialChange(idx, 'estimatePrice', e.target.value)}
+                    type="number"
+                    fullWidth
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    label="Сметная стоимость"
+                    value={estimateTotal}
+                    InputProps={{ readOnly: true }}
+                    fullWidth
+                  />
+                </TableCell>
+                <TableCell>
+                  <TextField
+                    size="small"
+                    label="Ссылка"
+                    value={mat.materialLink || ''}
+                    onChange={e => handleMaterialChange(idx, 'materialLink', e.target.value)}
+                    fullWidth
+                  />
+                </TableCell>
+                <TableCell>
                   <TextField
                     size="small"
                       label="Примечание"
@@ -1063,7 +1087,7 @@ export default function RequestEditPage() {
                       InputLabelProps={{ shrink: true }}
                   />
                   </TableCell>
-                    <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
+                <TableCell>
                   <TextField
                     size="small"
                     label="Поставить к дате"
@@ -1080,7 +1104,8 @@ export default function RequestEditPage() {
                   </Button>
                   </TableCell>
                 </TableRow>
-          ))}
+            );
+          })}
             </TableBody>
           </Table>
         </TableContainer>
@@ -1285,6 +1310,105 @@ export default function RequestEditPage() {
               console.log('[IMPORT][UNIT] Единица измерения создана:', newUnitName);
             }
           }} variant="contained">Создать</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={openRemoveMaterialDialog} onClose={() => setOpenRemoveMaterialDialog(false)}>
+        <DialogTitle>Удалить материал?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Вы уверены, что хотите удалить этот материал из заявки?</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenRemoveMaterialDialog(false)}>Отмена</Button>
+          <Button color="error" onClick={confirmRemoveMaterial}>Удалить</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог создания нового склада */}
+      <Dialog open={openWarehouseDialog} onClose={() => setOpenWarehouseDialog(false)}>
+        <DialogTitle>Создать новый склад</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название склада"
+            type="text"
+            fullWidth
+            value={newWarehouse}
+            onChange={e => setNewWarehouse(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenWarehouseDialog(false);
+            setNewWarehouse('');
+          }}>
+            Отмена
+          </Button>
+          <Button onClick={async () => {
+            if (newWarehouse.trim() && request.project?.id) {
+              try {
+                const res = await axios.post('/api/warehouses', { 
+                  name: newWarehouse, 
+                  projectId: request.project.id 
+                });
+                setWarehouses(prev => [...prev, res.data]);
+                handleSelectChange('warehouse', res.data.id);
+                setRequest(r => ({ ...r, warehouse: res.data }));
+                setNewWarehouse('');
+                setOpenWarehouseDialog(false);
+              } catch (error) {
+                console.error('Ошибка при создании склада:', error);
+                alert('Ошибка при создании склада');
+              }
+            }
+          }}>
+            Сохранить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог создания характеристик */}
+      <Dialog open={openCharacteristicDialog} onClose={() => setOpenCharacteristicDialog(false)}>
+        <DialogTitle>Создать характеристику</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название характеристики"
+            type="text"
+            fullWidth
+            value={newCharacteristic}
+            onChange={e => setNewCharacteristic(e.target.value)}
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenCharacteristicDialog(false);
+            setNewCharacteristic('');
+          }}>
+            Отмена
+          </Button>
+          <Button onClick={async () => {
+            if (newCharacteristic.trim() && characteristicMaterialIdx !== null) {
+              try {
+                const res = await axios.post('/api/characteristics', { 
+                  name: newCharacteristic
+                });
+                setCharacteristics(prev => [...prev, res.data]);
+                handleMaterialChange(characteristicMaterialIdx, 'characteristics', res.data.name);
+                setNewCharacteristic('');
+                setOpenCharacteristicDialog(false);
+              } catch (error) {
+                console.error('Ошибка при создании характеристики:', error);
+                alert('Ошибка при создании характеристики');
+              }
+            }
+          }}>
+            Сохранить
+          </Button>
         </DialogActions>
       </Dialog>
       </Box>

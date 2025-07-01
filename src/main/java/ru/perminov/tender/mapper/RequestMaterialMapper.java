@@ -5,28 +5,30 @@ import org.mapstruct.Mapping;
 import ru.perminov.tender.dto.RequestMaterialDto;
 import ru.perminov.tender.model.RequestMaterial;
  
-@Mapper(componentModel = "spring", uses = {MaterialMapper.class, UnitMapper.class})
+@Mapper(componentModel = "spring", uses = {MaterialMapper.class, UnitMapper.class, CharacteristicMapper.class})
 public interface RequestMaterialMapper {
     
     @Mapping(source = "material", target = "material", qualifiedByName = "toMaterialDto")
     @Mapping(source = "unit", target = "unit", qualifiedByName = "toUnitDto")
-    @Mapping(source = "section", target = "section")
     @Mapping(source = "workType", target = "workType")
     @Mapping(source = "size", target = "size")
     @Mapping(source = "quantity", target = "quantity")
     @Mapping(source = "note", target = "note")
     @Mapping(source = "deliveryDate", target = "deliveryDate")
     @Mapping(source = "supplierMaterialName", target = "supplierMaterialName")
+    @Mapping(source = "estimatePrice", target = "estimatePrice")
+    @Mapping(source = "materialCharacteristics", target = "materialCharacteristics")
     RequestMaterialDto toDto(RequestMaterial entity);
     
     @Mapping(source = "material", target = "material")
     @Mapping(source = "unit", target = "unit")
-    @Mapping(source = "section", target = "section")
     @Mapping(source = "workType", target = "workType")
     @Mapping(source = "size", target = "size")
     @Mapping(source = "quantity", target = "quantity")
     @Mapping(source = "note", target = "note")
     @Mapping(source = "deliveryDate", target = "deliveryDate")
     @Mapping(source = "supplierMaterialName", target = "supplierMaterialName")
+    @Mapping(source = "estimatePrice", target = "estimatePrice")
+    @Mapping(source = "materialCharacteristics", target = "materialCharacteristics")
     RequestMaterial toEntity(RequestMaterialDto dto);
 } 

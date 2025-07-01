@@ -13,9 +13,6 @@ import ru.perminov.tender.model.Category;
 import ru.perminov.tender.model.MaterialType;
 import ru.perminov.tender.model.Unit;
 import org.springframework.web.multipart.MultipartFile;
-import ru.perminov.tender.repository.WarehouseRepository;
-import ru.perminov.tender.model.Warehouse;
-import org.springframework.beans.factory.annotation.Autowired;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Iterator;
@@ -24,9 +21,6 @@ import java.util.List;
 
 @Service
 public class ExcelService {
-
-    @Autowired
-    private WarehouseRepository warehouseRepository;
 
     public ByteArrayInputStream exportCategoriesToExcel(List<Category> categories) {
         String[] columns = {"ID", "Name"};
@@ -250,71 +244,6 @@ public class ExcelService {
             return new ByteArrayInputStream(out.toByteArray());
         } catch (IOException e) {
             throw new RuntimeException("fail to import data to Excel file: " + e.getMessage());
-        }
-    }
-
-    public byte[] exportWarehouses() {
-        try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("Warehouses");
-            Row header = sheet.createRow(0);
-            header.createCell(0).setCellValue("Название");
-            int rowIdx = 1;
-            for (Warehouse warehouse : warehouseRepository.findAll()) {
-                Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(warehouse.getName());
-            }
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            workbook.write(out);
-            return out.toByteArray();
-        } catch (IOException e) {
-            throw new RuntimeException("Ошибка экспорта складов", e);
-        }
-    }
-
-    public void importWarehouses(MultipartFile file) {
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
-            Sheet sheet = workbook.getSheetAt(0);
-            Iterator<Row> rows = sheet.iterator();
-            if (rows.hasNext()) rows.next(); // skip header
-            while (rows.hasNext()) {
-                Row row = rows.next();
-                String name = row.getCell(1).getStringCellValue();
-                if (name != null && !name.trim().isEmpty()) {
-                    Warehouse warehouse = new Warehouse();
-                    warehouse.setName(name.trim());
-                    warehouseRepository.save(warehouse);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Ошибка импорта складов", e);
-        }
-    }
-
-    public ByteArrayInputStream exportWarehousesToExcel(List<Warehouse> warehouses) {
-        String[] columns = {"ID", "Название"};
-        try (
-                Workbook workbook = new XSSFWorkbook();
-                ByteArrayOutputStream out = new ByteArrayOutputStream()
-        ) {
-            Sheet sheet = workbook.createSheet("Warehouses");
-
-            Row headerRow = sheet.createRow(0);
-            for (int col = 0; col < columns.length; col++) {
-                Cell cell = headerRow.createCell(col);
-                cell.setCellValue(columns[col]);
-            }
-
-            int rowIdx = 1;
-            for (Warehouse warehouse : warehouses) {
-                Row row = sheet.createRow(rowIdx++);
-                row.createCell(0).setCellValue(warehouse.getId().toString());
-                row.createCell(1).setCellValue(warehouse.getName());
-            }
-
-            workbook.write(out);
-            return new ByteArrayInputStream(out.toByteArray());
-        } catch (IOException e) {
-            throw new RuntimeException("Ошибка экспорта складов", e);
         }
     }
 } 

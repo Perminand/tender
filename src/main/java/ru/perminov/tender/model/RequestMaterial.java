@@ -12,7 +12,7 @@ import java.util.UUID;
 @Table(name = "request_materials")
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "request")
 @NoArgsConstructor
 public class RequestMaterial {
     @Id
@@ -24,7 +24,7 @@ public class RequestMaterial {
     private Request request;
 
     private Integer number;
-    private String section;
+
     private String workType;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -32,6 +32,7 @@ public class RequestMaterial {
     private Material material;
 
     private String size;
+
     private Double quantity;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,6 +40,12 @@ public class RequestMaterial {
     private Unit unit;
 
     private String note;
+
     private String deliveryDate;
+
     private String supplierMaterialName;
+
+    private Double estimatePrice;
+
+    private String materialCharacteristics;
 } 

@@ -9,7 +9,6 @@ public record RequestRegistryRowDto(
     LocalDate requestDate,
     String organization,
     String project,
-    String warehouse,
     Integer materialsCount,
     Double totalQuantity,
     String note

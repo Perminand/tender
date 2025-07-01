@@ -33,10 +33,7 @@ public class RequestController {
     @GetMapping("/{id}")
     public ResponseEntity<RequestDto> getById(@PathVariable UUID id) {
         log.info("Получен GET-запрос: получить заявку по id={}", id);
-
         RequestDto request = requestService.findById(id);
-        log.info("Заявка {}: материалов = {}", request.id(), 
-                request.materials() != null ? request.materials().size() : 0);
         return ResponseEntity.ok(request);
     }
 

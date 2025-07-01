@@ -3,7 +3,7 @@ ALTER TABLE materials DROP CONSTRAINT IF EXISTS fk_materials_on_unit;
 ALTER TABLE materials DROP COLUMN IF EXISTS unit_id;
 
 -- Создание связующей таблицы для materials и units
-CREATE TABLE material_units (
+CREATE TABLE materials_units (
     material_id UUID NOT NULL ,
     unit_id UUID NOT NULL,
     PRIMARY KEY (material_id, unit_id),

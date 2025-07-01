@@ -22,7 +22,8 @@ public class OrgSupplierMaterialMappingServiceImpl implements OrgSupplierMateria
 
     @Override
     public Optional<OrgSupplierMaterialMapping> find(UUID organizationId, String supplierName) {
-        return repository.findByOrganizationIdAndSupplierName(organizationId, supplierName);
+        Optional<OrgSupplierMaterialMapping> orgSupplierMaterialMapping = repository.findByOrganizationIdAndSupplierName(organizationId, supplierName);
+        return orgSupplierMaterialMapping;
     }
 
     @Override

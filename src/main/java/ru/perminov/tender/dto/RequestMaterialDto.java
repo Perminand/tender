@@ -5,14 +5,26 @@ import java.util.UUID;
 
 public record RequestMaterialDto(
     UUID id,
+
     Integer number,
-    String section,
+
     String workType,
+
     MaterialDto material,
+
     String size,
+
     Double quantity,
+
     UnitDto unit,
+
     String note,
+
     String deliveryDate,
-    String supplierMaterialName
+
+    String supplierMaterialName,
+
+    Double estimatePrice,
+
+    String materialCharacteristics
 ) {} 

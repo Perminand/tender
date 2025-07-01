@@ -262,7 +262,7 @@ INSERT INTO settings (id, setting_key, setting_value, description) VALUES
   (uuid_generate_v4(), 'fns-api-key-10', 'test-key-10', 'Тестовый FNS API KEY 10');
 
 -- material_units (уникальные пары материал-единица)
-INSERT INTO material_units (material_id, unit_id) VALUES
+INSERT INTO materials_units (material_id, unit_id) VALUES
   ((SELECT id FROM materials LIMIT 1), (SELECT id FROM units LIMIT 1)),
   ((SELECT id FROM materials LIMIT 1 OFFSET 1), (SELECT id FROM units LIMIT 1 OFFSET 1)),
   ((SELECT id FROM materials LIMIT 1 OFFSET 2), (SELECT id FROM units LIMIT 1 OFFSET 2)),

@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 @Mapper(
         componentModel = "spring",
-        uses = {CategoryMapper.class, MaterialTypeMapper.class, UnitMapper.class},
+        uses = {CategoryMapper.class, MaterialTypeMapper.class, UnitMapper.class, CharacteristicMapper.class},
         nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE
 )
 public interface MaterialMapper {

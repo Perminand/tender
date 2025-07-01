@@ -51,3 +51,13 @@ databaseChangeLog:
       file: db/changelog/changes/V024_remove_status_from_requests.sql
   - include:
       file: db/changelog/data/V001_insert_test_data.sql
+  - include:
+      file: db/changelog/changes/V025_drop_warehouse.sql
+  - include:
+      file: db/changelog/changes/V027_create_warehouses_table.sql
+  - include:
+      file: db/changelog/changes/V028_add_warehouse_to_requests.sql
+  - include:
+      file: db/changelog/changes/V029_add_new_fields_to_requests_and_materials.sql
+  - include:
+      file: db/changelog/changes/V031_create_characteristics_table.sql

@@ -16,7 +16,6 @@ public interface RequestRepository extends JpaRepository<Request, UUID> {
            "LEFT JOIN FETCH rm.unit " +
            "LEFT JOIN FETCH r.organization " +
            "LEFT JOIN FETCH r.project " +
-           "LEFT JOIN FETCH r.warehouse " +
            "WHERE r.id = :id")
     Optional<Request> findByIdWithMaterials(@Param("id") UUID id);
     
@@ -25,7 +24,6 @@ public interface RequestRepository extends JpaRepository<Request, UUID> {
            "LEFT JOIN FETCH rm.material " +
            "LEFT JOIN FETCH rm.unit " +
            "LEFT JOIN FETCH r.organization " +
-           "LEFT JOIN FETCH r.project " +
-           "LEFT JOIN FETCH r.warehouse")
+           "LEFT JOIN FETCH r.project")
     java.util.List<Request> findAllWithMaterials();
 } 

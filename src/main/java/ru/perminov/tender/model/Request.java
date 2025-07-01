@@ -6,10 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import ru.perminov.tender.model.company.Company;
-import ru.perminov.tender.model.Material;
-import ru.perminov.tender.model.Unit;
-import ru.perminov.tender.model.RequestMaterial;
-import ru.perminov.tender.model.Warehouse;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -40,8 +36,11 @@ public class Request {
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RequestMaterial> materials = new ArrayList<>();
 
-    @ManyToOne
+    private String requestNumber;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
     private Warehouse warehouse;
 
-    private String requestNumber;
+    private String applicant;
 }

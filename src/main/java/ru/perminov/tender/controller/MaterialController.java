@@ -59,7 +59,7 @@ public class MaterialController {
 
     @GetMapping
     public ResponseEntity<List<MaterialDto>> getAll() {
-        log.info("Получен GET-запрос: получить все материалы");
+        log.info("Получен GET-запрос: получить все 'материалы'");
         return ResponseEntity.ok(materialService.getAll());
     }
 
