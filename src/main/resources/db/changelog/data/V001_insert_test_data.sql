@@ -170,57 +170,44 @@ INSERT INTO work_types (id, name) VALUES
   (uuid_generate_v4(), 'Бетонные работы'),
   (uuid_generate_v4(), 'Прочее');
 
--- sections
-INSERT INTO sections (id, name, project_id) VALUES
-  (uuid_generate_v4(), 'Раздел 1', (SELECT id FROM projects LIMIT 1)),
-  (uuid_generate_v4(), 'Раздел 2', (SELECT id FROM projects LIMIT 1 OFFSET 1)),
-  (uuid_generate_v4(), 'Раздел 3', (SELECT id FROM projects LIMIT 1 OFFSET 2)),
-  (uuid_generate_v4(), 'Раздел 4', (SELECT id FROM projects LIMIT 1 OFFSET 3)),
-  (uuid_generate_v4(), 'Раздел 5', (SELECT id FROM projects LIMIT 1 OFFSET 4)),
-  (uuid_generate_v4(), 'Раздел 6', (SELECT id FROM projects LIMIT 1 OFFSET 5)),
-  (uuid_generate_v4(), 'Раздел 7', (SELECT id FROM projects LIMIT 1 OFFSET 6)),
-  (uuid_generate_v4(), 'Раздел 8', (SELECT id FROM projects LIMIT 1 OFFSET 7)),
-  (uuid_generate_v4(), 'Раздел 9', (SELECT id FROM projects LIMIT 1 OFFSET 8)),
-  (uuid_generate_v4(), 'Раздел 10', (SELECT id FROM projects LIMIT 1 OFFSET 9));
-
--- warehouse
-INSERT INTO warehouse (id, name) VALUES
-  (uuid_generate_v4(), 'Склад 1'),
-  (uuid_generate_v4(), 'Склад 2'),
-  (uuid_generate_v4(), 'Склад 3'),
-  (uuid_generate_v4(), 'Склад 4'),
-  (uuid_generate_v4(), 'Склад 5'),
-  (uuid_generate_v4(), 'Склад 6'),
-  (uuid_generate_v4(), 'Склад 7'),
-  (uuid_generate_v4(), 'Склад 8'),
-  (uuid_generate_v4(), 'Склад 9'),
-  (uuid_generate_v4(), 'Склад 10');
+-- warehouses
+INSERT INTO warehouses (id, name, project_id) VALUES
+  (uuid_generate_v4(), 'Склад 1', (SELECT id FROM projects LIMIT 1)),
+  (uuid_generate_v4(), 'Склад 2', (SELECT id FROM projects LIMIT 1 OFFSET 1)),
+  (uuid_generate_v4(), 'Склад 3', (SELECT id FROM projects LIMIT 1 OFFSET 2)),
+  (uuid_generate_v4(), 'Склад 4', (SELECT id FROM projects LIMIT 1 OFFSET 3)),
+  (uuid_generate_v4(), 'Склад 5', (SELECT id FROM projects LIMIT 1 OFFSET 4)),
+  (uuid_generate_v4(), 'Склад 6', (SELECT id FROM projects LIMIT 1 OFFSET 5)),
+  (uuid_generate_v4(), 'Склад 7', (SELECT id FROM projects LIMIT 1 OFFSET 6)),
+  (uuid_generate_v4(), 'Склад 8', (SELECT id FROM projects LIMIT 1 OFFSET 7)),
+  (uuid_generate_v4(), 'Склад 9', (SELECT id FROM projects LIMIT 1 OFFSET 8)),
+  (uuid_generate_v4(), 'Склад 10', (SELECT id FROM projects LIMIT 1 OFFSET 9));
 
 -- requests
 INSERT INTO requests (id, company_id, project_id, date, request_number, warehouse_id) VALUES
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1), (SELECT id FROM projects LIMIT 1), CURRENT_DATE, 'REQ-001', (SELECT id FROM warehouse LIMIT 1)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 1), (SELECT id FROM projects LIMIT 1 OFFSET 1), CURRENT_DATE, 'REQ-002', (SELECT id FROM warehouse LIMIT 1 OFFSET 1)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 2), (SELECT id FROM projects LIMIT 1 OFFSET 2), CURRENT_DATE, 'REQ-003', (SELECT id FROM warehouse LIMIT 1 OFFSET 2)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 3), (SELECT id FROM projects LIMIT 1 OFFSET 3), CURRENT_DATE, 'REQ-004', (SELECT id FROM warehouse LIMIT 1 OFFSET 3)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 4), (SELECT id FROM projects LIMIT 1 OFFSET 4), CURRENT_DATE, 'REQ-005', (SELECT id FROM warehouse LIMIT 1 OFFSET 4)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 5), (SELECT id FROM projects LIMIT 1 OFFSET 5), CURRENT_DATE, 'REQ-006', (SELECT id FROM warehouse LIMIT 1 OFFSET 5)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 6), (SELECT id FROM projects LIMIT 1 OFFSET 6), CURRENT_DATE, 'REQ-007', (SELECT id FROM warehouse LIMIT 1 OFFSET 6)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 7), (SELECT id FROM projects LIMIT 1 OFFSET 7), CURRENT_DATE, 'REQ-008', (SELECT id FROM warehouse LIMIT 1 OFFSET 7)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 8), (SELECT id FROM projects LIMIT 1 OFFSET 8), CURRENT_DATE, 'REQ-009', (SELECT id FROM warehouse LIMIT 1 OFFSET 8)),
-  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 9), (SELECT id FROM projects LIMIT 1 OFFSET 9), CURRENT_DATE, 'REQ-010', (SELECT id FROM warehouse LIMIT 1 OFFSET 9));
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1), (SELECT id FROM projects LIMIT 1), CURRENT_DATE, 'REQ-001', (SELECT id FROM warehouses LIMIT 1)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 1), (SELECT id FROM projects LIMIT 1 OFFSET 1), CURRENT_DATE, 'REQ-002', (SELECT id FROM warehouses LIMIT 1 OFFSET 1)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 2), (SELECT id FROM projects LIMIT 1 OFFSET 2), CURRENT_DATE, 'REQ-003', (SELECT id FROM warehouses LIMIT 1 OFFSET 2)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 3), (SELECT id FROM projects LIMIT 1 OFFSET 3), CURRENT_DATE, 'REQ-004', (SELECT id FROM warehouses LIMIT 1 OFFSET 3)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 4), (SELECT id FROM projects LIMIT 1 OFFSET 4), CURRENT_DATE, 'REQ-005', (SELECT id FROM warehouses LIMIT 1 OFFSET 4)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 5), (SELECT id FROM projects LIMIT 1 OFFSET 5), CURRENT_DATE, 'REQ-006', (SELECT id FROM warehouses LIMIT 1 OFFSET 5)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 6), (SELECT id FROM projects LIMIT 1 OFFSET 6), CURRENT_DATE, 'REQ-007', (SELECT id FROM warehouses LIMIT 1 OFFSET 6)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 7), (SELECT id FROM projects LIMIT 1 OFFSET 7), CURRENT_DATE, 'REQ-008', (SELECT id FROM warehouses LIMIT 1 OFFSET 7)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 8), (SELECT id FROM projects LIMIT 1 OFFSET 8), CURRENT_DATE, 'REQ-009', (SELECT id FROM warehouses LIMIT 1 OFFSET 8)),
+  (uuid_generate_v4(), (SELECT id FROM companies LIMIT 1 OFFSET 9), (SELECT id FROM projects LIMIT 1 OFFSET 9), CURRENT_DATE, 'REQ-010', (SELECT id FROM warehouses LIMIT 1 OFFSET 9));
 
 -- request_materials
-INSERT INTO request_materials (id, request_id, number, section, work_type, material_id, size, quantity, unit_id, note, delivery_date, supplier_material_name) VALUES
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1), 1, 'Раздел 1', 'Монтаж', (SELECT id FROM materials LIMIT 1), '10x10', 100, (SELECT id FROM units LIMIT 1), 'Примечание 1', '2024-07-01', 'ПоставщикМат1'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 1), 2, 'Раздел 2', 'Демонтаж', (SELECT id FROM materials LIMIT 1 OFFSET 1), '20x20', 200, (SELECT id FROM units LIMIT 1 OFFSET 1), 'Примечание 2', '2024-07-02', 'ПоставщикМат2'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 2), 3, 'Раздел 3', 'Отделка', (SELECT id FROM materials LIMIT 1 OFFSET 2), '30x30', 300, (SELECT id FROM units LIMIT 1 OFFSET 2), 'Примечание 3', '2024-07-03', 'ПоставщикМат3'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 3), 4, 'Раздел 4', 'Электромонтаж', (SELECT id FROM materials LIMIT 1 OFFSET 3), '40x40', 400, (SELECT id FROM units LIMIT 1 OFFSET 3), 'Примечание 4', '2024-07-04', 'ПоставщикМат4'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 4), 5, 'Раздел 5', 'Сантехнические работы', (SELECT id FROM materials LIMIT 1 OFFSET 4), '50x50', 500, (SELECT id FROM units LIMIT 1 OFFSET 4), 'Примечание 5', '2024-07-05', 'ПоставщикМат5'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 5), 6, 'Раздел 6', 'Кровельные работы', (SELECT id FROM materials LIMIT 1 OFFSET 5), '60x60', 600, (SELECT id FROM units LIMIT 1 OFFSET 5), 'Примечание 6', '2024-07-06', 'ПоставщикМат6'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 6), 7, 'Раздел 7', 'Фасадные работы', (SELECT id FROM materials LIMIT 1 OFFSET 6), '70x70', 700, (SELECT id FROM units LIMIT 1 OFFSET 6), 'Примечание 7', '2024-07-07', 'ПоставщикМат7'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 7), 8, 'Раздел 8', 'Земляные работы', (SELECT id FROM materials LIMIT 1 OFFSET 7), '80x80', 800, (SELECT id FROM units LIMIT 1 OFFSET 7), 'Примечание 8', '2024-07-08', 'ПоставщикМат8'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 8), 9, 'Раздел 9', 'Бетонные работы', (SELECT id FROM materials LIMIT 1 OFFSET 8), '90x90', 900, (SELECT id FROM units LIMIT 1 OFFSET 8), 'Примечание 9', '2024-07-09', 'ПоставщикМат9'),
-  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 9), 10, 'Раздел 10', 'Прочее', (SELECT id FROM materials LIMIT 1 OFFSET 9), '100x100', 1000, (SELECT id FROM units LIMIT 1 OFFSET 9), 'Примечание 10', '2024-07-10', 'ПоставщикМат10');
+INSERT INTO request_materials (id, request_id, number, work_type_id, material_id, size, quantity, unit_id, note, delivery_date, supplier_material_name) VALUES
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1), 1, (SELECT id FROM work_types LIMIT 1), (SELECT id FROM materials LIMIT 1), '10x10', 100, (SELECT id FROM units LIMIT 1), 'Примечание 1', '2024-07-01', 'ПоставщикМат1'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 1), 2, (SELECT id FROM work_types LIMIT 1 OFFSET 1), (SELECT id FROM materials LIMIT 1 OFFSET 1), '20x20', 200, (SELECT id FROM units LIMIT 1 OFFSET 1), 'Примечание 2', '2024-07-02', 'ПоставщикМат2'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 2), 3, (SELECT id FROM work_types LIMIT 1 OFFSET 2), (SELECT id FROM materials LIMIT 1 OFFSET 2), '30x30', 300, (SELECT id FROM units LIMIT 1 OFFSET 2), 'Примечание 3', '2024-07-03', 'ПоставщикМат3'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 3), 4, (SELECT id FROM work_types LIMIT 1 OFFSET 3), (SELECT id FROM materials LIMIT 1 OFFSET 3), '40x40', 400, (SELECT id FROM units LIMIT 1 OFFSET 3), 'Примечание 4', '2024-07-04', 'ПоставщикМат4'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 4), 5, (SELECT id FROM work_types LIMIT 1 OFFSET 4), (SELECT id FROM materials LIMIT 1 OFFSET 4), '50x50', 500, (SELECT id FROM units LIMIT 1 OFFSET 4), 'Примечание 5', '2024-07-05', 'ПоставщикМат5'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 5), 6, (SELECT id FROM work_types LIMIT 1 OFFSET 5), (SELECT id FROM materials LIMIT 1 OFFSET 5), '60x60', 600, (SELECT id FROM units LIMIT 1 OFFSET 5), 'Примечание 6', '2024-07-06', 'ПоставщикМат6'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 6), 7, (SELECT id FROM work_types LIMIT 1 OFFSET 6), (SELECT id FROM materials LIMIT 1 OFFSET 6), '70x70', 700, (SELECT id FROM units LIMIT 1 OFFSET 6), 'Примечание 7', '2024-07-07', 'ПоставщикМат7'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 7), 8, (SELECT id FROM work_types LIMIT 1 OFFSET 7), (SELECT id FROM materials LIMIT 1 OFFSET 7), '80x80', 800, (SELECT id FROM units LIMIT 1 OFFSET 7), 'Примечание 8', '2024-07-08', 'ПоставщикМат8'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 8), 9, (SELECT id FROM work_types LIMIT 1 OFFSET 8), (SELECT id FROM materials LIMIT 1 OFFSET 8), '90x90', 900, (SELECT id FROM units LIMIT 1 OFFSET 8), 'Примечание 9', '2024-07-09', 'ПоставщикМат9'),
+  (uuid_generate_v4(), (SELECT id FROM requests LIMIT 1 OFFSET 9), 10, (SELECT id FROM work_types LIMIT 1 OFFSET 9), (SELECT id FROM materials LIMIT 1 OFFSET 9), '100x100', 1000, (SELECT id FROM units LIMIT 1 OFFSET 9), 'Примечание 10', '2024-07-10', 'ПоставщикМат10');
 
 -- supplier_material_names
 INSERT INTO supplier_material_names (id, material_id, name) VALUES

@@ -34,33 +34,42 @@ public class MaterialTypeController {
 
     @PostMapping
     public ResponseEntity<MaterialType> create(@RequestBody @Valid MaterialTypeDtoNew materialTypeDtoNew) {
-        log.info("Пришел POST запрос на создание типа материала: {}", materialTypeDtoNew);
-        return ResponseEntity.ok(materialTypeService.create(materialTypeDtoNew));
+        log.info("Получен POST-запрос: создать тип материала. Данные: {}", materialTypeDtoNew);
+        MaterialType created = materialTypeService.create(materialTypeDtoNew);
+        log.info("Создан тип материала с id={}", created.getId());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<MaterialType> update(@PathVariable UUID id, @RequestBody @Valid MaterialTypeDtoUpdate materialTypeDtoUpdate) {
-        log.info("Пришел PUT запрос на изменение типа материала uuid: {} содержимое: {}", id, materialTypeDtoUpdate);
-        return ResponseEntity.ok(materialTypeService.update(id, materialTypeDtoUpdate));
+        log.info("Получен PUT-запрос: обновить тип материала. id={}, данные: {}", id, materialTypeDtoUpdate);
+        MaterialType updated = materialTypeService.update(id, materialTypeDtoUpdate);
+        log.info("Обновлен тип материала с id={}", updated.getId());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Пришел DELETE запрос на удаление типа материала uuid: {}", id);
+        log.info("Получен DELETE-запрос: удалить тип материала. id={}", id);
         materialTypeService.delete(id);
+        log.info("Удален тип материала с id={}", id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<MaterialType> getById(@PathVariable UUID id) {
-        log.info("Пришел GET запрос на получение типа материала uuid: {}", id);
-        return ResponseEntity.ok(materialTypeService.getById(id));
+        log.info("Получен GET-запрос: получить тип материала по id={}", id);
+        MaterialType materialType = materialTypeService.getById(id);
+        log.info("Найден тип материала: {}", materialType);
+        return ResponseEntity.ok(materialType);
     }
 
     @GetMapping
     public ResponseEntity<List<MaterialType>> getAll() {
-        log.info("Пришел GET запрос на получение всех типов материалов");
-        return ResponseEntity.ok(materialTypeService.getAll());
+        log.info("Получен GET-запрос: получить все типы материалов");
+        List<MaterialType> materialTypes = materialTypeService.getAll();
+        log.info("Возвращено типов материалов: {}", materialTypes.size());
+        return ResponseEntity.ok(materialTypes);
     }
 
     @GetMapping("/export")

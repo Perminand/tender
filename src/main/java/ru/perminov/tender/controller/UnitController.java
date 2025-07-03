@@ -36,27 +36,35 @@ public class UnitController {
     public ResponseEntity<UnitDto> create(@RequestBody UnitDtoNew unitDtoNew) {
         log.info("Получен POST-запрос: создать единицу измерения. Данные: {}", unitDtoNew);
         Unit unit = unitService.create(unitDtoNew);
-        return ResponseEntity.ok(unitMapper.toUnitDto(unit));
+        UnitDto unitDto = unitMapper.toUnitDto(unit);
+        log.info("Создана единица измерения с id={}", unitDto.id());
+        return ResponseEntity.ok(unitDto);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UnitDto> update(@PathVariable UUID id, @RequestBody UnitDtoUpdate unitDtoUpdate) {
         log.info("Получен PUT-запрос: обновить единицу измерения. id={}, данные: {}", id, unitDtoUpdate);
         Unit unit = unitService.update(id, unitDtoUpdate);
-        return ResponseEntity.ok(unitMapper.toUnitDto(unit));
+        UnitDto unitDto = unitMapper.toUnitDto(unit);
+        log.info("Обновлена единица измерения с id={}", unitDto.id());
+        return ResponseEntity.ok(unitDto);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         log.info("Получен DELETE-запрос: удалить единицу измерения. id={}", id);
         unitService.delete(id);
+        log.info("Удалена единица измерения с id={}", id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<UnitDto> getById(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: получить единицу измерения по id={}", id);
         Unit unit = unitService.getById(id);
-        return ResponseEntity.ok(unitMapper.toUnitDto(unit));
+        UnitDto unitDto = unitMapper.toUnitDto(unit);
+        log.info("Найдена единица измерения: {}", unitDto);
+        return ResponseEntity.ok(unitDto);
     }
 
     @GetMapping("/export")

@@ -36,19 +36,24 @@ public class CompanyController {
     @PostMapping
     public ResponseEntity<CompanyDto> create(@RequestBody @Valid CompanyDtoNew companyDtoNew) {
         log.info("Получен POST-запрос: создать компанию. Данные: {}", companyDtoNew);
-        return ResponseEntity.ok(companyService.create(companyDtoNew));
+        CompanyDto created = companyService.create(companyDtoNew);
+        log.info("Создана компания с id={}", created.id());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<CompanyDto> update(@PathVariable String id, @RequestBody @Valid CompanyDtoUpdate companyDtoUpdate) {
         log.info("Получен PUT-запрос: обновить компанию. id={}, данные: {}", id, companyDtoUpdate);
-        return ResponseEntity.ok(companyService.update(UUID.fromString(id), companyDtoUpdate));
+        CompanyDto updated = companyService.update(UUID.fromString(id), companyDtoUpdate);
+        log.info("Обновлена компания с id={}", updated.id());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         log.info("Получен DELETE-запрос: удалить компанию. id={}", id);
         companyService.delete(id);
+        log.info("Удалена компания с id={}", id);
         return ResponseEntity.ok().build();
     }
 
@@ -61,7 +66,9 @@ public class CompanyController {
     @GetMapping
     public ResponseEntity<List<CompanyDto>> getAll() {
         log.info("Получен GET-запрос: получить все компании");
-        return ResponseEntity.ok(companyService.getAll());
+        List<CompanyDto> companies = companyService.getAll();
+        log.info("Возвращено компаний: {}", companies.size());
+        return ResponseEntity.ok(companies);
     }
 
     @GetMapping("/by-short-name/{shortName}")

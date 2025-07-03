@@ -7,5 +7,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface OrgSupplierMaterialMappingRepository extends JpaRepository<OrgSupplierMaterialMapping, UUID> {
-    Optional<OrgSupplierMaterialMapping> findByOrganizationIdAndSupplierName(UUID organizationId, String supplierName);
+    Optional<OrgSupplierMaterialMapping> findByOrganizationIdAndSupplierNameAndCharacteristicId(UUID organizationId, String supplierName, UUID characteristicId);
+    
+    Optional<OrgSupplierMaterialMapping> findByOrganizationIdAndSupplierNameAndMaterialId(UUID organizationId, String supplierName, UUID materialId);
 } 

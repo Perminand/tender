@@ -38,3 +38,28 @@ create table IF NOT EXISTS contacts (
     value VARCHAR(50) NOT NULL,
     unique(contact_type_id, contact_person_id, value)
 );
+
+CREATE TABLE materials (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(255) NOT NULL,
+    description TEXT,
+    type VARCHAR(255),
+    link VARCHAR(500),
+    unit VARCHAR(50),
+    code VARCHAR(100),
+    category VARCHAR(100)
+);
+
+CREATE TABLE characteristics (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    material_id UUID REFERENCES materials(id) ON DELETE CASCADE,
+    name VARCHAR(255) NOT NULL UNIQUE,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+  CREATE TABLE work_types (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      name VARCHAR(255) NOT NULL UNIQUE
+  );

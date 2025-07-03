@@ -11,7 +11,7 @@ import java.util.UUID;
 public interface RequestRepository extends JpaRepository<Request, UUID> {
     
     @Query("SELECT r FROM Request r " +
-           "LEFT JOIN FETCH r.materials rm " +
+           "LEFT JOIN FETCH r.requestMaterials rm " +
            "LEFT JOIN FETCH rm.material " +
            "LEFT JOIN FETCH rm.unit " +
            "LEFT JOIN FETCH r.organization " +
@@ -20,7 +20,7 @@ public interface RequestRepository extends JpaRepository<Request, UUID> {
     Optional<Request> findByIdWithMaterials(@Param("id") UUID id);
     
     @Query("SELECT r FROM Request r " +
-           "LEFT JOIN FETCH r.materials rm " +
+           "LEFT JOIN FETCH r.requestMaterials rm " +
            "LEFT JOIN FETCH rm.material " +
            "LEFT JOIN FETCH rm.unit " +
            "LEFT JOIN FETCH r.organization " +

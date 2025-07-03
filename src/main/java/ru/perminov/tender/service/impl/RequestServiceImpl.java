@@ -5,10 +5,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.RequestDto;
+import ru.perminov.tender.dto.RequestMaterialDto;
 import ru.perminov.tender.mapper.RequestMapper;
+import ru.perminov.tender.mapper.RequestMaterialMapper;
 import ru.perminov.tender.model.Request;
 import ru.perminov.tender.model.RequestMaterial;
 import ru.perminov.tender.repository.RequestRepository;
+import ru.perminov.tender.repository.WorkTypeRepository;
 import ru.perminov.tender.service.OrgSupplierMaterialMappingService;
 import ru.perminov.tender.service.RequestService;
 
@@ -23,14 +26,17 @@ import java.util.stream.Collectors;
 public class RequestServiceImpl implements RequestService {
     private final RequestRepository requestRepository;
     private final RequestMapper requestMapper;
+    private final RequestMaterialMapper requestMaterialMapper;
     private final OrgSupplierMaterialMappingService orgSupplierMaterialMappingService;
+    private final WorkTypeRepository workTypeRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<RequestDto> findAll() {
         List<Request> requests = requestRepository.findAllWithMaterials();
         log.info("Найдено заявок: {}", requests.size());
         for (Request request : requests) {
-            log.info("Заявка {}: материалов = {}", request.getId(), request.getMaterials().size());
+            log.info("Заявка {}: материалов = {}", request.getId(), request.getRequestMaterials().size());
         }
         return requests.stream()
                 .map(requestMapper::toDto)
@@ -38,26 +44,24 @@ public class RequestServiceImpl implements RequestService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public RequestDto findById(UUID id) {
         log.info("Поиск заявки по id: {}", id);
         Request request = requestRepository.findByIdWithMaterials(id)
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));
-        log.info("Найдена заявка: {}, материалов: {}", request.getId(), request.getMaterials().size());
+        log.info("Найдена заявка: {}, материалов: {}", request.getId(), request.getRequestMaterials().size());
         
         RequestDto requestDto = requestMapper.toDto(request);
         log.info("DTO заявки: {}, материалов в DTO: {}", requestDto.id(), 
-                requestDto.materials() != null ? requestDto.materials().size() : 0);
+                requestDto.requestMaterials() != null ? requestDto.requestMaterials().size() : 0);
         return requestDto;
     }
 
     @Override
     public RequestDto create(RequestDto dto) {
-        log.info("Создание заявки с {} материалами", dto.materials() != null ? dto.materials().size() : 0);
+        log.info("Создание заявки с {} материалами", dto.requestMaterials() != null ? dto.requestMaterials().size() : 0);
         Request entity = requestMapper.toEntity(dto);
-        // Устанавливаем связь с заявкой для каждого материала
-        for (RequestMaterial material : entity.getMaterials()) {
-            material.setRequest(entity);
-        }
+        updateRequestMaterials(entity, dto);
         Request savedRequest = requestRepository.save(entity);
         updateSupplierMaterialMappings(savedRequest);
         return requestMapper.toDto(savedRequest);
@@ -65,18 +69,41 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public RequestDto update(UUID id, RequestDto dto) {
-        log.info("Обновление заявки {} с {} материалами", id, dto.materials() != null ? dto.materials().size() : 0);
-        Request existing = requestRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
-        Request updated = requestMapper.toEntity(dto);
-        updated.setId(existing.getId());
-        // Устанавливаем связь с заявкой для каждого материала
-        for (RequestMaterial material : updated.getMaterials()) {
-            material.setRequest(updated);
-        }
-        Request savedRequest = requestRepository.save(updated);
+        log.info("Обновление заявки {} с {} материалами", id, dto.requestMaterials() != null ? dto.requestMaterials().size() : 0);
+        Request request = requestRepository.findByIdWithMaterials(id)
+                .orElseThrow(() -> new IllegalArgumentException("Заявка с ид: " + id + " не найден." ));
+        requestMapper.updateRequestFromDto(dto, request);
+        updateRequestMaterials(request, dto);
+        Request savedRequest = requestRepository.save(request);
         updateSupplierMaterialMappings(savedRequest);
-        return requestMapper.toDto(savedRequest);
+        RequestDto requestDto = requestMapper.toDto(savedRequest);
+        return requestDto;
+    }
+    
+    /**
+     * Обновляет материалы заявки
+     */
+    private void updateRequestMaterials(Request request, RequestDto dto) {
+        log.info("Обновляем материалы заявки. Было: {}", request.getRequestMaterials().size());
+        request.getRequestMaterials().clear();
+        if (dto.requestMaterials() != null && !dto.requestMaterials().isEmpty()) {
+            log.info("Добавляем {} новых материалов", dto.requestMaterials().size());
+            for (RequestMaterialDto materialDto : dto.requestMaterials()) {
+                RequestMaterial material = requestMaterialMapper.toEntity(materialDto);
+                material.setRequest(request);
+                if (materialDto.workType() != null && materialDto.workType().getId() != null) {
+                    material.setWorkType(
+                        workTypeRepository.findById(materialDto.workType().getId())
+                            .orElseThrow(() -> new IllegalArgumentException("WorkType not found"))
+                    );
+                } else {
+                    material.setWorkType(null);
+                }
+                request.getRequestMaterials().add(material);
+            }
+        } else {
+            log.info("Новых материалов нет");
+        }
     }
 
     @Override
@@ -92,7 +119,7 @@ public class RequestServiceImpl implements RequestService {
             return;
         }
         
-        for (RequestMaterial material : request.getMaterials()) {
+        for (RequestMaterial material : request.getRequestMaterials()) {
             if (material.getMaterial() != null && 
                 material.getSupplierMaterialName() != null && 
                 !material.getSupplierMaterialName().trim().isEmpty()) {
@@ -101,7 +128,8 @@ public class RequestServiceImpl implements RequestService {
                 orgSupplierMaterialMappingService.save(
                     request.getOrganization().getId(),
                     material.getSupplierMaterialName().trim(),
-                    material.getMaterial().getId()
+                    material.getMaterial().getId(),
+                    material.getCharacteristic() != null ? material.getCharacteristic().getId() : null
                 );
             }
         }

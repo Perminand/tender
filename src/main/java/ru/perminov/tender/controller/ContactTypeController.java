@@ -32,32 +32,41 @@ public class ContactTypeController {
 
     @GetMapping
     public ResponseEntity<List<ContactTypeDto>> getAll() {
-        log.info("Получен запрос на получение всех типов контактов");
-        return ResponseEntity.ok(contactTypeService.getAll());
+        log.info("Получен GET-запрос: получить все типы контактов");
+        List<ContactTypeDto> contactTypes = contactTypeService.getAll();
+        log.info("Возвращено типов контактов: {}", contactTypes.size());
+        return ResponseEntity.ok(contactTypes);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<ContactTypeDto> getById(@PathVariable UUID id) {
-        log.info("Получен запрос на получение типа контакта с id {}", id);
-        return ResponseEntity.ok(contactTypeService.getById(id));
+        log.info("Получен GET-запрос: получить тип контакта по id={}", id);
+        ContactTypeDto contactType = contactTypeService.getById(id);
+        log.info("Найден тип контакта: {}", contactType);
+        return ResponseEntity.ok(contactType);
     }
 
     @PostMapping
     public ResponseEntity<ContactTypeDto> create(@Valid @RequestBody ContactTypeDtoNew contactTypeDtoNew) {
-        log.info("Получен запрос на создание типа контакта: {}", contactTypeDtoNew);
-        return ResponseEntity.ok(contactTypeService.create(contactTypeDtoNew));
+        log.info("Получен POST-запрос: создать тип контакта. Данные: {}", contactTypeDtoNew);
+        ContactTypeDto created = contactTypeService.create(contactTypeDtoNew);
+        log.info("Создан тип контакта с id={}", created.id());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ContactTypeDto> update(@PathVariable UUID id, @Valid @RequestBody ContactTypeDtoUpdate contactTypeDtoUpdate) {
-        log.info("Получен запрос на обновление типа контакта с id {}: {}", id, contactTypeDtoUpdate);
-        return ResponseEntity.ok(contactTypeService.update(id, contactTypeDtoUpdate));
+        log.info("Получен PUT-запрос: обновить тип контакта. id={}, данные: {}", id, contactTypeDtoUpdate);
+        ContactTypeDto updated = contactTypeService.update(id, contactTypeDtoUpdate);
+        log.info("Обновлен тип контакта с id={}", updated.id());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Получен запрос на удаление типа контакта с id {}", id);
+        log.info("Получен DELETE-запрос: удалить тип контакта. id={}", id);
         contactTypeService.delete(id);
+        log.info("Удален тип контакта с id={}", id);
         return ResponseEntity.noContent().build();
     }
 

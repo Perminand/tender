@@ -31,7 +31,9 @@ public class ProjectController {
     @GetMapping
     public ResponseEntity<List<ProjectDto>> getAll() {
         log.info("Получен GET-запрос: получить все проекты");
-        return ResponseEntity.ok(projectService.getAll());
+        List<ProjectDto> projects = projectService.getAll();
+        log.info("Возвращено проектов: {}", projects.size());
+        return ResponseEntity.ok(projects);
     }
 
     @GetMapping("/{id}")
@@ -43,19 +45,24 @@ public class ProjectController {
     @PostMapping
     public ResponseEntity<ProjectDto> create(@Valid @RequestBody ProjectDtoNew dto) {
         log.info("Получен POST-запрос: создать проект. Данные: {}", dto);
-        return ResponseEntity.ok(projectService.create(dto));
+        ProjectDto created = projectService.create(dto);
+        log.info("Создан проект с id={}", created.id());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ProjectDto> update(@PathVariable UUID id, @Valid @RequestBody ProjectDtoUpdate dto) {
         log.info("Получен PUT-запрос: обновить проект. id={}, данные: {}", id, dto);
-        return ResponseEntity.ok(projectService.update(id, dto));
+        ProjectDto updated = projectService.update(id, dto);
+        log.info("Обновлен проект с id={}", updated.id());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         log.info("Получен DELETE-запрос: удалить проект. id={}", id);
         projectService.delete(id);
+        log.info("Удален проект с id={}", id);
         return ResponseEntity.noContent().build();
     }
 

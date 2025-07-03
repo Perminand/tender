@@ -23,33 +23,41 @@ public class CompanyTypeController {
 
     @PostMapping
     public ResponseEntity<CompanyType> create(@RequestBody CompanyTypeDtoNew dto) {
-        log.info("Пришел POST запрос на создание типа компании: {}", dto);
-        return ResponseEntity.ok(companyTypeService.create(dto));
+        log.info("Получен POST-запрос: создать тип компании. Данные: {}", dto);
+        CompanyType created = companyTypeService.create(dto);
+        log.info("Создан тип компании с id={}", created.getId());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<CompanyType> update(@PathVariable UUID id, @RequestBody CompanyTypeDtoUpdate dto) {
-        log.info("Пришел PUT запрос на изменение типа компании uuid: {} содержимое: {}", id, dto);
-        return ResponseEntity.ok(companyTypeService.update(id, dto));
+        log.info("Получен PUT-запрос: обновить тип компании. id={}, данные: {}", id, dto);
+        CompanyType updated = companyTypeService.update(id, dto);
+        log.info("Обновлен тип компании с id={}", updated.getId());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Пришел DELETE запрос на удаление типа компании uuid: {}", id);
-
+        log.info("Получен DELETE-запрос: удалить тип компании. id={}", id);
         companyTypeService.delete(id);
+        log.info("Удален тип компании с id={}", id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<CompanyType> getById(@PathVariable UUID id) {
-        log.info("Пришел GET запрос на получение типа компании uuid: {}", id);
-        return ResponseEntity.ok(companyTypeService.getById(id));
+        log.info("Получен GET-запрос: получить тип компании по id={}", id);
+        CompanyType companyType = companyTypeService.getById(id);
+        log.info("Найден тип компании: {}", companyType);
+        return ResponseEntity.ok(companyType);
     }
 
     @GetMapping
     public ResponseEntity<List<CompanyType>> getAll() {
-        log.info("Пришел GET запрос на получение всех типов компаний");
-        return ResponseEntity.ok(companyTypeService.getAll());
+        log.info("Получен GET-запрос: получить все типы компаний");
+        List<CompanyType> companyTypes = companyTypeService.getAll();
+        log.info("Возвращено типов компаний: {}", companyTypes.size());
+        return ResponseEntity.ok(companyTypes);
     }
 } 

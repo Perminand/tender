@@ -7,13 +7,22 @@ import java.util.List;
 import java.util.UUID;
 
 public record RequestDto(
+
     UUID id,
+
     CompanyDto organization,
+
     ProjectDto project,
+
     LocalDate date,
+
     String requestNumber,
-    List<RequestMaterialDto> materials,
+
+    List<RequestMaterialDto> requestMaterials,
+
     WarehouseDto warehouse,
+
     String applicant
+
 ) {
 }

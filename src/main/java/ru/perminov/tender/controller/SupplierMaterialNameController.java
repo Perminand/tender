@@ -33,6 +33,7 @@ public class SupplierMaterialNameController {
     public List<SupplierMaterialName> getByMaterialAndSupplier(
             @RequestParam UUID materialId, 
             @RequestParam UUID supplierId) {
+
         log.info("Получен GET-запрос: получить названия материалов по материалу и поставщику. materialId={}, supplierId={}", materialId, supplierId);
         return service.findByMaterialAndSupplier(materialId, supplierId);
     }

@@ -12,8 +12,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/V005_refactor_banks_and_accounts.sql
   - include:
-      file: db/changelog/changes/V006_add_fields_to_materials.sql
-  - include:
       file: db/changelog/changes/V007_create_categories_and_update_materials.sql
   - include:
       file: db/changelog/changes/V008_create_material_types_and_update_materials.sql
@@ -28,8 +26,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/V013_create_requests_and_request_materials.sql
   - include:
-      file: db/changelog/changes/V014_create_section_and_worktype_tables.sql
-  - include:
       file: db/changelog/changes/V015_create_warehouses_table.sql
   - include:
       file: db/changelog/changes/V016_add_warehouse_to_requests.sql
@@ -40,8 +36,6 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/V019_add_request_number_to_requests.sql
   - include:
-      file: db/changelog/changes/V020_alter_sections_unique_index.sql
-  - include:
       file: db/changelog/changes/V021_add_supplier_material_name_to_request_materials.sql
   - include:
       file: db/changelog/changes/V022_add_supplier_id_to_supplier_material_names.sql
@@ -49,8 +43,6 @@ databaseChangeLog:
       file: db/changelog/changes/V023_add_short_name_to_companies.sql
   - include:
       file: db/changelog/changes/V024_remove_status_from_requests.sql
-  - include:
-      file: db/changelog/data/V001_insert_test_data.sql
   - include:
       file: db/changelog/changes/V025_drop_warehouse.sql
   - include:
@@ -60,4 +52,4 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/V029_add_new_fields_to_requests_and_materials.sql
   - include:
-      file: db/changelog/changes/V031_create_characteristics_table.sql
+      file: db/changelog/data/V001_insert_test_data.sql

@@ -35,19 +35,24 @@ public class MaterialController {
     @PostMapping
     public ResponseEntity<MaterialDto> create(@RequestBody @Valid MaterialDtoNew materialDtoNew) {
         log.info("Получен POST-запрос: создать материал. Данные: {}", materialDtoNew);
-        return ResponseEntity.ok(materialService.create(materialDtoNew));
+        MaterialDto created = materialService.create(materialDtoNew);
+        log.info("Создан материал с id={}", created.id());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<MaterialDto> update(@PathVariable UUID id, @RequestBody @Valid MaterialDtoUpdate materialDtoUpdate) {
         log.info("Получен PUT-запрос: обновить материал. id={}, данные: {}", id, materialDtoUpdate);
-        return ResponseEntity.ok(materialService.update(id, materialDtoUpdate));
+        MaterialDto updated = materialService.update(id, materialDtoUpdate);
+        log.info("Обновлен материал с id={}", updated.id());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         log.info("Получен DELETE-запрос: удалить материал. id={}", id);
         materialService.delete(id);
+        log.info("Удален материал с id={}", id);
         return ResponseEntity.ok().build();
     }
 
@@ -59,8 +64,10 @@ public class MaterialController {
 
     @GetMapping
     public ResponseEntity<List<MaterialDto>> getAll() {
-        log.info("Получен GET-запрос: получить все 'материалы'");
-        return ResponseEntity.ok(materialService.getAll());
+        log.info("Получен GET-запрос: получить все материалы");
+        List<MaterialDto> materials = materialService.getAll();
+        log.info("Возвращено материалов: {}", materials.size());
+        return ResponseEntity.ok(materials);
     }
 
     @GetMapping("/export")

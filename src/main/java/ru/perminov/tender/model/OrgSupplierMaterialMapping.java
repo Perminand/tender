@@ -16,6 +16,7 @@ import java.util.UUID;
 @ToString
 @NoArgsConstructor
 public class OrgSupplierMaterialMapping {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -29,4 +30,8 @@ public class OrgSupplierMaterialMapping {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_id")
     private Material material;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "characteristic_id")
+    private Characteristic characteristic;
 } 

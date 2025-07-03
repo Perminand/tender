@@ -1,6 +1,7 @@
 package ru.perminov.tender.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -32,6 +33,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -116,6 +119,7 @@ public class MaterialServiceImpl implements MaterialService {
         List<MaterialDto> materialDtos = materialRepository.findAll().stream()
                 .map(materialMapper::toDto)
                 .collect(Collectors.toList());
+        log.info("Список материалов в dto: {}, всего: {}", materialDtos, materialDtos.size() );
         return materialDtos;
     }
 

@@ -13,8 +13,9 @@ CREATE TABLE request_materials (
     request_id UUID REFERENCES requests(id) ON DELETE CASCADE,
     number INTEGER,
     section VARCHAR(255),
-    work_type VARCHAR(255),
+    work_type_id UUID REFERENCES work_types(id),
     material_id UUID REFERENCES materials(id),
+    characteristic_id UUID REFERENCES characteristics(id),
     size VARCHAR(255),
     quantity DOUBLE PRECISION,
     unit_id UUID REFERENCES units(id),
@@ -25,3 +26,5 @@ CREATE TABLE request_materials (
 CREATE INDEX idx_request_materials_request_id ON request_materials(request_id);
 CREATE INDEX idx_request_materials_material_id ON request_materials(material_id);
 CREATE INDEX idx_request_materials_unit_id ON request_materials(unit_id); 
+CREATE INDEX idx_request_materials_work_type_id ON request_materials(work_type_id);
+CREATE INDEX idx_request_materials_characteristic_id ON request_materials(characteristic_id);

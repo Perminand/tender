@@ -26,32 +26,41 @@ public class OrderController {
 
     @PostMapping
     public ResponseEntity<Order> create(@RequestBody @Valid OrderDtoNew orderDtoNew) {
-        log.info("Пришел POST запрос на создание заявки: {}", orderDtoNew);
-        return ResponseEntity.ok(orderService.create(orderDtoNew));
+        log.info("Получен POST-запрос: создать заявку. Данные: {}", orderDtoNew);
+        Order created = orderService.create(orderDtoNew);
+        log.info("Создана заявка с id={}", created.getId());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Order> update(@PathVariable UUID id, @RequestBody OrderDtoUpdate orderDtoUpdate) {
-        log.info("Пришел PUT запрос на изменение заявки uuid: {} содержимое: {}", id, orderDtoUpdate);
-        return ResponseEntity.ok(orderService.update(id, orderDtoUpdate));
+        log.info("Получен PUT-запрос: обновить заявку. id={}, данные: {}", id, orderDtoUpdate);
+        Order updated = orderService.update(id, orderDtoUpdate);
+        log.info("Обновлена заявка с id={}", updated.getId());
+        return ResponseEntity.ok(updated);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Order> getById(@PathVariable UUID id) {
-        log.info("Пришел запрос на получение заявки с id: {}", id);
-        return ResponseEntity.ok(orderService.getById(id));
+        log.info("Получен GET-запрос: получить заявку по id={}", id);
+        Order order = orderService.getById(id);
+        log.info("Найдена заявка: {}", order);
+        return ResponseEntity.ok(order);
     }
 
     @GetMapping
     public ResponseEntity<List<Order>> getAll() {
-        log.info("Пришел запрос на получение всех заявок");
-        return ResponseEntity.ok(orderService.getAll());
+        log.info("Получен GET-запрос: получить все заявки");
+        List<Order> orders = orderService.getAll();
+        log.info("Возвращено заявок: {}", orders.size());
+        return ResponseEntity.ok(orders);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Пришел запрос на удаление заявки с id: {}", id);
+        log.info("Получен DELETE-запрос: удалить заявку. id={}", id);
         orderService.delete(id);
+        log.info("Удалена заявка с id={}", id);
         return ResponseEntity.ok().build();
     }
 } 

@@ -1,6 +1,7 @@
 package ru.perminov.tender.dto;
 
 import ru.perminov.tender.dto.material.MaterialDto;
+import ru.perminov.tender.dto.worktype.WorkTypeDto;
 import java.util.UUID;
 
 public record RequestMaterialDto(
@@ -8,7 +9,7 @@ public record RequestMaterialDto(
 
     Integer number,
 
-    String workType,
+    WorkTypeDto workType,
 
     MaterialDto material,
 
@@ -26,5 +27,5 @@ public record RequestMaterialDto(
 
     Double estimatePrice,
 
-    String materialCharacteristics
+    String materialLink
 ) {} 

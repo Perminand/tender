@@ -6,6 +6,7 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import ru.perminov.tender.dto.RequestRegistryRowDto;
 import ru.perminov.tender.model.Request;
+import ru.perminov.tender.model.RequestMaterial;
 import ru.perminov.tender.repository.RequestRepository;
 import ru.perminov.tender.service.RequestRegistryService;
 
@@ -46,7 +47,7 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
             
             // Фильтрация по материалу (если указан)
             if (materialName != null) {
-                boolean hasMatchingMaterial = request.getMaterials().stream()
+                boolean hasMatchingMaterial = request.getRequestMaterials().stream()
                     .anyMatch(material -> material.getMaterial().getName().toLowerCase().contains(materialName.toLowerCase()));
                 if (!hasMatchingMaterial) {
                     continue;
@@ -54,14 +55,14 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
             }
             
             // Подсчет количества материалов и общей суммы
-            int materialsCount = request.getMaterials().size();
-            double totalQuantity = request.getMaterials().stream()
+            int materialsCount = request.getRequestMaterials().size();
+            double totalQuantity = request.getRequestMaterials().stream()
                 .mapToDouble(material -> material.getQuantity() != null ? material.getQuantity() : 0.0)
                 .sum();
             
             // Получение примечания (берем первое непустое примечание из материалов)
-            String note = request.getMaterials().stream()
-                .map(material -> material.getNote())
+            String note = request.getRequestMaterials().stream()
+                .map(RequestMaterial::getNote)
                 .filter(n -> n != null && !n.trim().isEmpty())
                 .findFirst()
                 .orElse("");

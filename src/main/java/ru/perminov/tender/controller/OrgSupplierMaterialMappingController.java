@@ -17,18 +17,25 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OrgSupplierMaterialMappingController {
     private final OrgSupplierMaterialMappingService service;
-    private final OrgSupplierMaterialMappingMapper mapper;
 
     @GetMapping
-    public Optional<OrgSupplierMaterialMappingDto> get(@RequestParam UUID organizationId, @RequestParam String supplierName) {
-        log.info("Получен GET-запрос: найти маппинг поставщика. organizationId={}, supplierName={}", organizationId, supplierName);
-        return service.find(organizationId, supplierName).map(mapper::toDto);
+    public Optional<OrgSupplierMaterialMappingDto> get(
+            @RequestParam UUID organizationId,
+            @RequestParam String supplierName,
+            @RequestParam UUID characteristicId) {
+        log.info("Получен GET-запрос: найти маппинг поставщика. organizationId={}, supplierName={}, characteristicId={}", organizationId, supplierName, characteristicId);
+        return service.find(organizationId, supplierName, characteristicId);
     }
 
     @PostMapping
-    public OrgSupplierMaterialMappingDto save(@RequestParam UUID organizationId, @RequestParam String supplierName, @RequestParam UUID materialId) {
-        log.info("Получен POST-запрос: сохранить маппинг поставщика. organizationId={}, supplierName={}, materialId={}", organizationId, supplierName, materialId);
-        OrgSupplierMaterialMapping entity = service.save(organizationId, supplierName, materialId);
-        return mapper.toDto(entity);
+    public OrgSupplierMaterialMappingDto save(
+            @RequestParam UUID organizationId,
+            @RequestParam String supplierName,
+            @RequestParam UUID materialId,
+            @RequestParam UUID characteristicId
+    ) {
+        log.info("Получен POST-запрос: сохранить маппинг поставщика. organizationId={}, supplierName={}, materialId={}, " +
+                "characteristicId={}", organizationId, supplierName, materialId, characteristicId);
+        return service.save(organizationId, supplierName, materialId, characteristicId);
     }
 } 

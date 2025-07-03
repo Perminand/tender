@@ -34,33 +34,42 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<Category> create(@RequestBody @Valid CategoryDtoNew categoryDtoNew) {
-        log.info("Пришел POST запрос на создание категории: {}", categoryDtoNew);
-        return ResponseEntity.ok(categoryService.create(categoryDtoNew));
+        log.info("Получен POST-запрос: создать категорию. Данные: {}", categoryDtoNew);
+        Category created = categoryService.create(categoryDtoNew);
+        log.info("Создана категория с id={}", created.getId());
+        return ResponseEntity.ok(created);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Category> update(@PathVariable UUID id, @RequestBody @Valid CategoryDtoUpdate categoryDtoUpdate) {
-        log.info("Пришел PUT запрос на изменение категории uuid: {} содержимое: {}", id, categoryDtoUpdate);
-        return ResponseEntity.ok(categoryService.update(id, categoryDtoUpdate));
+        log.info("Получен PUT-запрос: обновить категорию. id={}, данные: {}", id, categoryDtoUpdate);
+        Category updated = categoryService.update(id, categoryDtoUpdate);
+        log.info("Обновлена категория с id={}", updated.getId());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
-        log.info("Пришел DELETE запрос на удаление категории uuid: {}", id);
+        log.info("Получен DELETE-запрос: удалить категорию. id={}", id);
         categoryService.delete(id);
+        log.info("Удалена категория с id={}", id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<Category> getById(@PathVariable UUID id) {
-        log.info("Пришел GET запрос на получение категории uuid: {}", id);
-        return ResponseEntity.ok(categoryService.getById(id));
+        log.info("Получен GET-запрос: получить категорию по id={}", id);
+        Category category = categoryService.getById(id);
+        log.info("Найдена категория: {}", category);
+        return ResponseEntity.ok(category);
     }
 
     @GetMapping
     public ResponseEntity<List<Category>> getAll() {
-        log.info("Пришел GET запрос на получение всех категорий");
-        return ResponseEntity.ok(categoryService.getAll());
+        log.info("Получен GET-запрос: получить все категории");
+        List<Category> categories = categoryService.getAll();
+        log.info("Возвращено категорий: {}", categories.size());
+        return ResponseEntity.ok(categories);
     }
 
     @GetMapping("/export")

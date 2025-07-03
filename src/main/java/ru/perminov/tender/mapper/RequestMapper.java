@@ -1,27 +1,22 @@
 package ru.perminov.tender.mapper;
 
 import org.mapstruct.Mapper;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.Mapping;
+import org.mapstruct.AfterMapping;
 import ru.perminov.tender.dto.RequestDto;
 import ru.perminov.tender.model.Request;
 import ru.perminov.tender.mapper.company.CompanyMapper;
-import org.mapstruct.Mapping;
 
-@Mapper(componentModel = "spring", uses = {CompanyMapper.class, ProjectMapper.class, RequestMaterialMapper.class})
+@Mapper(componentModel = "spring", uses = {CompanyMapper.class, ProjectMapper.class, RequestMaterialMapper.class,
+        MaterialMapper.class, WorkTypeMapper.class})
 public interface RequestMapper {
     
-    @Mapping(source = "organization", target = "organization")
-    @Mapping(source = "project", target = "project")
-    @Mapping(source = "date", target = "date")
-    @Mapping(source = "requestNumber", target = "requestNumber")
-    @Mapping(source = "materials", target = "materials")
-    @Mapping(source = "warehouse", target = "warehouse")
-    @Mapping(source = "applicant", target = "applicant")
     RequestDto toDto(Request entity);
     
-    @Mapping(source = "organization", target = "organization")
-    @Mapping(source = "project", target = "project")
-    @Mapping(source = "date", target = "date")
-    @Mapping(source = "requestNumber", target = "requestNumber")
-    @Mapping(source = "materials", target = "materials")
     Request toEntity(RequestDto dto);
+
+    @Mapping(target = "requestMaterials", ignore = true)
+    void updateRequestFromDto(RequestDto requestDtoForUpdate, @MappingTarget Request request);
+
 } 

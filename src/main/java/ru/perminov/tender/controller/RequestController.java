@@ -25,7 +25,7 @@ public class RequestController {
         log.info("Возвращено заявок: {}", requests.size());
         for (RequestDto request : requests) {
             log.info("Заявка {}: материалов = {}", request.id(), 
-                    request.materials() != null ? request.materials().size() : 0);
+                    request.requestMaterials() != null ? request.requestMaterials().size() : 0);
         }
         return ResponseEntity.ok(requests);
     }
@@ -33,8 +33,7 @@ public class RequestController {
     @GetMapping("/{id}")
     public ResponseEntity<RequestDto> getById(@PathVariable UUID id) {
         log.info("Получен GET-запрос: получить заявку по id={}", id);
-        RequestDto request = requestService.findById(id);
-        return ResponseEntity.ok(request);
+        return ResponseEntity.ok(requestService.findById(id));
     }
 
     @GetMapping("/test/{id}")
@@ -44,7 +43,7 @@ public class RequestController {
             RequestDto request = requestService.findById(id);
             String result = String.format("Заявка %s: материалов = %d", 
                     request.id(), 
-                    request.materials() != null ? request.materials().size() : 0);
+                    request.requestMaterials() != null ? request.requestMaterials().size() : 0);
             log.info(result);
             return ResponseEntity.ok(result);
         } catch (Exception e) {

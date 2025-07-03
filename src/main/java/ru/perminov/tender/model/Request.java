@@ -16,9 +16,10 @@ import java.util.UUID;
 @Table(name = "requests")
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "requestMaterials")
 @NoArgsConstructor
 public class Request {
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -34,7 +35,7 @@ public class Request {
     private LocalDate date;
 
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RequestMaterial> materials = new ArrayList<>();
+    private List<RequestMaterial> requestMaterials = new ArrayList<>();
 
     private String requestNumber;
 
