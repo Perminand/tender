@@ -14,8 +14,10 @@ import ru.perminov.tender.repository.OrgSupplierMaterialMappingRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.OrgSupplierMaterialMappingService;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,20 @@ public class OrgSupplierMaterialMappingServiceImpl implements OrgSupplierMateria
     public Optional<OrgSupplierMaterialMappingDto> find(UUID organizationId, String supplierName, UUID characteristicId) {
         Optional<OrgSupplierMaterialMapping> orgSupplierMaterialMapping = orgSupplierMaterialMappingRepository.findByOrganizationIdAndSupplierNameAndCharacteristicId(organizationId, supplierName, characteristicId);
         return orgSupplierMaterialMapping.map(mapper::toDto);
+    }
+
+    @Override
+    public List<OrgSupplierMaterialMappingDto> findAll() {
+        return orgSupplierMaterialMappingRepository.findAll().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<OrgSupplierMaterialMappingDto> findByOrganization(UUID organizationId) {
+        return orgSupplierMaterialMappingRepository.findByOrganizationId(organizationId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -60,5 +76,10 @@ public class OrgSupplierMaterialMappingServiceImpl implements OrgSupplierMateria
         mapping.setMaterial(mat);
         orgSupplierMaterialMappingRepository.save(mapping);
         return mapper.toDto(mapping);
+    }
+
+    @Override
+    public void delete(UUID id) {
+        orgSupplierMaterialMappingRepository.deleteById(id);
     }
 } 

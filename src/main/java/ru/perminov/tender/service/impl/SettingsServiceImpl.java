@@ -109,7 +109,7 @@ public class SettingsServiceImpl implements SettingsService {
                         int limit = Integer.parseInt(searchStat.limit());
                         int used = Integer.parseInt(searchStat.used());
                         int remaining = limit - used;
-                        return String.format("Использовано за сегодня: %d. Осталось: %d (из %d)", used, remaining, limit);
+                        return String.format("Использовано:  %d. Осталось: %d (из %d)", used, remaining, limit);
                     } catch (NumberFormatException e) {
                          logger.error("Error parsing numbers from FNS API stat", e);
                          return "Ошибка парсинга числовых значений из ответа ФНС.";

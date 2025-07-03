@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import {
   Box, Button, Grid, Paper, TextField, Typography, MenuItem, IconButton, Divider, Autocomplete,
-  Dialog, DialogActions, DialogContent, DialogTitle, Alert, Snackbar, CircularProgress
+  Dialog, DialogActions, DialogContent, DialogTitle, Alert, Snackbar, CircularProgress, Link
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -560,7 +560,23 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       </Box>
 
       {saveError && <Snackbar open={!!saveError} autoHideDuration={6000} onClose={() => setSaveError(null)}><Alert severity="error">{saveError}</Alert></Snackbar>}
-      {fnsError && <Snackbar open={!!fnsError} autoHideDuration={6000} onClose={() => setFnsError(null)}><Alert severity="warning">{fnsError}</Alert></Snackbar>}
+      {fnsError && (
+        <Snackbar open={!!fnsError} autoHideDuration={6000} onClose={() => setFnsError(null)}>
+          <Alert severity="warning">
+            {fnsError.includes('Вы можете изменить настройки доступа в личном кабинете') ? (() => {
+              const phrase = 'Вы можете изменить настройки доступа в личном кабинете';
+              const idx = fnsError.indexOf(phrase);
+              return (
+                <span>
+                  {fnsError.slice(0, idx + phrase.length)}{' '}
+                  <Link href="https://api-fns.ru/user?cabinet&id=14854" target="_blank" rel="noopener noreferrer">Перейти в личный кабинет</Link>
+                  {fnsError.slice(idx + phrase.length)}
+                </span>
+              );
+            })() : fnsError}
+          </Alert>
+        </Snackbar>
+      )}
       {fnsSuccess && <Snackbar open={fnsSuccess} autoHideDuration={3000} onClose={() => setFnsSuccess(false)}><Alert severity="success">Данные по ИНН успешно загружены.</Alert></Snackbar>}
     </form>
   );

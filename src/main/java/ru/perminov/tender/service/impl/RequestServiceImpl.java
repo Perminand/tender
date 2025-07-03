@@ -70,14 +70,31 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public RequestDto update(UUID id, RequestDto dto) {
         log.info("Обновление заявки {} с {} материалами", id, dto.requestMaterials() != null ? dto.requestMaterials().size() : 0);
-        Request request = requestRepository.findByIdWithMaterials(id)
-                .orElseThrow(() -> new IllegalArgumentException("Заявка с ид: " + id + " не найден." ));
-        requestMapper.updateRequestFromDto(dto, request);
-        updateRequestMaterials(request, dto);
-        Request savedRequest = requestRepository.save(request);
-        updateSupplierMaterialMappings(savedRequest);
-        RequestDto requestDto = requestMapper.toDto(savedRequest);
-        return requestDto;
+        try {
+            Request request = requestRepository.findByIdWithMaterials(id)
+                    .orElseThrow(() -> new IllegalArgumentException("Заявка с ид: " + id + " не найден." ));
+            log.info("Найдена заявка для обновления: {}", request.getId());
+            
+            requestMapper.updateRequestFromDto(dto, request);
+            log.info("Обновлены основные поля заявки");
+            
+            updateRequestMaterials(request, dto);
+            log.info("Обновлены материалы заявки");
+            
+            Request savedRequest = requestRepository.save(request);
+            log.info("Заявка сохранена: {}", savedRequest.getId());
+            
+            updateSupplierMaterialMappings(savedRequest);
+            log.info("Обновлены соответствия поставщиков");
+            
+            RequestDto requestDto = requestMapper.toDto(savedRequest);
+            log.info("DTO создан успешно");
+            
+            return requestDto;
+        } catch (Exception e) {
+            log.error("Ошибка в методе update: ", e);
+            throw e;
+        }
     }
     
     /**
@@ -88,18 +105,29 @@ public class RequestServiceImpl implements RequestService {
         request.getRequestMaterials().clear();
         if (dto.requestMaterials() != null && !dto.requestMaterials().isEmpty()) {
             log.info("Добавляем {} новых материалов", dto.requestMaterials().size());
-            for (RequestMaterialDto materialDto : dto.requestMaterials()) {
-                RequestMaterial material = requestMaterialMapper.toEntity(materialDto);
-                material.setRequest(request);
-                if (materialDto.workType() != null && materialDto.workType().getId() != null) {
-                    material.setWorkType(
-                        workTypeRepository.findById(materialDto.workType().getId())
-                            .orElseThrow(() -> new IllegalArgumentException("WorkType not found"))
-                    );
-                } else {
-                    material.setWorkType(null);
+            for (int i = 0; i < dto.requestMaterials().size(); i++) {
+                RequestMaterialDto materialDto = dto.requestMaterials().get(i);
+                log.info("Обрабатываем материал {}: id={}, materialLink={}", i, materialDto.id(), materialDto.materialLink());
+                
+                try {
+                    RequestMaterial material = requestMaterialMapper.toEntity(materialDto);
+                    log.info("Материал создан через маппер: id={}, materialLink={}", material.getId(), material.getMaterialLink());
+                    
+                    material.setRequest(request);
+                    if (materialDto.workType() != null && materialDto.workType().getId() != null) {
+                        material.setWorkType(
+                            workTypeRepository.findById(materialDto.workType().getId())
+                                .orElseThrow(() -> new IllegalArgumentException("WorkType not found"))
+                        );
+                    } else {
+                        material.setWorkType(null);
+                    }
+                    request.getRequestMaterials().add(material);
+                    log.info("Материал {} добавлен в заявку", i);
+                } catch (Exception e) {
+                    log.error("Ошибка при обработке материала {}: ", i, e);
+                    throw e;
                 }
-                request.getRequestMaterials().add(material);
             }
         } else {
             log.info("Новых материалов нет");
@@ -124,7 +152,7 @@ public class RequestServiceImpl implements RequestService {
                 material.getSupplierMaterialName() != null && 
                 !material.getSupplierMaterialName().trim().isEmpty()) {
                 
-                // Сохраняем соответствие: организация + наименование у поставщика -> материал
+                // Сохраняем соответствие: организация + наименование в заявке -> материал
                 orgSupplierMaterialMappingService.save(
                     request.getOrganization().getId(),
                     material.getSupplierMaterialName().trim(),

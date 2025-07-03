@@ -1,8 +1,8 @@
 -- Create units table
 CREATE TABLE units (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(255) NOT NULL,
-    short_name VARCHAR(50) NOT NULL
+    name VARCHAR(255) NOT NULL UNIQUE,
+    short_name VARCHAR(50) NOT NULL UNIQUE
 );
 
 -- Create trigger for updated_at on units table

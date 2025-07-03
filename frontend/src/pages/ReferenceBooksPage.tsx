@@ -44,8 +44,7 @@ const referenceGroups: ReferenceGroup[] = [
     title: 'Организации',
     description: 'Управление контрагентами и поставщиками',
     books: [
-  { id: 'counterparties', title: 'Контрагенты', description: 'Управление контрагентами', icon: <BusinessIcon sx={{ fontSize: 40 }} />, color: '#d32f2f', path: '/reference/counterparties' },
-      { id: 'supplier-material-names', title: 'Названия у поставщиков', description: 'Управление названиями материалов у поставщиков', icon: <LabelIcon sx={{ fontSize: 40 }} />, color: '#795548', path: '/reference/supplier-material-names' }
+      { id: 'counterparties', title: 'Контрагенты', description: 'Управление контрагентами', icon: <BusinessIcon sx={{ fontSize: 40 }} />, color: '#d32f2f', path: '/reference/counterparties' }
     ]
   },
   {

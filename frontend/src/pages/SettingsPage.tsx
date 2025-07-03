@@ -225,7 +225,7 @@ const SettingsPage: React.FC = () => {
             
             <Alert severity="info" sx={{ mt: 2 }}>
               <Typography variant="body2">
-                <strong>Важно:</strong> Бесплатный тариф включает 800 запросов в месяц. 
+                <strong>Важно:</strong> Бесплатный тариф включает 100 запросов в месяц.
                 Этого достаточно для тестирования и небольшого объема работы.
               </Typography>
             </Alert>
@@ -268,13 +268,6 @@ const SettingsPage: React.FC = () => {
         )}
         
         <Box sx={{ mt: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Button
-            variant="outlined"
-            onClick={handleCheckUsage}
-            disabled={isLoading || !settings.fnsApiKey}
-          >
-            Посмотреть остаток
-          </Button>
           {isLoadingUsage && <CircularProgress size={24} />}
           {usageInfo && (
               <Typography variant="body2" color="text.secondary">{usageInfo}</Typography>

@@ -60,8 +60,22 @@ public class RequestController {
 
     @PutMapping("/{id}")
     public ResponseEntity<RequestDto> update(@PathVariable UUID id, @RequestBody RequestDto dto) {
-        log.info("Получен PUT-запрос: обновить заявку. id={}, данные: {}", id, dto);
-        return ResponseEntity.ok(requestService.update(id, dto));
+        log.info("Получен PUT-запрос: обновить заявку. id={}", id);
+        log.info("Данные заявки: {}", dto);
+        if (dto.requestMaterials() != null) {
+            log.info("Количество материалов: {}", dto.requestMaterials().size());
+            for (int i = 0; i < dto.requestMaterials().size(); i++) {
+                var material = dto.requestMaterials().get(i);
+                log.info("Материал {}: id={}, materialLink={}, supplierMaterialName={}", 
+                    i, material.id(), material.materialLink(), material.supplierMaterialName());
+            }
+        }
+        try {
+            return ResponseEntity.ok(requestService.update(id, dto));
+        } catch (Exception e) {
+            log.error("Ошибка при обновлении заявки: ", e);
+            throw e;
+        }
     }
 
     @DeleteMapping("/{id}")

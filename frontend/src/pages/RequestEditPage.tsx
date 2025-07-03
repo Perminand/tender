@@ -335,7 +335,13 @@ export default function RequestEditPage() {
     try {
       // Преобразуем materials обратно в requestMaterials для отправки на сервер
               const requestToSend = {
-          ...request,
+          id: request.id,
+          organization: request.organization,
+          project: request.project,
+          date: request.date,
+          requestNumber: request.requestNumber,
+          warehouse: request.warehouse,
+          applicant: request.applicant,
           requestMaterials: (request.materials || []).map((mat, index) => ({
             id: mat.id,
             number: index + 1,
@@ -352,7 +358,8 @@ export default function RequestEditPage() {
           }))
         };
       
-      console.log('Отправляем данные:', requestToSend);
+      console.log('Отправляем данные:', JSON.stringify(requestToSend, null, 2));
+      console.log('requestMaterials:', JSON.stringify(requestToSend.requestMaterials, null, 2));
       
       if (isEdit) {
         await axios.put(`/api/requests/${id}`, requestToSend);
@@ -723,7 +730,7 @@ export default function RequestEditPage() {
           <Table size="small" sx={{ minWidth: 1200, width: 'max-content' }}>
             <TableHead>
               <TableRow>
-                  {['#','Вид работ','Наименование материала','Характеристики','Наименование у поставщика','Кол-во','Ед. изм.','Сметная цена','Сметная стоимость','Ссылка','Примечание','Поставить к дате','Действия'].map((label, idx) => (
+                  {['#','Вид работ','Наименование материала','Характеристики','Наименование в заявке','Кол-во','Ед. изм.','Сметная цена','Сметная стоимость','Ссылка','Примечание','Поставить к дате','Действия'].map((label, idx) => (
                   <TableCell
                     key={label}
                     sx={{ position: 'relative', width: colWidths[idx], minWidth: 40, maxWidth: 800, userSelect: 'none', whiteSpace: 'nowrap' }}
@@ -816,7 +823,7 @@ export default function RequestEditPage() {
                     onInputChange={(_, value) => handleSupplierMaterialNameChange(idx, value || '')}
                     options={supplierNamesOptions[idx] || []}
                       renderInput={params => (
-                        <TextField {...params} size="small" label="Наименование у поставщика" InputLabelProps={{ shrink: true }} />
+                        <TextField {...params} size="small" label="Наименование в заявке" InputLabelProps={{ shrink: true }} />
                       )}
                       filterOptions={(options, state) => {
                         if (!state.inputValue) return options;
