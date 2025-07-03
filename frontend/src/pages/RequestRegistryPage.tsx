@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Edit, Download } from '@mui/icons-material';
+import DownloadIcon from '@mui/icons-material/Download';
 
 interface RequestRegistryRowDto {
   requestId: string;
@@ -113,6 +114,14 @@ export default function RequestRegistryPage() {
       <Toolbar sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
         <Typography variant="h6" component="div">Реестр заявок</Typography>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+        <Button
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={handleExport}
+            disabled={loading}
+          >
+            Экспорт в Excel
+          </Button>
           <Button
             variant="contained"
             color="primary"
@@ -121,16 +130,7 @@ export default function RequestRegistryPage() {
           >
             Создать заявку
           </Button>
-          <Tooltip title="Экспорт в Excel">
-            <IconButton
-              color="primary"
-              onClick={handleExport}
-              disabled={loading}
-            >
-              <Download />
-            </IconButton>
-          </Tooltip>
-        </Box>
+          </Box>
       </Toolbar>
 
       {/* Фильтры */}

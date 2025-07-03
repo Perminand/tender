@@ -171,6 +171,25 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         setSaveError(errorData.message || 'Не удалось сохранить материал.');
         return;
       }
+
+      if (!isEdit) {
+        const createdMaterial = await response.json();
+        if (window.opener) {
+          window.opener.postMessage(
+            {
+              type: 'materialCreated',
+              payload: {
+                name: createdMaterial.name,
+                id: createdMaterial.id,
+              }
+            },
+            '*'
+          );
+          window.close();
+          return;
+        }
+      }
+
       navigate('/reference/materials');
     } catch (error) {
       setSaveError('Произошла ошибка сети.');

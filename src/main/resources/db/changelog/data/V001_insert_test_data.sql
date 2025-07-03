@@ -118,19 +118,6 @@ INSERT INTO material_types (id, name) VALUES
   (uuid_generate_v4(), 'Панель'),
   (uuid_generate_v4(), 'Сетка');
 
--- units
-INSERT INTO units (id, name, short_name) VALUES
-  (uuid_generate_v4(), 'Штука', 'шт.'),
-  (uuid_generate_v4(), 'Килограмм', 'кг'),
-  (uuid_generate_v4(), 'Метр', 'м'),
-  (uuid_generate_v4(), 'Литр', 'л'),
-  (uuid_generate_v4(), 'Квадратный метр', 'м²'),
-  (uuid_generate_v4(), 'Кубический метр', 'м³'),
-  (uuid_generate_v4(), 'Тонна', 'т'),
-  (uuid_generate_v4(), 'Грамм', 'г'),
-  (uuid_generate_v4(), 'Сантиметр', 'см'),
-  (uuid_generate_v4(), 'Миллиметр', 'мм');
-
 -- materials
 INSERT INTO materials (id, name, description, link, code, category_id, material_type_id, created_at, updated_at) VALUES
   (uuid_generate_v4(), 'Материал 1', 'Описание 1', 'http://example.com/1', 'M001', (SELECT id FROM categories LIMIT 1), (SELECT id FROM material_types LIMIT 1), CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),

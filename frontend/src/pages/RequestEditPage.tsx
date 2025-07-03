@@ -18,6 +18,9 @@ import AddIcon from '@mui/icons-material/Add';
 interface Company { id: string; name: string; shortName?: string; legalName?: string; }
 interface Project { id: string; name: string; }
 interface Material { id: string; name: string; characteristics?: string; }
+interface MaterialOption extends Material {
+  inputValue?: string;
+}
 interface Unit { id: string; shortName: string; }
 interface WorkType { id: string; name: string; }
 interface Warehouse { id: string; name: string; projectId: string; }
@@ -33,6 +36,7 @@ interface RequestMaterial {
   supplierMaterialName?: string;
   estimatePrice?: string;
   materialLink?: string;
+  isImported?: boolean; // Флаг для отслеживания импортированных материалов
 }
 interface RequestDto {
   id?: string;
@@ -97,16 +101,13 @@ export default function RequestEditPage() {
   const startX = useRef<number>(0);
   const startWidth = useRef<number>(0);
 
-  const [pendingImportData, setPendingImportData] = useState<any | null>(null);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredCounterparties, setFilteredCounterparties] = useState<any[]>([]);
 
   const [projectNameFromImport, setProjectNameFromImport] = useState<string | null>(null);
 
-  const [pendingImportMaterials, setPendingImportMaterials] = useState<any[] | null>(null);
-  const [pendingImportMaterialIndex, setPendingImportMaterialIndex] = useState<number>(4);
-  const [pendingImportedMaterials, setPendingImportedMaterials] = useState<any[]>([]);
+  const [pendingImportData, setPendingImportData] = useState<any | null>(null);
+  const [openImportDialog, setOpenImportDialog] = useState(false);
 
   const [newUnitName, setNewUnitName] = useState('');
   const [openUnitDialog, setOpenUnitDialog] = useState(false);
@@ -118,12 +119,19 @@ export default function RequestEditPage() {
   const [openWarehouseDialog, setOpenWarehouseDialog] = useState(false);
   const [newWarehouse, setNewWarehouse] = useState('');
 
-  const [openImportDialog, setOpenImportDialog] = useState(false);
-
-  const [characteristics, setCharacteristics] = useState<Characteristic[]>([]);
   const [openCharacteristicDialog, setOpenCharacteristicDialog] = useState(false);
   const [newCharacteristic, setNewCharacteristic] = useState('');
   const [characteristicMaterialIdx, setCharacteristicMaterialIdx] = useState<number | null>(null);
+
+  const [characteristics, setCharacteristics] = useState<Characteristic[]>([]);
+
+  const [importStep, setImportStep] = useState<'idle'|'parsing'|'mapping'|'done'>('idle');
+  const [importMissing, setImportMissing] = useState<any>(null);
+  const [importLoading, setImportLoading] = useState(false);
+
+  const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[]}>({workTypes:[], characteristics:[], units:[]});
+
+  const [missingMaterialIdx, setMissingMaterialIdx] = useState<number | null>(null);
 
   const handleMouseDown = (idx: number, e: React.MouseEvent) => {
     resizingCol.current = idx;
@@ -155,10 +163,14 @@ export default function RequestEditPage() {
     };
   }, []);
 
+  const fetchMaterials = () => {
+    axios.get('/api/materials').then(res => setMaterials(res.data));
+  };
+
   useEffect(() => {
     axios.get('/api/companies').then(res => setCompanies(res.data));
     axios.get('/api/projects').then(res => setProjects(res.data));
-    axios.get('/api/materials').then(res => setMaterials(res.data));
+    fetchMaterials();
     axios.get('/api/units').then(res => setUnits(res.data));
     axios.get('/api/work-types').then(res => setWorkTypes(res.data));
     axios.get('/api/warehouses').then(res => setWarehouses(res.data));
@@ -201,7 +213,8 @@ export default function RequestEditPage() {
             const supplierNames = res.data.map((n: any) => n.name);
             
             // Если есть названия поставщиков и поле supplierMaterialName пустое, заполняем первым значением
-            if (supplierNames.length > 0 && !mat.supplierMaterialName) {
+            // НО только если это не импортированные данные
+            if (supplierNames.length > 0 && !mat.supplierMaterialName && mat.material && !mat.isImported) {
               setRequest(prevRequest => {
                 const newMaterials = [...(prevRequest.materials || [])];
                 newMaterials[idx].supplierMaterialName = supplierNames[0];
@@ -210,12 +223,17 @@ export default function RequestEditPage() {
             }
             
             newSupplierNamesOptions[idx] = supplierNames;
-          } catch (error) {
+          } catch (error: any) {
             console.error('Ошибка при загрузке названий поставщиков:', error);
             newSupplierNamesOptions[idx] = [];
           }
         } else {
           newSupplierNamesOptions[idx] = [];
+        }
+        
+        // Добавляем небольшую задержку между запросами для предотвращения перегрузки
+        if (idx < (request.materials || []).length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
         }
       }
       
@@ -229,10 +247,14 @@ export default function RequestEditPage() {
   useEffect(() => {
     if (request.organization?.id) {
       // Очищаем названия поставщиков при смене организации только для материалов без выбранного материала
+      // НО сохраняем импортированные значения
       setRequest(prevRequest => {
         const newMaterials = (prevRequest.materials || []).map(mat => ({
           ...mat,
-          supplierMaterialName: mat.material ? (mat.supplierMaterialName || '') : ''
+          // Сохраняем supplierMaterialName если он был установлен (например, при импорте)
+          // Очищаем только если материал не выбран, поле было пустым и это не импортированный материал
+          supplierMaterialName: mat.material ? (mat.supplierMaterialName || '') : 
+            (mat.isImported ? (mat.supplierMaterialName || '') : '')
         }));
         return { ...prevRequest, materials: newMaterials };
       });
@@ -274,8 +296,8 @@ export default function RequestEditPage() {
             if (supplierNames.length > 0) {
               setRequest(prevRequest => {
                 const updatedMaterials = [...(prevRequest.materials || [])];
-                // Заполняем только если поле пустое
-                if (!updatedMaterials[idx].supplierMaterialName) {
+                // Заполняем только если поле пустое и материал был выбран пользователем (не импортирован)
+                if (!updatedMaterials[idx].supplierMaterialName && updatedMaterials[idx].material && !updatedMaterials[idx].isImported) {
                   updatedMaterials[idx].supplierMaterialName = supplierNames[0];
                 }
                 return { ...prevRequest, materials: updatedMaterials };
@@ -286,8 +308,10 @@ export default function RequestEditPage() {
             console.error('Ошибка при загрузке названий поставщиков:', error);
           });
       } else if (!value) {
-        // Очищаем только если материал не выбран
-        newMaterials[idx].supplierMaterialName = '';
+        // Очищаем только если материал не выбран, но сохраняем импортированные значения
+        if (!newMaterials[idx].isImported) {
+          newMaterials[idx].supplierMaterialName = '';
+        }
       }
     } else if (field === 'unit') {
       newMaterials[idx].unit = units.find(u => u.id === value) || null;
@@ -302,7 +326,7 @@ export default function RequestEditPage() {
       ...request,
       materials: [
         ...(request.materials || []),
-        { material: null, characteristics: '', quantity: '', unit: null, note: '', deliveryDate: '', workType: '', supplierMaterialName: '', estimatePrice: '', materialLink: '' }
+        { material: null, characteristics: '', quantity: '', unit: null, note: '', deliveryDate: '', workType: '', supplierMaterialName: '', estimatePrice: '', materialLink: '', isImported: false }
       ]
     });
   };
@@ -325,16 +349,18 @@ export default function RequestEditPage() {
 
   const handleSave = async () => {
     // Валидация: все материалы должны иметь заполненное наименование
-    const emptyNames = (request.materials || []).some(mat => !mat.material || !mat.material.id);
-    if (emptyNames) {
-      alert('Пожалуйста, заполните поле "Наименование материала" для всех строк.');
+    const missingIdx = (request.materials || []).findIndex(
+      mat => (!mat.material || !mat.material.id) && mat.supplierMaterialName && mat.unit?.shortName
+    );
+    if (missingIdx !== -1) {
+      setMissingMaterialIdx(missingIdx);
       return;
     }
     setLoading(true);
     
     try {
-      // Преобразуем materials обратно в requestMaterials для отправки на сервер
-              const requestToSend = {
+    // Преобразуем materials обратно в requestMaterials для отправки на сервер
+    const requestToSend = {
           id: request.id,
           organization: request.organization,
           project: request.project,
@@ -360,15 +386,15 @@ export default function RequestEditPage() {
       
       console.log('Отправляем данные:', JSON.stringify(requestToSend, null, 2));
       console.log('requestMaterials:', JSON.stringify(requestToSend.requestMaterials, null, 2));
+    
+    if (isEdit) {
+      await axios.put(`/api/requests/${id}`, requestToSend);
+    } else {
+      await axios.post('/api/requests', requestToSend);
+    }
       
-      if (isEdit) {
-        await axios.put(`/api/requests/${id}`, requestToSend);
-      } else {
-        await axios.post('/api/requests', requestToSend);
-      }
-      
-      setLoading(false);
-      navigate('/requests/registry');
+    setLoading(false);
+    navigate('/requests/registry');
     } catch (error: any) {
       setLoading(false);
       console.error('Ошибка при сохранении:', error);
@@ -385,9 +411,9 @@ export default function RequestEditPage() {
   const handleDelete = async () => {
     setLoading(true);
     try {
-      await axios.delete(`/api/requests/${id}`);
-      setLoading(false);
-      navigate('/requests/registry');
+    await axios.delete(`/api/requests/${id}`);
+    setLoading(false);
+    navigate('/requests/registry');
     } catch (error: any) {
       setLoading(false);
       console.error('Ошибка при удалении:', error);
@@ -401,108 +427,48 @@ export default function RequestEditPage() {
     }
   };
 
-  const handleImportConfirm = async () => {
-    const importData = pendingImportData;
-    console.log('[IMPORT] handleImportConfirm', importData);
-    let newOrganization = request.organization;
-    let newProject = request.project;
-    let needWait = false;
-    
-    // Обрабатываем организацию
-    if (importData.organizationName) {
-      const normalize = (str: any) => (str || '').trim().toLowerCase();
-      console.log('[IMPORT] Ищем организацию:', importData.organizationName);
-      console.log('[IMPORT] Список компаний:', companies);
-      let existingOrg = companies.find(c => normalize(c.legalName) === normalize(importData.organizationName));
-      console.log('[IMPORT] Поиск по legalName:', existingOrg);
-      if (!existingOrg) {
-        existingOrg = companies.find(c => normalize(c.shortName) === normalize(importData.organizationName));
-        console.log('[IMPORT] Поиск по shortName:', existingOrg);
-      }
-      if (!existingOrg) {
-        existingOrg = companies.find(c => normalize(c.name) === normalize(importData.organizationName));
-        console.log('[IMPORT] Поиск по name:', existingOrg);
-      }
-      if (existingOrg) {
-        console.log('[IMPORT] Найдена организация:', existingOrg);
-        newOrganization = existingOrg;
-      } else {
-        console.log('[IMPORT] Организация не найдена, будет создана:', importData.organizationName);
-        setNewCompany(importData.organizationName);
-        setOpenCompanyDialog(true);
-        needWait = true;
-      }
-    }
-    
-    // Обрабатываем проект
-    if (importData.projectName) {
-      const existingProject = projects.find(p => p.name === importData.projectName);
-      if (existingProject) {
-        newProject = existingProject;
-      } else {
-        setNewProject(importData.projectName);
-        setOpenProjectDialog(true);
-        needWait = true;
-      }
-    }
-    
-    // Если нужно ждать создания организации или проекта, не продолжаем импорт!
-    if (needWait) {
-      setPendingImportData(importData);
-      return;
-    }
-    
-    // --- Новый маппинг материалов ---
-    const newMaterials = await Promise.all(importData.materials.map(async (row: any) => {
-      let material: Material | null = null;
-      if (row.supplierName && newOrganization?.id) {
-        try {
-          // Убираем вызов org-supplier-material-mapping, так как он возвращает 400
-          // const res = await axios.get('/api/org-supplier-material-mapping', {
-          //   params: { organizationId: newOrganization.id, supplierName: row.supplierName }
-          // });
-          // if (res.data && res.data.material) {
-          //   material = res.data.material;
-          // }
-        } catch {}
-      }
-      if (!material && row.materialName) {
-        material = materials.find(m => m.name === row.materialName) || null;
-      }
-      
-      return {
-        material: material,
-        characteristics: row.characteristics || '',
-        quantity: row.quantity || '',
-        unit: units.find(u => u.shortName === row.unit) || null,
-        note: row.note || '',
-        deliveryDate: row.deliveryDate || '',
-        workType: row.workType || '',
-        supplierMaterialName: row.supplierMaterialName || '',
-        estimatePrice: row.estimatePrice || '',
-        materialLink: row.materialLink || '',
-      };
-    }));
-    
-    setRequest({
-      ...request,
-      organization: newOrganization,
-      project: newProject,
-      materials: newMaterials
-    });
-    
-    setPendingImportData(null);
+  const handleSupplierMaterialNameChange = async (idx: number, value: string) => {
+    const newMaterials = [...(request.materials || [])];
+    newMaterials[idx].supplierMaterialName = value;
+    setRequest({ ...request, materials: newMaterials });
   };
 
-  const handleExcelImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Функция преобразования serial date Excel в YYYY-MM-DD
+  function excelDateToISO(serial: any) {
+    if (!serial || isNaN(serial)) return '';
+    const utc_days  = Math.floor(serial - 25569);
+    const utc_value = utc_days * 86400;
+    const date_info = new Date(utc_value * 1000);
+    return date_info.toISOString().slice(0, 10);
+  }
+
+  // Функция для парсинга строки даты в YYYY-MM-DD
+  function parseDateString(str: string) {
+    if (!str) return '';
+    // Ожидаем dd.mm.yyyy или dd.mm.yy
+    const parts = str.split(/[./-]/);
+    if (parts.length === 3) {
+      let [d, m, y] = parts;
+      if (y.length === 2) y = '20' + y;
+      if (d.length === 1) d = '0' + d;
+      if (m.length === 1) m = '0' + m;
+      return `${y}-${m}-${d}`;
+    }
+    return '';
+  }
+
+  // Базовый импорт из Excel
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    setImportLoading(true);
+    setImportStep('parsing');
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
         const data = new Uint8Array(event.target?.result as ArrayBuffer);
-      const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -512,91 +478,299 @@ export default function RequestEditPage() {
           return;
         }
 
-        const headers = jsonData[0] as string[];
-        console.log('Заголовки:', headers);
-
-        // Нормализация заголовков
-      const normalize = (str: any) => (str || '').trim().toLowerCase();
-
-      function getColIndex(...names: string[]): number | undefined {
-        for (const name of names) {
-            const index = headers.findIndex(h => normalize(h) === normalize(name));
-            if (index !== -1) return index;
-        }
-        return undefined;
-      }
-
-        // Проверяем наличие обязательных колонок
-        const idxOrganization = getColIndex('организация', 'поставщик');
-        const idxProject = getColIndex('проект', 'объект');
-        const idxMaterial = getColIndex('материал', 'наименование', 'наименование материала');
-        const idxQuantity = getColIndex('количество', 'кол-во');
-        const idxUnit = getColIndex('единица измерения', 'ед.изм', 'единица');
-
-        if (idxOrganization === undefined || idxProject === undefined || idxMaterial === undefined) {
-          alert('В файле должны быть колонки: Организация, Проект, Материал');
-        return;
-      }
-
-        const importData = {
-          organizationName: '',
-          projectName: '',
-          materials: [] as any[]
-        };
-
-        // Обрабатываем первую строку данных для получения организации и проекта
-        if (jsonData.length > 1) {
-          const firstRow = jsonData[1] as any[];
-          if (idxOrganization !== undefined) {
-            importData.organizationName = String(firstRow[idxOrganization] || '').trim();
-          }
-          if (idxProject !== undefined) {
-            importData.projectName = String(firstRow[idxProject] || '').trim();
-          }
-        }
-
-        // Обрабатываем все строки данных
-        for (let i = 1; i < jsonData.length; i++) {
+        // ШАГ 1: Парсим шапку (Организация, Проект, Склад, Заявитель, Дата, Заявка)
+        let org = '', project = '', sklad = '', applicant = '', date = '', requestNumber = '';
+        for (let i = 0; i < Math.min(jsonData.length, 10); i++) {
           const row = jsonData[i] as any[];
-          if (row.length === 0) continue;
-
-          const materialName = idxMaterial !== undefined ? String(row[idxMaterial] || '').trim() : '';
-          if (!materialName) continue;
-
-          const material = {
-            materialName: materialName,
-            characteristics: getColIndex('характеристики', 'характеристика') !== undefined ? String(row[getColIndex('характеристики', 'характеристика')!] || '') : '',
-            quantity: idxQuantity !== undefined ? String(row[idxQuantity] || '') : '',
-            unit: idxUnit !== undefined ? String(row[idxUnit] || '') : '',
-            note: getColIndex('примечание', 'примечания') !== undefined ? String(row[getColIndex('примечание', 'примечания')!] || '') : '',
-            deliveryDate: getColIndex('дата поставки', 'срок поставки') !== undefined ? String(row[getColIndex('дата поставки', 'срок поставки')!] || '') : '',
-            workType: getColIndex('вид работ', 'тип работ') !== undefined ? String(row[getColIndex('вид работ', 'тип работ')!] || '') : '',
-            supplierMaterialName: getColIndex('наименование поставщика', 'название поставщика') !== undefined ? String(row[getColIndex('наименование поставщика', 'название поставщика')!] || '') : '',
-            estimatePrice: getColIndex('сметная цена', 'цена') !== undefined ? String(row[getColIndex('сметная цена', 'цена')!] || '') : '',
-            materialLink: getColIndex('ссылка на материал', 'ссылка') !== undefined ? String(row[getColIndex('ссылка на материал', 'ссылка')!] || '') : '',
-            supplierName: importData.organizationName
-          };
-
-          importData.materials.push(material);
+          for (let j = 0; j < row.length; j++) {
+            const cell = (row[j] || '').toString().toLowerCase();
+            if (cell.includes('организация')) org = row[j + 1] || '';
+            if (cell.includes('проект')) project = row[j + 1] || '';
+            if (cell.includes('склад')) sklad = row[j + 1] || '';
+            if (cell.includes('заявитель')) applicant = row[j + 1] || '';
+            if (cell.includes('дата')) date = row[j + 1] || '';
+            if (cell.includes('заявка')) requestNumber = row[j + 1] || '';
+          }
         }
 
-        setPendingImportData(importData);
-        setOpenImportDialog(true);
+        // ШАГ 2: Определяем организацию из справочника по имени из Excel
+        let orgObj = null;
+        if (org) {
+          const normalize = (str: any) => (str === undefined || str === null) ? '' : String(str).trim().toLowerCase();
+          orgObj = companies.find(c => normalize(c.legalName) === normalize(org))
+            || companies.find(c => normalize(c.shortName) === normalize(org))
+            || companies.find(c => normalize(c.name) === normalize(org));
+        }
 
+        // ШАГ 3: Найти строку с заголовками материалов
+        let headers: string[] = [];
+        let headerRowIndex = -1;
+        for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
+          const row = jsonData[i] as any[];
+          const normalized = row.map((cell: any) => (cell === undefined || cell === null) ? '' : String(cell).trim().toLowerCase());
+          if (normalized.includes('наименование материала') && normalized.includes('кол-во')) {
+            headers = row as string[];
+            headerRowIndex = i;
+            break;
+          }
+        }
+        if (headers.length === 0) {
+          alert('В файле не найдена строка с заголовками материалов (например, "Наименование материала", "Кол-во")');
+          return;
+        }
+
+        // ШАГ 4: Импортировать материалы начиная со следующей строки
+        const dataRows = jsonData.slice(headerRowIndex + 1);
+        // Индексы нужных колонок
+        const idxMaterialName = headers.findIndex(h => (h || '').toString().toLowerCase().includes('наименование материала'));
+        const idxCharacteristics = headers.findIndex(h => (h || '').toString().toLowerCase().includes('характерист'));
+        const idxQuantity = headers.findIndex(h => (h || '').toString().toLowerCase().includes('кол-во'));
+        const idxUnit = headers.findIndex(h => (h || '').toString().toLowerCase().includes('ед. изм'));
+        const idxNote = headers.findIndex(h => (h || '').toString().toLowerCase().includes('примеч'));
+        let idxDeliveryDate = headers.findIndex(h => (h || '').toString().toLowerCase().includes('поставить к дате'));
+        if (idxDeliveryDate === -1) {
+          idxDeliveryDate = headers.findIndex(h => (h || '').toString().toLowerCase().includes('поставк') || (h || '').toString().toLowerCase().includes('дата'));
+        }
+        const idxWorkType = headers.findIndex(h => (h || '').toString().toLowerCase().includes('вид работ'));
+        const idxEstimatePrice = headers.findIndex(h => (h || '').toString().toLowerCase().includes('сметн'));
+        const idxMaterialLink = headers.findIndex(h => (h || '').toString().toLowerCase().includes('ссылка'));
+
+        const importedMaterials = [];
+        for (let i = 0; i < dataRows.length; i++) {
+          const row = dataRows[i] as any[];
+          if (!row[idxMaterialName]) continue;
+          const materialName = row[idxMaterialName] || '';
+          const foundMaterial = materials.find(
+            m => m.name.trim().toLowerCase() === materialName.trim().toLowerCase()
+          );
+          // Преобразовать дату поставки (deliveryDate)
+          let deliveryDateValue = idxDeliveryDate !== -1 ? row[idxDeliveryDate] || '' : '';
+          if (typeof deliveryDateValue === 'number' || /^\d+$/.test(deliveryDateValue)) {
+            deliveryDateValue = excelDateToISO(Number(deliveryDateValue));
+          } else if (typeof deliveryDateValue === 'string') {
+            deliveryDateValue = parseDateString(deliveryDateValue);
+          }
+          importedMaterials.push({
+            material: foundMaterial ? foundMaterial : null,
+            supplierMaterialName: materialName,
+            characteristics: idxCharacteristics !== -1 ? row[idxCharacteristics] || '' : '',
+            quantity: idxQuantity !== -1 ? row[idxQuantity] || '' : '',
+            unit: idxUnit !== -1 ? row[idxUnit] || '' : '',
+            note: idxNote !== -1 ? row[idxNote] || '' : '',
+            deliveryDate: deliveryDateValue,
+            workType: idxWorkType !== -1 ? row[idxWorkType] || '' : '',
+            estimatePrice: idxEstimatePrice !== -1 ? row[idxEstimatePrice] || '' : '',
+            materialLink: idxMaterialLink !== -1 ? row[idxMaterialLink] || '' : '',
+            isImported: true, // Помечаем как импортированный материал
+          });
+        }
+
+        // ШАГ 5: Если организация выбрана, ищем соответствия через org_supplier_material_mapping для не найденных материалов
+        setImportStep('mapping');
+        if (orgObj) {
+          for (const mat of importedMaterials) {
+            if (!mat.material && mat.supplierMaterialName) {
+              try {
+                const res = await axios.get('/api/org-supplier-material-mapping', {
+                  params: { organizationId: orgObj.id, supplierName: mat.supplierMaterialName }
+                });
+                if (res.data && res.data.materialId) {
+                  const foundMaterial = materials.find(m => m.id === res.data.materialId);
+                  if (foundMaterial) {
+                    mat.material = foundMaterial;
+                  }
+                }
+                // Добавляем небольшую задержку между запросами для больших файлов
+                await new Promise(resolve => setTimeout(resolve, 50));
+              } catch (e: any) {
+                // Игнорируем ошибки 404 и другие ошибки API
+                if (e.response && e.response.status !== 404) {
+                  console.warn('Ошибка при поиске маппинга материала:', e.message);
+                }
+              }
+            }
+          }
+        }
+
+        // ШАГ 6: Парсинг даты заявки
+        let parsedDate = '';
+        if (typeof date === 'number' || /^\d+$/.test(date)) {
+          parsedDate = excelDateToISO(Number(date));
+        } else if (typeof date === 'string') {
+          parsedDate = parseDateString(date);
+        }
+
+        setImportStep('done');
+        setPendingImportData({
+          organizationName: orgObj ? (orgObj.legalName || orgObj.shortName || orgObj.name) : org,
+          organizationObj: orgObj,
+          projectName: project,
+          sklad,
+          applicant,
+          date: parsedDate,
+          requestNumber,
+          materials: importedMaterials
+        });
+        setOpenImportDialog(true);
       } catch (error) {
         console.error('Ошибка при обработке файла:', error);
         alert('Ошибка при обработке файла');
+      } finally {
+        setImportLoading(false);
+        setImportStep('idle');
       }
     };
     reader.readAsArrayBuffer(file);
     e.target.value = '';
   };
 
-  const handleSupplierMaterialNameChange = async (idx: number, value: string) => {
-    const newMaterials = [...(request.materials || [])];
-    newMaterials[idx].supplierMaterialName = value;
-    setRequest({ ...request, materials: newMaterials });
+  // --- Импорт: вычисление недостающих справочников ---
+  useEffect(() => {
+    if (!pendingImportData) return;
+    // Проект
+    const missingProject = pendingImportData.projectName && !projects.find(p => p.name.trim().toLowerCase() === pendingImportData.projectName.trim().toLowerCase()) ? pendingImportData.projectName : undefined;
+    // Склад
+    const missingWarehouse = pendingImportData.sklad && !warehouses.find(w => w.name.trim().toLowerCase() === pendingImportData.sklad.trim().toLowerCase()) ? pendingImportData.sklad : undefined;
+    // Виды работ
+    const allWorkTypes = ((pendingImportData.materials || []).map((m:any) => m.workType).filter(Boolean) as string[]);
+    const missingWorkTypes = Array.from(new Set(allWorkTypes.filter((w:string) => w && !workTypes.find(wt => wt.name.trim().toLowerCase() === w.trim().toLowerCase()))));
+    // Характеристики
+    const allChars = ((pendingImportData.materials || []).map((m:any) => m.characteristics).filter(Boolean) as string[]);
+    const missingChars = Array.from(new Set(allChars.filter((c:string) => c && !characteristics.find(ch => ch.name.trim().toLowerCase() === c.trim().toLowerCase()))));
+    // Ед. изм.
+    const allUnits = ((pendingImportData.materials || []).map((m:any) => m.unit).filter(Boolean) as string[]);
+    const missingUnits = Array.from(new Set(allUnits.filter((u:string) => u && !units.find(unit => unit.shortName.trim().toLowerCase() === u.trim().toLowerCase()))));
+    setImportWillCreate({
+      project: missingProject,
+      warehouse: missingWarehouse,
+      workTypes: missingWorkTypes,
+      characteristics: missingChars,
+      units: missingUnits
+    });
+  }, [pendingImportData, projects, warehouses, workTypes, characteristics, units]);
+
+  // --- Импорт: создание недостающих справочников и интеграция данных ---
+  const handleImportConfirm = async () => {
+    if (!pendingImportData) return;
+    let projectObj = projects.find(p => p.name.trim().toLowerCase() === (pendingImportData.projectName || '').trim().toLowerCase());
+    if (!projectObj && pendingImportData.projectName) {
+      const res = await axios.post('/api/projects', { name: pendingImportData.projectName });
+      projectObj = res.data;
+      setProjects(prev => [...prev, res.data]);
+    }
+    let warehouseObj = warehouses.find(w => w.name.trim().toLowerCase() === (pendingImportData.sklad || '').trim().toLowerCase());
+    if (!warehouseObj && pendingImportData.sklad && projectObj) {
+      const res = await axios.post('/api/warehouses', { name: pendingImportData.sklad, projectId: projectObj.id });
+      warehouseObj = res.data;
+      setWarehouses(prev => [...prev, res.data]);
+    }
+    // Виды работ
+    let workTypeMap: Record<string, any> = {};
+    for (const w of importWillCreate.workTypes) {
+      const res = await axios.post('/api/work-types', { name: w });
+      setWorkTypes(prev => [...prev, res.data]);
+      workTypeMap[w] = res.data;
+    }
+    // Характеристики
+    let charMap: Record<string, any> = {};
+    for (const c of importWillCreate.characteristics) {
+      const res = await axios.post('/api/characteristics', { name: c });
+      setCharacteristics(prev => [...prev, res.data]);
+      charMap[c] = res.data;
+    }
+    // Ед. изм.
+    let unitMap: Record<string, any> = {};
+    for (const u of importWillCreate.units) {
+      const res = await axios.post('/api/units', { name: u, shortName: u });
+      const unitsRes = await axios.get('/api/units');
+      setUnits(unitsRes.data);
+      unitMap[u] = res.data;
+    }
+    // Интеграция данных
+    setRequest(prev => ({
+      ...prev,
+      organization: pendingImportData.organizationObj || prev.organization,
+      requestNumber: pendingImportData.requestNumber || prev.requestNumber,
+      date: pendingImportData.date || prev.date,
+      applicant: pendingImportData.applicant || prev.applicant,
+      project: projectObj || prev.project,
+      warehouse: warehouseObj || prev.warehouse,
+      materials: (pendingImportData.materials || []).map((mat: any) => {
+        // workType, characteristics, unit — ищем среди новых и старых
+        let workTypeObj = workTypes.find(w => w.name.trim().toLowerCase() === (mat.workType || '').trim().toLowerCase()) || workTypeMap[mat.workType];
+        let charObj = characteristics.find(c => c.name.trim().toLowerCase() === (mat.characteristics || '').trim().toLowerCase()) || charMap[mat.characteristics];
+        let unitObj = units.find(u => u.shortName.trim().toLowerCase() === (mat.unit || '').trim().toLowerCase()) || unitMap[mat.unit];
+        return {
+          ...mat,
+          workType: workTypeObj ? workTypeObj.id : '',
+          characteristics: charObj ? charObj.name : '',
+          unit: unitObj ? unitObj : null,
+        };
+      })
+    }));
+    setOpenImportDialog(false);
+    setPendingImportData(null);
+
+    if (!isEdit) {
+      if (window.opener) {
+        window.opener.postMessage(
+          {
+            type: 'materialCreated',
+            payload: {
+              name: pendingImportData.materials[0].supplierMaterialName,
+              id: pendingImportData.materials[0].material?.id,
+              unit: pendingImportData.materials[0].unit?.id
+            }
+          },
+          '*'
+        );
+        window.close();
+        return;
+      }
+    }
   };
+
+  useEffect(() => {
+    function handleMaterialCreated(event: MessageEvent) {
+      if (event.data?.type === 'materialCreated') {
+        const { name, id } = event.data.payload;
+        console.log('Material created:', { name, id });
+        
+        // Обновляем список материалов
+        fetchMaterials();
+        
+        setRequest(prev => {
+          const newMaterials = prev.materials.map(mat => {
+            const normalize = (str: string) => (str || '').replace(/\s+/g, '').toLowerCase();
+            
+            // Случай 1: Материал был создан через импорт (есть supplierMaterialName, но нет material)
+            if (!mat.material && mat.supplierMaterialName && normalize(mat.supplierMaterialName) === normalize(name)) {
+              console.log('Updating material from import:', mat);
+              return {
+                ...mat,
+                material: { id, name },
+              };
+            }
+            
+            // Случай 2: Материал был создан через Autocomplete (material.id === 'CREATE_NEW' или material.name содержит "Создать")
+            if ((mat.material?.id === 'CREATE_NEW' || mat.material?.name?.startsWith('Создать "')) && 
+                normalize(mat.material.name.replace(/^Создать "/, '').replace(/"$/, '')) === normalize(name)) {
+              console.log('Updating material from Autocomplete:', mat);
+              return {
+                ...mat,
+                material: { id, name },
+              };
+            }
+            
+            return mat;
+          });
+          return { ...prev, materials: newMaterials };
+        });
+      }
+    }
+    window.addEventListener('message', handleMaterialCreated);
+    return () => window.removeEventListener('message', handleMaterialCreated);
+  }, [materials]);
 
   if (loading) {
     return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
@@ -607,8 +781,17 @@ export default function RequestEditPage() {
       <Box sx={{ mt: 4, mb: 4 }}>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography variant="h6">{isEdit ? 'Редактирование заявки' : 'Создание заявки'}</Typography>
-        <Button variant="outlined" component="label">
-          Импорт из Excel
+        <Button variant="outlined" component="label" disabled={importLoading}>
+          {importLoading ? (
+            <>
+              <CircularProgress size={16} sx={{ mr: 1 }} />
+              {importStep === 'parsing' && 'Парсинг файла...'}
+              {importStep === 'mapping' && 'Поиск материалов...'}
+              {importStep === 'done' && 'Готово!'}
+            </>
+          ) : (
+            'Импорт из Excel'
+          )}
           <input type="file" accept=".xlsx,.xls" hidden onChange={handleExcelImport} />
         </Button>
       </Toolbar>
@@ -620,7 +803,6 @@ export default function RequestEditPage() {
               label="Номер заявки"
               value={request.requestNumber || ''}
               onChange={handleChange}
-              InputLabelProps={{ shrink: true }}
               fullWidth
             />
           </Grid>
@@ -775,15 +957,48 @@ export default function RequestEditPage() {
                   />
                   </TableCell>
                   <TableCell sx={{ minWidth: 180, maxWidth: 300 }}>
-                  <Autocomplete
+                  <Autocomplete<MaterialOption>
                     value={materials.find(m => m.id === mat.material?.id) || null}
-                    onChange={(_, value) => handleMaterialChange(idx, 'material', value ? value.id : '')}
-                    options={materials}
-                    getOptionLabel={option => option ? option.name : ''}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    onChange={(_, value) => {
+                      if (value && (value.inputValue || value.name?.startsWith('Создать "'))) {
+                        // Открыть MaterialEditPage с передачей наименования
+                        const nameToCreate = value.inputValue || (typeof value.name === 'string' && value.name.replace(/^Создать "/, '').replace(/"$/, ''));
+                        if (nameToCreate) {
+                          window.open(`/reference/materials/new?name=${encodeURIComponent(nameToCreate)}`, '_blank');
+                        }
+                        return;
+                      }
+                      handleMaterialChange(idx, 'material', value ? value.id : '');
+                    }}
+                    filterOptions={(options, params) => {
+                      const filtered = options.filter(option =>
+                        option.name.toLowerCase().includes(params.inputValue.toLowerCase())
+                      );
+                      if (
+                        params.inputValue !== '' &&
+                        !options.some(option => option.name.toLowerCase() === params.inputValue.toLowerCase())
+                      ) {
+                        filtered.push({
+                          id: 'CREATE_NEW',
+                          inputValue: params.inputValue,
+                          name: `Создать "${params.inputValue}"`
+                        });
+                      }
+                      return filtered;
+                    }}
+                    selectOnFocus
+                    clearOnBlur
+                    handleHomeEndKeys
+                    options={materials as MaterialOption[]}
+                    getOptionLabel={option => {
+                      if (typeof option === 'string') return option;
+                      if (option.inputValue) return option.name; // Возвращаем name, а не inputValue
+                      return option.name;
+                    }}
                     renderInput={params => (
                       <TextField {...params} size="small" label="Наименование материала" InputLabelProps={{ shrink: true }} />
                     )}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
                   />
                 </TableCell>
                 <TableCell>
@@ -964,6 +1179,9 @@ export default function RequestEditPage() {
               try {
                 const res = await axios.post('/api/work-types', { name: newWorkType });
                 setWorkTypes(prev => [...prev, res.data]);
+                if (workTypeMaterialIdx !== null) {
+                  handleMaterialChange(workTypeMaterialIdx, 'workType', res.data.id);
+                }
                 setOpenWorkTypeDialog(false);
                 setNewWorkType('');
               } catch (error) {
@@ -1058,6 +1276,7 @@ export default function RequestEditPage() {
         <DialogActions>
           <Button onClick={() => setOpenUnitDialog(false)}>Отмена</Button>
           <Button onClick={async () => {
+            if (newUnitName.trim()) {
             // Создать новую единицу через API
             const res = await axios.post('/api/units', { name: newUnitName, shortName: newUnitName });
             if (res.data && res.data.id) {
@@ -1066,6 +1285,7 @@ export default function RequestEditPage() {
               setUnits(unitsRes.data);
               setOpenUnitDialog(false);
               console.log('[IMPORT][UNIT] Единица измерения создана:', newUnitName);
+              }
             }
           }} variant="contained">Создать</Button>
         </DialogActions>
@@ -1148,13 +1368,15 @@ export default function RequestEditPage() {
             Отмена
           </Button>
           <Button onClick={async () => {
-            if (newCharacteristic.trim() && characteristicMaterialIdx !== null) {
+            if (newCharacteristic.trim()) {
               try {
                 const res = await axios.post('/api/characteristics', { 
                   name: newCharacteristic
                 });
                 setCharacteristics(prev => [...prev, res.data]);
+                if (characteristicMaterialIdx !== null) {
                 handleMaterialChange(characteristicMaterialIdx, 'characteristics', res.data.name);
+                }
                 setNewCharacteristic('');
                 setOpenCharacteristicDialog(false);
               } catch (error) {
@@ -1171,19 +1393,57 @@ export default function RequestEditPage() {
       <Dialog open={openImportDialog} onClose={() => setOpenImportDialog(false)}>
         <DialogTitle>Подтверждение импорта</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            {pendingImportData && (
-              <>
-                <Typography variant="subtitle2">Организация: {pendingImportData.organizationName || 'Не указана'}</Typography>
-                <Typography variant="subtitle2">Проект: {pendingImportData.projectName || 'Не указан'}</Typography>
-                <Typography variant="subtitle2">Материалов: {pendingImportData.materials?.length || 0}</Typography>
-              </>
-            )}
-          </DialogContentText>
+          {pendingImportData && (
+            <>
+              <Typography variant="subtitle2">Организация: {pendingImportData.organizationName || 'Не указана'}</Typography>
+              <Typography variant="subtitle2">Проект: {pendingImportData.projectName || 'Не указан'}</Typography>
+              <Typography variant="subtitle2">Склад: {pendingImportData.sklad || 'Не указан'}</Typography>
+              <Typography variant="subtitle2">Заявитель: {pendingImportData.applicant || 'Не указан'}</Typography>
+              <Typography variant="subtitle2">Дата: {pendingImportData.date ? (new Date(pendingImportData.date).toLocaleDateString('ru-RU')) : 'Не указана'}</Typography>
+              <Typography variant="subtitle2">Номер заявки: {pendingImportData.requestNumber || 'Не указан'}</Typography>
+              <Typography variant="subtitle2">Материалов: {pendingImportData.materials?.length || 0}</Typography>
+              {(importWillCreate.project || importWillCreate.warehouse || importWillCreate.workTypes.length > 0 || importWillCreate.characteristics.length > 0 || importWillCreate.units.length > 0) && (
+                <Box mt={2}>
+                  <Typography variant="subtitle2" color="primary">Будут созданы новые справочники:</Typography>
+                  <ul style={{marginTop: 4, marginBottom: 0, paddingLeft: 20}}>
+                    {importWillCreate.project && <li>Проект: <b>{importWillCreate.project}</b></li>}
+                    {importWillCreate.warehouse && <li>Склад: <b>{importWillCreate.warehouse}</b></li>}
+                    {importWillCreate.workTypes.map(w => <li key={w}>Вид работ: <b>{w}</b></li>)}
+                    {importWillCreate.characteristics.map(c => <li key={c}>Характеристика: <b>{c}</b></li>)}
+                    {importWillCreate.units.map(u => <li key={u}>Ед. изм.: <b>{u}</b></li>)}
+                  </ul>
+                </Box>
+              )}
+            </>
+          )}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenImportDialog(false)}>Отмена</Button>
           <Button onClick={handleImportConfirm} variant="contained">Импортировать</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={missingMaterialIdx !== null} onClose={() => setMissingMaterialIdx(null)}>
+        <DialogTitle>Создать новый материал?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Для строки №{missingMaterialIdx !== null ? missingMaterialIdx + 1 : ''} не выбран материал, но заполнено "Наименование в заявке" и "Ед. изм.".<br/>
+            Создать новый материал с этими данными?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMissingMaterialIdx(null)}>Отмена</Button>
+          <Button
+            onClick={() => {
+              if (missingMaterialIdx === null) return;
+              const mat = request.materials[missingMaterialIdx];
+              window.open(`/reference/materials/new?name=${encodeURIComponent(mat.supplierMaterialName || '')}&unit=${encodeURIComponent(mat.unit?.shortName || '')}`, '_blank');
+              setMissingMaterialIdx(null);
+            }}
+            variant="contained"
+          >
+            Создать
+          </Button>
         </DialogActions>
       </Dialog>
       </Box>
