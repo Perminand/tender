@@ -79,7 +79,8 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
                 request.getProject().getName(),
                 materialsCount,
                 totalQuantity,
-                note
+                note,
+                request.getStatus() != null ? request.getStatus() : "DRAFT"
             ));
         }
         
@@ -93,7 +94,7 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
             Sheet sheet = workbook.createSheet("Реестр заявок");
             int rowIdx = 0;
             Row header = sheet.createRow(rowIdx++);
-            String[] headers = {"ID заявки", "Номер заявки", "Дата заявки", "Организация", "Проект", "Кол-во материалов", "Общее кол-во", "Примечание"};
+            String[] headers = {"ID заявки", "Номер заявки", "Дата заявки", "Организация", "Проект", "Статус", "Кол-во материалов", "Общее кол-во", "Примечание"};
             for (int i = 0; i < headers.length; i++) {
                 header.createCell(i).setCellValue(headers[i]);
             }
@@ -104,9 +105,10 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
                 row.createCell(2).setCellValue(dto.requestDate() != null ? dto.requestDate().toString() : "");
                 row.createCell(3).setCellValue(dto.organization() != null ? dto.organization() : "");
                 row.createCell(4).setCellValue(dto.project() != null ? dto.project() : "");
-                row.createCell(5).setCellValue(dto.materialsCount() != null ? dto.materialsCount() : 0);
-                row.createCell(6).setCellValue(dto.totalQuantity() != null ? dto.totalQuantity() : 0.0);
-                row.createCell(7).setCellValue(dto.note() != null ? dto.note() : "");
+                row.createCell(5).setCellValue(dto.status() != null ? dto.status() : "DRAFT");
+                row.createCell(6).setCellValue(dto.materialsCount() != null ? dto.materialsCount() : 0);
+                row.createCell(7).setCellValue(dto.totalQuantity() != null ? dto.totalQuantity() : 0.0);
+                row.createCell(8).setCellValue(dto.note() != null ? dto.note() : "");
             }
             for (int i = 0; i < headers.length; i++) {
                 sheet.autoSizeColumn(i);

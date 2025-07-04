@@ -18,6 +18,7 @@ interface RequestRegistryRowDto {
   materialsCount: number;
   totalQuantity: number;
   note: string;
+  status: string;
 }
 
 const columns = [
@@ -25,6 +26,7 @@ const columns = [
   { key: 'requestDate', label: 'Дата заявки', width: '100px' },
   { key: 'organization', label: 'Организация', width: '200px' },
   { key: 'project', label: 'Проект', width: '200px' },
+  { key: 'status', label: 'Статус', width: '120px' },
   { key: 'materialsCount', label: 'Кол-во материалов', width: '120px' },
   { key: 'totalQuantity', label: 'Общее кол-во', width: '120px' },
   { key: 'note', label: 'Примечание', width: '200px' },
@@ -107,6 +109,26 @@ export default function RequestRegistryPage() {
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('ru-RU');
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'Черновик';
+      case 'SAVED': return 'Сохранен';
+      case 'TENDER': return 'Тендер';
+      case 'COMPLETED': return 'Исполнена';
+      default: return status;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'default';
+      case 'SAVED': return 'primary';
+      case 'TENDER': return 'warning';
+      case 'COMPLETED': return 'success';
+      default: return 'default';
+    }
   };
 
   return (
@@ -237,6 +259,13 @@ export default function RequestRegistryPage() {
                 <TableCell>{formatDate(row.requestDate)}</TableCell>
                 <TableCell>{row.organization}</TableCell>
                 <TableCell>{row.project}</TableCell>
+                <TableCell align="center">
+                  <Chip 
+                    label={getStatusLabel(row.status)} 
+                    size="small" 
+                    color={getStatusColor(row.status) as any}
+                  />
+                </TableCell>
                 <TableCell align="center">
                   <Chip 
                     label={row.materialsCount} 

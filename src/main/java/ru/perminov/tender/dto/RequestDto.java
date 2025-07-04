@@ -22,7 +22,9 @@ public record RequestDto(
 
     WarehouseDto warehouse,
 
-    String applicant
+    String applicant,
+
+    String status
 
 ) {
 }

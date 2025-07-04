@@ -54,9 +54,9 @@ interface Characteristic { id: string; name: string; description?: string; }
 
 const statusOptions = [
   { value: 'DRAFT', label: 'Черновик' },
-  { value: 'SENT', label: 'Отправлена' },
-  { value: 'APPROVED', label: 'Одобрена' },
-  { value: 'REJECTED', label: 'Отклонена' },
+  { value: 'SAVED', label: 'Сохранен' },
+  { value: 'TENDER', label: 'Тендер' },
+  { value: 'COMPLETED', label: 'Исполнена' },
 ];
 
 const getToday = () => {
@@ -70,7 +70,7 @@ export default function RequestEditPage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const [request, setRequest] = useState<RequestDto>({ materials: [], date: getToday() });
+  const [request, setRequest] = useState<RequestDto>({ materials: [], date: getToday(), status: 'DRAFT' });
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -359,6 +359,9 @@ export default function RequestEditPage() {
     setLoading(true);
     
     try {
+    // Определяем статус для сохранения: если статус "Черновик", то меняем на "Сохранен"
+    const statusToSave = request.status === 'DRAFT' ? 'SAVED' : (request.status || 'DRAFT');
+    
     // Преобразуем materials обратно в requestMaterials для отправки на сервер
     const requestToSend = {
           id: request.id,
@@ -368,6 +371,7 @@ export default function RequestEditPage() {
           requestNumber: request.requestNumber,
           warehouse: request.warehouse,
           applicant: request.applicant,
+          status: statusToSave,
           requestMaterials: (request.materials || []).map((mat, index) => ({
             id: mat.id,
             number: index + 1,
@@ -797,7 +801,7 @@ export default function RequestEditPage() {
       </Toolbar>
       <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
         <Grid container spacing={2} sx={{ mb: 2, maxWidth: 1200, alignItems: 'center' }}>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
         <TextField
               name="requestNumber"
               label="Номер заявки"
@@ -806,7 +810,7 @@ export default function RequestEditPage() {
               fullWidth
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
         <TextField
           name="date"
           label="Дата"
@@ -818,7 +822,7 @@ export default function RequestEditPage() {
           required
             />
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <TextField
               name="applicant"
               label="Заявитель"
@@ -827,6 +831,22 @@ export default function RequestEditPage() {
               required
               fullWidth
             />
+          </Grid>
+          <Grid item xs={12} md={3}>
+            <TextField
+              select
+              name="status"
+              label="Статус заявки"
+              value={request.status || 'DRAFT'}
+              onChange={handleChange}
+              fullWidth
+            >
+              {statusOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </TextField>
           </Grid>
         </Grid>
         <Autocomplete

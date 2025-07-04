@@ -44,4 +44,6 @@ public class Request {
     private Warehouse warehouse;
 
     private String applicant;
+    
+    private String status;
 }
