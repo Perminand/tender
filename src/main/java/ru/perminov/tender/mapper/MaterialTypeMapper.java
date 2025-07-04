@@ -9,7 +9,11 @@ import ru.perminov.tender.model.MaterialType;
 
 @Mapper(componentModel = "spring")
 public interface MaterialTypeMapper {
+
     MaterialType toMaterialType(MaterialTypeDtoNew dto);
+
     MaterialTypeDto toMaterialTypeDto(MaterialType materialType);
+
     void updateMaterialTypeFromDto(MaterialTypeDtoUpdate dto, @MappingTarget MaterialType materialType);
+    
 } 

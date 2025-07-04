@@ -15,6 +15,12 @@ import Layout from './components/Layout';
 import RequestRegistryPage from './pages/RequestRegistryPage';
 import RequestEditPage from './pages/RequestEditPage';
 import WarehouseListPage from './pages/WarehouseListPage';
+import TenderListPage from './pages/TenderListPage';
+import TenderDetailPage from './pages/TenderDetailPage';
+import TenderEditPage from './pages/TenderEditPage';
+import ProposalEditPage from './pages/ProposalEditPage';
+import ProposalRegistryPage from './pages/ProposalRegistryPage';
+import ProposalDetailPage from './pages/ProposalDetailPage';
 
 const App: React.FC = () => (
   <Layout>
@@ -46,6 +52,13 @@ const App: React.FC = () => (
       <Route path="/requests/new" element={<RequestEditPage />} />
       <Route path="/requests/:id/edit" element={<RequestEditPage />} />
       <Route path="/reference/warehouses" element={<WarehouseListPage />} />
+      <Route path="/tenders" element={<TenderListPage />} />
+      <Route path="/tenders/new" element={<TenderEditPage />} />
+      <Route path="/tenders/:id" element={<TenderDetailPage />} />
+      <Route path="/tenders/:id/edit" element={<TenderEditPage />} />
+      <Route path="/tenders/:tenderId/proposals/new" element={<ProposalEditPage />} />
+      <Route path="/proposals" element={<ProposalRegistryPage />} />
+      <Route path="/proposals/:id" element={<ProposalDetailPage />} />
     </Routes>
   </Layout>
 );

@@ -9,7 +9,11 @@ import ru.perminov.tender.model.Project;
 
 @Mapper(componentModel = "spring")
 public interface ProjectMapper {
+
     ProjectDto toDto(Project project);
+
     Project toEntity(ProjectDtoNew dto);
+
     void updateEntity(@MappingTarget Project project, ProjectDtoUpdate dto);
+    
 } 

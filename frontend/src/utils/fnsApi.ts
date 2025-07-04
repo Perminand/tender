@@ -1,5 +1,15 @@
+import axios from 'axios';
+
 // API для работы с ФНС через наш бэкенд
 const API_BASE_URL = 'http://localhost:8080/api';
+
+// Создаем axios-клиент для API
+export const fnsApi = axios.create({
+  baseURL: 'http://localhost:8080',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 
 export interface CompanyData {
   name: string;

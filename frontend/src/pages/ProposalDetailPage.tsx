@@ -1,0 +1,432 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  Grid,
+  Chip,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  Divider,
+  Alert,
+  IconButton,
+  Tooltip
+} from '@mui/material';
+import {
+  Edit as EditIcon,
+  Send as SendIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+  Star as StarIcon,
+  TrendingUp as TrendingUpIcon
+} from '@mui/icons-material';
+import { useParams, useNavigate } from 'react-router-dom';
+import { fnsApi } from '../utils/fnsApi';
+
+interface ProposalItemDto {
+  id: string;
+  itemNumber: number;
+  description: string;
+  brand: string;
+  model: string;
+  manufacturer: string;
+  countryOfOrigin: string;
+  quantity: number;
+  unitName: string;
+  unitPrice: number;
+  totalPrice: number;
+  specifications: string;
+  deliveryPeriod: string;
+  warranty: string;
+  additionalInfo: string;
+  isBestPrice: boolean;
+  priceDifference: number;
+}
+
+interface ProposalDto {
+  id: string;
+  tenderId: string;
+  tenderNumber: string;
+  tenderTitle: string;
+  supplierId: string;
+  supplierName: string;
+  proposalNumber: string;
+  submissionDate: string;
+  status: string;
+  coverLetter: string;
+  technicalProposal: string;
+  commercialTerms: string;
+  totalPrice: number;
+  currency: string;
+  paymentTerms: string;
+  deliveryTerms: string;
+  warrantyTerms: string;
+  validUntil: string;
+  isBestOffer: boolean;
+  priceDifference: number;
+  proposalItems: ProposalItemDto[];
+}
+
+const ProposalDetailPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const [proposal, setProposal] = useState<ProposalDto | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (id) {
+      loadProposal();
+    }
+  }, [id]);
+
+  const loadProposal = async () => {
+    try {
+      setLoading(true);
+      const response = await fnsApi.get(`/api/proposals/${id}/with-best-offers`);
+      setProposal(response.data);
+    } catch (error) {
+      console.error('Error loading proposal:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!proposal) return;
+    
+    try {
+      await fnsApi.post(`/api/proposals/${proposal.id}/submit`);
+      await loadProposal();
+    } catch (error) {
+      console.error('Error submitting proposal:', error);
+    }
+  };
+
+  const handleAccept = async () => {
+    if (!proposal) return;
+    
+    try {
+      await fnsApi.post(`/api/proposals/${proposal.id}/accept`);
+      await loadProposal();
+    } catch (error) {
+      console.error('Error accepting proposal:', error);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!proposal) return;
+    
+    try {
+      await fnsApi.post(`/api/proposals/${proposal.id}/reject`);
+      await loadProposal();
+    } catch (error) {
+      console.error('Error rejecting proposal:', error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'default';
+      case 'SUBMITTED': return 'info';
+      case 'UNDER_REVIEW': return 'warning';
+      case 'ACCEPTED': return 'success';
+      case 'REJECTED': return 'error';
+      case 'WITHDRAWN': return 'default';
+      default: return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'Черновик';
+      case 'SUBMITTED': return 'Подано';
+      case 'UNDER_REVIEW': return 'На рассмотрении';
+      case 'ACCEPTED': return 'Принято';
+      case 'REJECTED': return 'Отклонено';
+      case 'WITHDRAWN': return 'Отозвано';
+      default: return status;
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('ru-RU');
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB'
+    }).format(price);
+  };
+
+  if (loading) {
+    return <Typography>Загрузка...</Typography>;
+  }
+
+  if (!proposal) {
+    return <Typography>Предложение не найдено</Typography>;
+  }
+
+  return (
+    <Box sx={{ p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Предложение №{proposal.proposalNumber}
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          {proposal.status === 'DRAFT' && (
+            <>
+              <Button
+                variant="outlined"
+                onClick={() => navigate(`/proposals/${id}/edit`)}
+              >
+                Редактировать
+              </Button>
+              <Button
+                variant="contained"
+                startIcon={<SendIcon />}
+                onClick={handleSubmit}
+              >
+                Подать предложение
+              </Button>
+            </>
+          )}
+          {proposal.status === 'SUBMITTED' && (
+            <>
+              <Button
+                variant="contained"
+                color="success"
+                startIcon={<CheckIcon />}
+                onClick={handleAccept}
+              >
+                Принять
+              </Button>
+              <Button
+                variant="contained"
+                color="error"
+                startIcon={<CloseIcon />}
+                onClick={handleReject}
+              >
+                Отклонить
+              </Button>
+            </>
+          )}
+        </Box>
+      </Box>
+
+      <Grid container spacing={3}>
+        {/* Основная информация */}
+        <Grid item xs={12} md={8}>
+          <Card>
+            <CardContent>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                <Typography variant="h5" component="h2">
+                  {proposal.tenderTitle}
+                </Typography>
+                <Chip
+                  label={getStatusLabel(proposal.status)}
+                  color={getStatusColor(proposal.status)}
+                />
+              </Box>
+
+              <Grid container spacing={2} sx={{ mb: 2 }}>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Поставщик
+                  </Typography>
+                  <Typography variant="body1">
+                    {proposal.supplierName}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Тендер
+                  </Typography>
+                  <Typography variant="body1">
+                    №{proposal.tenderNumber}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Дата подачи
+                  </Typography>
+                  <Typography variant="body1">
+                    {formatDate(proposal.submissionDate)}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Срок действия
+                  </Typography>
+                  <Typography variant="body1">
+                    {proposal.validUntil ? formatDate(proposal.validUntil) : 'Не указан'}
+                  </Typography>
+                </Grid>
+              </Grid>
+
+              {proposal.isBestOffer && (
+                <Alert severity="success" sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <TrendingUpIcon sx={{ mr: 1 }} />
+                    <Typography>
+                      Лучшее предложение по цене: {formatPrice(proposal.totalPrice)}
+                    </Typography>
+                  </Box>
+                </Alert>
+              )}
+
+              {proposal.coverLetter && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Сопроводительное письмо
+                  </Typography>
+                  <Typography variant="body2">
+                    {proposal.coverLetter}
+                  </Typography>
+                </Box>
+              )}
+
+              {proposal.technicalProposal && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="h6" sx={{ mb: 1 }}>
+                    Техническое предложение
+                  </Typography>
+                  <Typography variant="body2">
+                    {proposal.technicalProposal}
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Статистика */}
+        <Grid item xs={12} md={4}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Коммерческие условия
+              </Typography>
+              
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Общая цена
+                </Typography>
+                <Typography variant="h4" color="primary">
+                  {formatPrice(proposal.totalPrice)}
+                </Typography>
+              </Box>
+
+              {proposal.paymentTerms && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Условия оплаты
+                  </Typography>
+                  <Typography variant="body2">
+                    {proposal.paymentTerms}
+                  </Typography>
+                </Box>
+              )}
+
+              {proposal.deliveryTerms && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Условия поставки
+                  </Typography>
+                  <Typography variant="body2">
+                    {proposal.deliveryTerms}
+                  </Typography>
+                </Box>
+              )}
+
+              {proposal.warrantyTerms && (
+                <Box>
+                  <Typography variant="body2" color="text.secondary">
+                    Гарантийные обязательства
+                  </Typography>
+                  <Typography variant="body2">
+                    {proposal.warrantyTerms}
+                  </Typography>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Позиции предложения */}
+        <Grid item xs={12}>
+          <Card>
+            <CardContent>
+              <Typography variant="h6" sx={{ mb: 2 }}>
+                Позиции предложения
+              </Typography>
+              
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>№</TableCell>
+                      <TableCell>Описание</TableCell>
+                      <TableCell>Бренд/Модель</TableCell>
+                      <TableCell>Производитель</TableCell>
+                      <TableCell>Количество</TableCell>
+                      <TableCell>Цена за ед.</TableCell>
+                      <TableCell>Сумма</TableCell>
+                      <TableCell>Лучшая цена</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {proposal.proposalItems.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.itemNumber}</TableCell>
+                        <TableCell>{item.description}</TableCell>
+                        <TableCell>
+                          {item.brand} {item.model}
+                        </TableCell>
+                        <TableCell>{item.manufacturer}</TableCell>
+                        <TableCell>
+                          {item.quantity} {item.unitName}
+                        </TableCell>
+                        <TableCell>{formatPrice(item.unitPrice)}</TableCell>
+                        <TableCell>{formatPrice(item.totalPrice)}</TableCell>
+                        <TableCell>
+                          {item.isBestPrice && (
+                            <Tooltip title="Лучшая цена">
+                              <StarIcon color="primary" fontSize="small" />
+                            </Tooltip>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow>
+                      <TableCell colSpan={6} align="right">
+                        <Typography variant="h6">
+                          Итого:
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="h6">
+                          {formatPrice(proposal.totalPrice)}
+                        </Typography>
+                      </TableCell>
+                      <TableCell />
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+};
+
+export default ProposalDetailPage; 

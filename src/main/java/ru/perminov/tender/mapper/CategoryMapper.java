@@ -9,7 +9,11 @@ import ru.perminov.tender.model.Category;
 
 @Mapper(componentModel = "spring")
 public interface CategoryMapper {
+
     Category toCategory(CategoryDtoNew dto);
+
     CategoryDto toCategoryDto(Category category);
+
     void updateCategoryFromDto(CategoryDtoUpdate dto, @MappingTarget Category category);
+    
 } 

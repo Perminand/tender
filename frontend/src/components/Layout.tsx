@@ -14,6 +14,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
           Тендерная система
         </Typography>
         <Button color="inherit" component={RouterLink} to="/requests/registry">Реестр заявок</Button>
+        <Button color="inherit" component={RouterLink} to="/tenders">Тендеры</Button>
+        <Button color="inherit" component={RouterLink} to="/proposals">Предложения</Button>
         <Button color="inherit" component={RouterLink} to="/reference">Справочники</Button>
         <Button color="inherit" component={RouterLink} to="/settings">Настройки</Button>
       </Toolbar>
