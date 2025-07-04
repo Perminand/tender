@@ -57,6 +57,7 @@ const statusOptions = [
   { value: 'SAVED', label: 'Сохранен' },
   { value: 'TENDER', label: 'Тендер' },
   { value: 'COMPLETED', label: 'Исполнена' },
+  { value: 'CANCELLED', label: 'Отменена' },
 ];
 
 const getToday = () => {
