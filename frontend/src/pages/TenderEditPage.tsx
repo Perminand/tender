@@ -13,10 +13,17 @@ import {
   MenuItem,
   Alert,
   CircularProgress,
-  Divider
+  Divider,
+  Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 interface TenderFormData {
   title: string;
@@ -42,6 +49,11 @@ interface Request {
   title: string;
 }
 
+interface TenderStatus {
+  id: string;
+  status: 'DRAFT' | 'PUBLISHED' | 'BIDDING' | 'EVALUATION' | 'AWARDED' | 'CANCELLED';
+}
+
 const TenderEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -49,6 +61,22 @@ const TenderEditPage: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [tenderStatus, setTenderStatus] = useState<TenderStatus | null>(null);
+  
+  // Модальные окна для управления статусом
+  const [statusDialog, setStatusDialog] = useState<{
+    open: boolean;
+    action: string;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({
+    open: false,
+    action: '',
+    title: '',
+    description: '',
+    onConfirm: () => {}
+  });
   
   const [formData, setFormData] = useState<TenderFormData>({
     title: '',
@@ -62,6 +90,8 @@ const TenderEditPage: React.FC = () => {
     requestId: ''
   });
 
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+
   const isEdit = !!id;
 
   useEffect(() => {
@@ -69,6 +99,7 @@ const TenderEditPage: React.FC = () => {
     loadRequests();
     if (isEdit) {
       loadTender();
+      loadTenderStatus();
     }
   }, [id]);
 
@@ -87,6 +118,20 @@ const TenderEditPage: React.FC = () => {
       setRequests(response.data);
     } catch (error) {
       console.error('Error loading requests:', error);
+    }
+  };
+
+  const loadTenderStatus = async () => {
+    if (!id) return;
+    
+    try {
+      const response = await fnsApi.get(`/api/tenders/${id}`);
+      setTenderStatus({
+        id: response.data.id,
+        status: response.data.status
+      });
+    } catch (error) {
+      console.error('Error loading tender status:', error);
     }
   };
 
@@ -137,9 +182,10 @@ const TenderEditPage: React.FC = () => {
       }
 
       navigate('/tenders');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving tender:', error);
-      setError('Ошибка сохранения тендера');
+      const errorMessage = error.response?.data?.message || 'Ошибка сохранения тендера';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -152,6 +198,101 @@ const TenderEditPage: React.FC = () => {
     }));
   };
 
+  // Функции управления статусом
+  const handlePublish = async () => {
+    try {
+      await fnsApi.post(`/api/tenders/${id}/publish`);
+      await loadTenderStatus();
+      setStatusDialog(prev => ({ ...prev, open: false }));
+    } catch (error: any) {
+      console.error('Error publishing tender:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка публикации тендера';
+      setError(errorMessage);
+    }
+  };
+
+  const handleStartBidding = async () => {
+    try {
+      await fnsApi.post(`/api/tenders/${id}/start-bidding`);
+      await loadTenderStatus();
+      setStatusDialog(prev => ({ ...prev, open: false }));
+    } catch (error: any) {
+      console.error('Error starting bidding:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка начала приема предложений';
+      setError(errorMessage);
+    }
+  };
+
+  const handleCloseBidding = async () => {
+    try {
+      await fnsApi.post(`/api/tenders/${id}/close`);
+      await loadTenderStatus();
+      setStatusDialog(prev => ({ ...prev, open: false }));
+    } catch (error: any) {
+      console.error('Error closing bidding:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка закрытия приема предложений';
+      setError(errorMessage);
+    }
+  };
+
+  const handleComplete = async () => {
+    try {
+      await fnsApi.post(`/api/tenders/${id}/complete`);
+      await loadTenderStatus();
+      setStatusDialog(prev => ({ ...prev, open: false }));
+    } catch (error: any) {
+      console.error('Error completing tender:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка завершения тендера';
+      setError(errorMessage);
+    }
+  };
+
+  const openStatusDialog = (action: string, title: string, description: string, onConfirm: () => void) => {
+    setStatusDialog({
+      open: true,
+      action,
+      title,
+      description,
+      onConfirm
+    });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'default';
+      case 'PUBLISHED': return 'info';
+      case 'BIDDING': return 'warning';
+      case 'EVALUATION': return 'primary';
+      case 'AWARDED': return 'success';
+      case 'CANCELLED': return 'error';
+      default: return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'Черновик';
+      case 'PUBLISHED': return 'Опубликован';
+      case 'BIDDING': return 'Прием предложений';
+      case 'EVALUATION': return 'Оценка';
+      case 'AWARDED': return 'Присужден';
+      case 'CANCELLED': return 'Отменен';
+      default: return status;
+    }
+  };
+
+  const handleCancelTender = async () => {
+    if (!id) return;
+    try {
+      await fnsApi.post(`/api/tenders/${id}/cancel`);
+      setCancelDialogOpen(false);
+      setError(null);
+      await loadTenderStatus();
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Ошибка отмены тендера');
+    }
+  };
+
   if (loading && isEdit) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -162,14 +303,111 @@ const TenderEditPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/tenders')}
+          sx={{ minWidth: 0, p: 1 }}
+        />
+        <Typography variant="h4" component="h1">
         {isEdit ? 'Редактирование тендера' : 'Создание тендера'}
       </Typography>
+      </Box>
 
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
         </Alert>
+      )}
+
+      {/* Секция управления статусом */}
+      {isEdit && tenderStatus && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">
+                Управление статусом тендера
+              </Typography>
+              <Chip
+                label={getStatusLabel(tenderStatus.status)}
+                color={getStatusColor(tenderStatus.status)}
+              />
+            </Box>
+            
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {tenderStatus.status === 'DRAFT' && (
+                <Button
+                  variant="contained"
+                  color="info"
+                  onClick={() => openStatusDialog(
+                    'publish',
+                    'Опубликовать тендер',
+                    'Вы уверены, что хотите опубликовать тендер? После публикации тендер станет доступен для просмотра.',
+                    handlePublish
+                  )}
+                >
+                  Опубликовать
+                </Button>
+              )}
+
+              {tenderStatus.status === 'PUBLISHED' && (
+                <Button
+                  variant="contained"
+                  color="warning"
+                  onClick={() => openStatusDialog(
+                    'start-bidding',
+                    'Начать прием предложений',
+                    'Вы уверены, что хотите начать прием предложений? После этого поставщики смогут подавать предложения.',
+                    handleStartBidding
+                  )}
+                >
+                  Начать прием предложений
+                </Button>
+              )}
+
+              {tenderStatus.status === 'BIDDING' && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => openStatusDialog(
+                    'close-bidding',
+                    'Закрыть прием предложений',
+                    'Вы уверены, что хотите закрыть прием предложений? После этого новые предложения приниматься не будут.',
+                    handleCloseBidding
+                  )}
+                >
+                  Закрыть прием предложений
+                </Button>
+              )}
+
+              {tenderStatus.status === 'EVALUATION' && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => openStatusDialog(
+                    'complete',
+                    'Завершить тендер',
+                    'Вы уверены, что хотите завершить тендер? Это действие нельзя будет отменить.',
+                    handleComplete
+                  )}
+                >
+                  Завершить тендер
+                </Button>
+              )}
+
+              {tenderStatus.status !== 'CANCELLED' && tenderStatus.status !== 'AWARDED' && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => setCancelDialogOpen(true)}
+                  sx={{ ml: 2 }}
+                >
+                  Отменить тендер
+                </Button>
+              )}
+            </Box>
+          </CardContent>
+        </Card>
       )}
 
       <Card>
@@ -317,6 +555,61 @@ const TenderEditPage: React.FC = () => {
           </form>
         </CardContent>
       </Card>
+
+      {/* Модальное окно подтверждения изменения статуса */}
+      <Dialog
+        open={statusDialog.open}
+        onClose={() => setStatusDialog(prev => ({ ...prev, open: false }))}
+        aria-labelledby="status-dialog-title"
+        aria-describedby="status-dialog-description"
+      >
+        <DialogTitle id="status-dialog-title">
+          {statusDialog.title}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="status-dialog-description">
+            {statusDialog.description}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button 
+            onClick={() => setStatusDialog(prev => ({ ...prev, open: false }))}
+            color="primary"
+          >
+            Отмена
+          </Button>
+          <Button 
+            onClick={statusDialog.onConfirm}
+            color="secondary"
+            autoFocus
+          >
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+        aria-labelledby="cancel-tender-dialog-title"
+        aria-describedby="cancel-tender-dialog-description"
+      >
+        <DialogTitle id="cancel-tender-dialog-title">Отменить тендер</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="cancel-tender-dialog-description">
+            Вы уверены, что хотите отменить тендер? После отмены тендер будет недоступен для дальнейших действий.
+          </DialogContentText>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleCancelTender} color="secondary" autoFocus>
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

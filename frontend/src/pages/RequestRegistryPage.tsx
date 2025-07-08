@@ -318,6 +318,25 @@ export default function RequestRegistryPage() {
                         <Edit />
                       </IconButton>
                     </Tooltip>
+                    <Tooltip title="Создать тендер">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={async () => {
+                          try {
+                            const response = await axios.post(`/api/requests/${row.requestId}/create-tender`);
+                            const tender = response.data;
+                            alert(`Тендер успешно создан! ID: ${tender.id}`);
+                            navigate(`/tenders/${tender.id}`);
+                          } catch (error: any) {
+                            console.error('Ошибка при создании тендера:', error);
+                            alert('Ошибка при создании тендера: ' + (error.response?.data?.message || error.message));
+                          }
+                        }}
+                      >
+                        <Download />
+                      </IconButton>
+                    </Tooltip>
                   </Box>
                 </TableCell>
               </TableRow>
@@ -331,8 +350,7 @@ export default function RequestRegistryPage() {
         <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1 }}>
           <Typography variant="body2" color="text.secondary">
             Всего заявок: {data.length} | 
-            Общее количество материалов: {data.reduce((sum, row) => sum + row.materialsCount, 0)} |
-            Общая сумма: {data.reduce((sum, row) => sum + row.totalQuantity, 0).toFixed(2)}
+            Общее количество материалов: {data.reduce((sum, row) => sum + row.materialsCount, 0)}
           </Typography>
         </Box>
       )}

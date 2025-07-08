@@ -13,6 +13,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
+import Pagination from '@mui/material/Pagination';
 
 interface CategoryDto {
   id: string;
@@ -51,6 +52,8 @@ const MaterialListPage: React.FC = () => {
   const [importLog, setImportLog] = useState<{imported: number, errors: {row: number, message: string}[]} | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   useEffect(() => {
     const fetchMaterials = async () => {
@@ -162,6 +165,8 @@ const MaterialListPage: React.FC = () => {
     }
   };
 
+  const paginatedMaterials = filteredMaterials.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -239,7 +244,7 @@ const MaterialListPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredMaterials.map((material) => (
+              {paginatedMaterials.map((material) => (
                 <TableRow key={material.id}>
                   <TableCell>{material.name}</TableCell>
                   <TableCell>{material.code}</TableCell>
@@ -275,13 +280,22 @@ const MaterialListPage: React.FC = () => {
             </Typography>
           </Box>
         )}
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Pagination
+            count={Math.ceil(filteredMaterials.length / rowsPerPage)}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+          />
+        </Box>
       </Box>
       <Dialog open={importDialogOpen} onClose={() => setImportDialogOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle>Результат импорта</DialogTitle>
         <DialogContent>
           <Typography>Успешно импортировано: <b>{importLog?.imported ?? 0}</b></Typography>
-          <Typography>Ошибок: <b>{importLog?.errors.length ?? 0}</b></Typography>
-          {importLog?.errors.length > 0 && (
+          <Typography>Ошибок: <b>{importLog?.errors?.length ?? 0}</b></Typography>
+          {importLog?.errors && importLog.errors.length > 0 && (
             <Table size="small" sx={{ mt: 2 }}>
               <TableHead>
                 <TableRow>

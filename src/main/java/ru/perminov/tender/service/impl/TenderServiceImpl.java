@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.dto.tender.TenderItemDto;
 import ru.perminov.tender.dto.tender.SupplierProposalDto;
+import ru.perminov.tender.dto.tender.ProposalItemDto;
 import ru.perminov.tender.mapper.TenderMapper;
 import ru.perminov.tender.mapper.TenderItemMapper;
 import ru.perminov.tender.model.Tender;
@@ -24,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -49,12 +51,28 @@ public class TenderServiceImpl implements TenderService {
         if (tender.getTenderNumber() == null || tender.getTenderNumber().isEmpty()) {
             tender.setTenderNumber("T-" + System.currentTimeMillis());
         }
+
+        // Устанавливаем заказчика по customerId
+        if (tenderDto.getCustomerId() != null) {
+            Company customer = companyRepository.findById(tenderDto.getCustomerId())
+                .orElseThrow(() -> new RuntimeException("Заказчик не найден"));
+            tender.setCustomer(customer);
+        }
+
+        // Устанавливаем срок подачи
+        if (tenderDto.getSubmissionDeadline() != null) {
+            tender.setSubmissionDeadline(tenderDto.getSubmissionDeadline());
+        } else {
+            tender.setSubmissionDeadline(LocalDateTime.now().plusDays(7));
+        }
         
         Tender savedTender = tenderRepository.save(tender);
         
-        // Создаем позиции тендера на основе заявки
-        if (tender.getRequest() != null) {
-            createTenderItemsFromRequest(savedTender, tender.getRequest());
+        // Корректно загружаем заявку с материалами по id
+        if (tenderDto.getRequestId() != null) {
+            Request request = requestRepository.findByIdWithMaterials(tenderDto.getRequestId())
+                .orElseThrow(() -> new RuntimeException("Заявка не найдена"));
+            createTenderItemsFromRequest(savedTender, request);
         }
         
         return tenderMapper.toDto(savedTender);
@@ -187,8 +205,15 @@ public class TenderServiceImpl implements TenderService {
         
         TenderDto tenderDto = tenderMapper.toDto(tender);
         
-        // Получаем все предложения для тендера
+        // Получаем все предложения для тендера с обновленными позициями
         List<SupplierProposalDto> proposals = supplierProposalService.getProposalsByTender(tenderId);
+        
+        // Обновляем позиции каждого предложения с расчетом лучших цен
+        for (SupplierProposalDto proposal : proposals) {
+            List<ProposalItemDto> items = supplierProposalService.getProposalItems(proposal.getId());
+            proposal.setProposalItems(items);
+        }
+        
         tenderDto.setSupplierProposals(proposals);
         
         // Находим лучшее предложение по общей цене
@@ -205,6 +230,84 @@ public class TenderServiceImpl implements TenderService {
         tenderDto.setProposalsCount(proposals.size());
         
         return tenderDto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TenderDto getTenderWithBestPricesByItems(UUID tenderId) {
+        Tender tender = tenderRepository.findById(tenderId)
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        
+        TenderDto tenderDto = tenderMapper.toDto(tender);
+        
+        // Получаем все предложения для тендера
+        List<SupplierProposalDto> proposals = supplierProposalService.getProposalsByTender(tenderId);
+        tenderDto.setSupplierProposals(proposals);
+        
+        // Получаем лучшие цены по позициям
+        Map<UUID, Double> bestPricesByItems = supplierProposalService.getBestPricesByTenderItems(tenderId);
+        
+        // Обновляем позиции тендера с лучшими ценами
+        if (tenderDto.getTenderItems() != null) {
+            for (TenderItemDto item : tenderDto.getTenderItems()) {
+                Double bestPrice = bestPricesByItems.get(item.getId());
+                item.setBestPrice(bestPrice); // всегда явно присваиваем (null если нет)
+            }
+        }
+        
+        // Находим лучшее предложение по общей цене
+        SupplierProposalDto bestProposal = proposals.stream()
+                .filter(p -> p.getTotalPrice() != null)
+                .min((p1, p2) -> Double.compare(p1.getTotalPrice(), p2.getTotalPrice()))
+                .orElse(null);
+        
+        if (bestProposal != null) {
+            tenderDto.setBestPrice(bestProposal.getTotalPrice());
+            tenderDto.setBestSupplierName(bestProposal.getSupplierName());
+        }
+        
+        tenderDto.setProposalsCount(proposals.size());
+        
+        return tenderDto;
+    }
+
+    @Override
+    public TenderDto startBidding(UUID id) {
+        Tender tender = tenderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        if (tender.getStatus() != Tender.TenderStatus.PUBLISHED) {
+            throw new RuntimeException("Можно начать прием предложений только для опубликованного тендера");
+        }
+        tender.setStatus(Tender.TenderStatus.BIDDING);
+        tenderRepository.save(tender);
+        return tenderMapper.toDto(tender);
+    }
+
+    @Override
+    public TenderDto completeTender(UUID id) {
+        Tender tender = tenderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        if (tender.getStatus() != Tender.TenderStatus.EVALUATION) {
+            throw new RuntimeException("Можно завершить только тендер в статусе оценки");
+        }
+        tender.setStatus(Tender.TenderStatus.AWARDED);
+        Tender savedTender = tenderRepository.save(tender);
+        return tenderMapper.toDto(savedTender);
+    }
+
+    @Override
+    public TenderDto cancelTender(UUID id) {
+        Tender tender = tenderRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        if (tender.getStatus() == Tender.TenderStatus.CANCELLED) {
+            throw new RuntimeException("Тендер уже отменен");
+        }
+        if (tender.getStatus() == Tender.TenderStatus.AWARDED) {
+            throw new RuntimeException("Нельзя отменить завершенный тендер");
+        }
+        tender.setStatus(Tender.TenderStatus.CANCELLED);
+        Tender saved = tenderRepository.save(tender);
+        return tenderMapper.toDto(saved);
     }
 
     private void createTenderItemsFromRequest(Tender tender, Request request) {

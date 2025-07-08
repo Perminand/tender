@@ -22,7 +22,11 @@ import {
   TableRow,
   Paper,
   IconButton,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -68,7 +72,7 @@ interface ProposalFormData {
   deliveryTerms: string;
   warrantyTerms: string;
   validUntil: string;
-  items: ProposalItemForm[];
+  proposalItems: ProposalItemForm[];
 }
 
 interface Company {
@@ -84,6 +88,7 @@ const ProposalEditPage: React.FC = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [tenderItems, setTenderItems] = useState<TenderItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   
   const [formData, setFormData] = useState<ProposalFormData>({
     tenderId: tenderId || '',
@@ -95,7 +100,7 @@ const ProposalEditPage: React.FC = () => {
     deliveryTerms: '',
     warrantyTerms: '',
     validUntil: '',
-    items: []
+    proposalItems: []
   });
 
   useEffect(() => {
@@ -135,7 +140,7 @@ const ProposalEditPage: React.FC = () => {
         additionalInfo: ''
       }));
       
-      setFormData(prev => ({ ...prev, items }));
+      setFormData(prev => ({ ...prev, proposalItems: items }));
     } catch (error) {
       console.error('Error loading tender items:', error);
     }
@@ -145,22 +150,45 @@ const ProposalEditPage: React.FC = () => {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
+    setErrorDialogOpen(false);
+    if (!formData.supplierId) {
+      setError('Поставщик обязателен для заполнения');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
+    
+    // Проверяем, что все цены больше 0
+    const invalidItems = formData.proposalItems.filter(item => 
+      item.tenderItemId && item.tenderItemId !== '' && (item.unitPrice <= 0 || item.unitPrice === '')
+    );
+    if (invalidItems.length > 0) {
+      setError('Цена за единицу должна быть больше 0 для всех позиций');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
     try {
       const proposalData = {
         ...formData,
         validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
-        items: formData.items.map(item => ({
+        proposalItems: formData.proposalItems
+          .filter(item => item.tenderItemId && item.tenderItemId !== '')
+          .map(item => ({
           ...item,
           totalPrice: item.quantity * item.unitPrice
         }))
       };
-
       await fnsApi.post('/api/proposals', proposalData);
       navigate(`/tenders/${tenderId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving proposal:', error);
-      setError('Ошибка сохранения предложения');
+      let message = 'Ошибка сохранения предложения';
+      if (error.response && error.response.data && error.response.data.message) {
+        message = error.response.data.message;
+      }
+      setError(message);
+      setErrorDialogOpen(true);
     } finally {
       setLoading(false);
     }
@@ -169,27 +197,48 @@ const ProposalEditPage: React.FC = () => {
   const handleSubmitProposal = async () => {
     setLoading(true);
     setError(null);
-
+    setErrorDialogOpen(false);
+    if (!formData.supplierId) {
+      setError('Поставщик обязателен для заполнения');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
+    
+    // Проверяем, что все цены больше 0
+    const invalidItems = formData.proposalItems.filter(item => 
+      item.tenderItemId && item.tenderItemId !== '' && (item.unitPrice <= 0 || item.unitPrice === '')
+    );
+    if (invalidItems.length > 0) {
+      setError('Цена за единицу должна быть больше 0 для всех позиций');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
     try {
       // Сначала сохраняем предложение
       const proposalData = {
         ...formData,
         validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
-        items: formData.items.map(item => ({
+        proposalItems: formData.proposalItems
+          .filter(item => item.tenderItemId && item.tenderItemId !== '')
+          .map(item => ({
           ...item,
           totalPrice: item.quantity * item.unitPrice
         }))
       };
-
       const response = await fnsApi.post('/api/proposals', proposalData);
-      
       // Затем подаем предложение
       await fnsApi.post(`/api/proposals/${response.data.id}/submit`);
-      
       navigate(`/tenders/${tenderId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting proposal:', error);
-      setError('Ошибка подачи предложения');
+      let message = 'Ошибка подачи предложения';
+      if (error.response && error.response.data && error.response.data.message) {
+        message = error.response.data.message;
+      }
+      setError(message);
+      setErrorDialogOpen(true);
     } finally {
       setLoading(false);
     }
@@ -205,14 +254,49 @@ const ProposalEditPage: React.FC = () => {
   const handleItemChange = (index: number, field: keyof ProposalItemForm, value: string | number) => {
     setFormData(prev => ({
       ...prev,
-      items: prev.items.map((item, i) => 
+      proposalItems: prev.proposalItems.map((item, i) => 
         i === index ? { ...item, [field]: value } : item
       )
     }));
   };
 
   const calculateTotalPrice = () => {
-    return formData.items.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
+    return formData.proposalItems.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
+  };
+
+  const handleAddItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      proposalItems: [
+        ...prev.proposalItems,
+        {
+          tenderItemId: '',
+          description: '',
+          brand: '',
+          model: '',
+          manufacturer: '',
+          countryOfOrigin: '',
+          quantity: 1,
+          unitPrice: 0,
+          specifications: '',
+          deliveryPeriod: '',
+          warranty: '',
+          additionalInfo: ''
+        }
+      ]
+    }));
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      proposalItems: prev.proposalItems.filter((_, i) => i !== index)
+    }));
+  };
+
+  // Функция для получения доступных для выбора позиций тендера (не выбранных ранее)
+  const getAvailableTenderItems = (selectedIds: string[]) => {
+    return tenderItems.filter(item => !selectedIds.includes(item.id));
   };
 
   return (
@@ -221,11 +305,18 @@ const ProposalEditPage: React.FC = () => {
         Подача предложения
       </Typography>
 
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
+      {/* Модальное окно для ошибок */}
+      <Dialog open={errorDialogOpen} onClose={() => setErrorDialogOpen(false)}>
+        <DialogTitle>Ошибка</DialogTitle>
+        <DialogContent>
+          <Typography color="error">{error}</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setErrorDialogOpen(false)} autoFocus>
+            ОК
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Card sx={{ mb: 3 }}>
         <CardContent>
@@ -347,7 +438,6 @@ const ProposalEditPage: React.FC = () => {
           <Typography variant="h6" sx={{ mb: 2 }}>
             Позиции предложения
           </Typography>
-          
           <TableContainer component={Paper} variant="outlined">
             <Table>
               <TableHead>
@@ -360,25 +450,56 @@ const ProposalEditPage: React.FC = () => {
                   <TableCell>Количество</TableCell>
                   <TableCell>Цена за ед.</TableCell>
                   <TableCell>Сумма</TableCell>
+                  <TableCell>Действия</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {formData.items.map((item, index) => (
+                {formData.proposalItems.map((item, index) => {
+                  // Получаем список уже выбранных tenderItemId, кроме текущей строки
+                  const selectedTenderItemIds = formData.proposalItems
+                    .filter((_, i) => i !== index)
+                    .map(i => i.tenderItemId);
+                  const availableTenderItems = getAvailableTenderItems(selectedTenderItemIds);
+                  const selectedTenderItem = tenderItems.find(ti => ti.id === item.tenderItemId);
+                  return (
                   <TableRow key={index}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell>
-                      <TextField
-                        size="small"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(index, 'description', e.target.value)}
-                        fullWidth
-                      />
+                        <FormControl fullWidth size="small">
+                          <Select
+                            value={item.tenderItemId}
+                            onChange={e => {
+                              const tenderItem = tenderItems.find(ti => ti.id === e.target.value);
+                              handleItemChange(index, 'tenderItemId', e.target.value);
+                              // Автоматически подставляем описание, количество и спецификацию
+                              if (tenderItem) {
+                                handleItemChange(index, 'description', tenderItem.description);
+                                handleItemChange(index, 'quantity', tenderItem.quantity);
+                                handleItemChange(index, 'specifications', tenderItem.specifications || '');
+                              }
+                            }}
+                            displayEmpty
+                          >
+                            <MenuItem value="" disabled>Выберите позицию</MenuItem>
+                            {availableTenderItems.map(ti => (
+                              <MenuItem key={ti.id} value={ti.id}>
+                                {ti.description} (Кол-во: {ti.quantity}, Ед.: {ti.unitName})
+                              </MenuItem>
+                            ))}
+                            {/* Разрешаем оставить выбранной уже выбранную позицию */}
+                            {item.tenderItemId && !availableTenderItems.some(ti => ti.id === item.tenderItemId) && selectedTenderItem && (
+                              <MenuItem key={selectedTenderItem.id} value={selectedTenderItem.id}>
+                                {selectedTenderItem.description} (Кол-во: {selectedTenderItem.quantity}, Ед.: {selectedTenderItem.unitName})
+                              </MenuItem>
+                            )}
+                          </Select>
+                        </FormControl>
                     </TableCell>
                     <TableCell>
                       <TextField
                         size="small"
                         value={item.brand}
-                        onChange={(e) => handleItemChange(index, 'brand', e.target.value)}
+                          onChange={e => handleItemChange(index, 'brand', e.target.value)}
                         fullWidth
                       />
                     </TableCell>
@@ -386,7 +507,7 @@ const ProposalEditPage: React.FC = () => {
                       <TextField
                         size="small"
                         value={item.model}
-                        onChange={(e) => handleItemChange(index, 'model', e.target.value)}
+                          onChange={e => handleItemChange(index, 'model', e.target.value)}
                         fullWidth
                       />
                     </TableCell>
@@ -394,7 +515,7 @@ const ProposalEditPage: React.FC = () => {
                       <TextField
                         size="small"
                         value={item.manufacturer}
-                        onChange={(e) => handleItemChange(index, 'manufacturer', e.target.value)}
+                          onChange={e => handleItemChange(index, 'manufacturer', e.target.value)}
                         fullWidth
                       />
                     </TableCell>
@@ -402,8 +523,9 @@ const ProposalEditPage: React.FC = () => {
                       <TextField
                         size="small"
                         type="number"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(index, 'quantity', Number(e.target.value))}
+                          value={selectedTenderItem ? selectedTenderItem.quantity : item.quantity}
+                          disabled
+                        inputProps={{ min: 0.01, step: 0.01 }}
                         fullWidth
                       />
                     </TableCell>
@@ -412,15 +534,32 @@ const ProposalEditPage: React.FC = () => {
                         size="small"
                         type="number"
                         value={item.unitPrice}
-                        onChange={(e) => handleItemChange(index, 'unitPrice', Number(e.target.value))}
+                          onChange={e => {
+                            const value = Number(e.target.value);
+                            // Убираем ноль если введен только ноль
+                            if (value === 0) {
+                              handleItemChange(index, 'unitPrice', '');
+                            } else {
+                              handleItemChange(index, 'unitPrice', value);
+                            }
+                          }}
+                        inputProps={{ min: 0.01, step: 0.01 }}
                         fullWidth
+                        error={item.unitPrice <= 0}
+                        helperText={item.unitPrice <= 0 ? 'Цена должна быть больше 0' : ''}
                       />
                     </TableCell>
                     <TableCell>
                       {(item.quantity * item.unitPrice).toLocaleString('ru-RU')} ₽
                     </TableCell>
+                    <TableCell>
+                      <IconButton color="error" onClick={() => handleRemoveItem(index)} size="small">
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
                 <TableRow>
                   <TableCell colSpan={7} align="right">
                     <Typography variant="h6">
@@ -438,6 +577,12 @@ const ProposalEditPage: React.FC = () => {
           </TableContainer>
         </CardContent>
       </Card>
+
+      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+        <Button onClick={handleAddItem} variant="outlined" size="small" startIcon={<AddIcon />}>
+          Добавить позицию
+        </Button>
+      </Box>
 
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 3 }}>
         <Button

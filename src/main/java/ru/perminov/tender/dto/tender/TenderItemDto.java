@@ -9,6 +9,7 @@ public class TenderItemDto {
     private UUID id;
     private UUID tenderId;
     private UUID requestMaterialId;
+    private UUID materialId;
     private Integer itemNumber;
     private String description;
     private Double quantity;
@@ -17,6 +18,7 @@ public class TenderItemDto {
     private String specifications;
     private String deliveryRequirements;
     private Double estimatedPrice;
+    private Double bestPrice;
     private String materialName;
     private String materialTypeName;
 } 

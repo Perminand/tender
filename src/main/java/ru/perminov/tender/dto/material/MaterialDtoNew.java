@@ -20,7 +20,6 @@ public record MaterialDtoNew(
 
         Set<UUID> unitIds,
 
-        @NotBlank(message = "Код материала не может быть пустым")
         String code,
 
         UUID categoryId

@@ -14,6 +14,9 @@ public interface TenderItemMapper {
     @Mapping(target = "unitName", source = "unit.name")
     @Mapping(target = "tenderId", source = "tender.id")
     @Mapping(target = "requestMaterialId", source = "requestMaterial.id")
+    @Mapping(target = "materialId", source = "requestMaterial.material.id")
+    @Mapping(target = "materialName", source = "requestMaterial.material.name")
+    @Mapping(target = "materialTypeName", source = "requestMaterial.material.materialType.name")
     TenderItemDto toDto(TenderItem entity);
     
     TenderItem toEntity(TenderItemDto dto);

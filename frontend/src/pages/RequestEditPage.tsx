@@ -357,6 +357,15 @@ export default function RequestEditPage() {
       setMissingMaterialIdx(missingIdx);
       return;
     }
+    
+    // Валидация: сметные цены должны быть больше 0
+    const invalidPriceIdx = (request.materials || []).findIndex(
+      mat => mat.estimatePrice && mat.estimatePrice !== '' && parseFloat(mat.estimatePrice) <= 0
+    );
+    if (invalidPriceIdx !== -1) {
+      alert(`Сметная цена должна быть больше 0 в строке ${invalidPriceIdx + 1}`);
+      return;
+    }
     setLoading(true);
     
     try {
@@ -429,6 +438,18 @@ export default function RequestEditPage() {
       } else {
         alert('Ошибка при удалении заявки');
       }
+    }
+  };
+
+  const handleCreateTender = async () => {
+    try {
+      const response = await axios.post(`/api/requests/${id}/create-tender`);
+      const tender = response.data;
+      alert(`Тендер успешно создан! ID: ${tender.id}`);
+      navigate(`/tenders/${tender.id}`);
+    } catch (error: any) {
+      console.error('Ошибка при создании тендера:', error);
+      alert('Ошибка при создании тендера: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -1096,9 +1117,20 @@ export default function RequestEditPage() {
                     size="small"
                     label="Сметная цена"
                     value={mat.estimatePrice || ''}
-                    onChange={e => handleMaterialChange(idx, 'estimatePrice', e.target.value)}
+                    onChange={e => {
+                      const value = e.target.value;
+                      // Убираем ноль если введен только ноль
+                      if (value === '0') {
+                        handleMaterialChange(idx, 'estimatePrice', '');
+                      } else {
+                        handleMaterialChange(idx, 'estimatePrice', value);
+                      }
+                    }}
                     type="number"
+                    inputProps={{ min: 0.01, step: 0.01 }}
                     fullWidth
+                    error={mat.estimatePrice !== undefined && mat.estimatePrice !== '' && parseFloat(mat.estimatePrice) <= 0}
+                    helperText={mat.estimatePrice !== undefined && mat.estimatePrice !== '' && parseFloat(mat.estimatePrice) <= 0 ? 'Цена должна быть больше 0' : ''}
                   />
                 </TableCell>
                 <TableCell>
@@ -1161,9 +1193,14 @@ export default function RequestEditPage() {
           Сохранить
         </Button>
         {isEdit && (
-          <Button variant="outlined" color="error" onClick={() => setConfirmDelete(true)} sx={{ ml: 2 }}>
+          <>
+            <Button variant="outlined" color="success" onClick={handleCreateTender} sx={{ ml: 1 }}>
+              Создать тендер
+            </Button>
+            <Button variant="outlined" color="error" onClick={() => setConfirmDelete(true)} sx={{ ml: 1 }}>
             Удалить
           </Button>
+          </>
         )}
       </Box>
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>

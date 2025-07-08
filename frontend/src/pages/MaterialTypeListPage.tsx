@@ -20,7 +20,8 @@ import {
   Typography,
   Paper,
   Snackbar,
-  Alert
+  Alert,
+  Pagination
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -42,6 +43,8 @@ const MaterialTypeListPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({open: false, message: '', severity: 'success'});
   const [importLog, setImportLog] = useState<{imported: number, errors: {row: number, message: string}[]} | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   const fetchMaterialTypes = async () => {
     try {
@@ -175,6 +178,8 @@ const MaterialTypeListPage: React.FC = () => {
     materialType.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const paginatedMaterialTypes = filteredMaterialTypes.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   if (loading) {
     return <div>Загрузка...</div>;
   }
@@ -247,7 +252,7 @@ const MaterialTypeListPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredMaterialTypes.map((materialType) => (
+                  {paginatedMaterialTypes.map((materialType) => (
                     <TableRow key={materialType.id}>
                       <TableCell>{materialType.name}</TableCell>
                       <TableCell align="right">
@@ -269,6 +274,15 @@ const MaterialTypeListPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Pagination
+                count={Math.ceil(filteredMaterialTypes.length / rowsPerPage)}
+                page={page}
+                onChange={(_, value) => setPage(value)}
+                color="primary"
+              />
+            </Box>
           </CardContent>
         </Card>
 

@@ -173,7 +173,7 @@ public class ExcelService {
     }
 
     public ByteArrayInputStream exportMaterialsToExcel(List<MaterialDto> materials) {
-        String[] columns = {"ID", "Название", "Описание", "Тип материала", "Ссылка", "Код", "Категория", "Единицы измерения", "Дата создания", "Дата обновления"};
+        String[] columns = {"ID", "Название", "Описание", "Тип материала", "Ссылка", "Код/Артикул", "Категория", "Единицы измерения", "Дата создания", "Дата обновления"};
         try (
                 Workbook workbook = new XSSFWorkbook();
                 ByteArrayOutputStream out = new ByteArrayOutputStream()
@@ -187,30 +187,28 @@ public class ExcelService {
             }
 
             int rowIdx = 1;
-            if (materials != null) {
-                for (MaterialDto material : materials) {
-                    Row row = sheet.createRow(rowIdx++);
-                    row.createCell(0).setCellValue(material.id().toString());
-                    row.createCell(1).setCellValue(material.name() != null ? material.name() : "");
-                    row.createCell(2).setCellValue(material.description() != null ? material.description() : "");
-                    row.createCell(3).setCellValue(material.materialType() != null ? material.materialType().name() : "");
-                    row.createCell(4).setCellValue(material.link() != null ? material.link() : "");
-                    row.createCell(5).setCellValue(material.code() != null ? material.code() : "");
-                    row.createCell(6).setCellValue(material.category() != null ? material.category().name() : "");
+            for (MaterialDto material : materials) {
+                Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(material.id().toString());
+                row.createCell(1).setCellValue(material.name() != null ? material.name() : "");
+                row.createCell(2).setCellValue(material.description() != null ? material.description() : "");
+                row.createCell(3).setCellValue(material.materialType() != null ? material.materialType().name() : "");
+                row.createCell(4).setCellValue(material.link() != null ? material.link() : "");
+                row.createCell(5).setCellValue(material.code() != null ? material.code() : "");
+                row.createCell(6).setCellValue(material.category() != null ? material.category().name() : "");
 
-                    // Единицы измерения (только имена через запятую)
-                    String unitsStr = "";
-                    if (material.units() != null && !material.units().isEmpty()) {
-                        unitsStr = material.units().stream()
-                                .map(unit -> unit.name())
-                                .reduce((a, b) -> a + ", " + b)
-                                .orElse("");
-                    }
-                    row.createCell(7).setCellValue(unitsStr);
-
-                    row.createCell(8).setCellValue(material.createdAt() != null ? material.createdAt().toString() : "");
-                    row.createCell(9).setCellValue(material.updatedAt() != null ? material.updatedAt().toString() : "");
+                // Единицы измерения (только имена через запятую)
+                String unitsStr = "";
+                if (material.units() != null && !material.units().isEmpty()) {
+                    unitsStr = material.units().stream()
+                            .map(unit -> unit.name())
+                            .reduce((a, b) -> a + ", " + b)
+                            .orElse("");
                 }
+                row.createCell(7).setCellValue(unitsStr);
+
+                row.createCell(8).setCellValue(material.createdAt() != null ? material.createdAt().toString() : "");
+                row.createCell(9).setCellValue(material.updatedAt() != null ? material.updatedAt().toString() : "");
             }
 
             workbook.write(out);

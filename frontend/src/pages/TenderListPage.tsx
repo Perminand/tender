@@ -19,7 +19,13 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Alert,
+  DialogContentText,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Select
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -28,10 +34,13 @@ import {
   Delete as DeleteIcon,
   Publish as PublishIcon,
   Close as CloseIcon,
-  TrendingUp as TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
+import type { SelectChangeEvent } from '@mui/material/Select';
+import Pagination from '@mui/material/Pagination';
 
 interface TenderDto {
   id: string;
@@ -51,9 +60,37 @@ interface TenderDto {
 const TenderListPage: React.FC = () => {
   const [tenders, setTenders] = useState<TenderDto[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTenderId, setSelectedTenderId] = useState<string | null>(null);
+  const [statusDialog, setStatusDialog] = useState<{
+    open: boolean;
+    tenderId: string | null;
+    action: 'publish' | 'start-bidding' | 'close' | 'complete' | 'cancel' | null;
+    title: string;
+    description: string;
+    onConfirm: (() => void) | null;
+  }>({
+    open: false,
+    tenderId: null,
+    action: null,
+    title: '',
+    description: '',
+    onConfirm: null
+  });
   const navigate = useNavigate();
+
+  const statusOrder = [
+    'DRAFT',
+    'PUBLISHED',
+    'BIDDING',
+    'EVALUATION',
+    'AWARDED',
+    'CANCELLED'
+  ];
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   useEffect(() => {
     loadTenders();
@@ -66,9 +103,15 @@ const TenderListPage: React.FC = () => {
       setTenders(response.data);
     } catch (error) {
       console.error('Error loading tenders:', error);
+      setError('Ошибка загрузки тендеров');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteClick = (tenderId: string) => {
+    setSelectedTenderId(tenderId);
+    setDeleteDialogOpen(true);
   };
 
   const handleDelete = async () => {
@@ -78,8 +121,13 @@ const TenderListPage: React.FC = () => {
         await loadTenders();
         setDeleteDialogOpen(false);
         setSelectedTenderId(null);
-      } catch (error) {
+        setError(null);
+      } catch (error: any) {
         console.error('Error deleting tender:', error);
+        const errorMessage = error.response?.data?.message || 'Ошибка удаления тендера';
+        setError(errorMessage);
+        setDeleteDialogOpen(false);
+        setSelectedTenderId(null);
       }
     }
   };
@@ -88,8 +136,11 @@ const TenderListPage: React.FC = () => {
     try {
       await fnsApi.post(`/api/tenders/${tenderId}/publish`);
       await loadTenders();
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error('Error publishing tender:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка публикации тендера';
+      setError(errorMessage);
     }
   };
 
@@ -97,9 +148,82 @@ const TenderListPage: React.FC = () => {
     try {
       await fnsApi.post(`/api/tenders/${tenderId}/close`);
       await loadTenders();
-    } catch (error) {
+      setError(null);
+    } catch (error: any) {
       console.error('Error closing tender:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка закрытия тендера';
+      setError(errorMessage);
     }
+  };
+
+  const handleStartBidding = async (tenderId: string) => {
+    try {
+      await fnsApi.post(`/api/tenders/${tenderId}/start-bidding`);
+      await loadTenders();
+      setError(null);
+    } catch (error: any) {
+      console.error('Error starting bidding:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка начала приема предложений';
+      setError(errorMessage);
+    }
+  };
+
+  const handleComplete = async (tenderId: string) => {
+    try {
+      await fnsApi.post(`/api/tenders/${tenderId}/complete`);
+      await loadTenders();
+      setError(null);
+    } catch (error: any) {
+      console.error('Error completing tender:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка завершения тендера';
+      setError(errorMessage);
+    }
+  };
+
+  const handleCancel = async (tenderId: string) => {
+    try {
+      await fnsApi.post(`/api/tenders/${tenderId}/cancel`);
+      await loadTenders();
+      setError(null);
+    } catch (error: any) {
+      console.error('Error cancelling tender:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка отмены тендера';
+      setError(errorMessage);
+    }
+  };
+
+  const openStatusDialog = (tenderId: string, action: 'publish' | 'start-bidding' | 'close' | 'complete' | 'cancel') => {
+    let title = '';
+    let description = '';
+    let onConfirm: (() => void) | null = null;
+    switch (action) {
+      case 'publish':
+        title = 'Опубликовать тендер';
+        description = 'Вы уверены, что хотите опубликовать тендер? После публикации тендер станет доступен для просмотра.';
+        onConfirm = () => handlePublish(tenderId);
+        break;
+      case 'start-bidding':
+        title = 'Начать прием предложений';
+        description = 'Вы уверены, что хотите начать прием предложений? После этого поставщики смогут подавать предложения.';
+        onConfirm = () => handleStartBidding(tenderId);
+        break;
+      case 'close':
+        title = 'Закрыть прием предложений';
+        description = 'Вы уверены, что хотите закрыть прием предложений? После этого новые предложения приниматься не будут.';
+        onConfirm = () => handleClose(tenderId);
+        break;
+      case 'complete':
+        title = 'Завершить тендер';
+        description = 'Вы уверены, что хотите завершить тендер? Это действие нельзя будет отменить.';
+        onConfirm = () => handleComplete(tenderId);
+        break;
+      case 'cancel':
+        title = 'Отменить тендер';
+        description = 'Вы уверены, что хотите отменить тендер? После отмены тендер будет недоступен для дальнейших действий.';
+        onConfirm = () => handleCancel(tenderId);
+        break;
+    }
+    setStatusDialog({ open: true, tenderId, action, title, description, onConfirm });
   };
 
   const getStatusColor = (status: string) => {
@@ -137,6 +261,20 @@ const TenderListPage: React.FC = () => {
     }).format(price);
   };
 
+  const handleStatusFilterChange = (event: SelectChangeEvent<string>) => {
+    setStatusFilter(event.target.value as string);
+  };
+
+  const filteredAndSortedTenders = tenders
+    .filter(t => statusFilter === 'ALL' || t.status === statusFilter)
+    .sort((a, b) => {
+      const statusDiff = statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status);
+      if (statusDiff !== 0) return statusDiff;
+      return a.title.localeCompare(b.title, 'ru', { sensitivity: 'base' });
+    });
+
+  const paginatedTenders = filteredAndSortedTenders.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   if (loading) {
     return <Typography>Загрузка...</Typography>;
   }
@@ -156,8 +294,34 @@ const TenderListPage: React.FC = () => {
         </Button>
       </Box>
 
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
+        <FormControl size="small" sx={{ minWidth: 220 }}>
+          <InputLabel id="status-filter-label">Фильтр по статусу</InputLabel>
+          <Select
+            labelId="status-filter-label"
+            value={statusFilter}
+            label="Фильтр по статусу"
+            onChange={handleStatusFilterChange}
+          >
+            <MenuItem value="ALL">Все статусы</MenuItem>
+            <MenuItem value="DRAFT">Черновик</MenuItem>
+            <MenuItem value="PUBLISHED">Опубликован</MenuItem>
+            <MenuItem value="BIDDING">Прием предложений</MenuItem>
+            <MenuItem value="EVALUATION">Оценка</MenuItem>
+            <MenuItem value="AWARDED">Присужден</MenuItem>
+            <MenuItem value="CANCELLED">Отменен</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
       <Grid container spacing={3}>
-        {tenders.map((tender) => (
+        {paginatedTenders.map((tender) => (
           <Grid item xs={12} md={6} lg={4} key={tender.id}>
             <Card>
               <CardContent>
@@ -224,12 +388,35 @@ const TenderListPage: React.FC = () => {
                   </Tooltip>
 
                   {tender.status === 'DRAFT' && (
+                    <>
                     <Tooltip title="Опубликовать">
+                        <IconButton
+                          size="small"
+                          onClick={() => openStatusDialog(tender.id, 'publish')}
+                        >
+                          <PublishIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Удалить">
+                        <IconButton
+                          size="small"
+                          color="error"
+                          onClick={() => handleDeleteClick(tender.id)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </>
+                  )}
+
+                  {tender.status === 'PUBLISHED' && (
+                    <Tooltip title="Начать прием предложений">
                       <IconButton
                         size="small"
-                        onClick={() => handlePublish(tender.id)}
+                        color="warning"
+                        onClick={() => openStatusDialog(tender.id, 'start-bidding')}
                       >
-                        <PublishIcon />
+                        <TrendingUpIcon />
                       </IconButton>
                     </Tooltip>
                   )}
@@ -238,25 +425,48 @@ const TenderListPage: React.FC = () => {
                     <Tooltip title="Закрыть прием">
                       <IconButton
                         size="small"
-                        onClick={() => handleClose(tender.id)}
+                        onClick={() => openStatusDialog(tender.id, 'close')}
                       >
                         <CloseIcon />
                       </IconButton>
                     </Tooltip>
                   )}
 
-                  <Tooltip title="Удалить">
+                  {tender.status === 'EVALUATION' && (
+                    <Tooltip title="Завершить тендер">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => openStatusDialog(tender.id, 'complete')}
+                      >
+                        <CheckCircleIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
+                    <Tooltip title="Отменить тендер">
                     <IconButton
                       size="small"
                       color="error"
-                      onClick={() => {
-                        setSelectedTenderId(tender.id);
-                        setDeleteDialogOpen(true);
-                      }}
+                        onClick={() => openStatusDialog(tender.id, 'cancel')}
+                      >
+                        <CloseIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {tender.status === 'BIDDING' && (
+                    <Tooltip title="Подать предложение">
+                      <IconButton
+                        size="small"
+                        color="success"
+                        onClick={() => navigate(`/tenders/${tender.id}/proposals/new`)}
                     >
-                      <DeleteIcon />
+                        <PublishIcon />
                     </IconButton>
                   </Tooltip>
+                  )}
                 </Box>
               </CardContent>
             </Card>
@@ -264,19 +474,64 @@ const TenderListPage: React.FC = () => {
         ))}
       </Grid>
 
-      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
-        <DialogTitle>Подтверждение удаления</DialogTitle>
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+        <Pagination
+          count={Math.ceil(filteredAndSortedTenders.length / rowsPerPage)}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+        />
+      </Box>
+
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Подтверждение удаления
+        </DialogTitle>
         <DialogContent>
-          <Typography>
-            Вы уверены, что хотите удалить этот тендер?
-          </Typography>
+          <DialogContentText id="delete-dialog-description">
+            Вы уверены, что хотите удалить этот тендер? Это действие нельзя будет отменить.
+          </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteDialogOpen(false)}>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
             Отмена
           </Button>
-          <Button onClick={handleDelete} color="error">
+          <Button onClick={handleDelete} color="error" autoFocus>
             Удалить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={statusDialog.open}
+        onClose={() => setStatusDialog(prev => ({ ...prev, open: false }))}
+        aria-labelledby="status-dialog-title"
+        aria-describedby="status-dialog-description"
+      >
+        <DialogTitle id="status-dialog-title">{statusDialog.title}</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="status-dialog-description">
+            {statusDialog.description}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStatusDialog(prev => ({ ...prev, open: false }))} color="primary">
+            Отмена
+          </Button>
+          <Button
+            onClick={() => {
+              if (statusDialog.onConfirm) statusDialog.onConfirm();
+              setStatusDialog(prev => ({ ...prev, open: false }));
+            }}
+            color="secondary"
+            autoFocus
+          >
+            Подтвердить
           </Button>
         </DialogActions>
       </Dialog>

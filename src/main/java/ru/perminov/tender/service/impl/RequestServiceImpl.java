@@ -6,14 +6,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.RequestDto;
 import ru.perminov.tender.dto.RequestMaterialDto;
+import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.mapper.RequestMapper;
 import ru.perminov.tender.mapper.RequestMaterialMapper;
 import ru.perminov.tender.model.Request;
 import ru.perminov.tender.model.RequestMaterial;
+import ru.perminov.tender.model.Tender;
 import ru.perminov.tender.repository.RequestRepository;
+import ru.perminov.tender.repository.TenderRepository;
 import ru.perminov.tender.repository.WorkTypeRepository;
 import ru.perminov.tender.service.OrgSupplierMaterialMappingService;
 import ru.perminov.tender.service.RequestService;
+import ru.perminov.tender.service.TenderService;
 
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +33,7 @@ public class RequestServiceImpl implements RequestService {
     private final RequestMaterialMapper requestMaterialMapper;
     private final OrgSupplierMaterialMappingService orgSupplierMaterialMappingService;
     private final WorkTypeRepository workTypeRepository;
+    private final TenderService tenderService;
 
     @Override
     @Transactional(readOnly = true)
@@ -109,6 +114,14 @@ public class RequestServiceImpl implements RequestService {
                 RequestMaterialDto materialDto = dto.requestMaterials().get(i);
                 log.info("Обрабатываем материал {}: id={}, materialLink={}", i, materialDto.id(), materialDto.materialLink());
                 
+                // Валидация цен и количества
+                if (materialDto.quantity() != null && materialDto.quantity() <= 0) {
+                    throw new RuntimeException("Количество должно быть больше 0");
+                }
+                if (materialDto.estimatePrice() != null && materialDto.estimatePrice() <= 0) {
+                    throw new RuntimeException("Сметная цена должна быть больше 0");
+                }
+                
                 try {
                     RequestMaterial material = requestMaterialMapper.toEntity(materialDto);
                     log.info("Материал создан через маппер: id={}, materialLink={}", material.getId(), material.getMaterialLink());
@@ -137,6 +150,41 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public void delete(UUID id) {
         requestRepository.deleteById(id);
+    }
+
+    @Override
+    public TenderDto createTenderFromRequest(UUID requestId) {
+        log.info("Создание тендера из заявки: {}", requestId);
+        
+        // Получаем заявку с материалами
+        Request request = requestRepository.findByIdWithMaterials(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Заявка не найдена"));
+        
+        // Проверяем, что заявка не пустая
+        if (request.getRequestMaterials() == null || request.getRequestMaterials().isEmpty()) {
+            throw new IllegalArgumentException("Заявка не содержит материалов");
+        }
+        
+        // Создаем DTO для тендера
+        TenderDto tenderDto = new TenderDto();
+        tenderDto.setRequestId(requestId);
+        tenderDto.setTitle("Тендер по заявке " + request.getRequestNumber());
+        tenderDto.setDescription("Тендер создан на основе заявки " + request.getRequestNumber());
+        tenderDto.setCustomerId(request.getOrganization().getId());
+        tenderDto.setCustomerName(request.getOrganization().getName());
+        // Устанавливаем срок подачи: если есть дата заявки, то +7 дней, иначе текущая дата + 7 дней
+        if (request.getDate() != null) {
+            tenderDto.setSubmissionDeadline(request.getDate().atStartOfDay().plusDays(7));
+        } else {
+            tenderDto.setSubmissionDeadline(java.time.LocalDateTime.now().plusDays(7));
+        }
+        
+        // Создаем тендер через сервис
+        TenderDto createdTender = tenderService.createTender(tenderDto);
+        
+        log.info("Тендер успешно создан из заявки. TenderId: {}", createdTender.getId());
+        
+        return createdTender;
     }
     
     /**

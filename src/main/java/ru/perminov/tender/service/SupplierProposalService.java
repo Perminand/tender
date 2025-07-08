@@ -5,6 +5,7 @@ import ru.perminov.tender.dto.tender.ProposalItemDto;
 import ru.perminov.tender.model.SupplierProposal;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 public interface SupplierProposalService {
@@ -34,4 +35,8 @@ public interface SupplierProposalService {
     List<ProposalItemDto> getProposalItems(UUID proposalId);
     
     SupplierProposalDto getProposalWithBestOffers(UUID proposalId);
+    
+    Map<UUID, Double> getBestPricesByTenderItems(UUID tenderId);
+    
+    List<SupplierProposalDto> getAllProposals();
 } 

@@ -14,6 +14,8 @@ public interface SupplierProposalMapper {
     @Mapping(target = "supplierId", source = "supplier.id")
     @Mapping(target = "supplierName", source = "supplier.name")
     @Mapping(target = "tenderId", source = "tender.id")
+    @Mapping(target = "tenderNumber", source = "tender.tenderNumber")
+    @Mapping(target = "tenderTitle", source = "tender.title")
     SupplierProposalDto toDto(SupplierProposal entity);
 
     SupplierProposal toEntity(SupplierProposalDto dto);

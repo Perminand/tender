@@ -26,10 +26,16 @@ import {
   ExpandMore as ExpandMoreIcon,
   TrendingUp as TrendingUpIcon,
   Visibility as ViewIcon,
-  Star as StarIcon
+  Star as StarIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
+import Dialog from '@mui/material/Dialog';
+import DialogTitle from '@mui/material/DialogTitle';
+import DialogContent from '@mui/material/DialogContent';
+import DialogContentText from '@mui/material/DialogContentText';
+import DialogActions from '@mui/material/DialogActions';
 
 interface TenderItemDto {
   id: string;
@@ -40,6 +46,7 @@ interface TenderItemDto {
   specifications: string;
   deliveryRequirements: string;
   estimatedPrice: number;
+  bestPrice?: number;
   materialName: string;
   materialTypeName: string;
 }
@@ -103,6 +110,11 @@ const TenderDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const [tender, setTender] = useState<TenderDto | null>(null);
   const [loading, setLoading] = useState(true);
+  const [closeDialogOpen, setCloseDialogOpen] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [startBiddingDialogOpen, setStartBiddingDialogOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -113,7 +125,7 @@ const TenderDetailPage: React.FC = () => {
   const loadTender = async () => {
     try {
       setLoading(true);
-      const response = await fnsApi.get(`/api/tenders/${id}/with-best-offers`);
+      const response = await fnsApi.get(`/api/tenders/${id}/with-best-prices-by-items`);
       setTender(response.data);
     } catch (error) {
       console.error('Error loading tender:', error);
@@ -157,6 +169,37 @@ const TenderDetailPage: React.FC = () => {
     }).format(price);
   };
 
+  const handleCloseBidding = async () => {
+    if (!id) return;
+    try {
+      await fnsApi.post(`/api/tenders/${id}/close`);
+      setCloseDialogOpen(false);
+      setError(null);
+      await loadTender();
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Ошибка закрытия приема предложений');
+    }
+  };
+
+  const handleCancelTender = async () => {
+    if (!id) return;
+    try {
+      await fnsApi.post(`/api/tenders/${id}/cancel`);
+      setCancelDialogOpen(false);
+      setError(null);
+      await loadTender();
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Ошибка отмены тендера');
+    }
+  };
+
+  const getProposalTotal = (proposal: any) =>
+    proposal.proposalItems
+      ? proposal.proposalItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0)
+      : 0;
+
+
+
   if (loading) {
     return <Typography>Загрузка...</Typography>;
   }
@@ -167,25 +210,77 @@ const TenderDetailPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/tenders')}
+          sx={{ minWidth: 0, p: 1 }}
+        />
         <Typography variant="h4" component="h1">
           Тендер №{tender.tenderNumber}
         </Typography>
-        <Box sx={{ display: 'flex', gap: 1 }}>
+      </Box>
+
+      <Card sx={{ mb: 3 }}>
+        <CardContent>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">Управление статусом тендера</Typography>
+            <Chip
+              label={getStatusLabel(tender.status)}
+              color={getStatusColor(tender.status)}
+            />
+          </Box>
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+            {/* Кнопки смены статуса */}
+            {tender.status === 'DRAFT' && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setPublishDialogOpen(true)}
+              >
+                Опубликовать тендер
+              </Button>
+            )}
+            {tender.status === 'PUBLISHED' && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={() => setStartBiddingDialogOpen(true)}
+              >
+                Принимать предложения
+              </Button>
+            )}
+            {tender.status === 'BIDDING' && (
           <Button
-            variant="outlined"
-            onClick={() => navigate(`/tenders/${id}/edit`)}
+                variant="contained"
+                color="primary"
+                onClick={() => setCloseDialogOpen(true)}
           >
-            Редактировать
+                Закрыть прием
           </Button>
+            )}
+            {tender.status === 'BIDDING' && (
           <Button
             variant="contained"
+                color="success"
             onClick={() => navigate(`/tenders/${id}/proposals/new`)}
           >
             Подать предложение
           </Button>
+            )}
+            {/* Кнопка отмены */}
+            {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
+              <Button
+                variant="outlined"
+                color="error"
+                onClick={() => setCancelDialogOpen(true)}
+              >
+                Отменить тендер
+              </Button>
+            )}
         </Box>
-      </Box>
+        </CardContent>
+      </Card>
 
       <Grid container spacing={3}>
         {/* Основная информация */}
@@ -196,10 +291,6 @@ const TenderDetailPage: React.FC = () => {
                 <Typography variant="h5" component="h2">
                   {tender.title}
                 </Typography>
-                <Chip
-                  label={getStatusLabel(tender.status)}
-                  color={getStatusColor(tender.status)}
-                />
               </Box>
 
               <Typography variant="body1" sx={{ mb: 2 }}>
@@ -332,7 +423,9 @@ const TenderDetailPage: React.FC = () => {
                         <TableCell>{item.unitName}</TableCell>
                         <TableCell>{formatPrice(item.estimatedPrice)}</TableCell>
                         <TableCell>
-                          {/* Здесь будет лучшая цена по позиции */}
+                          {item.bestPrice != null
+                            ? formatPrice(item.bestPrice)
+                            : ''}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -356,18 +449,27 @@ const TenderDetailPage: React.FC = () => {
                   <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                     <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                       <Typography sx={{ flex: 1 }}>
-                        {proposal.supplierName} - {formatPrice(proposal.totalPrice)}
+                        {proposal.supplierName} - {formatPrice(proposal.totalPrice != null ? proposal.totalPrice : getProposalTotal(proposal))}
                       </Typography>
                       {proposal.isBestOffer && (
                         <Tooltip title="Лучшее предложение">
                           <StarIcon color="primary" />
                         </Tooltip>
                       )}
-                      <Chip
-                        label={proposal.status}
-                        size="small"
-                        sx={{ ml: 2 }}
-                      />
+                      <Box
+                        sx={{
+                          ml: 2,
+                          px: 1.5,
+                          py: 0.5,
+                          borderRadius: 2,
+                          backgroundColor: proposal.status === 'SUBMITTED' ? 'info.light' : 'grey.200',
+                          display: 'inline-block',
+                          fontWeight: 500,
+                          fontSize: 14,
+                        }}
+                      >
+                        {getStatusLabel(proposal.status)}
+                      </Box>
                     </Box>
                   </AccordionSummary>
                   <AccordionDetails>
@@ -434,6 +536,126 @@ const TenderDetailPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
+
+      <Dialog
+        open={closeDialogOpen}
+        onClose={() => setCloseDialogOpen(false)}
+        aria-labelledby="close-bidding-dialog-title"
+        aria-describedby="close-bidding-dialog-description"
+      >
+        <DialogTitle id="close-bidding-dialog-title">Закрыть прием предложений</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="close-bidding-dialog-description">
+            Вы уверены, что хотите закрыть прием предложений? После этого новые предложения приниматься не будут.
+          </DialogContentText>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCloseDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleCloseBidding} color="secondary" autoFocus>
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog
+        open={cancelDialogOpen}
+        onClose={() => setCancelDialogOpen(false)}
+        aria-labelledby="cancel-tender-dialog-title"
+        aria-describedby="cancel-tender-dialog-description"
+      >
+        <DialogTitle id="cancel-tender-dialog-title">Отменить тендер</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="cancel-tender-dialog-description">
+            Вы уверены, что хотите отменить тендер? После отмены тендер будет недоступен для дальнейших действий.
+          </DialogContentText>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCancelDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleCancelTender} color="secondary" autoFocus>
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Модальное окно подтверждения публикации */}
+      <Dialog
+        open={publishDialogOpen}
+        onClose={() => setPublishDialogOpen(false)}
+        aria-labelledby="publish-tender-dialog-title"
+        aria-describedby="publish-tender-dialog-description"
+      >
+        <DialogTitle id="publish-tender-dialog-title">Опубликовать тендер</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="publish-tender-dialog-description">
+            Вы уверены, что хотите опубликовать тендер? После публикации его нельзя будет редактировать как черновик.
+          </DialogContentText>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPublishDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button
+            onClick={async () => {
+              try {
+                await fnsApi.post(`/api/tenders/${id}/publish`);
+                setPublishDialogOpen(false);
+                await loadTender();
+              } catch (e: any) {
+                setError(e.response?.data?.message || 'Ошибка публикации тендера');
+              }
+            }}
+            color="primary"
+            variant="contained"
+            autoFocus
+          >
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Модальное окно подтверждения открытия приема предложений */}
+      <Dialog
+        open={startBiddingDialogOpen}
+        onClose={() => setStartBiddingDialogOpen(false)}
+        aria-labelledby="start-bidding-dialog-title"
+        aria-describedby="start-bidding-dialog-description"
+      >
+        <DialogTitle id="start-bidding-dialog-title">Открыть прием предложений</DialogTitle>
+        <DialogContent>
+          <DialogContentText id="start-bidding-dialog-description">
+            Вы уверены, что хотите открыть прием предложений? После этого тендер перейдет в статус "Прием предложений" и станет доступен для подачи заявок.
+          </DialogContentText>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStartBiddingDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button
+            onClick={async () => {
+              try {
+                await fnsApi.post(`/api/tenders/${id}/start-bidding`);
+                setStartBiddingDialogOpen(false);
+                await loadTender();
+              } catch (e: any) {
+                setError(e.response?.data?.message || 'Ошибка открытия приема предложений');
+              }
+            }}
+            color="primary"
+            variant="contained"
+            autoFocus
+          >
+            Подтвердить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

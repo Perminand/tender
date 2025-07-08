@@ -24,7 +24,6 @@ import ru.perminov.tender.repository.MaterialRepository;
 import ru.perminov.tender.repository.MaterialTypeRepository;
 import ru.perminov.tender.repository.UnitRepository;
 import ru.perminov.tender.service.MaterialService;
-import ru.perminov.tender.exception.NotFoundException;
 
 import java.io.InputStream;
 import java.util.Collections;
@@ -61,7 +60,7 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     public MaterialDto update(UUID id, MaterialDtoUpdate materialDtoUpdate) {
         Material existingMaterial = materialRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Материал не найден по id: " + id));
+                .orElseThrow(() -> new RuntimeException("Material not found with id: " + id));
 
         materialMapper.updateEntityFromDto(materialDtoUpdate, existingMaterial);
         updateRelations(existingMaterial, materialDtoUpdate.categoryId(), materialDtoUpdate.materialTypeId(), materialDtoUpdate.unitIds());
@@ -73,7 +72,7 @@ public class MaterialServiceImpl implements MaterialService {
     private void updateRelations(Material material, UUID categoryId, UUID materialTypeId, Set<UUID> unitIds) {
         if (categoryId != null) {
             Category category = categoryRepository.findById(categoryId)
-                    .orElseThrow(() -> new NotFoundException("Категория не найдена по id: " + categoryId));
+                    .orElseThrow(() -> new RuntimeException("Category not found with id: " + categoryId));
             material.setCategory(category);
         } else {
             material.setCategory(null);
@@ -81,7 +80,7 @@ public class MaterialServiceImpl implements MaterialService {
 
         if (materialTypeId != null) {
             MaterialType materialType = materialTypeRepository.findById(materialTypeId)
-                    .orElseThrow(() -> new NotFoundException("Тип материала не найден по id: " + materialTypeId));
+                    .orElseThrow(() -> new RuntimeException("MaterialType not found with id: " + materialTypeId));
             material.setMaterialType(materialType);
         } else {
             material.setMaterialType(null);
@@ -90,7 +89,7 @@ public class MaterialServiceImpl implements MaterialService {
         if (unitIds != null && !unitIds.isEmpty()) {
             List<Unit> units = unitRepository.findAllById(unitIds);
             if (units.size() != unitIds.size()) {
-                throw new NotFoundException("Одна или несколько единиц измерения не найдены");
+                throw new RuntimeException("One or more units not found");
             }
             material.setUnits(new HashSet<>(units));
         } else {
@@ -101,7 +100,7 @@ public class MaterialServiceImpl implements MaterialService {
     @Override
     public void delete(UUID id) {
         if (!materialRepository.existsById(id)) {
-            throw new NotFoundException("Материал не найден по id: " + id);
+            throw new RuntimeException("Material not found with id: " + id);
         }
         materialRepository.deleteById(id);
     }
@@ -110,7 +109,7 @@ public class MaterialServiceImpl implements MaterialService {
     @Transactional(readOnly = true)
     public MaterialDto getById(UUID id) {
         Material material = materialRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Материал не найден по id: " + id));
+                .orElseThrow(() -> new RuntimeException("Material not found with id: " + id));
         return materialMapper.toDto(material);
     }
 

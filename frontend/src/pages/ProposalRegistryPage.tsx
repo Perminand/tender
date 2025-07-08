@@ -36,8 +36,9 @@ import {
   Close as CloseIcon,
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
+import Pagination from '@mui/material/Pagination';
 
 interface ProposalDto {
   id: string;
@@ -63,6 +64,8 @@ const ProposalRegistryPage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [supplierFilter, setSupplierFilter] = useState<string>('');
   const [suppliers, setSuppliers] = useState<Array<{id: string, name: string}>>([]);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -172,6 +175,9 @@ const ProposalRegistryPage: React.FC = () => {
     return statusMatch && supplierMatch;
   });
 
+  const sortedProposals = [...filteredProposals].sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
+  const paginatedProposals = sortedProposals.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   if (loading) {
     return <Typography>Загрузка...</Typography>;
   }
@@ -239,129 +245,95 @@ const ProposalRegistryPage: React.FC = () => {
       </Card>
 
       {/* Список предложений */}
-      <Grid container spacing={3}>
-        {filteredProposals.map((proposal) => (
-          <Grid item xs={12} md={6} lg={4} key={proposal.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Typography variant="h6" component="h2" sx={{ flex: 1 }}>
-                    {proposal.tenderTitle}
-                  </Typography>
-                  <Chip
-                    label={getStatusLabel(proposal.status)}
-                    color={getStatusColor(proposal.status)}
-                    size="small"
-                  />
-                </Box>
-
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  №{proposal.proposalNumber}
-                </Typography>
-
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Поставщик: {proposal.supplierName}
-                </Typography>
-
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Тендер: №{proposal.tenderNumber}
-                </Typography>
-
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Дата подачи: {formatDate(proposal.submissionDate)}
-                </Typography>
-
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="body2" sx={{ mr: 1 }}>
-                    Цена: {formatPrice(proposal.totalPrice)}
-                  </Typography>
-                  {proposal.isBestOffer && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-                      <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5, color: 'success.main' }} />
-                      <Typography variant="body2" color="success.main">
-                        Лучшее
-                      </Typography>
-                    </Box>
-                  )}
-                </Box>
-
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+      <TableContainer component={Paper} sx={{ mb: 3 }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>№</TableCell>
+              <TableCell>Тендер</TableCell>
+              <TableCell>Поставщик</TableCell>
+              <TableCell>Дата подачи</TableCell>
+              <TableCell>Статус</TableCell>
+              <TableCell>Сумма</TableCell>
+              <TableCell>Действия</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {paginatedProposals.map((proposal, idx) => (
+              <TableRow key={proposal.id} hover>
+                <TableCell>{(page - 1) * rowsPerPage + idx + 1}</TableCell>
+                <TableCell>
+                  <Link to={`/tenders/${proposal.tenderId}`} style={{ textDecoration: 'none', color: '#1976d2' }}>
+                    {proposal.tenderTitle || proposal.tenderNumber}
+                  </Link>
+                </TableCell>
+                <TableCell>{proposal.supplierName}</TableCell>
+                <TableCell>{formatDate(proposal.submissionDate)}</TableCell>
+                <TableCell>
+                  <Chip label={getStatusLabel(proposal.status)} color={getStatusColor(proposal.status)} size="small" />
+                </TableCell>
+                <TableCell>{formatPrice(proposal.totalPrice)}</TableCell>
+                <TableCell>
                   <Tooltip title="Просмотр">
-                    <IconButton
-                      size="small"
-                      onClick={() => navigate(`/proposals/${proposal.id}`)}
-                    >
+                    <IconButton size="small" onClick={() => navigate(`/proposals/${proposal.id}`)}>
                       <ViewIcon />
                     </IconButton>
                   </Tooltip>
-
                   {proposal.status === 'DRAFT' && (
-                    <>
-                      <Tooltip title="Редактировать">
-                        <IconButton
-                          size="small"
-                          onClick={() => navigate(`/proposals/${proposal.id}/edit`)}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-
-                      <Tooltip title="Подать">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => handleSubmit(proposal.id)}
-                        >
-                          <SendIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </>
+                    <Tooltip title="Редактировать">
+                      <IconButton size="small" onClick={() => navigate(`/proposals/${proposal.id}/edit`)}>
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
                   )}
-
-                  {proposal.status === 'SUBMITTED' && (
-                    <>
-                      <Tooltip title="Принять">
-                        <IconButton
-                          size="small"
-                          color="success"
-                          onClick={() => handleAccept(proposal.id)}
-                        >
-                          <CheckIcon />
-                        </IconButton>
-                      </Tooltip>
-
-                      <Tooltip title="Отклонить">
-                        <IconButton
-                          size="small"
-                          color="error"
-                          onClick={() => handleReject(proposal.id)}
-                        >
-                          <CloseIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-
                   {proposal.status === 'DRAFT' && (
                     <Tooltip title="Удалить">
-                      <IconButton
-                        size="small"
-                        color="error"
-                        onClick={() => {
-                          setSelectedProposalId(proposal.id);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
+                      <IconButton size="small" color="error" onClick={() => { setSelectedProposalId(proposal.id); setDeleteDialogOpen(true); }}>
                         <DeleteIcon />
                       </IconButton>
                     </Tooltip>
                   )}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                  {proposal.status === 'DRAFT' && (
+                    <Tooltip title="Подать">
+                      <IconButton size="small" color="primary" onClick={() => handleSubmit(proposal.id)}>
+                        <SendIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {proposal.status === 'SUBMITTED' && (
+                    <Tooltip title="Принять">
+                      <IconButton size="small" color="success" onClick={() => handleAccept(proposal.id)}>
+                        <CheckIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  {proposal.status === 'SUBMITTED' && (
+                    <Tooltip title="Отклонить">
+                      <IconButton size="small" color="error" onClick={() => handleReject(proposal.id)}>
+                        <CloseIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+            {paginatedProposals.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={7} align="center">Нет предложений</TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+
+      <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+        <Pagination
+          count={Math.ceil(sortedProposals.length / rowsPerPage)}
+          page={page}
+          onChange={(_, value) => setPage(value)}
+          color="primary"
+        />
+      </Box>
 
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Подтверждение удаления</DialogTitle>
