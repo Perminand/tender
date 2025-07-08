@@ -20,4 +20,5 @@ public interface CompanyRepository extends JpaRepository<Company, UUID> {
 
     Optional<Company> findByEmail(String email);
     
+    long countByRole(CompanyRole role);
 } 

@@ -27,7 +27,8 @@ import {
   TrendingUp as TrendingUpIcon,
   Visibility as ViewIcon,
   Star as StarIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
@@ -36,6 +37,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
+import PriceAnalysisSummary from '../components/PriceAnalysisSummary';
 
 interface TenderItemDto {
   id: string;
@@ -268,6 +270,17 @@ const TenderDetailPage: React.FC = () => {
             Подать предложение
           </Button>
             )}
+            {/* Кнопка анализа цен */}
+            {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+              <Button
+                variant="outlined"
+                color="info"
+                startIcon={<AssessmentIcon />}
+                onClick={() => navigate(`/tenders/${id}/price-analysis`)}
+              >
+                Анализ цен
+              </Button>
+            )}
             {/* Кнопка отмены */}
             {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
               <Button
@@ -391,6 +404,17 @@ const TenderDetailPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+
+        {/* Анализ цен */}
+        {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+          <Grid item xs={12}>
+            <PriceAnalysisSummary
+              tenderId={tender.id}
+              tenderTitle={tender.title}
+              tenderNumber={tender.tenderNumber}
+            />
+          </Grid>
+        )}
 
         {/* Позиции тендера */}
         <Grid item xs={12}>

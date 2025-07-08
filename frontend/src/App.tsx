@@ -22,6 +22,8 @@ import ProposalEditPage from './pages/ProposalEditPage';
 import ProposalRegistryPage from './pages/ProposalRegistryPage';
 import ProposalDetailPage from './pages/ProposalDetailPage';
 import NotificationListPage from './pages/NotificationListPage';
+import AnalyticsPage from './pages/AnalyticsPage';
+import PriceAnalysisPage from './pages/PriceAnalysisPage';
 
 const App: React.FC = () => (
   <Layout>
@@ -58,9 +60,11 @@ const App: React.FC = () => (
       <Route path="/tenders/:id" element={<TenderDetailPage />} />
       <Route path="/tenders/:id/edit" element={<TenderEditPage />} />
       <Route path="/tenders/:tenderId/proposals/new" element={<ProposalEditPage />} />
+      <Route path="/tenders/:tenderId/price-analysis" element={<PriceAnalysisPage />} />
       <Route path="/proposals" element={<ProposalRegistryPage />} />
       <Route path="/proposals/:id" element={<ProposalDetailPage />} />
       <Route path="/notifications" element={<NotificationListPage />} />
+      <Route path="/analytics" element={<AnalyticsPage />} />
     </Routes>
   </Layout>
 );

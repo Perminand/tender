@@ -123,4 +123,34 @@ public class TenderController {
         log.info("Получен POST-запрос: отменить тендер. id={}", id);
         return ResponseEntity.ok(tenderService.cancelTender(id));
     }
+
+    @GetMapping("/{id}/price-analysis")
+    public ResponseEntity<ru.perminov.tender.dto.tender.PriceAnalysisDto> getTenderPriceAnalysis(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: анализ цен для тендера id={}", id);
+        return ResponseEntity.ok(tenderService.getTenderPriceAnalysis(id));
+    }
+
+    @GetMapping("/{id}/best-prices")
+    public ResponseEntity<List<ru.perminov.tender.dto.tender.SupplierPriceDto>> getTenderBestPrices(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: лучшие цены для тендера id={}", id);
+        return ResponseEntity.ok(tenderService.getTenderBestPrices(id));
+    }
+
+    @GetMapping("/{id}/price-comparison")
+    public ResponseEntity<List<ru.perminov.tender.dto.tender.SupplierPriceDto>> getTenderPriceComparison(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: сравнительная таблица цен для тендера id={}", id);
+        return ResponseEntity.ok(tenderService.getTenderPriceComparison(id));
+    }
+
+    @GetMapping("/{id}/savings")
+    public ResponseEntity<Double> getTenderSavings(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: экономия по тендеру id={}", id);
+        return ResponseEntity.ok(tenderService.getTenderSavings(id));
+    }
+
+    @GetMapping("/{id}/recommendations")
+    public ResponseEntity<List<String>> getTenderRecommendations(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: рекомендации по тендеру id={}", id);
+        return ResponseEntity.ok(tenderService.getTenderRecommendations(id));
+    }
 } 

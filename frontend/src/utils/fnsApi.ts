@@ -59,4 +59,37 @@ export const searchCompanyByInn = async (inn: string): Promise<CompanyData> => {
     console.error('Ошибка при поиске компании:', error);
     throw error;
   }
+};
+
+export interface AnalyticsStats {
+  totalTenders: number;
+  tendersWithProposals: number;
+  tendersWithoutProposals: number;
+  totalProposals: number;
+  averageProposalsPerTender: number;
+  activeTenders: number;
+  completedTenders: number;
+  cancelledTenders: number;
+}
+
+export const getAnalyticsStats = async (): Promise<AnalyticsStats> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/analytics/stats`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Ошибка при получении статистики аналитики');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Ошибка при получении статистики аналитики:', error);
+    throw error;
+  }
 }; 

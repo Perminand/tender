@@ -43,4 +43,15 @@ public interface TenderService {
     TenderDto completeTender(UUID id);
 
     TenderDto cancelTender(UUID id);
+
+    // Методы для анализа цен
+    ru.perminov.tender.dto.tender.PriceAnalysisDto getTenderPriceAnalysis(UUID id);
+    
+    List<ru.perminov.tender.dto.tender.SupplierPriceDto> getTenderBestPrices(UUID id);
+    
+    List<ru.perminov.tender.dto.tender.SupplierPriceDto> getTenderPriceComparison(UUID id);
+    
+    Double getTenderSavings(UUID id);
+    
+    List<String> getTenderRecommendations(UUID id);
 } 

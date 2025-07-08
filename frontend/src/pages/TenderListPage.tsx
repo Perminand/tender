@@ -35,7 +35,8 @@ import {
   Publish as PublishIcon,
   Close as CloseIcon,
   TrendingUp as TrendingUpIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Assessment as AssessmentIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
@@ -466,6 +467,18 @@ const TenderListPage: React.FC = () => {
                         <PublishIcon />
                     </IconButton>
                   </Tooltip>
+                  )}
+
+                  {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+                    <Tooltip title="Анализ цен">
+                      <IconButton
+                        size="small"
+                        color="info"
+                        onClick={() => navigate(`/tenders/${tender.id}/price-analysis`)}
+                      >
+                        <AssessmentIcon />
+                      </IconButton>
+                    </Tooltip>
                   )}
                 </Box>
               </CardContent>

@@ -8,7 +8,7 @@ import { Link as RouterLink } from 'react-router-dom';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <Box sx={{ flexGrow: 1 }}>
-    <AppBar position="static">
+    <AppBar position="fixed" sx={{ boxShadow: 3 }}>
       <Toolbar>
         <Typography variant="h6" component={RouterLink} to="/" sx={{ flexGrow: 1, color: 'inherit', textDecoration: 'none' }}>
           Тендерная система
@@ -19,9 +19,10 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         <Button color="inherit" component={RouterLink} to="/notifications">Уведомления</Button>
         <Button color="inherit" component={RouterLink} to="/reference">Справочники</Button>
         <Button color="inherit" component={RouterLink} to="/settings">Настройки</Button>
+        <Button color="inherit" component={RouterLink} to="/analytics">Аналитика</Button>
       </Toolbar>
     </AppBar>
-    <Box sx={{ p: 3 }}>{children}</Box>
+    <Box sx={{ p: 3, mt: 8 }}>{children}</Box>
   </Box>
 );
 

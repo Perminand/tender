@@ -21,6 +21,7 @@ import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.TenderService;
 import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
+import ru.perminov.tender.service.PriceAnalysisService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +42,7 @@ public class TenderServiceImpl implements TenderService {
     private final CompanyRepository companyRepository;
     private final SupplierProposalService supplierProposalService;
     private final NotificationService notificationService;
+    private final PriceAnalysisService priceAnalysisService;
     private final TenderMapper tenderMapper;
     private final TenderItemMapper tenderItemMapper;
 
@@ -341,6 +343,37 @@ public class TenderServiceImpl implements TenderService {
             
             tenderItemRepository.save(tenderItem);
         }
+    }
+
+    // Методы для анализа цен
+    @Override
+    public ru.perminov.tender.dto.tender.PriceAnalysisDto getTenderPriceAnalysis(UUID id) {
+        log.info("Получен запрос на анализ цен для тендера: {}", id);
+        return priceAnalysisService.getPriceAnalysis(id);
+    }
+
+    @Override
+    public List<ru.perminov.tender.dto.tender.SupplierPriceDto> getTenderBestPrices(UUID id) {
+        log.info("Получен запрос на лучшие цены для тендера: {}", id);
+        return priceAnalysisService.getBestPricesByItems(id);
+    }
+
+    @Override
+    public List<ru.perminov.tender.dto.tender.SupplierPriceDto> getTenderPriceComparison(UUID id) {
+        log.info("Получен запрос на сравнительную таблицу цен для тендера: {}", id);
+        return priceAnalysisService.getPriceComparison(id);
+    }
+
+    @Override
+    public Double getTenderSavings(UUID id) {
+        log.info("Получен запрос на расчет экономии для тендера: {}", id);
+        return priceAnalysisService.calculateSavings(id);
+    }
+
+    @Override
+    public List<String> getTenderRecommendations(UUID id) {
+        log.info("Получен запрос на рекомендации для тендера: {}", id);
+        return priceAnalysisService.getSupplierRecommendations(id);
     }
     
 } 

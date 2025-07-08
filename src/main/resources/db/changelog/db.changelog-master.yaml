@@ -65,3 +65,5 @@ databaseChangeLog:
       file: db/changelog/data/V001_insert_test_data.sql
   - include:
       file: db/changelog/changes/V035_add_send_notifications_to_companies.sql
+  - include:
+      file: db/changelog/changes/V036_add_procurement_management_tables.sql
