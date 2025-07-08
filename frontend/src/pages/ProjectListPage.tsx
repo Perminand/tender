@@ -18,7 +18,8 @@ import {
   TableRow,
   TextField,
   Typography,
-  Paper
+  Paper,
+  Pagination
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +38,8 @@ const ProjectListPage: React.FC = () => {
   const [formData, setFormData] = useState({ name: '', description: '' });
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -165,6 +168,8 @@ const ProjectListPage: React.FC = () => {
     project.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const paginatedProjects = filteredProjects.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   if (loading) {
     return <div>Загрузка...</div>;
   }
@@ -238,7 +243,7 @@ const ProjectListPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredProjects.map((project) => (
+                  {paginatedProjects.map((project) => (
                     <TableRow key={project.id}>
                       <TableCell>{project.name}</TableCell>
                       <TableCell>{project.description}</TableCell>
@@ -261,6 +266,15 @@ const ProjectListPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Pagination
+                count={Math.ceil(filteredProjects.length / rowsPerPage)}
+                page={page}
+                onChange={(_, value) => setPage(value)}
+                color="primary"
+              />
+            </Box>
           </CardContent>
         </Card>
 

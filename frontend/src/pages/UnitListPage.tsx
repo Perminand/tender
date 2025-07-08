@@ -20,7 +20,8 @@ import {
   Typography,
   Paper,
   Snackbar,
-  Alert
+  Alert,
+  Pagination
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
@@ -43,6 +44,8 @@ const UnitListPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importLog, setImportLog] = useState<{imported: number, errors: {row: number, message: string}[]} | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   const fetchUnits = async () => {
     try {
@@ -177,6 +180,8 @@ const UnitListPage: React.FC = () => {
     unit.shortName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const paginatedUnits = filteredUnits.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   if (loading) {
     return <div>Загрузка...</div>;
   }
@@ -250,7 +255,7 @@ const UnitListPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filteredUnits.map((unit) => (
+                  {paginatedUnits.map((unit) => (
                     <TableRow key={unit.id}>
                       <TableCell>{unit.name}</TableCell>
                       <TableCell>{unit.shortName}</TableCell>
@@ -273,6 +278,15 @@ const UnitListPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+              <Pagination
+                count={Math.ceil(filteredUnits.length / rowsPerPage)}
+                page={page}
+                onChange={(_, value) => setPage(value)}
+                color="primary"
+              />
+            </Box>
           </CardContent>
         </Card>
 

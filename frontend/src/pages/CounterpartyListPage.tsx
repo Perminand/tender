@@ -7,6 +7,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
+import Pagination from '@mui/material/Pagination';
 
 interface Counterparty {
   id: number;
@@ -28,6 +29,8 @@ const CounterpartyListPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState<{open: boolean, message: string, severity: 'success' | 'error'}>({open: false, message: '', severity: 'success'});
   const [importLog, setImportLog] = useState<{imported: number, errors: {row: number, message: string}[]} | null>(null);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   useEffect(() => {
     const fetchCounterparties = async () => {
@@ -124,6 +127,8 @@ const CounterpartyListPage: React.FC = () => {
     }
   };
 
+  const paginatedCounterparties = filteredCounterparties.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -198,7 +203,7 @@ const CounterpartyListPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredCounterparties.map((counterparty) => (
+              {paginatedCounterparties.map((counterparty) => (
                 <TableRow key={counterparty.id}>
                   <TableCell>{counterparty.shortName || counterparty.name}</TableCell>
                   <TableCell>{counterparty.legalName}</TableCell>
@@ -227,6 +232,15 @@ const CounterpartyListPage: React.FC = () => {
             </Typography>
           </Box>
         )}
+
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Pagination
+            count={Math.ceil(filteredCounterparties.length / rowsPerPage)}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+          />
+        </Box>
 
         <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({...snackbar, open: false})}>
           <Alert onClose={() => setSnackbar({...snackbar, open: false})} severity={snackbar.severity} sx={{ width: '100%' }}>

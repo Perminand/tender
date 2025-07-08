@@ -11,6 +11,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import Pagination from '@mui/material/Pagination';
 
 interface Warehouse {
   id: string;
@@ -38,6 +39,8 @@ const WarehouseListPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 50;
 
   const fetchWarehouses = async () => {
     try {
@@ -155,6 +158,8 @@ const WarehouseListPage: React.FC = () => {
     warehouse.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const paginatedWarehouses = filteredWarehouses.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
   if (loading) {
     return (
       <Container maxWidth="lg">
@@ -233,7 +238,7 @@ const WarehouseListPage: React.FC = () => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredWarehouses.map((warehouse) => (
+              {paginatedWarehouses.map((warehouse) => (
                 <TableRow key={warehouse.id}>
                   <TableCell>{warehouse.name}</TableCell>
                   <TableCell>{warehouse.project?.name || 'Не указан'}</TableCell>
@@ -256,6 +261,14 @@ const WarehouseListPage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+          <Pagination
+            count={Math.ceil(filteredWarehouses.length / rowsPerPage)}
+            page={page}
+            onChange={(_, value) => setPage(value)}
+            color="primary"
+          />
+        </Box>
       </Box>
 
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="sm" fullWidth>
