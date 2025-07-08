@@ -44,7 +44,11 @@ public record CompanyDtoNew(
 
     List<BankAccountDto> bankDetails,
 
-    List<ContactPersonDtoNew> contactPersons
+    List<ContactPersonDtoNew> contactPersons,
+
+    String role,
+
+    Boolean sendNotifications
 
 ) {
     public CompanyDtoNew {

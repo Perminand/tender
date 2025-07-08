@@ -26,6 +26,7 @@ import ru.perminov.tender.repository.company.ContactPersonRepository;
 import ru.perminov.tender.repository.company.ContactRepository;
 import ru.perminov.tender.repository.company.ContactTypeRepository;
 import ru.perminov.tender.service.company.CompanyService;
+import ru.perminov.tender.model.company.CompanyRole;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Row;
@@ -57,6 +58,9 @@ public class CompanyServiceImpl implements CompanyService {
     @Transactional
     public CompanyDto create(CompanyDtoNew companyDtoNew) {
         Company company = companyMapper.toCompany(companyDtoNew);
+        if (companyDtoNew.role() != null) {
+            company.setRole(ru.perminov.tender.model.company.CompanyRole.valueOf(companyDtoNew.role()));
+        }
 
         // Устанавливаем тип компании
         CompanyType companyType = typeCompanyRepository.findById(UUID.fromString(companyDtoNew.typeId()))
@@ -91,6 +95,9 @@ public class CompanyServiceImpl implements CompanyService {
                 .orElseThrow(() -> new IllegalArgumentException("Company not found with id: " + id));
 
         companyMapper.updateCompanyFromDto(companyDtoUpdate, company);
+        if (companyDtoUpdate.role() != null) {
+            company.setRole(ru.perminov.tender.model.company.CompanyRole.valueOf(companyDtoUpdate.role()));
+        }
 
         // Обработка банковских счетов
         if (companyDtoUpdate.bankDetails() != null) {
@@ -134,7 +141,12 @@ public class CompanyServiceImpl implements CompanyService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CompanyDto> getAll() {
+    public List<CompanyDto> getAll(String role) {
+        if (role != null && !role.isEmpty()) {
+            return companyRepository.findByRole(CompanyRole.valueOf(role)).stream()
+                    .map(companyMapper::toCompanyDto)
+                    .toList();
+        }
         return companyRepository.findAll().stream()
                 .map(companyMapper::toCompanyDto)
                 .toList();

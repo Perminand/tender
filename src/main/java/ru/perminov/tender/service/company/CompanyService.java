@@ -19,7 +19,7 @@ public interface CompanyService {
 
     CompanyDtoForUpdate getById(UUID id);
 
-    List<CompanyDto> getAll();
+    List<CompanyDto> getAll(String role);
 
     CompanyDto getByShortName(String shortName);
 

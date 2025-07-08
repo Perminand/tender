@@ -20,6 +20,7 @@ import ru.perminov.tender.repository.TenderRepository;
 import ru.perminov.tender.repository.TenderItemRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.SupplierProposalService;
+import ru.perminov.tender.service.NotificationService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,6 +42,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     private final TenderRepository tenderRepository;
     private final TenderItemRepository tenderItemRepository;
     private final CompanyRepository companyRepository;
+    private final NotificationService notificationService;
     private final SupplierProposalMapper supplierProposalMapper;
     private final ProposalItemMapper proposalItemMapper;
 
@@ -212,6 +214,13 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         double total = items.stream().filter(i -> i.getTotalPrice() != null).mapToDouble(ProposalItem::getTotalPrice).sum();
         savedProposal.setTotalPrice(total);
         supplierProposalRepository.save(savedProposal);
+        
+        // Отправляем уведомление о получении предложения
+        try {
+            notificationService.notifyProposalSubmitted(savedProposal);
+        } catch (Exception e) {
+            log.error("Ошибка отправки уведомления о получении предложения: {}", savedProposal.getId(), e);
+        }
         
         return supplierProposalMapper.toDto(savedProposal);
     }

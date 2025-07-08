@@ -2,6 +2,7 @@ package ru.perminov.tender.service;
 
 import ru.perminov.tender.dto.FnsApiKeyDto;
 import ru.perminov.tender.dto.SettingsDto;
+import ru.perminov.tender.dto.EmailSettingsDto;
 
 public interface SettingsService {
     
@@ -12,4 +13,10 @@ public interface SettingsService {
     String getFnsApiKey();
     
     String getFnsApiUsage();
+    
+    EmailSettingsDto getEmailSettings();
+    
+    void saveEmailSettings(EmailSettingsDto emailSettings);
+    
+    boolean testEmailConnection(EmailSettingsDto emailSettings);
 } 

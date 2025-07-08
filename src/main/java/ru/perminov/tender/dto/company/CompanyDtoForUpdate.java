@@ -25,6 +25,8 @@ public record CompanyDtoForUpdate(
 
         CompanyTypeDto companyType,
 
+        String role,
+
         List<ContactPersonDto> contactPersons,
 
         String director,

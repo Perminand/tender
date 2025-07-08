@@ -38,7 +38,11 @@ public record CompanyDtoUpdate(
 
         List<BankAccountDto> bankDetails,
 
-        List<ContactPersonDtoUpdate> contactPersons
+        List<ContactPersonDtoUpdate> contactPersons,
+
+        String role,
+
+        Boolean sendNotifications
 
 ) {
     public CompanyDtoUpdate {

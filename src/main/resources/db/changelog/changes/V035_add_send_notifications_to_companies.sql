@@ -1,0 +1,1 @@
+ALTER TABLE companies ADD COLUMN send_notifications BOOLEAN DEFAULT TRUE NOT NULL; 

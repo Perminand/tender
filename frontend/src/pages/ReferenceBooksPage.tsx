@@ -7,7 +7,8 @@ import {
   Typography,
   Container,
   Divider,
-  Paper
+  Paper,
+  Button
 } from '@mui/material';
 import {
   Category as CategoryIcon,
@@ -18,7 +19,12 @@ import {
   ShoppingCart as ShoppingCartIcon,
   Architecture as ArchitectureIcon,
   Label as LabelIcon,
-  Warehouse as WarehouseIcon
+  Warehouse as WarehouseIcon,
+  LocalShipping as LocalShippingIcon,
+  Person as PersonIcon,
+  Settings as SettingsIcon,
+  Store as StoreIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -80,6 +86,65 @@ const referenceGroups: ReferenceGroup[] = [
 const ReferenceBooksPage: React.FC = () => {
   const navigate = useNavigate();
 
+  const referenceItems = [
+    {
+      title: 'Контрагенты',
+      description: 'Управление поставщиками и заказчиками',
+      icon: <BusinessIcon sx={{ fontSize: 40 }} />,
+      color: '#1976d2',
+      path: '/counterparties'
+    },
+    {
+      title: 'Материалы',
+      description: 'Справочник материалов и товаров',
+      icon: <InventoryIcon sx={{ fontSize: 40 }} />,
+      color: '#388e3c',
+      path: '/materials'
+    },
+    {
+      title: 'Категории',
+      description: 'Категории материалов',
+      icon: <CategoryIcon sx={{ fontSize: 40 }} />,
+      color: '#f57c00',
+      path: '/reference/categories'
+    },
+    {
+      title: 'Типы материалов',
+      description: 'Типы и виды материалов',
+      icon: <LocalShippingIcon sx={{ fontSize: 40 }} />,
+      color: '#7b1fa2',
+      path: '/reference/material-types'
+    },
+    {
+      title: 'Единицы измерения',
+      description: 'Единицы измерения материалов',
+      icon: <SettingsIcon sx={{ fontSize: 40 }} />,
+      color: '#d32f2f',
+      path: '/reference/units'
+    },
+    {
+      title: 'Склады',
+      description: 'Управление складами',
+      icon: <StoreIcon sx={{ fontSize: 40 }} />,
+      color: '#1976d2',
+      path: '/reference/warehouses'
+    },
+    {
+      title: 'Проекты',
+      description: 'Управление проектами',
+      icon: <AssignmentIcon sx={{ fontSize: 40 }} />,
+      color: '#388e3c',
+      path: '/reference/projects'
+    },
+    {
+      title: 'Типы контактов',
+      description: 'Типы контактной информации',
+      icon: <PersonIcon sx={{ fontSize: 40 }} />,
+      color: '#f57c00',
+      path: '/reference/contact-types'
+    }
+  ];
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -135,6 +200,35 @@ const ReferenceBooksPage: React.FC = () => {
                         </Grid>
                       </Paper>
                 ))}
+      </Box>
+
+      {/* Быстрые действия */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Быстрые действия
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+          <Button 
+            variant="contained" 
+            color="primary"
+            onClick={() => navigate('/counterparties/new?role=SUPPLIER')}
+          >
+            Добавить поставщика
+          </Button>
+          <Button 
+            variant="contained" 
+            color="secondary"
+            onClick={() => navigate('/counterparties/new?role=CUSTOMER')}
+          >
+            Добавить заказчика
+          </Button>
+          <Button 
+            variant="outlined" 
+            onClick={() => navigate('/materials/new')}
+          >
+            Добавить материал
+          </Button>
+        </Box>
       </Box>
     </Container>
   );

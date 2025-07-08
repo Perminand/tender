@@ -169,7 +169,7 @@ export default function RequestEditPage() {
   };
 
   useEffect(() => {
-    axios.get('/api/companies').then(res => setCompanies(res.data));
+    axios.get('/api/companies?role=CUSTOMER').then(res => setCompanies(res.data));
     axios.get('/api/projects').then(res => setProjects(res.data));
     fetchMaterials();
     axios.get('/api/units').then(res => setUnits(res.data));
@@ -872,28 +872,23 @@ export default function RequestEditPage() {
           </Grid>
         </Grid>
         <Autocomplete
-          value={companies.find(c => c.id === request.organization?.id) || null}
-          onChange={(_, value) => {
-            if (value && value.id === 'CREATE_NEW') {
-              window.open('/reference/counterparties/new', '_blank');
+          options={companies.map(c => ({ label: c.shortName || c.name, id: c.id }))}
+          getOptionLabel={option => typeof option === 'string' ? option : option.label}
+          value={
+            request.organization && companies.find(c => c.id === request.organization.id)
+              ? { label: companies.find(c => c.id === request.organization.id)!.shortName || companies.find(c => c.id === request.organization.id)!.name, id: request.organization.id }
+              : null
+          }
+          onChange={(event, newValue) => {
+            if (newValue && typeof newValue === 'object') {
+              const company = companies.find(c => c.id === newValue.id) || null;
+              setRequest(prev => ({ ...prev, organization: company }));
             } else {
-              handleSelectChange('organization', value ? value.id : '');
+              setRequest(prev => ({ ...prev, organization: null }));
             }
           }}
-          options={companies}
-          filterOptions={(options, state) => {
-            const filtered = options.filter(option =>
-              (option.legalName || option.shortName || option.name).toLowerCase().includes(state.inputValue.toLowerCase())
-            );
-            if (state.inputValue && filtered.length === 0) {
-              return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` }];
-            }
-            return filtered;
-          }}
-          getOptionLabel={(option: Company) => option ? (option.legalName || option.shortName || option.name) : ''}
-          isOptionEqualToValue={(option: Company, value: Company) => option.id === value.id}
-          renderInput={params => (
-            <TextField {...params} label="Организация" required />
+          renderInput={(params) => (
+            <TextField {...params} label="Организация (заказчик)" variant="outlined" required />
           )}
         />
         <Autocomplete

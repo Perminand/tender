@@ -56,4 +56,12 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/V031_create_tenders_table.sql
   - include:
+      file: db/changelog/changes/V032_create_notifications_table.sql
+  - include:
+      file: db/changelog/changes/V033_add_email_settings.sql
+  - include:
+      file: db/changelog/changes/V034_add_company_role.sql
+  - include:
       file: db/changelog/data/V001_insert_test_data.sql
+  - include:
+      file: db/changelog/changes/V035_add_send_notifications_to_companies.sql

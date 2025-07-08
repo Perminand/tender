@@ -25,5 +25,22 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://tender-db:5432/tender
       - SPRING_DATASOURCE_USERNAME=tender
       - SPRING_DATASOURCE_PASSWORD=tender
+      - SPRING_MAIL_HOST=mailhog
+      - SPRING_MAIL_PORT=1025
+      - SPRING_MAIL_USERNAME=
+      - SPRING_MAIL_PASSWORD=
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false
+      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false
     depends_on:
       - tender-db
+      - mailhog
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: tender-mailhog
+    ports:
+      - "1025:1025"  # SMTP порт
+      - "8025:8025"  # Web UI порт
+    environment:
+      - MH_STORAGE=memory
+      - MH_HOSTNAME=mailhog

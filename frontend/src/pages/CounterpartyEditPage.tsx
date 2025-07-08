@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useForm, useFieldArray, Controller, useWatch } from 'react-hook-form';
 import {
   Box, Button, Grid, Paper, TextField, Typography, MenuItem, IconButton, Divider, Autocomplete,
-  Dialog, DialogActions, DialogContent, DialogTitle, Alert, Snackbar, CircularProgress, Link
+  Dialog, DialogActions, DialogContent, DialogTitle, Alert, Snackbar, CircularProgress, Link, Checkbox, FormControlLabel
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -48,14 +48,17 @@ type FormData = {
   phone: string;
   email: string;
   companyType: string | null;
+  role: string;
   bankDetails: BankDetails[];
   contactPersons: ContactPerson[];
+  sendNotifications: boolean;
 };
 
 const defaultValues: FormData = {
-  name: '', legalName: '', shortName: '', inn: '', kpp: '', ogrn: '', address: '', head: '', phone: '', email: '', companyType: null,
+  name: '', legalName: '', shortName: '', inn: '', kpp: '', ogrn: '', address: '', head: '', phone: '', email: '', companyType: null, role: 'CUSTOMER',
   bankDetails: [],
   contactPersons: [],
+  sendNotifications: false,
 };
 
 const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
@@ -85,6 +88,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
 
   const createNewTypeOption: CompanyType = { id: 'CREATE_NEW', name: 'Создать новый тип' };
   const watchedInn = watch('inn');
+  const watchedRole = useWatch({ control, name: 'role' });
 
   const watchedCompanyTypeId = useWatch({ control, name: 'companyType' });
   const isIp = React.useMemo(() => {
@@ -133,6 +137,7 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
             phone: data.phone || '',
             email: data.email || '',
             companyType: data.companyType?.id || null,
+            role: data.role || 'CUSTOMER',
             bankDetails: data.bankDetails && data.bankDetails.length > 0 ? data.bankDetails : [],
             contactPersons: data.contactPersons ? data.contactPersons.map(person => ({
               ...person,
@@ -140,7 +145,8 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                 type: contact.contactType?.name || contact.type || '',
                 value: contact.value || ''
               })) : []
-            })) : []
+            })) : [],
+            sendNotifications: data.sendNotifications || true,
           };
           if (formData.bankDetails.length > 0) {
             setShowBankDetails(true);
@@ -162,8 +168,20 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       if (nameFromQuery) {
         setValue('name', nameFromQuery);
       }
+      const roleFromQuery = params.get('role');
+      if (roleFromQuery) {
+        setValue('role', roleFromQuery);
+      }
     }
   }, [isEdit, location.search, setValue]);
+
+  useEffect(() => {
+    if (watchedRole === 'SUPPLIER') {
+      setValue('sendNotifications', true);
+    } else if (watchedRole === 'CUSTOMER') {
+      setValue('sendNotifications', false);
+    }
+  }, [watchedRole, setValue]);
 
   const handleFetchFnsData = async () => {
     if (!watchedInn || watchedInn.length < 10) {
@@ -419,6 +437,38 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                   </>
                 );
               }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="role"
+              control={control}
+              rules={{ required: 'Роль обязательна' }}
+              render={({ field, fieldState: { error } }) => (
+                <TextField
+                  {...field}
+                  select
+                  label="Роль *"
+                  fullWidth
+                  error={!!error}
+                  helperText={error?.message}
+                >
+                  <MenuItem value="CUSTOMER">Заказчик</MenuItem>
+                  <MenuItem value="SUPPLIER">Поставщик</MenuItem>
+                </TextField>
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="sendNotifications"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={field.value} />}
+                  label="Отправлять уведомления"
+                />
+              )}
             />
           </Grid>
         </Grid>

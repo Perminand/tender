@@ -40,6 +40,10 @@ public class Company {
     @ManyToOne(fetch = FetchType.LAZY)
     private CompanyType companyType;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "role")
+    private CompanyRole role = CompanyRole.CUSTOMER;
+
     private String director;
 
     private String phone;
@@ -51,6 +55,9 @@ public class Company {
 
     @OneToMany(mappedBy = "company", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ContactPerson> contactPersons = new ArrayList<>();
+
+    @Column(name = "send_notifications")
+    private Boolean sendNotifications = true;
 
     public void setBankAccounts(List<CompanyBankAccount> bankAccounts) {
         if (bankAccounts != null) {

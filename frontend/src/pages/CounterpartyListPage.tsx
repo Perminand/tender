@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
@@ -18,6 +18,7 @@ interface Counterparty {
   ogrn: string;
   address: string;
   shortName?: string;
+  role?: string;
 }
 
 const CounterpartyListPage: React.FC = () => {
@@ -31,6 +32,7 @@ const CounterpartyListPage: React.FC = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
+  const [roleFilter, setRoleFilter] = useState('');
 
   useEffect(() => {
     const fetchCounterparties = async () => {
@@ -51,18 +53,30 @@ const CounterpartyListPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const filtered = counterparties.filter(counterparty => {
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        counterparty.name.toLowerCase().includes(searchLower) ||
-        counterparty.legalName.toLowerCase().includes(searchLower) ||
-        counterparty.inn.toLowerCase().includes(searchLower) ||
-        counterparty.kpp.toLowerCase().includes(searchLower) ||
-        counterparty.address.toLowerCase().includes(searchLower)
+    console.log('Загруженные компании:', counterparties);
+  }, [counterparties]);
+
+  useEffect(() => {
+    let filtered = counterparties;
+    
+    // Фильтр по поиску
+    if (searchTerm) {
+      filtered = filtered.filter(counterparty =>
+        counterparty.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        counterparty.legalName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        counterparty.inn.includes(searchTerm) ||
+        counterparty.kpp.includes(searchTerm) ||
+        counterparty.address.toLowerCase().includes(searchTerm.toLowerCase())
       );
-    });
+    }
+    
+    // Фильтр по роли
+    if (roleFilter) {
+      filtered = filtered.filter(counterparty => counterparty.role === roleFilter);
+    }
+    
     setFilteredCounterparties(filtered);
-  }, [searchTerm, counterparties]);
+  }, [counterparties, searchTerm, roleFilter]);
 
   const handleExport = async () => {
     try {
@@ -129,6 +143,41 @@ const CounterpartyListPage: React.FC = () => {
 
   const paginatedCounterparties = filteredCounterparties.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  const getRoleLabel = (role: string | undefined) => {
+    switch (role) {
+      case 'SUPPLIER':
+        return 'Поставщик';
+      case 'CUSTOMER':
+        return 'Заказчик';
+      default:
+        return 'Не указана';
+    }
+  };
+
+  const getRoleColor = (role: string | undefined) => {
+    switch (role) {
+      case 'SUPPLIER':
+        return 'success';
+      case 'CUSTOMER':
+        return 'primary';
+      default:
+        return 'default';
+    }
+  };
+
+  const getRoleFilterLabel = (role: string) => {
+    switch (role) {
+      case 'Поставщик':
+        return 'Поставщики';
+      case 'Заказчик':
+        return 'Заказчики';
+      case '':
+        return 'Все контрагенты';
+      default:
+        return role;
+    }
+  };
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mt: 4, mb: 4 }}>
@@ -173,10 +222,11 @@ const CounterpartyListPage: React.FC = () => {
           </Box>
         </Box>
 
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
           <TextField
             fullWidth
-            placeholder="Поиск по названию, ИНН, КПП, адресу..."
+            variant="outlined"
+            placeholder="Поиск по названию, краткому названию или ИНН..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             InputProps={{
@@ -186,7 +236,20 @@ const CounterpartyListPage: React.FC = () => {
                 </InputAdornment>
               ),
             }}
+            sx={{ maxWidth: 400 }}
           />
+          <FormControl sx={{ minWidth: 200 }}>
+            <InputLabel>Фильтр по роли</InputLabel>
+            <Select
+              value={roleFilter}
+              label="Фильтр по роли"
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <MenuItem value="">Все контрагенты</MenuItem>
+              <MenuItem value="SUPPLIER">Поставщики</MenuItem>
+              <MenuItem value="CUSTOMER">Заказчики</MenuItem>
+            </Select>
+          </FormControl>
         </Box>
 
         <TableContainer component={Paper}>
@@ -199,6 +262,7 @@ const CounterpartyListPage: React.FC = () => {
                 <TableCell>КПП</TableCell>
                 <TableCell>ОГРН</TableCell>
                 <TableCell>Адрес</TableCell>
+                <TableCell>Роль</TableCell>
                 <TableCell>Действия</TableCell>
               </TableRow>
             </TableHead>
@@ -211,6 +275,13 @@ const CounterpartyListPage: React.FC = () => {
                   <TableCell>{counterparty.kpp}</TableCell>
                   <TableCell>{counterparty.ogrn}</TableCell>
                   <TableCell>{counterparty.address}</TableCell>
+                  <TableCell>
+                    <Chip
+                      label={getRoleLabel(counterparty.role)}
+                      color={getRoleColor(counterparty.role) as any}
+                      size="small"
+                    />
+                  </TableCell>
                   <TableCell>
                     <IconButton color="primary" onClick={() => navigate(`/reference/counterparties/${counterparty.id}/edit`)}>
                       <EditIcon />

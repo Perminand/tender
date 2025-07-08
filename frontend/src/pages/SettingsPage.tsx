@@ -1,32 +1,70 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box, Button, Grid, Paper, TextField, Typography, Alert, Snackbar, CircularProgress,
-  Accordion, AccordionSummary, AccordionDetails, List, ListItem, ListItemIcon, ListItemText
+  Accordion, AccordionSummary, AccordionDetails, List, ListItem, ListItemIcon, ListItemText,
+  FormControl, InputLabel, Select, MenuItem, Chip, Divider
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LinkIcon from '@mui/icons-material/Link';
 import { useNavigate } from 'react-router-dom';
+import { 
+  emailProviders, 
+  detectEmailProvider, 
+  getProviderByName, 
+  getProviderSuggestions,
+  EmailProvider 
+} from '../utils/emailProviders';
+import GmailSetupGuide from '../components/GmailSetupGuide';
 
 interface Settings {
   fnsApiKey: string;
   fnsApiUsage: string;
 }
 
+interface EmailSettings {
+  smtpHost: string;
+  smtpPort: string;
+  username: string;
+  password: string;
+  fromEmail: string;
+  fromName: string;
+  enabled: boolean;
+  useSsl: boolean;
+  useTls: boolean;
+}
+
 const SettingsPage: React.FC = () => {
   const navigate = useNavigate();
   const [settings, setSettings] = useState<Settings>({ fnsApiKey: '', fnsApiUsage: '' });
+  const [emailSettings, setEmailSettings] = useState<EmailSettings>({
+    smtpHost: 'smtp.gmail.com',
+    smtpPort: '587',
+    username: '',
+    password: '',
+    fromEmail: '',
+    fromName: '',
+    enabled: false,
+    useSsl: false,
+    useTls: true,
+  });
   const [showSuccess, setShowSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingUsage, setIsLoadingUsage] = useState(false);
+  const [isLoadingEmail, setIsLoadingEmail] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [usageInfo, setUsageInfo] = useState<string | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<string>('');
+  const [showProviderInstructions, setShowProviderInstructions] = useState(false);
+  const [showGmailGuide, setShowGmailGuide] = useState(false);
 
   useEffect(() => {
     // Загружаем настройки с backend
     loadSettings();
+    loadEmailSettings();
   }, []);
 
   const loadSettings = async () => {
@@ -45,6 +83,20 @@ const SettingsPage: React.FC = () => {
     } catch (error) {
       setErrorMessage('Ошибка при загрузке настроек');
       setShowError(true);
+    }
+  };
+
+  const loadEmailSettings = async () => {
+    try {
+      const response = await fetch('/api/settings/email');
+      if (response.ok) {
+        const data = await response.json();
+        setEmailSettings(data);
+      } else {
+        console.warn('Не удалось загрузить настройки email');
+      }
+    } catch (error) {
+      console.warn('Ошибка при загрузке настроек email:', error);
     }
   };
 
@@ -135,6 +187,99 @@ const SettingsPage: React.FC = () => {
     } finally {
       setIsLoadingUsage(false);
     }
+  };
+
+  const handleSaveEmailSettings = async () => {
+    setIsLoadingEmail(true);
+    try {
+      const response = await fetch('/api/settings/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailSettings),
+      });
+      
+      if (response.ok) {
+        setSuccessMessage('Настройки email успешно сохранены!');
+        setShowSuccess(true);
+      } else {
+        const errorText = await response.text();
+        setErrorMessage(errorText);
+        setShowError(true);
+      }
+    } catch (error) {
+      setErrorMessage('Ошибка при сохранении настроек email');
+      setShowError(true);
+    } finally {
+      setIsLoadingEmail(false);
+    }
+  };
+
+  const handleTestEmailConnection = async () => {
+    setIsTestingEmail(true);
+    try {
+      const response = await fetch('/api/settings/email/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(emailSettings),
+      });
+      
+      if (response.ok) {
+        setSuccessMessage('Соединение с SMTP сервером успешно установлено!');
+        setShowSuccess(true);
+      } else {
+        const errorText = await response.text();
+        setErrorMessage(errorText);
+        setShowError(true);
+      }
+    } catch (error) {
+      setErrorMessage('Ошибка при тестировании соединения email');
+      setShowError(true);
+    } finally {
+      setIsTestingEmail(false);
+    }
+  };
+
+  const handleEmailChange = (field: keyof EmailSettings, value: string | boolean) => {
+    const newSettings = { ...emailSettings, [field]: value };
+    setEmailSettings(newSettings);
+    
+    // Автоопределение провайдера при изменении email
+    if (field === 'username' && typeof value === 'string') {
+      const detectedProvider = detectEmailProvider(value);
+      if (detectedProvider) {
+        setSelectedProvider(detectedProvider.name);
+        // Автоматически заполняем настройки провайдера
+        setEmailSettings({
+          ...newSettings,
+          smtpHost: detectedProvider.smtpHost,
+          smtpPort: detectedProvider.smtpPort,
+          useSsl: detectedProvider.useSsl,
+          useTls: detectedProvider.useTls,
+          fromEmail: value
+        });
+      }
+    }
+  };
+
+  const handleProviderChange = (providerName: string) => {
+    setSelectedProvider(providerName);
+    const provider = getProviderByName(providerName);
+    if (provider) {
+      setEmailSettings({
+        ...emailSettings,
+        smtpHost: provider.smtpHost,
+        smtpPort: provider.smtpPort,
+        useSsl: provider.useSsl,
+        useTls: provider.useTls
+      });
+    }
+  };
+
+  const getCurrentProvider = (): EmailProvider | null => {
+    if (selectedProvider) {
+      return getProviderByName(selectedProvider);
+    }
+    return detectEmailProvider(emailSettings.username);
   };
 
   return (
@@ -288,6 +433,223 @@ const SettingsPage: React.FC = () => {
           </Button>
         </Box>
       </Paper>
+
+      {/* Email настройки */}
+      <Paper sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>Настройки Email уведомлений</Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Настройте SMTP сервер для отправки email уведомлений о тендерах и предложениях.
+        </Typography>
+        
+        {/* Выбор провайдера */}
+        <Box sx={{ mb: 3 }}>
+          <FormControl fullWidth sx={{ mb: 2 }}>
+            <InputLabel>Email провайдер</InputLabel>
+            <Select
+              value={selectedProvider}
+              onChange={(e) => handleProviderChange(e.target.value)}
+              label="Email провайдер"
+            >
+              <MenuItem value="">
+                <em>Автоопределение по email</em>
+              </MenuItem>
+              {emailProviders.map((provider) => (
+                <MenuItem key={provider.name} value={provider.name}>
+                  {provider.name}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          
+          {getCurrentProvider() && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Chip 
+                  label="Автоопределен" 
+                  color="success" 
+                  size="small" 
+                  variant="outlined"
+                />
+                <Typography variant="body2">
+                  <strong>{getCurrentProvider()?.name}:</strong> {getCurrentProvider()?.description}
+                </Typography>
+              </Box>
+              {getCurrentProvider()?.name === 'Gmail' && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="body2" sx={{ color: 'warning.main', mb: 1 }}>
+                    ⚠️ <strong>Важно:</strong> Для Gmail необходимо использовать пароль приложения, а не обычный пароль!
+                  </Typography>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    onClick={() => setShowGmailGuide(true)}
+                    sx={{ fontSize: '0.75rem' }}
+                  >
+                    Подробная инструкция по настройке Gmail
+                  </Button>
+                </Box>
+              )}
+            </Alert>
+          )}
+        </Box>
+
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Email пользователя"
+              fullWidth
+              type="email"
+              value={emailSettings.username}
+              onChange={(e) => handleEmailChange('username', e.target.value)}
+              placeholder="your-email@gmail.com"
+              helperText="Email для авторизации на SMTP сервере"
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Пароль"
+              fullWidth
+              type="password"
+              value={emailSettings.password}
+              onChange={(e) => handleEmailChange('password', e.target.value)}
+              placeholder="Пароль или app password"
+              helperText="Пароль для авторизации на SMTP сервере"
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="SMTP хост"
+              fullWidth
+              value={emailSettings.smtpHost}
+              onChange={(e) => handleEmailChange('smtpHost', e.target.value)}
+              placeholder="smtp.gmail.com"
+              helperText="Адрес SMTP сервера"
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="SMTP порт"
+              fullWidth
+              value={emailSettings.smtpPort}
+              onChange={(e) => handleEmailChange('smtpPort', e.target.value)}
+              placeholder="587"
+              helperText="Порт SMTP сервера"
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Email отправителя"
+              fullWidth
+              type="email"
+              value={emailSettings.fromEmail}
+              onChange={(e) => handleEmailChange('fromEmail', e.target.value)}
+              placeholder="noreply@yourcompany.com"
+              helperText="Email, который будет указан как отправитель"
+            />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TextField
+              label="Имя отправителя"
+              fullWidth
+              value={emailSettings.fromName}
+              onChange={(e) => handleEmailChange('fromName', e.target.value)}
+              placeholder="Система тендеров"
+              helperText="Имя, которое будет отображаться как отправитель"
+            />
+          </Grid>
+        </Grid>
+
+        <Box sx={{ mt: 3, display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Button
+            variant="outlined"
+            onClick={() => handleEmailChange('enabled', !emailSettings.enabled)}
+            color={emailSettings.enabled ? "success" : "primary"}
+          >
+            {emailSettings.enabled ? "✓ Включено" : "✗ Отключено"}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => handleEmailChange('useSsl', !emailSettings.useSsl)}
+            color={emailSettings.useSsl ? "success" : "primary"}
+          >
+            {emailSettings.useSsl ? "✓ SSL" : "✗ SSL"}
+          </Button>
+          <Button
+            variant="outlined"
+            onClick={() => handleEmailChange('useTls', !emailSettings.useTls)}
+            color={emailSettings.useTls ? "success" : "primary"}
+          >
+            {emailSettings.useTls ? "✓ TLS" : "✗ TLS"}
+          </Button>
+          
+          {getCurrentProvider() && (
+            <Button
+              variant="text"
+              onClick={() => setShowProviderInstructions(!showProviderInstructions)}
+              size="small"
+            >
+              {showProviderInstructions ? "Скрыть инструкции" : "Показать инструкции"}
+            </Button>
+          )}
+        </Box>
+
+        {/* Инструкции для провайдера */}
+        {showProviderInstructions && getCurrentProvider() && (
+          <Alert severity="info" sx={{ mt: 2 }}>
+            <Typography variant="subtitle2" gutterBottom>
+              Инструкции для {getCurrentProvider()?.name}:
+            </Typography>
+            <List dense>
+              {getCurrentProvider()?.instructions.map((instruction, index) => (
+                <ListItem key={index} sx={{ py: 0.5 }}>
+                  <ListItemIcon sx={{ minWidth: 24 }}>
+                    <CheckCircleIcon fontSize="small" color="primary" />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={instruction}
+                    primaryTypographyProps={{ variant: 'body2' }}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          </Alert>
+        )}
+
+        <Box sx={{ mt: 3 }}>
+          <Button 
+            variant="contained" 
+            onClick={handleSaveEmailSettings} 
+            disabled={isLoadingEmail}
+            sx={{ mr: 1 }}
+          >
+            {isLoadingEmail ? <CircularProgress size={24} /> : 'Сохранить настройки email'}
+          </Button>
+          <Button 
+            variant="outlined" 
+            onClick={handleTestEmailConnection}
+            disabled={isTestingEmail}
+            sx={{ mr: 1 }}
+          >
+            {isTestingEmail ? <CircularProgress size={24} /> : 'Тестировать соединение'}
+          </Button>
+        </Box>
+
+        <Alert severity="info" sx={{ mt: 2 }}>
+          <Typography variant="body2">
+            <strong>Советы:</strong> 
+            {getCurrentProvider() ? 
+              `Для ${getCurrentProvider()?.name} используйте порт ${getCurrentProvider()?.smtpPort} с ${getCurrentProvider()?.useSsl ? 'SSL' : getCurrentProvider()?.useTls ? 'TLS' : 'обычным соединением'}.` :
+              'Выберите провайдера или введите email для автоопределения настроек.'
+            }
+          </Typography>
+        </Alert>
+      </Paper>
+
+      {/* Gmail Setup Guide */}
+      <GmailSetupGuide 
+        open={showGmailGuide} 
+        onClose={() => setShowGmailGuide(false)} 
+      />
 
       <Snackbar
         open={showSuccess}

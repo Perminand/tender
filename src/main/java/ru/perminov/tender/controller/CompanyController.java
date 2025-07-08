@@ -64,9 +64,9 @@ public class CompanyController {
     }
 
     @GetMapping
-    public ResponseEntity<List<CompanyDto>> getAll() {
-        log.info("Получен GET-запрос: получить все компании");
-        List<CompanyDto> companies = companyService.getAll();
+    public ResponseEntity<List<CompanyDto>> getAll(@RequestParam(required = false) String role) {
+        log.info("Получен GET-запрос: получить компании. role={}", role);
+        List<CompanyDto> companies = companyService.getAll(role);
         log.info("Возвращено компаний: {}", companies.size());
         return ResponseEntity.ok(companies);
     }
@@ -81,7 +81,7 @@ public class CompanyController {
     public ResponseEntity<Resource> exportCompanies() {
         log.info("Получен GET-запрос: экспортировать компании в Excel");
         String filename = "companies.xlsx";
-        List<CompanyDto> companies = companyService.getAll();
+        List<CompanyDto> companies = companyService.getAll(null);
         InputStreamResource file = new InputStreamResource(excelService.exportCompaniesToExcel(companies));
 
         return ResponseEntity.ok()

@@ -20,16 +20,19 @@ import ru.perminov.tender.repository.RequestRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.TenderService;
 import ru.perminov.tender.service.SupplierProposalService;
+import ru.perminov.tender.service.NotificationService;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class TenderServiceImpl implements TenderService {
 
     private final TenderRepository tenderRepository;
@@ -37,6 +40,7 @@ public class TenderServiceImpl implements TenderService {
     private final RequestRepository requestRepository;
     private final CompanyRepository companyRepository;
     private final SupplierProposalService supplierProposalService;
+    private final NotificationService notificationService;
     private final TenderMapper tenderMapper;
     private final TenderItemMapper tenderItemMapper;
 
@@ -157,6 +161,15 @@ public class TenderServiceImpl implements TenderService {
         tender.setStartDate(LocalDateTime.now());
         
         Tender savedTender = tenderRepository.save(tender);
+        
+        // Отправляем уведомления поставщикам и заказчикам о публикации тендера
+        try {
+            notificationService.notifyTenderPublishedToSuppliers(savedTender);
+            notificationService.notifyTenderPublishedToCustomers(savedTender);
+        } catch (Exception e) {
+            log.error("Ошибка отправки уведомлений о публикации тендера: {}", id, e);
+        }
+        
         return tenderMapper.toDto(savedTender);
     }
 
@@ -329,4 +342,5 @@ public class TenderServiceImpl implements TenderService {
             tenderItemRepository.save(tenderItem);
         }
     }
+    
 } 

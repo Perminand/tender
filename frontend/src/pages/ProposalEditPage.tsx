@@ -26,7 +26,8 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions
+  DialogActions,
+  Autocomplete
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -110,7 +111,7 @@ const ProposalEditPage: React.FC = () => {
 
   const loadCompanies = async () => {
     try {
-      const response = await fnsApi.get('/api/companies');
+      const response = await fnsApi.get('/api/companies?role=SUPPLIER');
       setCompanies(response.data);
     } catch (error) {
       console.error('Error loading companies:', error);
@@ -326,21 +327,25 @@ const ProposalEditPage: React.FC = () => {
           
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Поставщик</InputLabel>
-                <Select
-                  value={formData.supplierId}
-                  onChange={(e) => handleInputChange('supplierId', e.target.value)}
-                  label="Поставщик"
-                  required
-                >
-                  {companies.map((company) => (
-                    <MenuItem key={company.id} value={company.id}>
-                      {company.shortName || company.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                options={companies.map(c => ({ label: c.shortName || c.name, id: c.id }))}
+                getOptionLabel={option => typeof option === 'string' ? option : option.label}
+                value={
+                  formData.supplierId && companies.find(c => c.id === formData.supplierId)
+                    ? { label: companies.find(c => c.id === formData.supplierId)!.shortName || companies.find(c => c.id === formData.supplierId)!.name, id: formData.supplierId }
+                    : null
+                }
+                onChange={(event, newValue) => {
+                  if (newValue && typeof newValue === 'object') {
+                    setFormData(prev => ({ ...prev, supplierId: newValue.id }));
+                  } else {
+                    setFormData(prev => ({ ...prev, supplierId: '' }));
+                  }
+                }}
+                renderInput={(params) => (
+                  <TextField {...params} label="Поставщик" variant="outlined" required />
+                )}
+              />
             </Grid>
 
             <Grid item xs={12} md={6}>

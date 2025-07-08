@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import ru.perminov.tender.dto.FnsApiKeyDto;
 import ru.perminov.tender.dto.SettingsDto;
+import ru.perminov.tender.dto.EmailSettingsDto;
 import ru.perminov.tender.dto.fns.FnsApiStatResponse;
 import ru.perminov.tender.dto.fns.MethodStat;
 import ru.perminov.tender.model.Settings;
@@ -123,5 +124,116 @@ public class SettingsServiceImpl implements SettingsService {
             logger.error("Error parsing FNS API response", e);
             return "Ошибка парсинга ответа от ФНС: " + e.getMessage();
         }
+    }
+    
+    @Override
+    public EmailSettingsDto getEmailSettings() {
+        String smtpHost = getSettingValue("email_smtp_host", "smtp.gmail.com");
+        String smtpPort = getSettingValue("email_smtp_port", "587");
+        String username = getSettingValue("email_username", "");
+        String password = getSettingValue("email_password", "");
+        String fromEmail = getSettingValue("email_from", "");
+        String fromName = getSettingValue("email_from_name", "");
+        String enabled = getSettingValue("email_enabled", "false");
+        String useSsl = getSettingValue("email_use_ssl", "false");
+        String useTls = getSettingValue("email_use_tls", "true");
+        
+        return new EmailSettingsDto(
+            smtpHost,
+            smtpPort,
+            username,
+            password,
+            fromEmail,
+            fromName,
+            Boolean.parseBoolean(enabled),
+            Boolean.parseBoolean(useSsl),
+            Boolean.parseBoolean(useTls)
+        );
+    }
+    
+    @Override
+    public void saveEmailSettings(EmailSettingsDto emailSettings) {
+        saveSetting("email_smtp_host", emailSettings.smtpHost(), "SMTP хост");
+        saveSetting("email_smtp_port", emailSettings.smtpPort(), "SMTP порт");
+        saveSetting("email_username", emailSettings.username(), "Email пользователя");
+        saveSetting("email_password", emailSettings.password(), "Email пароль");
+        saveSetting("email_from", emailSettings.fromEmail(), "Email отправителя");
+        saveSetting("email_from_name", emailSettings.fromName(), "Имя отправителя");
+        saveSetting("email_enabled", String.valueOf(emailSettings.enabled()), "Включить email уведомления");
+        saveSetting("email_use_ssl", String.valueOf(emailSettings.useSsl()), "Использовать SSL");
+        saveSetting("email_use_tls", String.valueOf(emailSettings.useTls()), "Использовать TLS");
+    }
+    
+    @Override
+    public boolean testEmailConnection(EmailSettingsDto emailSettings) {
+        try {
+            // Создаем временную конфигурацию JavaMailSender для тестирования
+            org.springframework.mail.javamail.JavaMailSenderImpl mailSender = 
+                new org.springframework.mail.javamail.JavaMailSenderImpl();
+            
+            mailSender.setHost(emailSettings.smtpHost());
+            mailSender.setPort(Integer.parseInt(emailSettings.smtpPort()));
+            mailSender.setUsername(emailSettings.username());
+            mailSender.setPassword(emailSettings.password());
+            
+            java.util.Properties props = mailSender.getJavaMailProperties();
+            props.put("mail.transport.protocol", "smtp");
+            props.put("mail.smtp.auth", "true");
+            props.put("mail.smtp.starttls.enable", String.valueOf(emailSettings.useTls()));
+            props.put("mail.smtp.ssl.enable", String.valueOf(emailSettings.useSsl()));
+            
+            // Тестируем соединение
+            mailSender.testConnection();
+            return true;
+        } catch (Exception e) {
+            logger.error("Email connection test failed", e);
+            throw new RuntimeException(getUserFriendlyErrorMessage(e, emailSettings));
+        }
+    }
+    
+    private String getUserFriendlyErrorMessage(Exception e, EmailSettingsDto emailSettings) {
+        String errorMessage = e.getMessage();
+        
+        // Gmail specific errors
+        if (errorMessage != null && errorMessage.contains("Application-specific password required")) {
+            return "Gmail требует пароль приложения. Включите двухфакторную аутентификацию и создайте пароль приложения в настройках безопасности Google.";
+        }
+        
+        if (errorMessage != null && errorMessage.contains("Invalid credentials")) {
+            if (emailSettings.smtpHost().contains("gmail.com")) {
+                return "Неверные учетные данные Gmail. Используйте пароль приложения вместо обычного пароля.";
+            } else if (emailSettings.smtpHost().contains("yandex")) {
+                return "Неверные учетные данные Яндекс. Используйте пароль приложения вместо обычного пароля.";
+            } else if (emailSettings.smtpHost().contains("mail.ru")) {
+                return "Неверные учетные данные Mail.ru. Используйте пароль приложения вместо обычного пароля.";
+            }
+            return "Неверные учетные данные. Проверьте логин и пароль.";
+        }
+        
+        if (errorMessage != null && errorMessage.contains("Connection refused")) {
+            return "Не удалось подключиться к SMTP серверу. Проверьте правильность хоста и порта.";
+        }
+        
+        if (errorMessage != null && errorMessage.contains("timeout")) {
+            return "Превышено время ожидания подключения к SMTP серверу. Проверьте настройки сети.";
+        }
+        
+        if (errorMessage != null && errorMessage.contains("SSL")) {
+            return "Ошибка SSL/TLS соединения. Проверьте настройки SSL/TLS для вашего провайдера.";
+        }
+        
+        // Generic error
+        return "Ошибка подключения к SMTP серверу: " + e.getMessage();
+    }
+    
+    private String getSettingValue(String key, String defaultValue) {
+        return settingsRepository.findValueByKey(key).orElse(defaultValue);
+    }
+    
+    private void saveSetting(String key, String value, String description) {
+        Settings setting = settingsRepository.findByKey(key)
+                .orElse(new Settings(key, "", description));
+        setting.setValue(value);
+        settingsRepository.save(setting);
     }
 } 

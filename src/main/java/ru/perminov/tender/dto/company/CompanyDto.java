@@ -24,12 +24,16 @@ public record CompanyDto(
         
         String typeName,
         
+        String role,
+        
         String director,
 
         String phone,
 
         String email,
 
-        List<BankAccountDto> bankDetails
+        List<BankAccountDto> bankDetails,
+
+        Boolean sendNotifications
 ) {
 }
