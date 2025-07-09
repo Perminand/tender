@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Paper,
   Table,
@@ -33,7 +33,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   AttachMoney as MoneyIcon,
   Assessment as AssessmentIcon,
-  SaveAlt as SaveAltIcon
+  SaveAlt as SaveAltIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { fnsApi } from '../utils/fnsApi';
 
@@ -86,6 +87,7 @@ interface PriceSummaryDto {
 
 const PriceAnalysisPage: React.FC = () => {
   const { tenderId } = useParams<{ tenderId: string }>();
+  const navigate = useNavigate();
   const [analysis, setAnalysis] = useState<PriceAnalysisDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -188,10 +190,16 @@ const PriceAnalysisPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" gutterBottom>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate(`/tenders/${analysis.tenderId}`)}
+          sx={{ minWidth: 0, p: 1 }}
+        />
+        <Typography variant="h4" gutterBottom sx={{ ml: 2 }}>
           Анализ цен - {analysis.tenderTitle}
         </Typography>
+        <Box sx={{ flexGrow: 1 }} />
         <Button
           variant="outlined"
           startIcon={<SaveAltIcon />}
@@ -214,10 +222,10 @@ const PriceAnalysisPage: React.FC = () => {
                 <Typography variant="h6">Экономия</Typography>
               </Box>
               <Typography variant="h4" color="success.main">
-                {formatPrice(analysis.summary.totalSavings)}
+                {analysis.summary.totalProposals === 0 ? '—' : formatPrice(analysis.summary.totalSavings)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                {formatPercentage(analysis.summary.savingsPercentage)} от сметной стоимости
+                {analysis.summary.totalProposals === 0 ? '—' : `${formatPercentage(analysis.summary.savingsPercentage)} от сметной стоимости`}
               </Typography>
             </CardContent>
           </Card>
@@ -251,7 +259,7 @@ const PriceAnalysisPage: React.FC = () => {
                 {formatPrice(analysis.summary.totalEstimatedPrice)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Лучшая цена: {formatPrice(analysis.summary.totalBestPrice)}
+                Лучшая цена: {analysis.summary.totalProposals === 0 ? '—' : formatPrice(analysis.summary.totalBestPrice)}
               </Typography>
             </CardContent>
           </Card>
@@ -265,7 +273,7 @@ const PriceAnalysisPage: React.FC = () => {
                 <Typography variant="h6">Отклонение цен</Typography>
               </Box>
               <Typography variant="h4" color={getDeviationColor(analysis.summary.averagePriceDeviation)}>
-                {formatPercentage(analysis.summary.averagePriceDeviation)}
+                {analysis.summary.totalProposals === 0 ? '—' : formatPercentage(analysis.summary.averagePriceDeviation)}
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 среднее отклонение от сметы

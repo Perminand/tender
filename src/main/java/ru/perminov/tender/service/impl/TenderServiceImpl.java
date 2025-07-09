@@ -120,7 +120,12 @@ public class TenderServiceImpl implements TenderService {
     public List<TenderDto> getAllTenders() {
         List<Tender> tenders = tenderRepository.findAll();
         return tenders.stream()
-                .map(tenderMapper::toDto)
+                .map(tender -> {
+                    TenderDto dto = tenderMapper.toDto(tender);
+                    int count = supplierProposalService.getProposalsByTender(tender.getId()).size();
+                    dto.setProposalsCount(count);
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -129,7 +134,12 @@ public class TenderServiceImpl implements TenderService {
     public List<TenderDto> getTendersByStatus(Tender.TenderStatus status) {
         List<Tender> tenders = tenderRepository.findByStatus(status);
         return tenders.stream()
-                .map(tenderMapper::toDto)
+                .map(tender -> {
+                    TenderDto dto = tenderMapper.toDto(tender);
+                    int count = supplierProposalService.getProposalsByTender(tender.getId()).size();
+                    dto.setProposalsCount(count);
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -138,7 +148,12 @@ public class TenderServiceImpl implements TenderService {
     public List<TenderDto> getTendersByCustomer(UUID customerId) {
         List<Tender> tenders = tenderRepository.findByCustomerId(customerId);
         return tenders.stream()
-                .map(tenderMapper::toDto)
+                .map(tender -> {
+                    TenderDto dto = tenderMapper.toDto(tender);
+                    int count = supplierProposalService.getProposalsByTender(tender.getId()).size();
+                    dto.setProposalsCount(count);
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 

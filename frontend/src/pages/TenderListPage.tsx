@@ -585,14 +585,16 @@ const TenderListPage: React.FC = () => {
                     </IconButton>
                   </Tooltip>
 
-                  <Tooltip title="Редактировать">
-                    <IconButton
-                      size="small"
-                      onClick={() => navigate(`/tenders/${tender.id}/edit`)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </Tooltip>
+                  {tender.status === 'DRAFT' && (
+                    <Tooltip title="Редактировать">
+                      <IconButton
+                        size="small"
+                        onClick={() => navigate(`/tenders/${tender.id}/edit`)}
+                      >
+                        <EditIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
 
                   {tender.status === 'DRAFT' && (
                     <>

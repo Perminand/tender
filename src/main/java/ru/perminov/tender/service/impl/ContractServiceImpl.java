@@ -1,6 +1,7 @@
 package ru.perminov.tender.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.contract.ContractDto;
@@ -10,10 +11,23 @@ import ru.perminov.tender.dto.contract.ContractItemDto;
 import ru.perminov.tender.mapper.ContractMapper;
 import ru.perminov.tender.model.Contract;
 import ru.perminov.tender.model.ContractItem;
+import ru.perminov.tender.model.Tender;
+import ru.perminov.tender.model.SupplierProposal;
+import ru.perminov.tender.model.TenderItem;
+import ru.perminov.tender.model.ProposalItem;
+import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.ContractItemRepository;
 import ru.perminov.tender.repository.ContractRepository;
+import ru.perminov.tender.repository.TenderRepository;
+import ru.perminov.tender.repository.SupplierProposalRepository;
+import ru.perminov.tender.repository.TenderItemRepository;
+import ru.perminov.tender.repository.ProposalItemRepository;
+import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.ContractService;
+import ru.perminov.tender.model.Material;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -23,9 +37,15 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class ContractServiceImpl implements ContractService {
     private final ContractRepository contractRepository;
     private final ContractItemRepository contractItemRepository;
+    private final TenderRepository tenderRepository;
+    private final SupplierProposalRepository supplierProposalRepository;
+    private final TenderItemRepository tenderItemRepository;
+    private final ProposalItemRepository proposalItemRepository;
+    private final CompanyRepository companyRepository;
     private final ContractMapper contractMapper;
 
     @Override
@@ -111,7 +131,80 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     public ContractDto createContractFromTender(UUID tenderId, UUID supplierId) {
-        // TODO: реализовать создание контракта на основе выигранного тендера
-        return null;
+        log.info("Создание контракта на основе тендера {} и поставщика {}", tenderId, supplierId);
+        
+        // Получаем тендер
+        Tender tender = tenderRepository.findById(tenderId)
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        
+        // Проверяем статус тендера
+        if (tender.getStatus() != Tender.TenderStatus.AWARDED) {
+            throw new RuntimeException("Контракт можно создать только для присужденного тендера");
+        }
+        
+        // Получаем предложение поставщика
+        SupplierProposal proposal = supplierProposalRepository.findByTenderIdAndSupplierId(tenderId, supplierId)
+                .stream()
+                .filter(p -> p.getStatus() == SupplierProposal.ProposalStatus.ACCEPTED)
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("Принятое предложение поставщика не найдено"));
+        
+        // Получаем поставщика
+        Company supplier = companyRepository.findById(supplierId)
+                .orElseThrow(() -> new RuntimeException("Поставщик не найден"));
+        
+        // Создаем контракт
+        Contract contract = new Contract();
+        contract.setTender(tender);
+        contract.setSupplierProposal(proposal);
+        contract.setCustomer(tender.getCustomer());
+        contract.setSupplier(supplier);
+        contract.setContractNumber("CON-" + System.currentTimeMillis());
+        contract.setTitle("Контракт по тендеру " + tender.getTenderNumber());
+        contract.setContractDate(LocalDate.now());
+        contract.setStartDate(LocalDate.now());
+        contract.setStatus(Contract.ContractStatus.DRAFT);
+        contract.setTotalAmount(BigDecimal.valueOf(proposal.getTotalPrice()));
+        contract.setCurrency(proposal.getCurrency());
+        contract.setPaymentTerms(proposal.getPaymentTerms());
+        contract.setDeliveryTerms(proposal.getDeliveryTerms());
+        contract.setWarrantyTerms(proposal.getWarrantyTerms());
+        contract.setCreatedAt(LocalDateTime.now());
+        contract.setUpdatedAt(LocalDateTime.now());
+        
+        Contract savedContract = contractRepository.save(contract);
+        
+        // Создаем позиции контракта на основе позиций предложения
+        List<ProposalItem> proposalItems = proposalItemRepository.findBySupplierProposalId(proposal.getId());
+        
+        for (ProposalItem proposalItem : proposalItems) {
+            ContractItem contractItem = new ContractItem();
+            contractItem.setContract(savedContract);
+            contractItem.setTenderItem(proposalItem.getTenderItem());
+            
+            // Получаем материал через RequestMaterial
+            Material material = null;
+            if (proposalItem.getTenderItem() != null && 
+                proposalItem.getTenderItem().getRequestMaterial() != null) {
+                material = proposalItem.getTenderItem().getRequestMaterial().getMaterial();
+            }
+            contractItem.setMaterial(material);
+            
+            contractItem.setItemNumber(proposalItem.getItemNumber());
+            contractItem.setDescription(proposalItem.getDescription());
+            contractItem.setQuantity(BigDecimal.valueOf(proposalItem.getQuantity()));
+            contractItem.setUnit(proposalItem.getUnit());
+            contractItem.setUnitPrice(BigDecimal.valueOf(proposalItem.getUnitPrice()));
+            contractItem.setTotalPrice(BigDecimal.valueOf(proposalItem.getTotalPrice()));
+            contractItem.setSpecifications(proposalItem.getSpecifications());
+            contractItem.setDeliveryPeriod(proposalItem.getDeliveryPeriod());
+            contractItem.setWarranty(proposalItem.getWarranty());
+            contractItem.setAdditionalInfo(proposalItem.getAdditionalInfo());
+            
+            contractItemRepository.save(contractItem);
+        }
+        
+        log.info("Контракт создан успешно: {}", savedContract.getId());
+        return contractMapper.toDto(savedContract);
     }
 } 

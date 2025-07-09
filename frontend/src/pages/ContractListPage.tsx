@@ -86,9 +86,7 @@ const ContractListPage: React.FC = () => {
   };
 
   const handleCreate = () => {
-    setEditingContract(null);
-    setStatus('DRAFT');
-    setDialogOpen(true);
+    navigate('/contracts/new');
   };
 
   const handleEdit = (contract: Contract) => {

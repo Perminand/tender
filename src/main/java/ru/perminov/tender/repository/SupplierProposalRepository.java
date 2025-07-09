@@ -10,4 +10,5 @@ public interface SupplierProposalRepository extends JpaRepository<SupplierPropos
     List<SupplierProposal> findByTenderId(UUID tenderId);
     List<SupplierProposal> findBySupplierId(UUID supplierId);
     List<SupplierProposal> findByStatus(SupplierProposal.ProposalStatus status);
+    List<SupplierProposal> findByTenderIdAndSupplierId(UUID tenderId, UUID supplierId);
 } 

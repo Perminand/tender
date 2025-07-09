@@ -25,11 +25,13 @@ import NotificationListPage from './pages/NotificationListPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import PriceAnalysisPage from './pages/PriceAnalysisPage';
 import ContractListPage from './pages/ContractListPage';
+import ContractEditPage from './pages/ContractEditPage';
 import DeliveryListPage from './pages/DeliveryListPage';
 import PaymentListPage from './pages/PaymentListPage';
 import DocumentListPage from './pages/DocumentListPage';
 import ContractDetailPage from './pages/ContractDetailPage';
 import RequestDetailPage from './pages/RequestDetailPage';
+import ReportingPage from './pages/ReportingPage';
 
 const App: React.FC = () => (
   <Layout>
@@ -72,10 +74,13 @@ const App: React.FC = () => (
       <Route path="/proposals/:id" element={<ProposalDetailPage />} />
       <Route path="/notifications" element={<NotificationListPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
+      <Route path="/reporting" element={<ReportingPage />} />
       
       {/* Новые роуты для Фазы 1 */}
       <Route path="/contracts" element={<ContractListPage />} />
+      <Route path="/contracts/new" element={<ContractEditPage />} />
       <Route path="/contracts/:id" element={<ContractDetailPage />} />
+      <Route path="/contracts/:id/edit" element={<ContractEditPage />} />
       <Route path="/deliveries" element={<DeliveryListPage />} />
       <Route path="/payments" element={<PaymentListPage />} />
       <Route path="/documents" element={<DocumentListPage />} />

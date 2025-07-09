@@ -24,6 +24,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
         <Button color="inherit" component={RouterLink} to="/reference">Справочники</Button>
         <Button color="inherit" component={RouterLink} to="/settings">Настройки</Button>
         <Button color="inherit" component={RouterLink} to="/analytics">Аналитика</Button>
+        <Button color="inherit" component={RouterLink} to="/reporting">Отчетность</Button>
       </Toolbar>
     </AppBar>
     <Box sx={{ p: 3, mt: 8 }}>{children}</Box>

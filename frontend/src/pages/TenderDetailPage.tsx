@@ -281,6 +281,27 @@ const TenderDetailPage: React.FC = () => {
                 Анализ цен
               </Button>
             )}
+            {/* Кнопка создания контракта */}
+            {tender.status === 'AWARDED' && tender.supplierProposals.some(p => p.status === 'ACCEPTED') && (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={() => {
+                  const acceptedProposal = tender.supplierProposals.find(p => p.status === 'ACCEPTED');
+                  if (acceptedProposal) {
+                    navigate('/contracts/new', {
+                      state: {
+                        fromTender: true,
+                        tenderId: tender.id,
+                        supplierId: acceptedProposal.id.split('-')[0] // Предполагаем, что ID содержит supplierId
+                      }
+                    });
+                  }
+                }}
+              >
+                Создать контракт
+              </Button>
+            )}
             {/* Кнопка отмены */}
             {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
               <Button
