@@ -6,8 +6,10 @@ import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.dto.tender.SupplierProposalDto;
 import ru.perminov.tender.dto.tender.TenderItemDto;
+import ru.perminov.tender.dto.tender.PriceSummaryDto;
 import ru.perminov.tender.model.Tender;
 import ru.perminov.tender.service.TenderService;
+import ru.perminov.tender.service.PriceAnalysisService;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
@@ -20,6 +22,7 @@ import java.util.UUID;
 public class TenderController {
 
     private final TenderService tenderService;
+    private final PriceAnalysisService priceAnalysisService;
 
     @PostMapping
     public ResponseEntity<TenderDto> createTender(@RequestBody TenderDto tenderDto) {
@@ -152,5 +155,11 @@ public class TenderController {
     public ResponseEntity<List<String>> getTenderRecommendations(@PathVariable UUID id) {
         log.info("Получен GET-запрос: рекомендации по тендеру id={}", id);
         return ResponseEntity.ok(tenderService.getTenderRecommendations(id));
+    }
+
+    @GetMapping("/{id}/statistics")
+    public ResponseEntity<PriceSummaryDto> getTenderStatistics(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: статистика по тендеру id={}", id);
+        return ResponseEntity.ok(priceAnalysisService.getPriceStatistics(id));
     }
 } 

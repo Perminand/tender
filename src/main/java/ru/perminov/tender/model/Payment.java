@@ -42,6 +42,8 @@ public class Payment {
 
     private LocalDate dueDate;
 
+    private LocalDate paidDate;
+
     @Enumerated(EnumType.STRING)
     private PaymentType type;
 
@@ -63,6 +65,8 @@ public class Payment {
     private String invoiceNumber;
 
     private String description;
+
+    private String notes;
 
     private LocalDateTime createdAt = LocalDateTime.now();
 

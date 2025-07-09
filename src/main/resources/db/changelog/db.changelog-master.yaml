@@ -67,3 +67,19 @@ databaseChangeLog:
       file: db/changelog/changes/V035_add_send_notifications_to_companies.sql
   - include:
       file: db/changelog/changes/V036_add_procurement_management_tables.sql
+  - include:
+      file: db/changelog/changes/V037_add_actual_date_and_tracking_to_deliveries.sql
+  - include:
+      file: db/changelog/changes/V038_add_fields_to_documents.sql
+  - include:
+      file: db/changelog/changes/V039_add_fields_to_payments.sql
+  - include:
+      file: db/changelog/changes/V040_add_fields_to_contracts.sql
+  - include:
+      file: db/changelog/changes/V041_add_update_triggers.sql
+  - include:
+      file: db/changelog/changes/V042_add_created_at_triggers.sql
+  - include:
+      file: db/changelog/changes/V043_add_created_updated_at_to_tenders.sql
+  - include:
+      file: db/changelog/changes/V044_add_missing_timestamp_columns.sql

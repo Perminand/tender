@@ -53,6 +53,19 @@ public class RequestController {
         }
     }
 
+    @GetMapping("/{id}/status")
+    public ResponseEntity<String> getStatus(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: получить статус заявки. id={}", id);
+        try {
+            RequestDto request = requestService.findById(id);
+            log.info("Статус заявки {}: {}", id, request.status());
+            return ResponseEntity.ok(request.status());
+        } catch (Exception e) {
+            log.error("Ошибка при получении статуса заявки: ", e);
+            return ResponseEntity.ok("Ошибка: " + e.getMessage());
+        }
+    }
+
     @PostMapping
     public ResponseEntity<RequestDto> create(@Valid @RequestBody RequestDto dto) {
         log.info("Получен POST-запрос: создать заявку. Данные: {}", dto);

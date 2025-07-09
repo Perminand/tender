@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   Toolbar, Typography, Button, TextField, Box, CircularProgress, Chip,
-  IconButton, Tooltip
+  IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { Visibility, Edit, Download } from '@mui/icons-material';
@@ -36,6 +36,8 @@ const columns = [
 export default function RequestRegistryPage() {
   const [data, setData] = useState<RequestRegistryRowDto[]>([]);
   const [loading, setLoading] = useState(false);
+  const [confirmCreateTender, setConfirmCreateTender] = useState(false);
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     organization: '',
     project: '',
@@ -103,6 +105,26 @@ export default function RequestRegistryPage() {
       link.remove();
     } catch (error) {
       console.error('Ошибка при экспорте:', error);
+    }
+  };
+
+  const handleCreateTender = async () => {
+    if (!selectedRequestId) return;
+    
+    try {
+      const response = await axios.post(`/api/requests/${selectedRequestId}/create-tender`);
+      const tender = response.data;
+      // Перезагружаем данные, так как статус обновляется на бэкенде
+      fetchData();
+      setConfirmCreateTender(false);
+      setSelectedRequestId(null);
+      // Открываем тендер в новом окне
+      window.open(`/tenders/${tender.id}`, '_blank');
+    } catch (error: any) {
+      console.error('Ошибка при создании тендера:', error);
+      alert('Ошибка при создании тендера: ' + (error.response?.data?.message || error.message));
+      setConfirmCreateTender(false);
+      setSelectedRequestId(null);
     }
   };
 
@@ -304,7 +326,7 @@ export default function RequestRegistryPage() {
                       <IconButton
                         size="small"
                         color="primary"
-                        onClick={() => navigate(`/requests/${row.requestId}/edit`)}
+                        onClick={() => navigate(`/requests/${row.requestId}`)}
                       >
                         <Visibility />
                       </IconButton>
@@ -322,16 +344,9 @@ export default function RequestRegistryPage() {
                       <IconButton
                         size="small"
                         color="success"
-                        onClick={async () => {
-                          try {
-                            const response = await axios.post(`/api/requests/${row.requestId}/create-tender`);
-                            const tender = response.data;
-                            alert(`Тендер успешно создан! ID: ${tender.id}`);
-                            navigate(`/tenders/${tender.id}`);
-                          } catch (error: any) {
-                            console.error('Ошибка при создании тендера:', error);
-                            alert('Ошибка при создании тендера: ' + (error.response?.data?.message || error.message));
-                          }
+                        onClick={() => {
+                          setSelectedRequestId(row.requestId);
+                          setConfirmCreateTender(true);
                         }}
                       >
                         <Download />
@@ -354,6 +369,24 @@ export default function RequestRegistryPage() {
           </Typography>
         </Box>
       )}
+
+      {/* Диалог подтверждения создания тендера */}
+      <Dialog open={confirmCreateTender} onClose={() => { setConfirmCreateTender(false); setSelectedRequestId(null); }}>
+        <DialogTitle>Создать тендер?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Вы уверены, что хотите создать тендер по этой заявке? После создания статус заявки изменится на "Тендер".
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setConfirmCreateTender(false); setSelectedRequestId(null); }}>
+            Отмена
+          </Button>
+          <Button color="success" onClick={handleCreateTender}>
+            Создать
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 } 

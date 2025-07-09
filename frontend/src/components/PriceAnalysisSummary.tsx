@@ -112,22 +112,14 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Анализ цен</Typography>
-          <Button
-            variant="outlined"
-            size="small"
-            startIcon={<AssessmentIcon />}
-            onClick={() => navigate(`/tenders/${tenderId}/price-analysis`)}
-          >
-            Подробный анализ
-          </Button>
         </Box>
 
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
             <Box sx={{ textAlign: 'center' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-                <MoneyIcon color="success" sx={{ mr: 1 }} />
-                <Typography variant="h6" color="success.main">
+                <MoneyIcon color={summary.totalSavings < 0 ? 'error' : 'success'} sx={{ mr: 1 }} />
+                <Typography variant="h6" color={summary.totalSavings < 0 ? 'error.main' : 'success.main'}>
                   {formatPrice(summary.totalSavings)}
                 </Typography>
               </Box>

@@ -73,6 +73,7 @@ export default function RequestEditPage() {
   const [loading, setLoading] = useState(false);
   const [request, setRequest] = useState<RequestDto>({ materials: [], date: getToday(), status: 'DRAFT' });
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmCreateTender, setConfirmCreateTender] = useState(false);
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -445,8 +446,10 @@ export default function RequestEditPage() {
     try {
       const response = await axios.post(`/api/requests/${id}/create-tender`);
       const tender = response.data;
-      alert(`Тендер успешно создан! ID: ${tender.id}`);
-      navigate(`/tenders/${tender.id}`);
+      // После создания тендера меняем статус заявки на 'TENDER'
+      setRequest(prev => ({ ...prev, status: 'TENDER' }));
+      // Открываем тендер в новом окне
+      window.open(`/tenders/${tender.id}`, '_blank');
     } catch (error: any) {
       console.error('Ошибка при создании тендера:', error);
       alert('Ошибка при создании тендера: ' + (error.response?.data?.message || error.message));
@@ -1189,7 +1192,7 @@ export default function RequestEditPage() {
         </Button>
         {isEdit && (
           <>
-            <Button variant="outlined" color="success" onClick={handleCreateTender} sx={{ ml: 1 }}>
+            <Button variant="outlined" color="success" onClick={() => setConfirmCreateTender(true)} sx={{ ml: 1 }}>
               Создать тендер
             </Button>
             <Button variant="outlined" color="error" onClick={() => setConfirmDelete(true)} sx={{ ml: 1 }}>
@@ -1497,6 +1500,17 @@ export default function RequestEditPage() {
           >
             Создать
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={confirmCreateTender} onClose={() => setConfirmCreateTender(false)}>
+        <DialogTitle>Создать тендер?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>Вы уверены, что хотите создать тендер по этой заявке? После создания статус заявки изменится на "Тендер".</DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmCreateTender(false)}>Отмена</Button>
+          <Button color="success" onClick={() => { setConfirmCreateTender(false); handleCreateTender(); }}>Создать</Button>
         </DialogActions>
       </Dialog>
       </Box>

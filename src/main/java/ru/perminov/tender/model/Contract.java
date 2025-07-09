@@ -44,6 +44,8 @@ public class Contract {
 
     private String contractNumber;
 
+    private String title;
+
     private LocalDate contractDate;
 
     private LocalDate startDate;
@@ -64,6 +66,10 @@ public class Contract {
     private String warrantyTerms;
 
     private String specialConditions;
+
+    private String terms;
+
+    private String description;
 
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ContractItem> contractItems = new ArrayList<>();

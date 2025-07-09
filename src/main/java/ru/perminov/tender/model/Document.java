@@ -22,6 +22,10 @@ public class Document {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    private String documentNumber;
+
+    private String title;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tender_id")
     private Tender tender;
@@ -56,9 +60,17 @@ public class Document {
 
     private LocalDateTime uploadedAt = LocalDateTime.now();
 
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    private LocalDateTime updatedAt = LocalDateTime.now();
+
     private String description;
 
     private String version;
+
+    // Поля для связи с другими сущностями
+    private UUID relatedEntityId;
+    private String relatedEntityType;
 
     public enum DocumentType {
         TENDER_DOCUMENTATION,    // Документация тендера

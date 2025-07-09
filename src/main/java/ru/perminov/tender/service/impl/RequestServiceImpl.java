@@ -182,6 +182,14 @@ public class RequestServiceImpl implements RequestService {
         // Создаем тендер через сервис
         TenderDto createdTender = tenderService.createTender(tenderDto);
         
+        // Обновляем статус заявки на 'TENDER'
+        log.info("Текущий статус заявки {}: {}", requestId, request.getStatus());
+        request.setStatus("TENDER");
+        log.info("Установлен новый статус заявки {}: {}", requestId, request.getStatus());
+        requestRepository.save(request);
+        requestRepository.flush(); // Явно сохраняем изменения
+        log.info("Статус заявки {} обновлен на 'TENDER'", requestId);
+        
         log.info("Тендер успешно создан из заявки. TenderId: {}", createdTender.getId());
         
         return createdTender;

@@ -44,6 +44,10 @@ public class Delivery {
 
     private LocalDate plannedDeliveryDate;
 
+    private LocalDate actualDate;
+
+    private String trackingNumber;
+
     @Enumerated(EnumType.STRING)
     private DeliveryStatus status = DeliveryStatus.PLANNED;
 

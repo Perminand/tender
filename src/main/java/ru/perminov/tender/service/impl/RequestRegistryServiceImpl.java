@@ -15,9 +15,11 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RequestRegistryServiceImpl implements RequestRegistryService {
     private final RequestRepository requestRepository;
 
@@ -82,6 +84,9 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
                 note,
                 request.getStatus() != null ? request.getStatus() : "DRAFT"
             ));
+            
+            // Логируем статус для отладки
+            log.info("Заявка {}: статус = {}", request.getId(), request.getStatus());
         }
         
         return result;

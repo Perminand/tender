@@ -24,6 +24,12 @@ import ProposalDetailPage from './pages/ProposalDetailPage';
 import NotificationListPage from './pages/NotificationListPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import PriceAnalysisPage from './pages/PriceAnalysisPage';
+import ContractListPage from './pages/ContractListPage';
+import DeliveryListPage from './pages/DeliveryListPage';
+import PaymentListPage from './pages/PaymentListPage';
+import DocumentListPage from './pages/DocumentListPage';
+import ContractDetailPage from './pages/ContractDetailPage';
+import RequestDetailPage from './pages/RequestDetailPage';
 
 const App: React.FC = () => (
   <Layout>
@@ -54,6 +60,7 @@ const App: React.FC = () => (
       <Route path="/reference/requests/registry" element={<RequestRegistryPage />} />
       <Route path="/requests/new" element={<RequestEditPage />} />
       <Route path="/requests/:id/edit" element={<RequestEditPage />} />
+      <Route path="/requests/:id" element={<RequestDetailPage />} />
       <Route path="/reference/warehouses" element={<WarehouseListPage />} />
       <Route path="/tenders" element={<TenderListPage />} />
       <Route path="/tenders/new" element={<TenderEditPage />} />
@@ -65,6 +72,13 @@ const App: React.FC = () => (
       <Route path="/proposals/:id" element={<ProposalDetailPage />} />
       <Route path="/notifications" element={<NotificationListPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
+      
+      {/* Новые роуты для Фазы 1 */}
+      <Route path="/contracts" element={<ContractListPage />} />
+      <Route path="/contracts/:id" element={<ContractDetailPage />} />
+      <Route path="/deliveries" element={<DeliveryListPage />} />
+      <Route path="/payments" element={<PaymentListPage />} />
+      <Route path="/documents" element={<DocumentListPage />} />
     </Routes>
   </Layout>
 );
