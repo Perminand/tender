@@ -293,6 +293,9 @@ const TenderEditPage: React.FC = () => {
     }
   };
 
+  // Проверяем, можно ли редактировать тендер
+  const canEdit = !tenderStatus || tenderStatus.status === 'DRAFT';
+  
   if (loading && isEdit) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -317,6 +320,13 @@ const TenderEditPage: React.FC = () => {
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+        </Alert>
+      )}
+
+      {/* Предупреждение о том, что тендер нельзя редактировать */}
+      {isEdit && tenderStatus && !canEdit && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Тендер опубликован и не может быть отредактирован. Статус: {getStatusLabel(tenderStatus.status)}
         </Alert>
       )}
 
@@ -421,6 +431,7 @@ const TenderEditPage: React.FC = () => {
                   value={formData.title}
                   onChange={(e) => handleInputChange('title', e.target.value)}
                   required
+                  disabled={!canEdit}
                 />
               </Grid>
 
@@ -432,6 +443,7 @@ const TenderEditPage: React.FC = () => {
                   onChange={(e) => handleInputChange('description', e.target.value)}
                   multiline
                   rows={3}
+                  disabled={!canEdit}
                 />
               </Grid>
 
@@ -443,6 +455,7 @@ const TenderEditPage: React.FC = () => {
                     onChange={(e) => handleInputChange('customerId', e.target.value)}
                     label="Заказчик"
                     required
+                    disabled={!canEdit}
                   >
                     {companies.map((company) => (
                       <MenuItem key={company.id} value={company.id}>
@@ -460,6 +473,7 @@ const TenderEditPage: React.FC = () => {
                     value={formData.requestId}
                     onChange={(e) => handleInputChange('requestId', e.target.value)}
                     label="Заявка"
+                    disabled={!canEdit}
                   >
                     {requests.map((request) => (
                       <MenuItem key={request.id} value={request.id}>
@@ -478,6 +492,7 @@ const TenderEditPage: React.FC = () => {
                   value={formData.startDate}
                   onChange={(e) => handleInputChange('startDate', e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  disabled={!canEdit}
                 />
               </Grid>
 
@@ -489,6 +504,7 @@ const TenderEditPage: React.FC = () => {
                   value={formData.endDate}
                   onChange={(e) => handleInputChange('endDate', e.target.value)}
                   InputLabelProps={{ shrink: true }}
+                  disabled={!canEdit}
                 />
               </Grid>
 
@@ -501,6 +517,7 @@ const TenderEditPage: React.FC = () => {
                   onChange={(e) => handleInputChange('submissionDeadline', e.target.value)}
                   InputLabelProps={{ shrink: true }}
                   required
+                  disabled={!canEdit}
                 />
               </Grid>
 
@@ -519,6 +536,7 @@ const TenderEditPage: React.FC = () => {
                   onChange={(e) => handleInputChange('requirements', e.target.value)}
                   multiline
                   rows={4}
+                  disabled={!canEdit}
                 />
               </Grid>
 
@@ -530,6 +548,7 @@ const TenderEditPage: React.FC = () => {
                   onChange={(e) => handleInputChange('termsAndConditions', e.target.value)}
                   multiline
                   rows={4}
+                  disabled={!canEdit}
                 />
               </Grid>
 
@@ -542,13 +561,15 @@ const TenderEditPage: React.FC = () => {
                   >
                     Отмена
                   </Button>
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    disabled={loading}
-                  >
-                    {loading ? <CircularProgress size={20} /> : (isEdit ? 'Сохранить' : 'Создать')}
-                  </Button>
+                  {canEdit && (
+                    <Button
+                      type="submit"
+                      variant="contained"
+                      disabled={loading}
+                    >
+                      {loading ? <CircularProgress size={20} /> : (isEdit ? 'Сохранить' : 'Создать')}
+                    </Button>
+                  )}
                 </Box>
               </Grid>
             </Grid>

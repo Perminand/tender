@@ -38,7 +38,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import dayjs from 'dayjs';
+import dayjs, { Dayjs } from 'dayjs';
 
 interface Delivery {
   id: number;
@@ -65,6 +65,46 @@ const DeliveryListPage: React.FC = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const navigate = useNavigate();
+
+  const [suppliers, setSuppliers] = useState<any[]>([]);
+  const [contracts, setContracts] = useState<any[]>([]);
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+
+  const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [selectedContractId, setSelectedContractId] = useState('');
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
+  const [plannedDate, setPlannedDate] = useState<Dayjs | null>(null);
+
+  // Подгружаем списки при открытии диалога
+  useEffect(() => {
+    if (dialogOpen) {
+      fetch('/api/companies?role=SUPPLIER').then(res => res.json()).then(setSuppliers);
+      fetch('/api/contracts').then(res => res.json()).then(setContracts);
+      fetch('/api/warehouses').then(res => res.json()).then(setWarehouses);
+    }
+  }, [dialogOpen]);
+
+  // При редактировании заполняем выбранные значения
+  useEffect(() => {
+    if (editingDelivery) {
+      setSelectedSupplierId(editingDelivery.supplierId?.toString() || '');
+      setSelectedContractId(editingDelivery.contractId?.toString() || '');
+      setSelectedWarehouseId(editingDelivery.warehouseId?.toString() || '');
+    } else {
+      setSelectedSupplierId('');
+      setSelectedContractId('');
+      setSelectedWarehouseId('');
+    }
+  }, [editingDelivery, dialogOpen]);
+
+  // При открытии диалога или редактировании заполняем plannedDate
+  useEffect(() => {
+    if (editingDelivery) {
+      setPlannedDate(editingDelivery.plannedDate ? dayjs(editingDelivery.plannedDate) : null);
+    } else {
+      setPlannedDate(null);
+    }
+  }, [editingDelivery, dialogOpen]);
 
   useEffect(() => {
     fetchDeliveries();
@@ -141,10 +181,10 @@ const DeliveryListPage: React.FC = () => {
     try {
       const submitData = {
         deliveryNumber: formData.get('deliveryNumber'),
-        contractId: Number(formData.get('contractId')),
-        supplierId: Number(formData.get('supplierId')),
-        warehouseId: Number(formData.get('warehouseId')),
-        plannedDate: formData.get('plannedDate'),
+        contractId: Number(selectedContractId),
+        supplierId: Number(selectedSupplierId),
+        warehouseId: Number(selectedWarehouseId),
+        plannedDate: plannedDate ? plannedDate.format('YYYY-MM-DD') : null,
         trackingNumber: formData.get('trackingNumber'),
         notes: formData.get('notes'),
       };
@@ -301,7 +341,14 @@ const DeliveryListPage: React.FC = () => {
             {deliveries.map((delivery) => (
               <TableRow key={delivery.id}>
                 <TableCell>{delivery.deliveryNumber}</TableCell>
-                <TableCell>{delivery.contractId}</TableCell>
+                <TableCell>
+                  {(() => {
+                    const contract = contracts.find(c => c.id === delivery.contractId || c.id === String(delivery.contractId));
+                    return contract
+                      ? `${contract.contractNumber} | ${contract.supplier?.shortName || contract.supplier?.name}`
+                      : delivery.contractId;
+                  })()}
+                </TableCell>
                 <TableCell>
                   <Chip
                     label={getStatusText(delivery.status)}
@@ -382,39 +429,59 @@ const DeliveryListPage: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={6}>
-                <TextField
-                  name="contractId"
-                  label="ID контракта"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingDelivery?.contractId}
-                />
+                <FormControl fullWidth required>
+                  <InputLabel>Контракт</InputLabel>
+                  <Select
+                    value={selectedContractId}
+                    onChange={e => setSelectedContractId(e.target.value)}
+                    label="Контракт"
+                  >
+                    {contracts.map(c => (
+                      <MenuItem key={c.id} value={c.id}>
+                        {c.contractNumber} | {c.supplier?.shortName || c.supplier?.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={6}>
-                <TextField
-                  name="supplierId"
-                  label="ID поставщика"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingDelivery?.supplierId}
-                />
+                <FormControl fullWidth required>
+                  <InputLabel>Поставщик</InputLabel>
+                  <Select
+                    value={selectedSupplierId}
+                    onChange={e => setSelectedSupplierId(e.target.value)}
+                    label="Поставщик"
+                  >
+                    {suppliers.map(s => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.shortName || s.legalName || s.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={6}>
-                <TextField
-                  name="warehouseId"
-                  label="ID склада"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingDelivery?.warehouseId}
-                />
+                <FormControl fullWidth required>
+                  <InputLabel>Склад</InputLabel>
+                  <Select
+                    value={selectedWarehouseId}
+                    onChange={e => setSelectedWarehouseId(e.target.value)}
+                    label="Склад"
+                  >
+                    {warehouses.map(w => (
+                      <MenuItem key={w.id} value={w.id}>
+                        {w.name} {w.project ? `| ${w.project.name}` : ''}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
               </Grid>
               <Grid item xs={12}>
                 <LocalizationProvider dateAdapter={AdapterDayjs}>
                   <DatePicker
                     label="Запланированная дата"
+                    value={plannedDate}
+                    onChange={setPlannedDate}
                     slotProps={{
                       textField: {
                         name: 'plannedDate',
@@ -422,7 +489,6 @@ const DeliveryListPage: React.FC = () => {
                         required: true,
                       },
                     }}
-                    defaultValue={editingDelivery?.plannedDate ? dayjs(editingDelivery.plannedDate) : null}
                   />
                 </LocalizationProvider>
               </Grid>

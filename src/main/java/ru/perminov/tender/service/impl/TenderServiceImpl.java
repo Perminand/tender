@@ -89,6 +89,11 @@ public class TenderServiceImpl implements TenderService {
         Tender existingTender = tenderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Тендер не найден"));
         
+        // Проверяем, что тендер можно редактировать
+        if (existingTender.getStatus() != Tender.TenderStatus.DRAFT) {
+            throw new RuntimeException("Можно редактировать только черновик тендера. Текущий статус: " + existingTender.getStatus());
+        }
+        
         // Обновляем только разрешенные поля
         existingTender.setTitle(tenderDto.getTitle());
         existingTender.setDescription(tenderDto.getDescription());

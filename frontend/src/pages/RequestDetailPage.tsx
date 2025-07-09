@@ -50,6 +50,17 @@ interface RequestDto {
   description?: string;
 }
 
+const getStatusLabel = (status?: string) => {
+  switch (status) {
+    case 'DRAFT': return 'Черновик';
+    case 'SAVED': return 'Сохранен';
+    case 'TENDER': return 'Тендер';
+    case 'COMPLETED': return 'Исполнена';
+    case 'CANCELLED': return 'Отменена';
+    default: return status || '-';
+  }
+};
+
 const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [request, setRequest] = useState<RequestDto | null>(null);
@@ -100,7 +111,7 @@ const RequestDetailPage: React.FC = () => {
             Заявка №{request.requestNumber}
           </Typography>
           <Grid container spacing={2}>
-            <Grid item xs={12} sm={6}><Typography color="textSecondary">Статус:</Typography><Typography>{request.status}</Typography></Grid>
+            <Grid item xs={12} sm={6}><Typography color="textSecondary">Статус:</Typography><Typography>{getStatusLabel(request.status)}</Typography></Grid>
             <Grid item xs={12} sm={6}><Typography color="textSecondary">Дата:</Typography><Typography>{request.date ? dayjs(request.date).format('DD.MM.YYYY') : '-'}</Typography></Grid>
             <Grid item xs={12} sm={6}><Typography color="textSecondary">Организация:</Typography><Typography>{request.organization?.name || '-'}</Typography></Grid>
             <Grid item xs={12} sm={6}><Typography color="textSecondary">Проект:</Typography><Typography>{request.project?.name || '-'}</Typography></Grid>

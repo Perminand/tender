@@ -25,7 +25,15 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
-  Select
+  Select,
+  TextField,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
+  Collapse,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -36,7 +44,9 @@ import {
   Close as CloseIcon,
   TrendingUp as TrendingUpIcon,
   CheckCircle as CheckCircleIcon,
-  Assessment as AssessmentIcon
+  Assessment as AssessmentIcon,
+  FilterList as FilterListIcon,
+  ExpandMore as ExpandMoreIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
@@ -89,7 +99,18 @@ const TenderListPage: React.FC = () => {
     'AWARDED',
     'CANCELLED'
   ];
-  const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  
+  // Расширенные фильтры
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [searchFilter, setSearchFilter] = useState<string>('');
+  const [customerFilter, setCustomerFilter] = useState<string>('');
+  const [dateFromFilter, setDateFromFilter] = useState<string>('');
+  const [dateToFilter, setDateToFilter] = useState<string>('');
+  const [proposalsCountFilter, setProposalsCountFilter] = useState<string>('');
+  const [priceFromFilter, setPriceFromFilter] = useState<string>('');
+  const [priceToFilter, setPriceToFilter] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
+  
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
 
@@ -262,12 +283,68 @@ const TenderListPage: React.FC = () => {
     }).format(price);
   };
 
-  const handleStatusFilterChange = (event: SelectChangeEvent<string>) => {
-    setStatusFilter(event.target.value as string);
+  const handleStatusFilterChange = (event: SelectChangeEvent<string[]>) => {
+    const value = event.target.value;
+    setStatusFilter(typeof value === 'string' ? value.split(',') : value);
+  };
+
+  const clearFilters = () => {
+    setStatusFilter([]);
+    setSearchFilter('');
+    setCustomerFilter('');
+    setDateFromFilter('');
+    setDateToFilter('');
+    setProposalsCountFilter('');
+    setPriceFromFilter('');
+    setPriceToFilter('');
+    setPage(1);
   };
 
   const filteredAndSortedTenders = tenders
-    .filter(t => statusFilter === 'ALL' || t.status === statusFilter)
+    .filter(t => {
+      // Фильтр по статусам
+      if (statusFilter.length > 0 && !statusFilter.includes(t.status)) {
+        return false;
+      }
+      
+      // Фильтр по поиску
+      if (searchFilter && !t.title.toLowerCase().includes(searchFilter.toLowerCase()) && 
+          !t.description.toLowerCase().includes(searchFilter.toLowerCase()) &&
+          !t.tenderNumber.toLowerCase().includes(searchFilter.toLowerCase())) {
+        return false;
+      }
+      
+      // Фильтр по заказчику
+      if (customerFilter && !t.customerName.toLowerCase().includes(customerFilter.toLowerCase())) {
+        return false;
+      }
+      
+      // Фильтр по датам
+      if (dateFromFilter && t.startDate < dateFromFilter) {
+        return false;
+      }
+      if (dateToFilter && t.startDate > dateToFilter) {
+        return false;
+      }
+      
+      // Фильтр по количеству предложений
+      if (proposalsCountFilter) {
+        const count = parseInt(proposalsCountFilter);
+        if (t.proposalsCount < count) {
+          return false;
+        }
+      }
+      
+      // Фильтр по цене
+      if (priceFromFilter && t.bestPrice && t.bestPrice < parseFloat(priceFromFilter)) {
+        return false;
+      }
+      if (priceToFilter && t.bestPrice && t.bestPrice > parseFloat(priceToFilter)) {
+        return false;
+      }
+      
+      return true;
+    })
     .sort((a, b) => {
       const statusDiff = statusOrder.indexOf(a.status) - statusOrder.indexOf(b.status);
       if (statusDiff !== 0) return statusDiff;
@@ -302,23 +379,152 @@ const TenderListPage: React.FC = () => {
       )}
 
       <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 2 }}>
-        <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel id="status-filter-label">Фильтр по статусу</InputLabel>
+        <Button
+          variant="outlined"
+          startIcon={<FilterListIcon />}
+          onClick={() => setShowFilters(!showFilters)}
+          sx={{ minWidth: 120 }}
+        >
+          Фильтры
+        </Button>
+        
+        <FormControl size="small" sx={{ minWidth: 300 }}>
+          <InputLabel id="status-filter-label">Статусы</InputLabel>
           <Select
             labelId="status-filter-label"
+            multiple
             value={statusFilter}
-            label="Фильтр по статусу"
             onChange={handleStatusFilterChange}
+            input={<OutlinedInput label="Статусы" />}
+            renderValue={(selected) => (
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {selected.map((value) => (
+                  <Chip key={value} label={getStatusLabel(value)} size="small" />
+                ))}
+              </Box>
+            )}
           >
-            <MenuItem value="ALL">Все статусы</MenuItem>
-            <MenuItem value="DRAFT">Черновик</MenuItem>
-            <MenuItem value="PUBLISHED">Опубликован</MenuItem>
-            <MenuItem value="BIDDING">Прием предложений</MenuItem>
-            <MenuItem value="EVALUATION">Оценка</MenuItem>
-            <MenuItem value="AWARDED">Присужден</MenuItem>
-            <MenuItem value="CANCELLED">Отменен</MenuItem>
+            <MenuItem value="DRAFT">
+              <Checkbox checked={statusFilter.indexOf('DRAFT') > -1} />
+              <ListItemText primary="Черновик" />
+            </MenuItem>
+            <MenuItem value="PUBLISHED">
+              <Checkbox checked={statusFilter.indexOf('PUBLISHED') > -1} />
+              <ListItemText primary="Опубликован" />
+            </MenuItem>
+            <MenuItem value="BIDDING">
+              <Checkbox checked={statusFilter.indexOf('BIDDING') > -1} />
+              <ListItemText primary="Прием предложений" />
+            </MenuItem>
+            <MenuItem value="EVALUATION">
+              <Checkbox checked={statusFilter.indexOf('EVALUATION') > -1} />
+              <ListItemText primary="Оценка" />
+            </MenuItem>
+            <MenuItem value="AWARDED">
+              <Checkbox checked={statusFilter.indexOf('AWARDED') > -1} />
+              <ListItemText primary="Присужден" />
+            </MenuItem>
+            <MenuItem value="CANCELLED">
+              <Checkbox checked={statusFilter.indexOf('CANCELLED') > -1} />
+              <ListItemText primary="Отменен" />
+            </MenuItem>
           </Select>
         </FormControl>
+        
+        <TextField
+          size="small"
+          label="Поиск"
+          placeholder="Название, описание, номер"
+          value={searchFilter}
+          onChange={(e) => setSearchFilter(e.target.value)}
+          sx={{ minWidth: 200 }}
+        />
+        
+        <Button
+          variant="outlined"
+          onClick={clearFilters}
+          size="small"
+        >
+          Сбросить
+        </Button>
+      </Box>
+
+      <Collapse in={showFilters}>
+        <Paper sx={{ p: 2, mb: 2, backgroundColor: '#f5f5f5' }}>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Заказчик"
+                placeholder="Название заказчика"
+                value={customerFilter}
+                onChange={(e) => setCustomerFilter(e.target.value)}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Дата начала с"
+                type="date"
+                value={dateFromFilter}
+                onChange={(e) => setDateFromFilter(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Дата начала по"
+                type="date"
+                value={dateToFilter}
+                onChange={(e) => setDateToFilter(e.target.value)}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Мин. предложений"
+                type="number"
+                value={proposalsCountFilter}
+                onChange={(e) => setProposalsCountFilter(e.target.value)}
+                inputProps={{ min: 0 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Цена от"
+                type="number"
+                value={priceFromFilter}
+                onChange={(e) => setPriceFromFilter(e.target.value)}
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+            </Grid>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                size="small"
+                label="Цена до"
+                type="number"
+                value={priceToFilter}
+                onChange={(e) => setPriceToFilter(e.target.value)}
+                inputProps={{ min: 0, step: 0.01 }}
+              />
+            </Grid>
+          </Grid>
+        </Paper>
+      </Collapse>
+
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary">
+          Найдено тендеров: {filteredAndSortedTenders.length}
+        </Typography>
       </Box>
 
       <Grid container spacing={3}>
