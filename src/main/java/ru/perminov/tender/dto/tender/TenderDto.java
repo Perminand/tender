@@ -27,4 +27,6 @@ public class TenderDto {
     private Integer proposalsCount;
     private Double bestPrice;
     private String bestSupplierName;
+    private UUID awardedSupplierId;
+    private UUID parentTenderId;
 } 

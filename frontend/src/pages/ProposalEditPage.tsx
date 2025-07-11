@@ -90,6 +90,7 @@ const ProposalEditPage: React.FC = () => {
   const [tenderItems, setTenderItems] = useState<TenderItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
+  const [duplicateItems, setDuplicateItems] = useState<Set<number>>(new Set());
   
   const [formData, setFormData] = useState<ProposalFormData>({
     tenderId: tenderId || '',
@@ -161,10 +162,16 @@ const ProposalEditPage: React.FC = () => {
     
     // Проверяем, что все цены больше 0
     const invalidItems = formData.proposalItems.filter(item => 
-      item.tenderItemId && item.tenderItemId !== '' && (item.unitPrice <= 0 || item.unitPrice === '')
+      item.tenderItemId && item.tenderItemId !== '' && (item.unitPrice <= 0)
     );
     if (invalidItems.length > 0) {
       setError('Цена за единицу должна быть больше 0 для всех позиций');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
+    if (duplicateItems.size > 0) {
+      setError('Удалите дублирующие позиции перед отправкой предложения');
       setErrorDialogOpen(true);
       setLoading(false);
       return;
@@ -185,8 +192,12 @@ const ProposalEditPage: React.FC = () => {
     } catch (error: any) {
       console.error('Error saving proposal:', error);
       let message = 'Ошибка сохранения предложения';
-      if (error.response && error.response.data && error.response.data.message) {
-        message = error.response.data.message;
+      if (error.response && error.response.data) {
+        if (typeof error.response.data === 'string' && error.response.data.includes('уже подали предложение на эту позицию')) {
+          message = 'Вы уже подали предложение на одну из позиций. Проверьте, что не дублируете позиции.';
+        } else if (error.response.data.message) {
+          message = error.response.data.message;
+        }
       }
       setError(message);
       setErrorDialogOpen(true);
@@ -208,10 +219,16 @@ const ProposalEditPage: React.FC = () => {
     
     // Проверяем, что все цены больше 0
     const invalidItems = formData.proposalItems.filter(item => 
-      item.tenderItemId && item.tenderItemId !== '' && (item.unitPrice <= 0 || item.unitPrice === '')
+      item.tenderItemId && item.tenderItemId !== '' && (item.unitPrice <= 0)
     );
     if (invalidItems.length > 0) {
       setError('Цена за единицу должна быть больше 0 для всех позиций');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
+    if (duplicateItems.size > 0) {
+      setError('Удалите дублирующие позиции перед отправкой предложения');
       setErrorDialogOpen(true);
       setLoading(false);
       return;
@@ -300,6 +317,34 @@ const ProposalEditPage: React.FC = () => {
     return tenderItems.filter(item => !selectedIds.includes(item.id));
   };
 
+  // Функция для проверки дубликатов
+  const checkDuplicates = () => {
+    const duplicates = new Set<number>();
+    const seenTenderItemIds = new Set<string>();
+    
+    formData.proposalItems.forEach((item, index) => {
+      if (item.tenderItemId && item.tenderItemId !== '') {
+        if (seenTenderItemIds.has(item.tenderItemId)) {
+          // Находим все индексы с этим tenderItemId
+          formData.proposalItems.forEach((checkItem, checkIndex) => {
+            if (checkItem.tenderItemId === item.tenderItemId) {
+              duplicates.add(checkIndex);
+            }
+          });
+        } else {
+          seenTenderItemIds.add(item.tenderItemId);
+        }
+      }
+    });
+    
+    setDuplicateItems(duplicates);
+  };
+
+  // Проверяем дубликаты при изменении данных
+  useEffect(() => {
+    checkDuplicates();
+  }, [formData.proposalItems]);
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
@@ -327,25 +372,20 @@ const ProposalEditPage: React.FC = () => {
           
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
-              <Autocomplete
-                options={companies.map(c => ({ label: c.shortName || c.name, id: c.id }))}
-                getOptionLabel={option => typeof option === 'string' ? option : option.label}
-                value={
-                  formData.supplierId && companies.find(c => c.id === formData.supplierId)
-                    ? { label: companies.find(c => c.id === formData.supplierId)!.shortName || companies.find(c => c.id === formData.supplierId)!.name, id: formData.supplierId }
-                    : null
-                }
-                onChange={(event, newValue) => {
-                  if (newValue && typeof newValue === 'object') {
-                    setFormData(prev => ({ ...prev, supplierId: newValue.id }));
-                  } else {
-                    setFormData(prev => ({ ...prev, supplierId: '' }));
-                  }
-                }}
-                renderInput={(params) => (
-                  <TextField {...params} label="Поставщик" variant="outlined" required />
-                )}
-              />
+              <FormControl fullWidth required error={!formData.supplierId && error !== null} sx={{ mb: 2 }}>
+                <InputLabel id="supplier-label">Поставщик</InputLabel>
+                <Select
+                  labelId="supplier-label"
+                  value={formData.supplierId}
+                  label="Поставщик"
+                  onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
+                  required
+                >
+                  {companies.map((company) => (
+                    <MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
 
             <Grid item xs={12} md={6}>
@@ -438,6 +478,11 @@ const ProposalEditPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {duplicateItems.size > 0 && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Обнаружены дублирующие позиции ({duplicateItems.size} строк). Удалите дубликаты перед отправкой предложения.
+        </Alert>
+      )}
       <Card>
         <CardContent>
           <Typography variant="h6" sx={{ mb: 2 }}>
@@ -460,23 +505,22 @@ const ProposalEditPage: React.FC = () => {
               </TableHead>
               <TableBody>
                 {formData.proposalItems.map((item, index) => {
-                  // Получаем список уже выбранных tenderItemId, кроме текущей строки
                   const selectedTenderItemIds = formData.proposalItems
                     .filter((_, i) => i !== index)
                     .map(i => i.tenderItemId);
                   const availableTenderItems = getAvailableTenderItems(selectedTenderItemIds);
                   const selectedTenderItem = tenderItems.find(ti => ti.id === item.tenderItemId);
+                  const isDuplicate = duplicateItems.has(index);
                   return (
-                  <TableRow key={index}>
-                    <TableCell>{index + 1}</TableCell>
-                    <TableCell>
+                    <TableRow key={index} sx={{ backgroundColor: isDuplicate ? 'rgba(255, 0, 0, 0.1)' : 'transparent' }}>
+                      <TableCell>{index + 1}</TableCell>
+                      <TableCell>
                         <FormControl fullWidth size="small">
                           <Select
                             value={item.tenderItemId}
                             onChange={e => {
                               const tenderItem = tenderItems.find(ti => ti.id === e.target.value);
                               handleItemChange(index, 'tenderItemId', e.target.value);
-                              // Автоматически подставляем описание, количество и спецификацию
                               if (tenderItem) {
                                 handleItemChange(index, 'description', tenderItem.description);
                                 handleItemChange(index, 'quantity', tenderItem.quantity);
@@ -491,7 +535,6 @@ const ProposalEditPage: React.FC = () => {
                                 {ti.description} (Кол-во: {ti.quantity}, Ед.: {ti.unitName})
                               </MenuItem>
                             ))}
-                            {/* Разрешаем оставить выбранной уже выбранную позицию */}
                             {item.tenderItemId && !availableTenderItems.some(ti => ti.id === item.tenderItemId) && selectedTenderItem && (
                               <MenuItem key={selectedTenderItem.id} value={selectedTenderItem.id}>
                                 {selectedTenderItem.description} (Кол-во: {selectedTenderItem.quantity}, Ед.: {selectedTenderItem.unitName})
@@ -499,70 +542,63 @@ const ProposalEditPage: React.FC = () => {
                             )}
                           </Select>
                         </FormControl>
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        value={item.brand}
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          value={item.brand}
                           onChange={e => handleItemChange(index, 'brand', e.target.value)}
-                        fullWidth
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        value={item.model}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          value={item.model}
                           onChange={e => handleItemChange(index, 'model', e.target.value)}
-                        fullWidth
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        value={item.manufacturer}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          value={item.manufacturer}
                           onChange={e => handleItemChange(index, 'manufacturer', e.target.value)}
-                        fullWidth
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        type="number"
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          type="number"
                           value={selectedTenderItem ? selectedTenderItem.quantity : item.quantity}
                           disabled
-                        inputProps={{ min: 0.01, step: 0.01 }}
-                        fullWidth
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <TextField
-                        size="small"
-                        type="number"
-                        value={item.unitPrice}
+                          inputProps={{ min: 0.01, step: 0.01 }}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={item.unitPrice}
                           onChange={e => {
                             const value = Number(e.target.value);
-                            // Убираем ноль если введен только ноль
-                            if (value === 0) {
-                              handleItemChange(index, 'unitPrice', '');
-                            } else {
-                              handleItemChange(index, 'unitPrice', value);
-                            }
+                            handleItemChange(index, 'unitPrice', value);
                           }}
-                        inputProps={{ min: 0.01, step: 0.01 }}
-                        fullWidth
-                        error={item.unitPrice <= 0}
-                        helperText={item.unitPrice <= 0 ? 'Цена должна быть больше 0' : ''}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {(item.quantity * item.unitPrice).toLocaleString('ru-RU')} ₽
-                    </TableCell>
-                    <TableCell>
-                      <IconButton color="error" onClick={() => handleRemoveItem(index)} size="small">
-                        <DeleteIcon />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
+                          inputProps={{ min: 0.01, step: 0.01 }}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell>
+                        {(item.quantity * item.unitPrice).toLocaleString('ru-RU')} ₽
+                      </TableCell>
+                      <TableCell>
+                        <IconButton color="error" onClick={() => handleRemoveItem(index)} size="small">
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
                 <TableRow>
@@ -598,12 +634,12 @@ const ProposalEditPage: React.FC = () => {
           Отмена
         </Button>
         <Button
+          type="submit"
           variant="contained"
+          disabled={loading || !formData.supplierId}
           startIcon={<SaveIcon />}
-          onClick={handleSubmit}
-          disabled={loading}
         >
-          Сохранить черновик
+          Сохранить
         </Button>
         <Button
           variant="contained"

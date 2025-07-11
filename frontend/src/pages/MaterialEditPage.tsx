@@ -88,6 +88,10 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const [editSupplierIdx, setEditSupplierIdx] = useState<number | null>(null);
   const [editSupplierValue, setEditSupplierValue] = useState('');
 
+  // --- ДОБАВЛЯЕМ состояния для inputValue ---
+  const [categoryInputValue, setCategoryInputValue] = useState('');
+  const [typeInputValue, setTypeInputValue] = useState('');
+
   // Fetch all dictionaries
   useEffect(() => {
     const fetchDict = async (url: string, setter: React.Dispatch<React.SetStateAction<any[]>>) => {
@@ -310,14 +314,25 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               render={({ field }) => (
                 <>
                   <Autocomplete
-                    options={[...categories, { id: 'CREATE_NEW', name: 'Создать новую категорию' }]}
-                    getOptionLabel={(option) => option.name}
+                    options={[
+                      ...categories,
+                      ...(categoryInputValue && !categories.some(c => c.name.toLowerCase() === categoryInputValue.toLowerCase())
+                        ? [{ id: 'CREATE_NEW', name: `Создать категорию: "${categoryInputValue}"`, inputValue: categoryInputValue }]
+                        : [])
+                    ]}
+                    inputValue={categoryInputValue}
+                    onInputChange={(_, value) => setCategoryInputValue(value)}
+                    getOptionLabel={option => option.name}
                     value={categories.find(c => c.id === field.value) || null}
                     onChange={(_, newValue) => {
-                      if (newValue?.id === 'CREATE_NEW') setOpenNewCategoryDialog(true);
-                      else field.onChange(newValue?.id || null);
+                      if (newValue?.id === 'CREATE_NEW') {
+                        setNewCategoryName(newValue.inputValue);
+                        setOpenNewCategoryDialog(true);
+                      } else {
+                        field.onChange(newValue?.id || null);
+                      }
                     }}
-                    renderInput={(params) => <TextField {...params} label="Категория" InputLabelProps={{ shrink: true }} />}
+                    renderInput={params => <TextField {...params} label="Категория" InputLabelProps={{ shrink: true }} />}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                   />
                   <Dialog open={openNewCategoryDialog} onClose={() => setOpenNewCategoryDialog(false)}>
@@ -341,14 +356,25 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               render={({ field }) => (
                 <>
                   <Autocomplete
-                    options={[...materialTypes, { id: 'CREATE_NEW', name: 'Создать новый тип' }]}
-                    getOptionLabel={(option) => option.name}
+                    options={[
+                      ...materialTypes,
+                      ...(typeInputValue && !materialTypes.some(mt => mt.name.toLowerCase() === typeInputValue.toLowerCase())
+                        ? [{ id: 'CREATE_NEW', name: `Создать тип: "${typeInputValue}"`, inputValue: typeInputValue }]
+                        : [])
+                    ]}
+                    inputValue={typeInputValue}
+                    onInputChange={(_, value) => setTypeInputValue(value)}
+                    getOptionLabel={option => option.name}
                     value={materialTypes.find(mt => mt.id === field.value) || null}
                     onChange={(_, newValue) => {
-                      if (newValue?.id === 'CREATE_NEW') setOpenNewTypeDialog(true);
-                      else field.onChange(newValue?.id || null);
+                      if (newValue?.id === 'CREATE_NEW') {
+                        setNewTypeName(newValue.inputValue);
+                        setOpenNewTypeDialog(true);
+                      } else {
+                        field.onChange(newValue?.id || null);
+                      }
                     }}
-                    renderInput={(params) => <TextField {...params} label="Тип материала" InputLabelProps={{ shrink: true }} />}
+                    renderInput={params => <TextField {...params} label="Тип материала" InputLabelProps={{ shrink: true }} />}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                   />
                   <Dialog open={openNewTypeDialog} onClose={() => setOpenNewTypeDialog(false)}>

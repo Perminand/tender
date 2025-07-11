@@ -70,6 +70,8 @@ const App: React.FC = () => (
       <Route path="/tenders/:id/edit" element={<TenderEditPage />} />
       <Route path="/tenders/:tenderId/proposals/new" element={<ProposalEditPage />} />
       <Route path="/tenders/:tenderId/price-analysis" element={<PriceAnalysisPage />} />
+      <Route path="/tenders/:tenderId/contract/new/:supplierId" element={<ContractEditPage />} />
+      <Route path="/tenders/:tenderId/contract/new" element={<ContractEditPage />} />
       <Route path="/proposals" element={<ProposalRegistryPage />} />
       <Route path="/proposals/:id" element={<ProposalDetailPage />} />
       <Route path="/notifications" element={<NotificationListPage />} />

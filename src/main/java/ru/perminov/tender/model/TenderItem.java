@@ -44,6 +44,15 @@ public class TenderItem {
 
     private Double estimatedPrice;
 
+    private UUID awardedSupplierId;
+
+    public UUID getAwardedSupplierId() {
+        return awardedSupplierId;
+    }
+    public void setAwardedSupplierId(UUID awardedSupplierId) {
+        this.awardedSupplierId = awardedSupplierId;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

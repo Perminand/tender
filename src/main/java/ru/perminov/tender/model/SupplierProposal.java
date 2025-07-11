@@ -34,7 +34,8 @@ public class SupplierProposal {
 
     private String proposalNumber;
 
-    private LocalDateTime submissionDate;
+    @Column(nullable = false)
+    private LocalDateTime submissionDate = LocalDateTime.now();
 
     private LocalDateTime validUntil;
 

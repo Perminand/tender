@@ -102,6 +102,12 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
                         .orElseThrow(() -> new RuntimeException("Позиция тендера не найдена: " + itemDto.getTenderItemId()));
                     item.setTenderItem(tenderItem);
                 }
+                if (itemDto.getTenderItemId() != null) {
+                    boolean exists = proposalItemRepository.existsBySupplierProposalIdAndTenderItemId(savedProposal.getId(), itemDto.getTenderItemId());
+                    if (exists) {
+                        throw new RuntimeException("Вы уже подали предложение на эту позицию");
+                    }
+                }
                 proposalItemRepository.save(item);
             }
         }
@@ -356,14 +362,14 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     public Map<UUID, Double> getBestPricesByTenderItems(UUID tenderId) {
         // Получаем все поданные предложения для тендера
         List<SupplierProposal> proposals = supplierProposalRepository.findByTenderId(tenderId);
-        List<SupplierProposal> submittedProposals = proposals.stream()
-                .filter(p -> p.getStatus() == SupplierProposal.ProposalStatus.SUBMITTED)
+        List<SupplierProposal> validProposals = proposals.stream()
+                .filter(p -> p.getStatus() != SupplierProposal.ProposalStatus.REJECTED)
                 .collect(Collectors.toList());
-        
+
         Map<UUID, Double> bestPrices = new HashMap<>();
         
         // Для каждого предложения получаем позиции и находим лучшие цены
-        for (SupplierProposal proposal : submittedProposals) {
+        for (SupplierProposal proposal : validProposals) {
             List<ProposalItem> items = proposalItemRepository.findBySupplierProposalId(proposal.getId());
             
             for (ProposalItem item : items) {

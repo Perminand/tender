@@ -51,6 +51,13 @@ public class Tender {
 
     private String termsAndConditions;
 
+    @Column(name = "awarded_supplier_id")
+    private UUID awardedSupplierId;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_tender_id")
+    private Tender parentTender;
+
     @OneToMany(mappedBy = "tender", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TenderItem> tenderItems = new ArrayList<>();
 

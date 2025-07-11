@@ -66,6 +66,7 @@ interface SupplierProposal {
   status: string;
   totalPrice: number;
   currency: string;
+  proposalItems: any[]; // Assuming proposalItems is an array of objects
 }
 
 interface Company {
@@ -76,16 +77,16 @@ interface Company {
 
 const ContractEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { tenderId, supplierId } = useParams<{ tenderId?: string; supplierId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const isCreatingFromTender = location.state?.fromTender;
-  const tenderId = location.state?.tenderId;
-  const supplierId = location.state?.supplierId;
+  const isCreatingFromTender = Boolean(tenderId && supplierId);
 
   const [contract, setContract] = useState<Contract | null>(null);
   const [tenders, setTenders] = useState<Tender[]>([]);
   const [suppliers, setSuppliers] = useState<Company[]>([]);
   const [proposals, setProposals] = useState<SupplierProposal[]>([]);
+  const [tenderData, setTenderData] = useState<Tender | null>(null);
   const [loading, setLoading] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
@@ -105,7 +106,7 @@ const ContractEditPage: React.FC = () => {
   useEffect(() => {
     if (id) {
       fetchContract();
-    } else if (isCreatingFromTender && tenderId && supplierId) {
+    } else if (isCreatingFromTender) {
       fetchTenderData();
     }
     fetchTenders();
@@ -143,12 +144,16 @@ const ContractEditPage: React.FC = () => {
       // Получаем данные тендера
       const tenderResponse = await fetch(`/api/tenders/${tenderId}`);
       const tenderData = await tenderResponse.json();
+      setTenderData(tenderData);
       
       // Получаем предложения поставщика
       const proposalsResponse = await fetch(`/api/proposals/tender/${tenderId}`);
       const proposalsData = await proposalsResponse.json();
       
       setProposals(proposalsData);
+      
+      // Находим выбранное предложение поставщика
+      const selectedProposal = proposalsData.find((p: SupplierProposal) => p.supplierId === supplierId);
       
       // Устанавливаем данные по умолчанию
       setFormData(prev => ({
@@ -157,7 +162,7 @@ const ContractEditPage: React.FC = () => {
         supplierId: supplierId,
         title: `Контракт по тендеру ${tenderData.tenderNumber}`,
         contractNumber: `CON-${Date.now()}`,
-        totalAmount: proposalsData.find((p: SupplierProposal) => p.supplierId === supplierId)?.totalPrice || 0
+        totalAmount: selectedProposal?.totalPrice || 0
       }));
     } catch (error) {
       showSnackbar('Ошибка при загрузке данных тендера', 'error');
@@ -209,7 +214,7 @@ const ContractEditPage: React.FC = () => {
           body: JSON.stringify(submitData),
         });
         showSnackbar('Контракт обновлен', 'success');
-      } else if (isCreatingFromTender && tenderId && supplierId) {
+      } else if (isCreatingFromTender) {
         // Создание контракта из тендера
         await fetch(`/api/contracts/from-tender?tenderId=${tenderId}&supplierId=${supplierId}`, {
           method: 'POST',
@@ -257,6 +262,38 @@ const ContractEditPage: React.FC = () => {
         <Alert severity="info" sx={{ mb: 2 }}>
           Создание контракта на основе тендера
         </Alert>
+      )}
+
+      {isCreatingFromTender && tenderData && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Информация о тендере
+            </Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Номер тендера: <strong>{tenderData.tenderNumber}</strong>
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Название: <strong>{tenderData.title}</strong>
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Статус: <strong>{tenderData.status}</strong>
+                </Typography>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <Typography variant="body2" color="text.secondary">
+                  Заказчик: <strong>{tenderData.customerName}</strong>
+                </Typography>
+              </Grid>
+            </Grid>
+          </CardContent>
+        </Card>
       )}
 
       <Card>
@@ -393,11 +430,81 @@ const ContractEditPage: React.FC = () => {
                 />
               </Grid>
 
+              {isCreatingFromTender && proposals.length > 0 && supplierId && (
+                (() => {
+                  const selectedProposal = proposals.find(p => p.supplierId === supplierId);
+                  if (!selectedProposal || !selectedProposal.proposalItems) return null;
+                  return (
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 2 }} />
+                      <Typography variant="h6" gutterBottom>
+                        Позиции предложения поставщика
+                      </Typography>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="body2" color="text.secondary">
+                          Поставщик: <strong>{selectedProposal.supplierName}</strong> | 
+                          Номер предложения: <strong>{selectedProposal.proposalNumber}</strong> | 
+                          Общая сумма: <strong>{selectedProposal.totalPrice} {selectedProposal.currency}</strong>
+                        </Typography>
+                      </Box>
+                      <TableContainer component={Paper}>
+                        <Table>
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>№</TableCell>
+                              <TableCell>Описание</TableCell>
+                              <TableCell>Бренд/Модель</TableCell>
+                              <TableCell>Производитель</TableCell>
+                              <TableCell>Количество</TableCell>
+                              <TableCell>Ед. изм.</TableCell>
+                              <TableCell>Цена за ед.</TableCell>
+                              <TableCell>Сумма</TableCell>
+                              <TableCell>Срок поставки</TableCell>
+                              <TableCell>Гарантия</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {selectedProposal.proposalItems.map((item, idx) => (
+                              <TableRow key={item.id || idx}>
+                                <TableCell>{item.itemNumber}</TableCell>
+                                <TableCell>{item.description}</TableCell>
+                                <TableCell>{item.brand} {item.model}</TableCell>
+                                <TableCell>{item.manufacturer}</TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell>{item.unitName}</TableCell>
+                                <TableCell>{item.unitPrice?.toLocaleString()} ₽</TableCell>
+                                <TableCell>{item.totalPrice?.toLocaleString()} ₽</TableCell>
+                                <TableCell>{item.deliveryPeriod}</TableCell>
+                                <TableCell>{item.warranty}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                      {selectedProposal.proposalItems.some(item => item.specifications) && (
+                        <Box sx={{ mt: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Дополнительные характеристики:
+                          </Typography>
+                          {selectedProposal.proposalItems
+                            .filter(item => item.specifications)
+                            .map((item, idx) => (
+                              <Typography key={idx} variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+                                <strong>{item.itemNumber}.</strong> {item.specifications}
+                              </Typography>
+                            ))}
+                        </Box>
+                      )}
+                    </Grid>
+                  );
+                })()
+              )}
+
               {isCreatingFromTender && proposals.length > 0 && (
                 <Grid item xs={12}>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="h6" gutterBottom>
-                    Предложения поставщика
+                    Все предложения поставщиков
                   </Typography>
                   <TableContainer component={Paper}>
                     <Table>
@@ -408,12 +515,30 @@ const ContractEditPage: React.FC = () => {
                           <TableCell>Статус</TableCell>
                           <TableCell>Сумма</TableCell>
                           <TableCell>Валюта</TableCell>
+                          <TableCell>Количество позиций</TableCell>
                         </TableRow>
                       </TableHead>
                       <TableBody>
                         {proposals.map((proposal) => (
-                          <TableRow key={proposal.id}>
-                            <TableCell>{proposal.supplierName}</TableCell>
+                          <TableRow 
+                            key={proposal.id}
+                            sx={{ 
+                              backgroundColor: proposal.supplierId === supplierId ? 'rgba(76, 175, 80, 0.1)' : 'inherit'
+                            }}
+                          >
+                            <TableCell>
+                              <Typography variant="body2">
+                                {proposal.supplierName}
+                                {proposal.supplierId === supplierId && (
+                                  <Chip 
+                                    label="Выбран" 
+                                    color="success" 
+                                    size="small" 
+                                    sx={{ ml: 1 }}
+                                  />
+                                )}
+                              </Typography>
+                            </TableCell>
                             <TableCell>{proposal.proposalNumber}</TableCell>
                             <TableCell>
                               <Chip 
@@ -422,8 +547,9 @@ const ContractEditPage: React.FC = () => {
                                 size="small"
                               />
                             </TableCell>
-                            <TableCell>{proposal.totalPrice}</TableCell>
+                            <TableCell>{proposal.totalPrice?.toLocaleString()} ₽</TableCell>
                             <TableCell>{proposal.currency}</TableCell>
+                            <TableCell>{proposal.proposalItems?.length || 0}</TableCell>
                           </TableRow>
                         ))}
                       </TableBody>

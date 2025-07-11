@@ -25,7 +25,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  DialogContentText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -64,6 +65,8 @@ const DeliveryListPage: React.FC = () => {
   const [editingDelivery, setEditingDelivery] = useState<Delivery | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedDeliveryId, setSelectedDeliveryId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -138,12 +141,22 @@ const DeliveryListPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    try {
-      await fetch(`/api/deliveries/${id}`, { method: 'DELETE' });
-      showSnackbar('Поставка удалена', 'success');
-      fetchDeliveries();
-    } catch (error) {
-      showSnackbar('Ошибка при удалении поставки', 'error');
+    setSelectedDeliveryId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedDeliveryId) {
+      try {
+        await fetch(`/api/deliveries/${selectedDeliveryId}`, { method: 'DELETE' });
+        showSnackbar('Поставка удалена', 'success');
+        fetchDeliveries();
+      } catch (error) {
+        showSnackbar('Ошибка при удалении поставки', 'error');
+      } finally {
+        setDeleteDialogOpen(false);
+        setSelectedDeliveryId(null);
+      }
     }
   };
 
@@ -557,6 +570,31 @@ const DeliveryListPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Подтверждение удаления
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Вы уверены, что хотите удалить эту поставку? Это действие нельзя будет отменить.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleConfirmDelete} color="error" autoFocus>
+            Удалить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

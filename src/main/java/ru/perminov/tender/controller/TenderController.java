@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -127,6 +128,33 @@ public class TenderController {
         return ResponseEntity.ok(tenderService.cancelTender(id));
     }
 
+    @PostMapping("/{tenderId}/items/{itemId}/award")
+    public ResponseEntity<Void> awardTenderItem(@PathVariable UUID tenderId, @PathVariable UUID itemId, @RequestBody Map<String, String> body) {
+        String supplierIdStr = body.get("supplierId");
+        if (supplierIdStr == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            tenderService.awardTenderItem(tenderId, itemId, UUID.fromString(supplierIdStr));
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    @PostMapping("/{id}/award")
+    public ResponseEntity<TenderDto> awardTender(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+        String supplierIdStr = body.get("supplierId");
+        try {
+            TenderDto dto = supplierIdStr == null || supplierIdStr.isEmpty()
+                ? tenderService.awardTender(id, null)
+                : tenderService.awardTender(id, UUID.fromString(supplierIdStr));
+            return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
     @GetMapping("/{id}/price-analysis")
     public ResponseEntity<ru.perminov.tender.dto.tender.PriceAnalysisDto> getTenderPriceAnalysis(@PathVariable UUID id) {
         log.info("Получен GET-запрос: анализ цен для тендера id={}", id);
@@ -161,5 +189,14 @@ public class TenderController {
     public ResponseEntity<PriceSummaryDto> getTenderStatistics(@PathVariable UUID id) {
         log.info("Получен GET-запрос: статистика по тендеру id={}", id);
         return ResponseEntity.ok(priceAnalysisService.getPriceStatistics(id));
+    }
+
+    @PostMapping("/{id}/split")
+    public ResponseEntity<ru.perminov.tender.dto.tender.TenderSplitResponseDto> splitTender(
+            @PathVariable UUID id,
+            @RequestBody ru.perminov.tender.dto.tender.TenderSplitRequestDto splitRequest) {
+        log.info("Получен POST-запрос: разделить тендер. id={}, данные: {}", id, splitRequest);
+        splitRequest.setTenderId(id);
+        return ResponseEntity.ok(tenderService.splitTender(splitRequest));
     }
 } 

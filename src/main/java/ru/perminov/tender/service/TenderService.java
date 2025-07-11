@@ -44,6 +44,16 @@ public interface TenderService {
 
     TenderDto cancelTender(UUID id);
 
+    /**
+     * Присвоить победителя позиции тендера
+     */
+    void awardTenderItem(UUID tenderId, UUID itemId, UUID supplierId);
+
+    /**
+     * Присвоить победителя всему тендеру
+     */
+    TenderDto awardTender(UUID tenderId, UUID supplierId);
+
     // Методы для анализа цен
     ru.perminov.tender.dto.tender.PriceAnalysisDto getTenderPriceAnalysis(UUID id);
     
@@ -54,4 +64,9 @@ public interface TenderService {
     Double getTenderSavings(UUID id);
     
     List<String> getTenderRecommendations(UUID id);
+    
+    /**
+     * Разделить тендер на части
+     */
+    ru.perminov.tender.dto.tender.TenderSplitResponseDto splitTender(ru.perminov.tender.dto.tender.TenderSplitRequestDto splitRequest);
 } 

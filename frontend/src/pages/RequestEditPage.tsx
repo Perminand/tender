@@ -509,26 +509,39 @@ export default function RequestEditPage() {
 
         // ШАГ 1: Парсим шапку (Организация, Проект, Склад, Заявитель, Дата, Заявка)
         let org = '', project = '', sklad = '', applicant = '', date = '', requestNumber = '';
-        for (let i = 0; i < Math.min(jsonData.length, 10); i++) {
+        // Ищем только в первых двух строках для всех, кроме заявителя
+        for (let i = 0; i < Math.min(jsonData.length, 2); i++) {
           const row = jsonData[i] as any[];
           for (let j = 0; j < row.length; j++) {
             const cell = (row[j] || '').toString().toLowerCase();
             if (cell.includes('организация')) org = row[j + 1] || '';
             if (cell.includes('проект')) project = row[j + 1] || '';
             if (cell.includes('склад')) sklad = row[j + 1] || '';
-            if (cell.includes('заявитель')) applicant = row[j + 1] || '';
             if (cell.includes('дата')) date = row[j + 1] || '';
             if (cell.includes('заявка')) requestNumber = row[j + 1] || '';
+          }
+        }
+        // Заявителя ищем только в первой строке
+        if (jsonData.length > 0) {
+          const row = jsonData[0] as any[];
+          for (let j = 0; j < row.length; j++) {
+            const cell = (row[j] || '').toString().toLowerCase();
+            if (cell.includes('заявитель')) {
+              applicant = row[j + 1] || '';
+              break;
+            }
           }
         }
 
         // ШАГ 2: Определяем организацию из справочника по имени из Excel
         let orgObj = null;
         if (org) {
-          const normalize = (str: any) => (str === undefined || str === null) ? '' : String(str).trim().toLowerCase();
-          orgObj = companies.find(c => normalize(c.legalName) === normalize(org))
-            || companies.find(c => normalize(c.shortName) === normalize(org))
-            || companies.find(c => normalize(c.name) === normalize(org));
+          const normalize = (str: any) => (str === undefined || str === null) ? '' : String(str).replace(/\s+/g, '').trim().toLowerCase();
+          orgObj = companies.find(c => [c.legalName, c.shortName, c.name].some(n => normalize(n) === normalize(org)));
+          // Гарантируем, что orgObj — это объект из companies (по ссылке)
+          if (orgObj) {
+            orgObj = companies.find(c => c.id === orgObj.id) || orgObj;
+          }
         }
 
         // ШАГ 3: Найти строку с заголовками материалов
@@ -537,21 +550,21 @@ export default function RequestEditPage() {
         for (let i = 0; i < Math.min(jsonData.length, 20); i++) {
           const row = jsonData[i] as any[];
           const normalized = row.map((cell: any) => (cell === undefined || cell === null) ? '' : String(cell).trim().toLowerCase());
-          if (normalized.includes('наименование материала') && normalized.includes('кол-во')) {
+          if (normalized.includes('наименование материала, услуги по заявке') && normalized.includes('кол-во')) {
             headers = row as string[];
             headerRowIndex = i;
             break;
           }
         }
         if (headers.length === 0) {
-          alert('В файле не найдена строка с заголовками материалов (например, "Наименование материала", "Кол-во")');
+          alert('В файле не найдена строка с заголовками материалов (например, "Наименование материала, услуги по Заявке", "Кол-во")');
           return;
         }
 
         // ШАГ 4: Импортировать материалы начиная со следующей строки
         const dataRows = jsonData.slice(headerRowIndex + 1);
         // Индексы нужных колонок
-        const idxMaterialName = headers.findIndex(h => (h || '').toString().toLowerCase().includes('наименование материала'));
+        const idxMaterialName = headers.findIndex(h => (h || '').toString().trim().toLowerCase() === 'наименование материала, услуги по заявке');
         const idxCharacteristics = headers.findIndex(h => (h || '').toString().toLowerCase().includes('характерист'));
         const idxQuantity = headers.findIndex(h => (h || '').toString().toLowerCase().includes('кол-во'));
         const idxUnit = headers.findIndex(h => (h || '').toString().toLowerCase().includes('ед. изм'));
@@ -875,21 +888,10 @@ export default function RequestEditPage() {
           </Grid>
         </Grid>
         <Autocomplete
-          options={companies.map(c => ({ label: c.shortName || c.name, id: c.id }))}
-          getOptionLabel={option => typeof option === 'string' ? option : option.label}
-          value={
-            request.organization && companies.find(c => c.id === request.organization.id)
-              ? { label: companies.find(c => c.id === request.organization.id)!.shortName || companies.find(c => c.id === request.organization.id)!.name, id: request.organization.id }
-              : null
-          }
-          onChange={(event, newValue) => {
-            if (newValue && typeof newValue === 'object') {
-              const company = companies.find(c => c.id === newValue.id) || null;
-              setRequest(prev => ({ ...prev, organization: company }));
-            } else {
-              setRequest(prev => ({ ...prev, organization: null }));
-            }
-          }}
+          options={companies}
+          getOptionLabel={option => option.shortName || option.name}
+          value={companies.find(c => c.id === request.organization?.id) || null}
+          onChange={(_, value) => setRequest(prev => ({ ...prev, organization: value || null }))}
           renderInput={(params) => (
             <TextField {...params} label="Организация (заказчик)" variant="outlined" required />
           )}

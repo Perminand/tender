@@ -465,8 +465,8 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
           <DialogTitle>Результат импорта</DialogTitle>
           <DialogContent>
             <Typography>Успешно импортировано: <b>{importLog?.imported ?? 0}</b></Typography>
-            <Typography>Ошибок: <b>{importLog?.errors.length ?? 0}</b></Typography>
-            {importLog?.errors.length > 0 && (
+            <Typography>Ошибок: <b>{importLog?.errors?.length ?? 0}</b></Typography>
+            {importLog?.errors && importLog.errors.length > 0 && (
               <Table size="small" sx={{ mt: 2 }}>
                 <TableHead>
                   <TableRow>

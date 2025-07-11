@@ -15,4 +15,7 @@ public interface TenderRepository extends JpaRepository<Tender, UUID> {
 
     @Query("SELECT COUNT(DISTINCT t) FROM Tender t WHERE EXISTS (SELECT 1 FROM SupplierProposal sp WHERE sp.tender = t)")
     long countTendersWithProposals();
+
+    List<Tender> findByParentTenderId(UUID parentTenderId);
+    boolean existsByParentTenderId(UUID parentTenderId);
 } 

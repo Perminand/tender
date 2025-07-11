@@ -81,7 +81,15 @@ public class ContractController {
     @PostMapping("/from-tender")
     public ResponseEntity<ContractDto> createContractFromTender(@RequestParam UUID tenderId, @RequestParam UUID supplierId) {
         log.info("Создание контракта на основе тендера {} и поставщика {}", tenderId, supplierId);
+        try {
         ContractDto dto = contractService.createContractFromTender(tenderId, supplierId);
-        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.badRequest().build();
+            log.info("Контракт успешно создан из тендера. contractId={}, tenderId={}, supplierId={}", 
+                    dto.getId(), tenderId, supplierId);
+            return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            log.error("Ошибка при создании контракта из тендера: tenderId={}, supplierId={}, ошибка: {}", 
+                     tenderId, supplierId, e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
     }
 } 

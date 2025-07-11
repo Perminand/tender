@@ -46,7 +46,8 @@ import {
   CheckCircle as CheckCircleIcon,
   Assessment as AssessmentIcon,
   FilterList as FilterListIcon,
-  ExpandMore as ExpandMoreIcon
+  ExpandMore as ExpandMoreIcon,
+  Description as ContractIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { fnsApi } from '../utils/fnsApi';
@@ -642,15 +643,26 @@ const TenderListPage: React.FC = () => {
                   )}
 
                   {tender.status === 'EVALUATION' && (
-                    <Tooltip title="Завершить тендер">
-                      <IconButton
-                        size="small"
-                        color="success"
-                        onClick={() => openStatusDialog(tender.id, 'complete')}
-                      >
-                        <CheckCircleIcon />
-                      </IconButton>
-                    </Tooltip>
+                    <>
+                      <Tooltip title="Завершить тендер">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => openStatusDialog(tender.id, 'complete')}
+                        >
+                          <CheckCircleIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Заключить контракт">
+                        <IconButton
+                          size="small"
+                          color="primary"
+                          onClick={() => navigate(`/tenders/${tender.id}/contract/new`)}
+                        >
+                          <ContractIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </>
                   )}
 
                   {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
@@ -685,6 +697,18 @@ const TenderListPage: React.FC = () => {
                         onClick={() => navigate(`/tenders/${tender.id}/price-analysis`)}
                       >
                         <AssessmentIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+
+                  {tender.status === 'AWARDED' && (
+                    <Tooltip title="Просмотр контракта">
+                      <IconButton
+                        size="small"
+                        color="primary"
+                        onClick={() => navigate(`/tenders/${tender.id}/contract`)}
+                      >
+                        <ContractIcon />
                       </IconButton>
                     </Tooltip>
                   )}

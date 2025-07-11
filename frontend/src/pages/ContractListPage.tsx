@@ -25,7 +25,8 @@ import {
   IconButton,
   Box,
   Alert,
-  Snackbar
+  Snackbar,
+  DialogContentText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -62,6 +63,8 @@ const ContractListPage: React.FC = () => {
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [status, setStatus] = useState<string>('DRAFT');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -96,12 +99,22 @@ const ContractListPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    try {
-      await fetch(`/api/contracts/${id}`, { method: 'DELETE' });
-      showSnackbar('Контракт удален', 'success');
-      fetchContracts();
-    } catch (error) {
-      showSnackbar('Ошибка при удалении контракта', 'error');
+    setSelectedContractId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedContractId) {
+      try {
+        await fetch(`/api/contracts/${selectedContractId}`, { method: 'DELETE' });
+        showSnackbar('Контракт удален', 'success');
+        fetchContracts();
+      } catch (error) {
+        showSnackbar('Ошибка при удалении контракта', 'error');
+      } finally {
+        setDeleteDialogOpen(false);
+        setSelectedContractId(null);
+      }
     }
   };
 
@@ -417,6 +430,31 @@ const ContractListPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Подтверждение удаления
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Вы уверены, что хотите удалить этот контракт? Это действие нельзя будет отменить.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleConfirmDelete} color="error" autoFocus>
+            Удалить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

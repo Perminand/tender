@@ -137,21 +137,30 @@ public class ContractServiceImpl implements ContractService {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new RuntimeException("Тендер не найден"));
         
+        log.info("Найден тендер: {} - {}", tender.getTenderNumber(), tender.getTitle());
+        
         // Проверяем статус тендера
         if (tender.getStatus() != Tender.TenderStatus.AWARDED) {
+            log.warn("Попытка создания контракта для тендера со статусом {} (требуется AWARDED)", tender.getStatus());
             throw new RuntimeException("Контракт можно создать только для присужденного тендера");
         }
         
         // Получаем предложение поставщика
-        SupplierProposal proposal = supplierProposalRepository.findByTenderIdAndSupplierId(tenderId, supplierId)
-                .stream()
+        List<SupplierProposal> proposals = supplierProposalRepository.findByTenderIdAndSupplierId(tenderId, supplierId);
+        log.info("Найдено {} предложений поставщика для тендера {}", proposals.size(), tenderId);
+        
+        SupplierProposal proposal = proposals.stream()
                 .filter(p -> p.getStatus() == SupplierProposal.ProposalStatus.ACCEPTED)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Принятое предложение поставщика не найдено"));
         
+        log.info("Найдено принятое предложение: {} от поставщика {}", proposal.getProposalNumber(), supplierId);
+        
         // Получаем поставщика
         Company supplier = companyRepository.findById(supplierId)
                 .orElseThrow(() -> new RuntimeException("Поставщик не найден"));
+        
+        log.info("Найден поставщик: {} - {}", supplier.getName(), supplier.getId());
         
         // Создаем контракт
         Contract contract = new Contract();
@@ -173,10 +182,13 @@ public class ContractServiceImpl implements ContractService {
         contract.setUpdatedAt(LocalDateTime.now());
         
         Contract savedContract = contractRepository.save(contract);
+        log.info("Контракт сохранен с ID: {}", savedContract.getId());
         
         // Создаем позиции контракта на основе позиций предложения
         List<ProposalItem> proposalItems = proposalItemRepository.findBySupplierProposalId(proposal.getId());
+        log.info("Найдено {} позиций в предложении поставщика", proposalItems.size());
         
+        int createdItemsCount = 0;
         for (ProposalItem proposalItem : proposalItems) {
             ContractItem contractItem = new ContractItem();
             contractItem.setContract(savedContract);
@@ -202,9 +214,14 @@ public class ContractServiceImpl implements ContractService {
             contractItem.setAdditionalInfo(proposalItem.getAdditionalInfo());
             
             contractItemRepository.save(contractItem);
+            createdItemsCount++;
+            
+            log.debug("Создана позиция контракта: {} - {} (количество: {}, цена: {})", 
+                     proposalItem.getItemNumber(), proposalItem.getDescription(), 
+                     proposalItem.getQuantity(), proposalItem.getUnitPrice());
         }
         
-        log.info("Контракт создан успешно: {}", savedContract.getId());
+        log.info("Контракт создан успешно: {} с {} позициями", savedContract.getId(), createdItemsCount);
         return contractMapper.toDto(savedContract);
     }
 } 

@@ -25,7 +25,8 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  DialogContentText
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -61,6 +62,8 @@ const PaymentListPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<Payment | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -95,12 +98,22 @@ const PaymentListPage: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
-    try {
-      await fetch(`/api/payments/${id}`, { method: 'DELETE' });
-      showSnackbar('Платеж удален', 'success');
-      fetchPayments();
-    } catch (error) {
-      showSnackbar('Ошибка при удалении платежа', 'error');
+    setSelectedPaymentId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (selectedPaymentId) {
+      try {
+        await fetch(`/api/payments/${selectedPaymentId}`, { method: 'DELETE' });
+        showSnackbar('Платеж удален', 'success');
+        fetchPayments();
+      } catch (error) {
+        showSnackbar('Ошибка при удалении платежа', 'error');
+      } finally {
+        setDeleteDialogOpen(false);
+        setSelectedPaymentId(null);
+      }
     }
   };
 
@@ -472,6 +485,31 @@ const PaymentListPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={() => setDeleteDialogOpen(false)}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          Подтверждение удаления
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="delete-dialog-description">
+            Вы уверены, что хотите удалить этот платеж? Это действие нельзя будет отменить.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            Отмена
+          </Button>
+          <Button onClick={handleConfirmDelete} color="error" autoFocus>
+            Удалить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
