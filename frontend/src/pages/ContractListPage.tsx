@@ -32,28 +32,47 @@ import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  CheckCircle as CheckCircleIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
 
+interface ContractItem {
+  id: string;
+  contractId: string;
+  materialId: string;
+  materialName: string;
+  quantity: number;
+  unitName: string;
+  unitPrice: number;
+  totalPrice: number;
+  description: string;
+}
+
 interface Contract {
-  id: number;
+  id: string;
   contractNumber: string;
   title: string;
-  tenderId: number;
-  supplierId: number;
-  customerId: number;
+  tenderId: string;
+  supplierId: string;
+  customerId: string;
   status: string;
   totalAmount: number;
   startDate: string;
   endDate: string;
   terms: string;
   description: string;
+  paymentTerms: string;
+  deliveryTerms: string;
+  warrantyTerms: string;
+  specialConditions: string;
+  currency: string;
   createdAt: string;
   updatedAt: string;
+  contractItems: ContractItem[];
 }
 
 const ContractListPage: React.FC = () => {
@@ -64,7 +83,7 @@ const ContractListPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [status, setStatus] = useState<string>('DRAFT');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedContractId, setSelectedContractId] = useState<number | null>(null);
+  const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -98,7 +117,7 @@ const ContractListPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     setSelectedContractId(id);
     setDeleteDialogOpen(true);
   };
@@ -286,12 +305,22 @@ const ContractListPage: React.FC = () => {
                   <IconButton
                     size="small"
                     onClick={() => navigate(`/contracts/${contract.id}`)}
+                    title="Просмотр"
                   >
                     <VisibilityIcon />
                   </IconButton>
                   <IconButton
                     size="small"
+                    onClick={() => navigate(`/contracts/${contract.id}/manage`)}
+                    title="Управление"
+                    color="primary"
+                  >
+                    <CheckCircleIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
                     onClick={() => handleEdit(contract)}
+                    title="Редактировать"
                   >
                     <EditIcon />
                   </IconButton>
@@ -299,6 +328,7 @@ const ContractListPage: React.FC = () => {
                     size="small"
                     color="error"
                     onClick={() => handleDelete(contract.id)}
+                    title="Удалить"
                   >
                     <DeleteIcon />
                   </IconButton>

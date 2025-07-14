@@ -24,7 +24,7 @@ import {
   TableRow,
   Paper
 } from '@mui/material';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
@@ -75,11 +75,29 @@ interface Company {
   type: string;
 }
 
+// Функция для перевода статуса на русский
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'DRAFT': return 'Черновик';
+    case 'ACTIVE': return 'Активный';
+    case 'COMPLETED': return 'Завершен';
+    case 'TERMINATED': return 'Расторгнут';
+    case 'SUSPENDED': return 'Приостановлен';
+    default: return status;
+  }
+};
+
 const ContractEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { tenderId, supplierId } = useParams<{ tenderId?: string; supplierId?: string }>();
   const navigate = useNavigate();
-  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  // Получаем значения из query string
+  const tenderId = searchParams.get('tenderId') || '';
+  const supplierId = searchParams.get('supplierId') || '';
+  const amount = Number(searchParams.get('amount')) || 0;
+  const supplierName = searchParams.get('supplierName') || '';
+
   const isCreatingFromTender = Boolean(tenderId && supplierId);
 
   const [contract, setContract] = useState<Contract | null>(null);
@@ -93,10 +111,10 @@ const ContractEditPage: React.FC = () => {
   const [formData, setFormData] = useState({
     contractNumber: '',
     title: '',
-    tenderId: '',
-    supplierId: '',
+    tenderId: tenderId,
+    supplierId: supplierId,
     status: 'DRAFT',
-    totalAmount: 0,
+    totalAmount: amount,
     startDate: dayjs(),
     endDate: dayjs().add(1, 'year'),
     terms: '',
@@ -111,7 +129,48 @@ const ContractEditPage: React.FC = () => {
     }
     fetchTenders();
     fetchSuppliers();
-  }, [id, isCreatingFromTender, tenderId, supplierId]);
+  }, [id, isCreatingFromTender, tenderId, supplierId, amount]);
+
+  useEffect(() => {
+    console.log('tenders:', tenders);
+    console.log('tenderId from query:', tenderId);
+    const foundTender = tenders.find(t => t.id === tenderId);
+    console.log('foundTender:', foundTender);
+
+    console.log('suppliers:', suppliers);
+    console.log('supplierId from query:', supplierId);
+    const foundSupplier = suppliers.find(s => s.id === supplierId);
+    console.log('foundSupplier:', foundSupplier);
+
+    console.log('amount from query:', amount);
+  }, [tenders, suppliers, tenderId, supplierId, amount]);
+
+  // После загрузки тендеров — если есть tenderId в query string, выставить его в formData
+  useEffect(() => {
+    if (tenders.length > 0 && tenderId) {
+      const foundTender = tenders.find(t => t.id === tenderId);
+      if (foundTender) {
+        setFormData(prev => ({ ...prev, tenderId: foundTender.id }));
+      }
+    }
+  }, [tenders, tenderId]);
+
+  // После загрузки поставщиков — если есть supplierId в query string, выставить его в formData
+  useEffect(() => {
+    if (suppliers.length > 0 && supplierId) {
+      const foundSupplier = suppliers.find(s => s.id === supplierId);
+      if (foundSupplier) {
+        setFormData(prev => ({ ...prev, supplierId: foundSupplier.id }));
+      }
+    }
+  }, [suppliers, supplierId]);
+
+  // После загрузки — если есть amount в query string, выставить его в formData
+  useEffect(() => {
+    if (amount > 0) {
+      setFormData(prev => ({ ...prev, totalAmount: amount }));
+    }
+  }, [amount]);
 
   const fetchContract = async () => {
     setLoading(true);
@@ -160,9 +219,11 @@ const ContractEditPage: React.FC = () => {
         ...prev,
         tenderId: tenderId,
         supplierId: supplierId,
-        title: `Контракт по тендеру ${tenderData.tenderNumber}`,
+        title: `Контракт по тендеру ${tenderData.tenderNumber || ''}`,
         contractNumber: `CON-${Date.now()}`,
-        totalAmount: selectedProposal?.totalPrice || 0
+        totalAmount: selectedProposal?.totalPrice || 0,
+        terms: tenderData.termsAndConditions || tenderData.terms || '',
+        description: tenderData.description || ''
       }));
     } catch (error) {
       showSnackbar('Ошибка при загрузке данных тендера', 'error');
@@ -199,6 +260,15 @@ const ContractEditPage: React.FC = () => {
     event.preventDefault();
     setLoading(true);
 
+    // Проверка и логирование UUID
+    console.log('tenderId:', tenderId, 'supplierId:', supplierId);
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!tenderId || !supplierId || !uuidRegex.test(tenderId) || !uuidRegex.test(supplierId)) {
+      showSnackbar('Ошибка: tenderId или supplierId отсутствует или невалиден!', 'error');
+      setLoading(false);
+      return;
+    }
+
     try {
       const submitData = {
         ...formData,
@@ -215,8 +285,8 @@ const ContractEditPage: React.FC = () => {
         });
         showSnackbar('Контракт обновлен', 'success');
       } else if (isCreatingFromTender) {
-        // Создание контракта из тендера
-        await fetch(`/api/contracts/from-tender?tenderId=${tenderId}&supplierId=${supplierId}`, {
+        // Создание контракта из тендера (теперь через тело запроса)
+        await fetch(`/api/contracts/from-tender`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(submitData),
@@ -283,7 +353,7 @@ const ContractEditPage: React.FC = () => {
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Статус: <strong>{tenderData.status}</strong>
+                  Статус: <strong>{getStatusLabel(tenderData.status)}</strong>
                 </Typography>
               </Grid>
               <Grid item xs={12} md={6}>

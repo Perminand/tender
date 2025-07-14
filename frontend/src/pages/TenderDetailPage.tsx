@@ -325,6 +325,17 @@ const TenderDetailPage: React.FC = () => {
     loadTender();
   };
 
+  // Добавить функцию для завершения тендера
+  const handleCompleteTender = async () => {
+    if (!tender) return;
+    try {
+      await fnsApi.post(`/api/tenders/${tender.id}/complete`);
+      await loadTender();
+    } catch (e: any) {
+      setError(e.response?.data?.message || 'Ошибка завершения тендера');
+    }
+  };
+
 
   if (loading) {
     return <Typography>Загрузка...</Typography>;
@@ -394,6 +405,16 @@ const TenderDetailPage: React.FC = () => {
             Подать предложение
           </Button>
             )}
+            {/* Кнопка завершения тендера (Присудить) */}
+            {tender.status === 'EVALUATION' && tender.awardedSupplierId && (
+              <Button
+                variant="contained"
+                color="success"
+                onClick={handleCompleteTender}
+              >
+                Завершить тендер (Присудить)
+              </Button>
+            )}
             {/* Кнопка анализа цен */}
             {(tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
               <Button
@@ -411,24 +432,8 @@ const TenderDetailPage: React.FC = () => {
                 variant="contained"
                 color="success"
                 onClick={() => {
-                  navigate('/contracts/new', {
-                    state: {
-                      fromTender: true,
-                      tenderId: tender.id,
-                      supplierId: tender.awardedSupplierId
-                    }
-                  });
+                  navigate(`/contracts/new?tenderId=${tender.id}&supplierId=${tender.awardedSupplierId}&amount=${tender.bestPrice}&supplierName=${encodeURIComponent(tender.bestSupplierName)}`);
                 }}
-              >
-                Создать контракт
-              </Button>
-            )}
-            {/* Кнопка создания контракта для статуса EVALUATION */}
-            {tender.status === 'EVALUATION' && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => navigate(`/tenders/${tender.id}/contract/new`)}
               >
                 Заключить контракт
               </Button>
@@ -671,7 +676,7 @@ const TenderDetailPage: React.FC = () => {
                       <TableCell>Материал</TableCell>
                       <TableCell>Количество</TableCell>
                       <TableCell>Ед. изм.</TableCell>
-                      <TableCell>Оцен. цена</TableCell>
+                      <TableCell>Сметная цена</TableCell>
                       <TableCell>Лучшая цена</TableCell>
                     </TableRow>
                   </TableHead>

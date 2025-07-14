@@ -50,13 +50,15 @@ interface RequestDto {
   description?: string;
 }
 
+// Функция для перевода статуса на русский
 const getStatusLabel = (status?: string) => {
   switch (status) {
     case 'DRAFT': return 'Черновик';
-    case 'SAVED': return 'Сохранен';
-    case 'TENDER': return 'Тендер';
-    case 'COMPLETED': return 'Исполнена';
-    case 'CANCELLED': return 'Отменена';
+    case 'PUBLISHED': return 'Опубликован';
+    case 'BIDDING': return 'Прием предложений';
+    case 'EVALUATION': return 'Оценка';
+    case 'AWARDED': return 'Присужден';
+    case 'CANCELLED': return 'Отменен';
     default: return status || '-';
   }
 };

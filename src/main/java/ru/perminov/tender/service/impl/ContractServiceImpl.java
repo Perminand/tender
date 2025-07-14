@@ -52,27 +52,57 @@ public class ContractServiceImpl implements ContractService {
     public ContractDto createContract(ContractDtoNew contractDtoNew) {
         Contract contract = contractMapper.toEntity(contractDtoNew);
         contract.setStatus(Contract.ContractStatus.DRAFT);
+        Tender tender = tenderRepository.getReferenceById(contractDtoNew.getTenderId());
+        contract.setTender(tender);
         Contract saved = contractRepository.save(contract);
         return contractMapper.toDto(saved);
     }
 
     @Override
     public ContractDto getContractById(UUID id) {
-        return contractRepository.findById(id)
-                .map(contractMapper::toDto)
+        Contract contract = contractRepository.findById(id)
                 .orElse(null);
+        if (contract == null) {
+            return null;
+        }
+        
+        ContractDto dto = contractMapper.toDto(contract);
+        
+        // Вручную заполняем позиции контракта
+        List<ContractItemDto> items = getContractItems(id);
+        dto.setContractItems(items);
+        
+        return dto;
     }
 
     @Override
     public List<ContractDto> getAllContracts() {
-        return contractMapper.toDtoList(contractRepository.findAll());
+        List<Contract> contracts = contractRepository.findAll();
+        return contracts.stream()
+                .map(contract -> {
+                    ContractDto dto = contractMapper.toDto(contract);
+                    // Вручную заполняем позиции контракта
+                    List<ContractItemDto> items = getContractItems(contract.getId());
+                    dto.setContractItems(items);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<ContractDto> getContractsByStatus(String status) {
         try {
             Contract.ContractStatus contractStatus = Contract.ContractStatus.valueOf(status.toUpperCase());
-            return contractMapper.toDtoList(contractRepository.findByStatus(contractStatus));
+            List<Contract> contracts = contractRepository.findByStatus(contractStatus);
+            return contracts.stream()
+                    .map(contract -> {
+                        ContractDto dto = contractMapper.toDto(contract);
+                        // Вручную заполняем позиции контракта
+                        List<ContractItemDto> items = getContractItems(contract.getId());
+                        dto.setContractItems(items);
+                        return dto;
+                    })
+                    .collect(Collectors.toList());
         } catch (IllegalArgumentException e) {
             return List.of();
         }
@@ -80,7 +110,16 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     public List<ContractDto> getContractsBySupplier(UUID supplierId) {
-        return contractMapper.toDtoList(contractRepository.findBySupplierId(supplierId));
+        List<Contract> contracts = contractRepository.findBySupplierId(supplierId);
+        return contracts.stream()
+                .map(contract -> {
+                    ContractDto dto = contractMapper.toDto(contract);
+                    // Вручную заполняем позиции контракта
+                    List<ContractItemDto> items = getContractItems(contract.getId());
+                    dto.setContractItems(items);
+                    return dto;
+                })
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -172,12 +211,28 @@ public class ContractServiceImpl implements ContractService {
         contract.setTitle("Контракт по тендеру " + tender.getTenderNumber());
         contract.setContractDate(LocalDate.now());
         contract.setStartDate(LocalDate.now());
+        
+        // Устанавливаем дату окончания из тендера или по умолчанию
+        if (tender.getEndDate() != null) {
+            contract.setEndDate(tender.getEndDate().toLocalDate());
+        } else {
+            contract.setEndDate(LocalDate.now().plusYears(1)); // По умолчанию +1 год
+        }
+        
         contract.setStatus(Contract.ContractStatus.DRAFT);
         contract.setTotalAmount(BigDecimal.valueOf(proposal.getTotalPrice()));
         contract.setCurrency(proposal.getCurrency());
+        
+        // Устанавливаем условия из тендера и предложения
         contract.setPaymentTerms(proposal.getPaymentTerms());
         contract.setDeliveryTerms(proposal.getDeliveryTerms());
         contract.setWarrantyTerms(proposal.getWarrantyTerms());
+        
+        // Устанавливаем описание и условия из тендера
+        contract.setDescription(tender.getDescription());
+        contract.setTerms(tender.getTermsAndConditions());
+        contract.setSpecialConditions(tender.getRequirements());
+        
         contract.setCreatedAt(LocalDateTime.now());
         contract.setUpdatedAt(LocalDateTime.now());
         
@@ -222,6 +277,8 @@ public class ContractServiceImpl implements ContractService {
         }
         
         log.info("Контракт создан успешно: {} с {} позициями", savedContract.getId(), createdItemsCount);
-        return contractMapper.toDto(savedContract);
+        
+        // Возвращаем контракт с позициями
+        return getContractById(savedContract.getId());
     }
 } 

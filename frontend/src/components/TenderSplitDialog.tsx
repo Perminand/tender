@@ -192,7 +192,7 @@ const TenderSplitDialog: React.FC<TenderSplitDialogProps> = ({
                 <TableCell>Доступное количество</TableCell>
                 <TableCell>Количество для разделения</TableCell>
                 <TableCell>Описание новой позиции</TableCell>
-                <TableCell>Оцен. цена</TableCell>
+                <TableCell>Сметная цена</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -201,7 +201,7 @@ const TenderSplitDialog: React.FC<TenderSplitDialogProps> = ({
                 if (!item) return null;
 
                 const remainingQuantity = item.quantity - split.splitQuantity;
-                const splitPrice = item.estimatedPrice * (split.splitQuantity / item.quantity);
+                // const splitPrice = item.estimatedPrice * (split.splitQuantity / item.quantity); // Удаляем расчет делённой сметной цены
 
                 return (
                   <TableRow key={split.itemId}>
@@ -248,11 +248,7 @@ const TenderSplitDialog: React.FC<TenderSplitDialogProps> = ({
                       <Typography variant="body2">
                         {formatPrice(item.estimatedPrice)}
                       </Typography>
-                      {split.splitQuantity > 0 && (
-                        <Typography variant="caption" display="block" color="success.main">
-                          {formatPrice(splitPrice)}
-                        </Typography>
-                      )}
+                      {/* Убрано отображение splitPrice */}
                     </TableCell>
                   </TableRow>
                 );

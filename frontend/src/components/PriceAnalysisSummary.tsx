@@ -107,6 +107,11 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
     return null;
   }
 
+  // Скрываем блок, если нет предложений
+  if (summary.totalProposals === 0) {
+    return null;
+  }
+
   return (
     <Card>
       <CardContent>

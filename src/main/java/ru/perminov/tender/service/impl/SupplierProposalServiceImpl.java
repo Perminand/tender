@@ -392,4 +392,22 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         List<SupplierProposal> proposals = supplierProposalRepository.findAll();
         return proposals.stream().map(supplierProposalMapper::toDto).collect(Collectors.toList());
     }
+
+    @Override
+    public void acceptAllProposalsForTender(UUID tenderId) {
+        log.info("Обновление статуса всех предложений тендера {} на ACCEPTED (кроме отклоненных)", tenderId);
+        
+        List<SupplierProposal> proposals = supplierProposalRepository.findByTenderId(tenderId);
+        
+        for (SupplierProposal proposal : proposals) {
+            // Обновляем статус только для предложений, которые не отклонены
+            if (proposal.getStatus() != SupplierProposal.ProposalStatus.REJECTED) {
+                proposal.setStatus(SupplierProposal.ProposalStatus.ACCEPTED);
+                supplierProposalRepository.save(proposal);
+                log.info("Обновлен статус предложения {} на ACCEPTED", proposal.getId());
+            }
+        }
+        
+        log.info("Завершено обновление статуса предложений для тендера {}", tenderId);
+    }
 } 

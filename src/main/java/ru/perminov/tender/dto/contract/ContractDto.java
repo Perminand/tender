@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 @Data
 public class ContractDto {
@@ -20,6 +21,12 @@ public class ContractDto {
     private LocalDate endDate;
     private String terms;
     private String description;
+    private String paymentTerms;
+    private String deliveryTerms;
+    private String warrantyTerms;
+    private String specialConditions;
+    private String currency;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<ContractItemDto> contractItems;
 } 

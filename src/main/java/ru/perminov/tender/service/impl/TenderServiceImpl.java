@@ -237,6 +237,16 @@ public class TenderServiceImpl implements TenderService {
         tender.setEndDate(LocalDateTime.now());
         
         Tender savedTender = tenderRepository.save(tender);
+        
+        // Обновляем статус всех предложений (кроме отклоненных) на ACCEPTED
+        try {
+            supplierProposalService.acceptAllProposalsForTender(id);
+            log.info("Успешно обновлен статус предложений для тендера {}", id);
+        } catch (Exception e) {
+            log.error("Ошибка при обновлении статуса предложений для тендера {}: {}", id, e.getMessage());
+            // Не прерываем выполнение, так как основная операция завершена успешно
+        }
+        
         return tenderMapper.toDto(savedTender);
     }
 
@@ -519,14 +529,12 @@ public class TenderServiceImpl implements TenderService {
             newItem.setUnit(originalItem.getUnit());
             newItem.setSpecifications(originalItem.getSpecifications());
             newItem.setDeliveryRequirements(originalItem.getDeliveryRequirements());
-            newItem.setEstimatedPrice(originalItem.getEstimatedPrice() * (splitDto.getSplitQuantity() / originalItem.getQuantity()));
-            
+            newItem.setEstimatedPrice(originalItem.getEstimatedPrice()); // Не делим сметную цену
             // Сохраняем новую позицию
             TenderItem savedNewItem = tenderItemRepository.save(newItem);
-            
             // Обновляем оригинальную позицию
             originalItem.setQuantity(originalItem.getQuantity() - splitDto.getSplitQuantity());
-            originalItem.setEstimatedPrice(originalItem.getEstimatedPrice() * (originalItem.getQuantity() / (originalItem.getQuantity() + splitDto.getSplitQuantity())));
+            // Не меняем estimatedPrice у оригинальной позиции
             TenderItem savedOriginalItem = tenderItemRepository.save(originalItem);
             
             // Добавляем в списки для ответа

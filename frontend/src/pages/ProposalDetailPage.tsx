@@ -74,6 +74,24 @@ interface ProposalDto {
   proposalItems: ProposalItemDto[];
 }
 
+// Функция для перевода статуса на русский
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'DRAFT': return 'Черновик';
+    case 'SUBMITTED': return 'Подано';
+    case 'UNDER_REVIEW': return 'На рассмотрении';
+    case 'ACCEPTED': return 'Принято';
+    case 'REJECTED': return 'Отклонено';
+    case 'WITHDRAWN': return 'Отозвано';
+    case 'PUBLISHED': return 'Опубликован';
+    case 'BIDDING': return 'Прием предложений';
+    case 'EVALUATION': return 'Оценка';
+    case 'AWARDED': return 'Присужден';
+    case 'CANCELLED': return 'Отменен';
+    default: return status;
+  }
+};
+
 const ProposalDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -140,18 +158,6 @@ const ProposalDetailPage: React.FC = () => {
       case 'REJECTED': return 'error';
       case 'WITHDRAWN': return 'default';
       default: return 'default';
-    }
-  };
-
-  const getStatusLabel = (status: string) => {
-    switch (status) {
-      case 'DRAFT': return 'Черновик';
-      case 'SUBMITTED': return 'Подано';
-      case 'UNDER_REVIEW': return 'На рассмотрении';
-      case 'ACCEPTED': return 'Принято';
-      case 'REJECTED': return 'Отклонено';
-      case 'WITHDRAWN': return 'Отозвано';
-      default: return status;
     }
   };
 

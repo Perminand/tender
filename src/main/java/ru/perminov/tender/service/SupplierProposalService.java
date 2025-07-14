@@ -39,4 +39,9 @@ public interface SupplierProposalService {
     Map<UUID, Double> getBestPricesByTenderItems(UUID tenderId);
     
     List<SupplierProposalDto> getAllProposals();
+    
+    /**
+     * Обновить статус всех предложений тендера (кроме отклоненных) на ACCEPTED
+     */
+    void acceptAllProposalsForTender(UUID tenderId);
 } 

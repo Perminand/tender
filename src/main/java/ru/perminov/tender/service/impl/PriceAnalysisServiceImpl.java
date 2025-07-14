@@ -59,8 +59,16 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
             }
         }
         
-        double totalSavings = totalEstimatedPrice - totalBestPrice;
-        double savingsPercentage = totalEstimatedPrice > 0 ? (totalSavings / totalEstimatedPrice) * 100 : 0.0;
+        double totalSavings;
+        double savingsPercentage;
+        if (proposals.size() == 0) {
+            totalBestPrice = 0.0;
+            totalSavings = 0.0;
+            savingsPercentage = 0.0;
+        } else {
+            totalSavings = totalEstimatedPrice - totalBestPrice;
+            savingsPercentage = totalEstimatedPrice > 0 ? (totalSavings / totalEstimatedPrice) * 100 : 0.0;
+        }
         
         PriceSummaryDto summary = new PriceSummaryDto(
                 totalEstimatedPrice,

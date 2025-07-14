@@ -21,6 +21,7 @@ public interface ContractMapper {
     @Mapping(target = "customerId", source = "customer.id")
     @Mapping(target = "startDate", source = "startDate")
     @Mapping(target = "endDate", source = "endDate")
+    @Mapping(target = "contractItems", ignore = true)
     ContractDto toDto(Contract contract);
     
     /**
