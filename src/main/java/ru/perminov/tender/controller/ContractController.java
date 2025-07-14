@@ -35,6 +35,7 @@ public class ContractController {
 
     @GetMapping
     public ResponseEntity<List<ContractDto>> getAllContracts() {
+
         log.info("Получение всех контрактов");
         return ResponseEntity.ok(contractService.getAllContracts());
     }
