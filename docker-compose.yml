@@ -1,46 +1,28 @@
-services:
-  tender-db:
-    image: postgres:16.1
-    container_name: TenderDb
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_DB=tender
-      - POSTGRES_USER=tender
-      - POSTGRES_PASSWORD=tender
-    healthcheck:
-      test: pg_isready -q -d $$POSTGRES_DB -U $$POSTGRES_USER
-      timeout: 5s
-      interval: 5s
-      retries: 10
+version: '3.8'
 
-  backend:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: tender-backend
+services:
+  app:
+    build: .
     ports:
       - "8080:8080"
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://tender-db:5432/tender
-      - SPRING_DATASOURCE_USERNAME=tender
-      - SPRING_DATASOURCE_PASSWORD=tender
-      - SPRING_MAIL_HOST=mailhog
-      - SPRING_MAIL_PORT=1025
-      - SPRING_MAIL_USERNAME=
-      - SPRING_MAIL_PASSWORD=
-      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH=false
-      - SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE=false
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/tender
+      - SPRING_DATASOURCE_USERNAME=tender_user
+      - SPRING_DATASOURCE_PASSWORD=tender_password
     depends_on:
-      - tender-db
-      - mailhog
+      - db
+    restart: unless-stopped
 
-  mailhog:
-    image: mailhog/mailhog:latest
-    container_name: tender-mailhog
-    ports:
-      - "1025:1025"  # SMTP порт
-      - "8025:8025"  # Web UI порт
+  db:
+    image: postgres:15
     environment:
-      - MH_STORAGE=memory
-      - MH_HOSTNAME=mailhog
+      - POSTGRES_DB=tender
+      - POSTGRES_USER=tender_user
+      - POSTGRES_PASSWORD=tender_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

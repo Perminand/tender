@@ -143,34 +143,20 @@ const ContractEditPage: React.FC = () => {
     console.log('foundSupplier:', foundSupplier);
 
     console.log('amount from query:', amount);
-  }, [tenders, suppliers, tenderId, supplierId, amount]);
 
-  // После загрузки тендеров — если есть tenderId в query string, выставить его в formData
-  useEffect(() => {
-    if (tenders.length > 0 && tenderId) {
-      const foundTender = tenders.find(t => t.id === tenderId);
-      if (foundTender) {
-        setFormData(prev => ({ ...prev, tenderId: foundTender.id }));
-      }
+    // Обновляем formData если найдены соответствующие данные
+    if (foundTender) {
+      setFormData(prev => ({ ...prev, tenderId: foundTender.id }));
     }
-  }, [tenders, tenderId]);
-
-  // После загрузки поставщиков — если есть supplierId в query string, выставить его в formData
-  useEffect(() => {
-    if (suppliers.length > 0 && supplierId) {
-      const foundSupplier = suppliers.find(s => s.id === supplierId);
-      if (foundSupplier) {
-        setFormData(prev => ({ ...prev, supplierId: foundSupplier.id }));
-      }
+    
+    if (foundSupplier) {
+      setFormData(prev => ({ ...prev, supplierId: foundSupplier.id }));
     }
-  }, [suppliers, supplierId]);
-
-  // После загрузки — если есть amount в query string, выставить его в formData
-  useEffect(() => {
+    
     if (amount > 0) {
       setFormData(prev => ({ ...prev, totalAmount: amount }));
     }
-  }, [amount]);
+  }, [tenders, suppliers, tenderId, supplierId, amount]);
 
   const fetchContract = async () => {
     setLoading(true);

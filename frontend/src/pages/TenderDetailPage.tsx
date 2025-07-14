@@ -413,7 +413,7 @@ const TenderDetailPage: React.FC = () => {
                 onClick={handleCompleteTender}
               >
                 Завершить тендер (Присудить)
-              </Button>
+          </Button>
             )}
             {/* Кнопка анализа цен */}
             {(tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (

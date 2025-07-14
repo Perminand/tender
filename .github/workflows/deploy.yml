@@ -1,0 +1,78 @@
+name: Deploy to VDS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+        
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+        
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        
+    - name: Build backend
+      run: mvn clean package -DskipTests
+        
+    - name: Build Docker image
+      run: docker build -t tender-app .
+      
+    - name: Save Docker image
+      uses: actions/cache/save@v4
+      with:
+        path: /tmp/tender-app.tar
+        key: tender-app-${{ github.sha }}
+      run: |
+        docker save tender-app > /tmp/tender-app.tar
+        
+    - name: Deploy to VDS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VDS_HOST }}
+        username: ${{ secrets.VDS_USERNAME }}
+        key: ${{ secrets.VDS_SSH_KEY }}
+        port: ${{ secrets.VDS_PORT }}
+        script: |
+          # Останавливаем старые контейнеры
+          docker-compose down
+          
+          # Удаляем старый образ
+          docker rmi tender-app || true
+          
+          # Создаем директорию если не существует
+          mkdir -p /opt/tender
+          cd /opt/tender
+          
+          # Копируем docker-compose.yml
+          echo '${{ secrets.DOCKER_COMPOSE }}' > docker-compose.yml
+          
+          # Запускаем новые контейнеры
+          docker-compose up -d --build
+          
+          # Очищаем неиспользуемые образы
+          docker image prune -f 

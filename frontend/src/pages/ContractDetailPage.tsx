@@ -114,8 +114,8 @@ const ContractDetailPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
-          Назад
-        </Button>
+        Назад
+      </Button>
         <Button 
           variant="contained" 
           onClick={() => navigate(`/contracts/${id}/manage`)}
@@ -177,10 +177,10 @@ const ContractDetailPage: React.FC = () => {
                 </Grid>
               )}
               {contract.terms && (
-                <Grid item xs={12}>
-                  <Typography color="textSecondary">Условия:</Typography>
-                  <Typography>{contract.terms}</Typography>
-                </Grid>
+            <Grid item xs={12}>
+              <Typography color="textSecondary">Условия:</Typography>
+              <Typography>{contract.terms}</Typography>
+            </Grid>
               )}
               {contract.paymentTerms && (
                 <Grid item xs={12} md={6}>
@@ -258,8 +258,8 @@ const ContractDetailPage: React.FC = () => {
                 </TableBody>
               </Table>
             </TableContainer>
-          </CardContent>
-        </Card>
+        </CardContent>
+      </Card>
       )}
     </Box>
   );

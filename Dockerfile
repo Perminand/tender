@@ -1,31 +1,26 @@
-# Используем официальный образ OpenJDK
-FROM openjdk:17-jdk-slim
-
-# Устанавливаем рабочую директорию
+# Сборка фронтенда
+FROM node:18 AS frontend-build
 WORKDIR /app
+COPY frontend/package*.json ./frontend/
+WORKDIR /app/frontend
+RUN npm ci --only=production
+COPY frontend/ ./frontend/
+RUN npm run build
 
-# Копируем Maven wrapper и pom.xml
-COPY mvnw .
-COPY .mvn .mvn
+# Сборка backend
+FROM maven:3.8.5-openjdk-17 AS backend-build
+WORKDIR /app
 COPY pom.xml .
+COPY src/ ./src/
+RUN mvn clean package -DskipTests
 
-# Делаем mvnw исполняемым
-RUN chmod +x mvnw
+# Финальный образ
+FROM openjdk:17-jdk-slim
+WORKDIR /app
+COPY --from=backend-build /app/target/*.jar ./app.jar
+COPY --from=frontend-build /app/frontend/dist ./static
 
-# Скачиваем зависимости (этот слой будет кэшироваться)
-RUN ./mvnw dependency:go-offline -B
-
-# Копируем исходный код
-COPY src src
-
-# Собираем приложение
-RUN ./mvnw clean package -DskipTests
-
-# Переименовываем JAR файл для удобства
-RUN mv target/*.jar app.jar
-
-# Открываем порт
+ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 
-# Запускаем приложение
-ENTRYPOINT ["java", "-jar", "app.jar"] 
+ENTRYPOINT ["java", "-jar", "app.jar"]
