@@ -42,13 +42,14 @@ jobs:
     - name: Build Docker image
       run: docker build -t tender-app .
       
-    - name: Save Docker image
+    - name: Save Docker image to file
+      run: docker save tender-app > /tmp/tender-app.tar
+
+    - name: Cache Docker image
       uses: actions/cache/save@v4
       with:
         path: /tmp/tender-app.tar
         key: tender-app-${{ github.sha }}
-      run: |
-        docker save tender-app > /tmp/tender-app.tar
         
     - name: Deploy to VDS
       uses: appleboy/ssh-action@v1.0.3
