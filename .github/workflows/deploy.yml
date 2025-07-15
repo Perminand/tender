@@ -126,7 +126,9 @@ jobs:
           cd /opt/tender
           
           # Копируем docker-compose.yml
-          echo '${{ secrets.DOCKER_COMPOSE }}' > docker-compose.yml
+          cat > docker-compose.yml << 'EOF'
+          ${{ secrets.DOCKER_COMPOSE }}
+          EOF
           
           # Запускаем новые контейнеры
           docker-compose up -d --build
