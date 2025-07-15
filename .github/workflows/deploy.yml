@@ -1,137 +1,137 @@
-#name: Deploy to VDS
-#
-#on:
-#  push:
-#    branches: [ main ]
-#  workflow_dispatch:
-#
-#jobs:
-#  deploy:
-#    runs-on: ubuntu-latest
-#
-#    steps:
-#    - name: Checkout code
-#      uses: actions/checkout@v4
-#
-#    - name: Setup Node.js
-#      uses: actions/setup-node@v4
-#      with:
-#        node-version: '18'
-#        cache: 'npm'
-#        cache-dependency-path: frontend/package-lock.json
-#
-#    - name: Install frontend dependencies
-#      run: |
-#        cd frontend
-#        npm ci
-#
-#    - name: Build frontend
-#      run: |
-#        cd frontend
-#        npm run build
-#
-#    - name: Setup Java
-#      uses: actions/setup-java@v4
-#      with:
-#        java-version: '17'
-#        distribution: 'temurin'
-#
-#    - name: Build backend
-#      run: mvn clean package -DskipTests
-#
-#    - name: Build Docker image
-#      run: docker build -t tender-app .
-#
-#    - name: Save Docker image to file
-#      run: docker save tender-app > /tmp/tender-app.tar
-#
-#    - name: Cache Docker image
-#      uses: actions/cache/save@v4
-#      with:
-#        path: /tmp/tender-app.tar
-#        key: tender-app-${{ github.sha }}
-#
-#    - name: Deploy to VDS
-#      uses: appleboy/ssh-action@v1.0.3
-#      with:
-#        host: ${{ secrets.VDS_HOST }}
-#        username: ${{ secrets.VDS_USERNAME }}
-#        key: ${{ secrets.VDS_SSH_KEY }}
-#        port: ${{ secrets.VDS_PORT }}
-#        script: |
-#          # Проверяем, установлен ли Docker
-#          if ! command -v docker &> /dev/null; then
-#            echo "Docker не установлен. Устанавливаем..."
-#
-#            # Обновляем пакеты
-#            apt update && apt upgrade -y
-#
-#            # Устанавливаем необходимые пакеты
-#            apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
-#
-#            # Добавляем GPG ключ Docker
-#            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
-#
-#            # Добавляем репозиторий Docker
-#            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-#
-#            # Обновляем список пакетов
-#            apt update
-#
-#            # Устанавливаем Docker
-#            apt install -y docker-ce docker-ce-cli containerd.io
-#
-#            # Запускаем Docker
-#            systemctl start docker
-#            systemctl enable docker
-#
-#            echo "Docker установлен успешно"
-#          else
-#            echo "Docker уже установлен"
-#          fi
-#
-#          # Проверяем, установлен ли Docker Compose
-#          if ! command -v docker-compose &> /dev/null; then
-#            echo "Docker Compose не установлен. Устанавливаем..."
-#
-#            # Устанавливаем Docker Compose
-#            curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-#
-#            # Делаем исполняемым
-#            chmod +x /usr/local/bin/docker-compose
-#
-#            echo "Docker Compose установлен успешно"
-#          else
-#            echo "Docker Compose уже установлен"
-#          fi
-#
-#          # Проверяем версии
-#          echo "Версия Docker:"
-#          docker --version
-#          echo "Версия Docker Compose:"
-#          docker-compose --version
-#
-#          # Проверяем, что Docker работает
-#          echo "Проверяем работу Docker:"
-#          docker run --rm hello-world || echo "Docker работает, но образ hello-world недоступен"
-#
-#          # Останавливаем старые контейнеры
-#          docker-compose down
-#
-#          # Удаляем старый образ
-#          docker rmi tender-app || true
-#
-#          # Создаем директорию если не существует
-#          mkdir -p /opt/tender
-#          cd /opt/tender
-#
-#          # Копируем docker-compose.yml
-#          cat > docker-compose.yml << 'EOF'
-#          ${{ secrets.DOCKER_COMPOSE }}
-#          EOF
-#
-#          # Запускаем новые контейнеры
-#          docker-compose up -d --build
-#
-#          # Очищаем неиспользуемые образы
-#          docker image prune -f
+name: Deploy to VDS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Build backend
+      run: mvn clean package -DskipTests
+
+    - name: Build Docker image
+      run: docker build -t tender-app .
+
+    - name: Save Docker image to file
+      run: docker save tender-app > /tmp/tender-app.tar
+
+    - name: Cache Docker image
+      uses: actions/cache/save@v4
+      with:
+        path: /tmp/tender-app.tar
+        key: tender-app-${{ github.sha }}
+
+    - name: Deploy to VDS
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VDS_HOST }}
+        username: ${{ secrets.VDS_USERNAME }}
+        key: ${{ secrets.VDS_SSH_KEY }}
+        port: ${{ secrets.VDS_PORT }}
+        script: |
+          # Проверяем, установлен ли Docker
+          if ! command -v docker &> /dev/null; then
+            echo "Docker не установлен. Устанавливаем..."
+
+            # Обновляем пакеты
+            apt update && apt upgrade -y
+
+            # Устанавливаем необходимые пакеты
+            apt install -y apt-transport-https ca-certificates curl gnupg lsb-release
+
+            # Добавляем GPG ключ Docker
+            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
+            # Добавляем репозиторий Docker
+            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+            # Обновляем список пакетов
+            apt update
+
+            # Устанавливаем Docker
+            apt install -y docker-ce docker-ce-cli containerd.io
+
+            # Запускаем Docker
+            systemctl start docker
+            systemctl enable docker
+
+            echo "Docker установлен успешно"
+          else
+            echo "Docker уже установлен"
+          fi
+
+          # Проверяем, установлен ли Docker Compose
+          if ! command -v docker-compose &> /dev/null; then
+            echo "Docker Compose не установлен. Устанавливаем..."
+
+            # Устанавливаем Docker Compose
+            curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+            # Делаем исполняемым
+            chmod +x /usr/local/bin/docker-compose
+
+            echo "Docker Compose установлен успешно"
+          else
+            echo "Docker Compose уже установлен"
+          fi
+
+          # Проверяем версии
+          echo "Версия Docker:"
+          docker --version
+          echo "Версия Docker Compose:"
+          docker-compose --version
+
+          # Проверяем, что Docker работает
+          echo "Проверяем работу Docker:"
+          docker run --rm hello-world || echo "Docker работает, но образ hello-world недоступен"
+
+          # Останавливаем старые контейнеры
+          docker-compose down
+
+          # Удаляем старый образ
+          docker rmi tender-app || true
+
+          # Создаем директорию если не существует
+          mkdir -p /opt/tender
+          cd /opt/tender
+
+          # Копируем docker-compose.yml
+          cat > docker-compose.yml << 'EOF'
+          ${{ secrets.DOCKER_COMPOSE }}
+          EOF
+
+          # Запускаем новые контейнеры
+          docker-compose up -d --build
+
+          # Очищаем неиспользуемые образы
+          docker image prune -f
