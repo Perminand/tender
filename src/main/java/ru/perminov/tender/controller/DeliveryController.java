@@ -96,4 +96,14 @@ public class DeliveryController {
         DeliveryDto dto = deliveryService.rejectDelivery(id, reason);
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
+
+    @PutMapping("/{deliveryId}/items/{itemId}/acceptance")
+    public ResponseEntity<DeliveryItemDto> updateDeliveryItemAcceptance(
+            @PathVariable UUID deliveryId,
+            @PathVariable UUID itemId,
+            @RequestBody DeliveryItemDto acceptanceDto) {
+        log.info("Обновление приемки позиции поставки: deliveryId={}, itemId={}", deliveryId, itemId);
+        DeliveryItemDto dto = deliveryService.updateDeliveryItemAcceptance(deliveryId, itemId, acceptanceDto);
+        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
+    }
 } 

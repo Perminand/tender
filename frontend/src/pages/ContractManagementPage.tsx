@@ -158,6 +158,8 @@ interface Contract {
   createdAt: string;
   updatedAt: string;
   contractItems: ContractItem[];
+  warehouseId?: string;
+  warehouseName?: string;
   supplier?: {
     name: string;
     shortName: string;
@@ -444,6 +446,12 @@ const ContractManagementPage: React.FC = () => {
                     {contract.endDate ? dayjs(contract.endDate).format('DD.MM.YYYY') : '-'}
                   </Typography>
                 </Grid>
+                <Grid item xs={6}>
+                  <Typography color="textSecondary" variant="body2">Склад:</Typography>
+                  <Typography variant="body1">
+                    {contract.warehouseName || 'Не указан'}
+                  </Typography>
+                </Grid>
               </Grid>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -581,7 +589,7 @@ const ContractManagementPage: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => setDeliveryDialogOpen(true)}
+              onClick={() => navigate(`/deliveries?contractId=${contract.id}`)}
             >
               Добавить поставку
             </Button>
@@ -603,22 +611,12 @@ const ContractManagementPage: React.FC = () => {
                   {deliveries.map((delivery) => (
                     <TableRow key={delivery.id}>
                       <TableCell>{delivery.deliveryNumber}</TableCell>
-                      <TableCell>
-                        {delivery.deliveryDate ? dayjs(delivery.deliveryDate).format('DD.MM.YYYY') : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={getDeliveryStatusLabel(delivery.status)} 
-                          color={delivery.status === 'ACCEPTED' ? 'success' : 'default' as any}
-                          size="small"
-                        />
-                      </TableCell>
+                      <TableCell>{delivery.plannedDeliveryDate}</TableCell>
+                      <TableCell>{getDeliveryStatusLabel(delivery.status)}</TableCell>
                       <TableCell>{delivery.supplierName}</TableCell>
+                      <TableCell>{formatPrice(delivery.deliveryItems.reduce((sum, item) => sum + item.totalPrice, 0))}</TableCell>
                       <TableCell>
-                        {formatPrice(delivery.deliveryItems.reduce((sum, item) => sum + item.totalPrice, 0))}
-                      </TableCell>
-                      <TableCell>
-                        <IconButton size="small">
+                        <IconButton onClick={() => navigate(`/deliveries/${delivery.id}`)}>
                           <VisibilityIcon />
                         </IconButton>
                       </TableCell>

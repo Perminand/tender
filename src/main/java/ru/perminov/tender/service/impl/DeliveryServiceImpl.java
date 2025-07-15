@@ -9,10 +9,17 @@ import ru.perminov.tender.dto.delivery.DeliveryItemDto;
 import ru.perminov.tender.mapper.DeliveryMapper;
 import ru.perminov.tender.model.Delivery;
 import ru.perminov.tender.model.DeliveryItem;
+import ru.perminov.tender.model.ContractItem;
+import ru.perminov.tender.model.Material;
+import ru.perminov.tender.model.Unit;
 import ru.perminov.tender.repository.DeliveryItemRepository;
 import ru.perminov.tender.repository.DeliveryRepository;
+import ru.perminov.tender.repository.ContractItemRepository;
+import ru.perminov.tender.repository.MaterialRepository;
+import ru.perminov.tender.repository.UnitRepository;
 import ru.perminov.tender.service.DeliveryService;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +33,9 @@ import java.util.stream.Collectors;
 public class DeliveryServiceImpl implements DeliveryService {
     private final DeliveryRepository deliveryRepository;
     private final DeliveryItemRepository deliveryItemRepository;
+    private final ContractItemRepository contractItemRepository;
+    private final MaterialRepository materialRepository;
+    private final UnitRepository unitRepository;
     private final DeliveryMapper deliveryMapper;
 
     @Override
@@ -33,6 +43,62 @@ public class DeliveryServiceImpl implements DeliveryService {
         Delivery delivery = deliveryMapper.toEntity(deliveryDtoNew);
         delivery.setStatus(Delivery.DeliveryStatus.PLANNED);
         Delivery saved = deliveryRepository.save(delivery);
+        
+        // Создаем позиции поставки
+        if (deliveryDtoNew.getDeliveryItems() != null && !deliveryDtoNew.getDeliveryItems().isEmpty()) {
+            for (DeliveryItemDto itemDto : deliveryDtoNew.getDeliveryItems()) {
+                if (itemDto.getOrderedQuantity() != null && itemDto.getOrderedQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                    DeliveryItem deliveryItem = new DeliveryItem();
+                    deliveryItem.setDelivery(saved);
+                    
+                    // Устанавливаем связь с позицией контракта
+                    if (itemDto.getContractItemId() != null) {
+                        ContractItem contractItem = contractItemRepository.findById(itemDto.getContractItemId())
+                            .orElseThrow(() -> new RuntimeException("Позиция контракта не найдена: " + itemDto.getContractItemId()));
+                        deliveryItem.setContractItem(contractItem);
+                    }
+                    
+                    // Устанавливаем материал
+                    if (itemDto.getMaterialId() != null) {
+                        Material material = materialRepository.findById(itemDto.getMaterialId())
+                            .orElseThrow(() -> new RuntimeException("Материал не найден: " + itemDto.getMaterialId()));
+                        deliveryItem.setMaterial(material);
+                    }
+                    
+                    // Устанавливаем единицу измерения
+                    if (itemDto.getUnitId() != null) {
+                        Unit unit = unitRepository.findById(itemDto.getUnitId())
+                            .orElseThrow(() -> new RuntimeException("Единица измерения не найдена: " + itemDto.getUnitId()));
+                        deliveryItem.setUnit(unit);
+                    }
+                    
+                    deliveryItem.setItemNumber(itemDto.getItemNumber());
+                    deliveryItem.setDescription(itemDto.getDescription());
+                    deliveryItem.setOrderedQuantity(itemDto.getOrderedQuantity());
+                    deliveryItem.setDeliveredQuantity(itemDto.getDeliveredQuantity());
+                    deliveryItem.setAcceptedQuantity(itemDto.getAcceptedQuantity());
+                    deliveryItem.setRejectedQuantity(itemDto.getRejectedQuantity());
+                    deliveryItem.setUnitPrice(itemDto.getUnitPrice());
+                    deliveryItem.setTotalPrice(itemDto.getTotalPrice());
+                    deliveryItem.setQualityNotes(itemDto.getQualityNotes());
+                    deliveryItem.setRejectionReason(itemDto.getRejectionReason());
+                    
+                    // Устанавливаем статус приемки
+                    if (itemDto.getAcceptanceStatus() != null) {
+                        try {
+                            deliveryItem.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.valueOf(itemDto.getAcceptanceStatus()));
+                        } catch (IllegalArgumentException e) {
+                            deliveryItem.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.PENDING);
+                        }
+                    } else {
+                        deliveryItem.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.PENDING);
+                    }
+                    
+                    deliveryItemRepository.save(deliveryItem);
+                }
+            }
+        }
+        
         return deliveryMapper.toDto(saved);
     }
 
@@ -74,7 +140,68 @@ public class DeliveryServiceImpl implements DeliveryService {
         if (deliveryOpt.isEmpty()) return null;
         Delivery delivery = deliveryOpt.get();
         deliveryMapper.updateEntity(delivery, deliveryDtoNew);
-        return deliveryMapper.toDto(deliveryRepository.save(delivery));
+        Delivery saved = deliveryRepository.save(delivery);
+        
+        // Обновляем позиции поставки
+        if (deliveryDtoNew.getDeliveryItems() != null) {
+            // Удаляем старые позиции
+            deliveryItemRepository.deleteByDeliveryId(id);
+            
+            // Создаем новые позиции
+            for (DeliveryItemDto itemDto : deliveryDtoNew.getDeliveryItems()) {
+                if (itemDto.getOrderedQuantity() != null && itemDto.getOrderedQuantity().compareTo(BigDecimal.ZERO) > 0) {
+                    DeliveryItem deliveryItem = new DeliveryItem();
+                    deliveryItem.setDelivery(saved);
+                    
+                    // Устанавливаем связь с позицией контракта
+                    if (itemDto.getContractItemId() != null) {
+                        ContractItem contractItem = contractItemRepository.findById(itemDto.getContractItemId())
+                            .orElseThrow(() -> new RuntimeException("Позиция контракта не найдена: " + itemDto.getContractItemId()));
+                        deliveryItem.setContractItem(contractItem);
+                    }
+                    
+                    // Устанавливаем материал
+                    if (itemDto.getMaterialId() != null) {
+                        Material material = materialRepository.findById(itemDto.getMaterialId())
+                            .orElseThrow(() -> new RuntimeException("Материал не найден: " + itemDto.getMaterialId()));
+                        deliveryItem.setMaterial(material);
+                    }
+                    
+                    // Устанавливаем единицу измерения
+                    if (itemDto.getUnitId() != null) {
+                        Unit unit = unitRepository.findById(itemDto.getUnitId())
+                            .orElseThrow(() -> new RuntimeException("Единица измерения не найдена: " + itemDto.getUnitId()));
+                        deliveryItem.setUnit(unit);
+                    }
+                    
+                    deliveryItem.setItemNumber(itemDto.getItemNumber());
+                    deliveryItem.setDescription(itemDto.getDescription());
+                    deliveryItem.setOrderedQuantity(itemDto.getOrderedQuantity());
+                    deliveryItem.setDeliveredQuantity(itemDto.getDeliveredQuantity());
+                    deliveryItem.setAcceptedQuantity(itemDto.getAcceptedQuantity());
+                    deliveryItem.setRejectedQuantity(itemDto.getRejectedQuantity());
+                    deliveryItem.setUnitPrice(itemDto.getUnitPrice());
+                    deliveryItem.setTotalPrice(itemDto.getTotalPrice());
+                    deliveryItem.setQualityNotes(itemDto.getQualityNotes());
+                    deliveryItem.setRejectionReason(itemDto.getRejectionReason());
+                    
+                    // Устанавливаем статус приемки
+                    if (itemDto.getAcceptanceStatus() != null) {
+                        try {
+                            deliveryItem.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.valueOf(itemDto.getAcceptanceStatus()));
+                        } catch (IllegalArgumentException e) {
+                            deliveryItem.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.PENDING);
+                        }
+                    } else {
+                        deliveryItem.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.PENDING);
+                    }
+                    
+                    deliveryItemRepository.save(deliveryItem);
+                }
+            }
+        }
+        
+        return deliveryMapper.toDto(saved);
     }
 
     @Override
@@ -103,14 +230,22 @@ public class DeliveryServiceImpl implements DeliveryService {
             DeliveryItemDto dto = new DeliveryItemDto();
             dto.setId(item.getId());
             dto.setDeliveryId(deliveryId);
+            dto.setContractItemId(item.getContractItem() != null ? item.getContractItem().getId() : null);
             dto.setMaterialId(item.getMaterial() != null ? item.getMaterial().getId() : null);
             dto.setMaterialName(item.getMaterial() != null ? item.getMaterial().getName() : "");
-            dto.setQuantity(item.getDeliveredQuantity());
+            dto.setDescription(item.getDescription());
+            dto.setItemNumber(item.getItemNumber());
+            dto.setOrderedQuantity(item.getOrderedQuantity());
+            dto.setDeliveredQuantity(item.getDeliveredQuantity());
+            dto.setAcceptedQuantity(item.getAcceptedQuantity());
+            dto.setRejectedQuantity(item.getRejectedQuantity());
+            dto.setUnitId(item.getUnit() != null ? item.getUnit().getId() : null);
             dto.setUnitName(item.getUnit() != null ? item.getUnit().getName() : "");
             dto.setUnitPrice(item.getUnitPrice());
             dto.setTotalPrice(item.getTotalPrice());
-            dto.setQualityStatus(item.getAcceptanceStatus().name());
-            dto.setNotes(item.getQualityNotes());
+            dto.setQualityNotes(item.getQualityNotes());
+            dto.setRejectionReason(item.getRejectionReason());
+            dto.setAcceptanceStatus(item.getAcceptanceStatus() != null ? item.getAcceptanceStatus().name() : null);
             return dto;
         }).collect(Collectors.toList());
     }
@@ -133,5 +268,72 @@ public class DeliveryServiceImpl implements DeliveryService {
         delivery.setStatus(Delivery.DeliveryStatus.REJECTED);
         delivery.setNotes(reason);
         return deliveryMapper.toDto(deliveryRepository.save(delivery));
+    }
+
+    @Override
+    public DeliveryItemDto updateDeliveryItemAcceptance(UUID deliveryId, UUID itemId, DeliveryItemDto acceptanceDto) {
+        Optional<DeliveryItem> itemOpt = deliveryItemRepository.findById(itemId);
+        if (itemOpt.isEmpty()) return null;
+        
+        DeliveryItem item = itemOpt.get();
+        
+        // Проверяем, что позиция принадлежит указанной поставке
+        if (!item.getDelivery().getId().equals(deliveryId)) {
+            return null;
+        }
+        
+        // Обновляем данные приемки
+        if (acceptanceDto.getAcceptedQuantity() != null) {
+            item.setAcceptedQuantity(acceptanceDto.getAcceptedQuantity());
+        }
+        if (acceptanceDto.getRejectedQuantity() != null) {
+            item.setRejectedQuantity(acceptanceDto.getRejectedQuantity());
+        }
+        if (acceptanceDto.getQualityNotes() != null) {
+            item.setQualityNotes(acceptanceDto.getQualityNotes());
+        }
+        if (acceptanceDto.getRejectionReason() != null) {
+            item.setRejectionReason(acceptanceDto.getRejectionReason());
+        }
+        
+        // Определяем статус приемки на основе количеств
+        BigDecimal accepted = item.getAcceptedQuantity() != null ? item.getAcceptedQuantity() : BigDecimal.ZERO;
+        BigDecimal rejected = item.getRejectedQuantity() != null ? item.getRejectedQuantity() : BigDecimal.ZERO;
+        BigDecimal ordered = item.getOrderedQuantity() != null ? item.getOrderedQuantity() : BigDecimal.ZERO;
+        
+        if (accepted.compareTo(BigDecimal.ZERO) > 0 && rejected.compareTo(BigDecimal.ZERO) > 0) {
+            item.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.PARTIALLY_ACCEPTED);
+        } else if (accepted.compareTo(ordered) >= 0) {
+            item.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.ACCEPTED);
+        } else if (rejected.compareTo(ordered) >= 0) {
+            item.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.REJECTED);
+        } else {
+            item.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.PENDING);
+        }
+        
+        DeliveryItem savedItem = deliveryItemRepository.save(item);
+        
+        // Создаем DTO для ответа
+        DeliveryItemDto dto = new DeliveryItemDto();
+        dto.setId(savedItem.getId());
+        dto.setDeliveryId(deliveryId);
+        dto.setContractItemId(savedItem.getContractItem() != null ? savedItem.getContractItem().getId() : null);
+        dto.setMaterialId(savedItem.getMaterial() != null ? savedItem.getMaterial().getId() : null);
+        dto.setMaterialName(savedItem.getMaterial() != null ? savedItem.getMaterial().getName() : "");
+        dto.setDescription(savedItem.getDescription());
+        dto.setItemNumber(savedItem.getItemNumber());
+        dto.setOrderedQuantity(savedItem.getOrderedQuantity());
+        dto.setDeliveredQuantity(savedItem.getDeliveredQuantity());
+        dto.setAcceptedQuantity(savedItem.getAcceptedQuantity());
+        dto.setRejectedQuantity(savedItem.getRejectedQuantity());
+        dto.setUnitId(savedItem.getUnit() != null ? savedItem.getUnit().getId() : null);
+        dto.setUnitName(savedItem.getUnit() != null ? savedItem.getUnit().getName() : "");
+        dto.setUnitPrice(savedItem.getUnitPrice());
+        dto.setTotalPrice(savedItem.getTotalPrice());
+        dto.setQualityNotes(savedItem.getQualityNotes());
+        dto.setRejectionReason(savedItem.getRejectionReason());
+        dto.setAcceptanceStatus(savedItem.getAcceptanceStatus() != null ? savedItem.getAcceptanceStatus().name() : null);
+        
+        return dto;
     }
 } 

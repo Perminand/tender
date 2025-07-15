@@ -76,6 +76,12 @@ public class ContractServiceImpl implements ContractService {
             }
             
             dto.setTender(tenderDto);
+            
+            // Заполняем warehouse из тендера
+            if (contract.getTender().getWarehouse() != null) {
+                dto.setWarehouseId(contract.getTender().getWarehouse().getId());
+                dto.setWarehouseName(contract.getTender().getWarehouse().getName());
+            }
         }
         
         // Вручную заполняем позиции контракта
@@ -105,6 +111,12 @@ public class ContractServiceImpl implements ContractService {
                         }
                         
                         dto.setTender(tenderDto);
+                        
+                        // Заполняем warehouse из тендера
+                        if (contract.getTender().getWarehouse() != null) {
+                            dto.setWarehouseId(contract.getTender().getWarehouse().getId());
+                            dto.setWarehouseName(contract.getTender().getWarehouse().getName());
+                        }
                     }
                     
                     // Вручную заполняем позиции контракта
@@ -137,6 +149,12 @@ public class ContractServiceImpl implements ContractService {
                             }
                             
                             dto.setTender(tenderDto);
+                            
+                            // Заполняем warehouse из тендера
+                            if (contract.getTender().getWarehouse() != null) {
+                                dto.setWarehouseId(contract.getTender().getWarehouse().getId());
+                                dto.setWarehouseName(contract.getTender().getWarehouse().getName());
+                            }
                         }
                         
                         // Вручную заполняем позиции контракта
@@ -172,6 +190,12 @@ public class ContractServiceImpl implements ContractService {
                         }
                         
                         dto.setTender(tenderDto);
+                        
+                        // Заполняем warehouse из тендера
+                        if (contract.getTender().getWarehouse() != null) {
+                            dto.setWarehouseId(contract.getTender().getWarehouse().getId());
+                            dto.setWarehouseName(contract.getTender().getWarehouse().getName());
+                        }
                     }
                     
                     // Вручную заполняем позиции контракта

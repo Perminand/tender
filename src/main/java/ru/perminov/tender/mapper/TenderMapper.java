@@ -18,6 +18,8 @@ public interface TenderMapper {
     @Mapping(target = "awardedSupplier", ignore = true) // Будет заполняться вручную в сервисе
     @Mapping(target = "requestId", source = "request.id")
     @Mapping(target = "parentTenderId", source = "parentTender.id")
+    @Mapping(target = "warehouseId", source = "warehouse.id")
+    @Mapping(target = "warehouseName", source = "warehouse.name")
     TenderDto toDto(Tender entity);
     
     Tender toEntity(TenderDto dto);

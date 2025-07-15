@@ -18,6 +18,7 @@ import ru.perminov.tender.repository.TenderRepository;
 import ru.perminov.tender.repository.TenderItemRepository;
 import ru.perminov.tender.repository.RequestRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
+import ru.perminov.tender.repository.WarehouseRepository;
 import ru.perminov.tender.service.TenderService;
 import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
@@ -44,6 +45,7 @@ public class TenderServiceImpl implements TenderService {
     private final TenderItemRepository tenderItemRepository;
     private final RequestRepository requestRepository;
     private final CompanyRepository companyRepository;
+    private final WarehouseRepository warehouseRepository;
     private final SupplierProposalService supplierProposalService;
     private final NotificationService notificationService;
     private final PriceAnalysisService priceAnalysisService;
@@ -71,6 +73,13 @@ public class TenderServiceImpl implements TenderService {
             tender.setCustomer(customer);
         }
 
+        // Устанавливаем склад по warehouseId
+        if (tenderDto.getWarehouseId() != null) {
+            ru.perminov.tender.model.Warehouse warehouse = warehouseRepository.findById(tenderDto.getWarehouseId())
+                .orElseThrow(() -> new RuntimeException("Склад не найден"));
+            tender.setWarehouse(warehouse);
+        }
+
         // Устанавливаем срок подачи
         if (tenderDto.getSubmissionDeadline() != null) {
             tender.setSubmissionDeadline(tenderDto.getSubmissionDeadline());
@@ -84,6 +93,13 @@ public class TenderServiceImpl implements TenderService {
         if (tenderDto.getRequestId() != null) {
             Request request = requestRepository.findByIdWithMaterials(tenderDto.getRequestId())
                 .orElseThrow(() -> new RuntimeException("Заявка не найдена"));
+            
+            // Если склад не указан явно, берем его из заявки
+            if (savedTender.getWarehouse() == null && request.getWarehouse() != null) {
+                savedTender.setWarehouse(request.getWarehouse());
+                savedTender = tenderRepository.save(savedTender);
+            }
+            
             createTenderItemsFromRequest(savedTender, request);
         }
         

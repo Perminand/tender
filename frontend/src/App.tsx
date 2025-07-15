@@ -27,6 +27,7 @@ import PriceAnalysisPage from './pages/PriceAnalysisPage';
 import ContractListPage from './pages/ContractListPage';
 import ContractEditPage from './pages/ContractEditPage';
 import DeliveryListPage from './pages/DeliveryListPage';
+import DeliveryDetailPage from './pages/DeliveryDetailPage';
 import PaymentListPage from './pages/PaymentListPage';
 import DocumentListPage from './pages/DocumentListPage';
 import ContractDetailPage from './pages/ContractDetailPage';
@@ -84,6 +85,7 @@ const App: React.FC = () => (
       <Route path="/contracts/:id/edit" element={<ContractEditPage />} />
       <Route path="/contracts/:id/manage" element={<ContractManagementPage />} />
       <Route path="/deliveries" element={<DeliveryListPage />} />
+      <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
       <Route path="/payments" element={<PaymentListPage />} />
       <Route path="/documents" element={<DocumentListPage />} />
     </Routes>

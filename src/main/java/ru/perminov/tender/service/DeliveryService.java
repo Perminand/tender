@@ -68,4 +68,9 @@ public interface DeliveryService {
      * Отклонить поставку
      */
     DeliveryDto rejectDelivery(UUID id, String reason);
+
+    /**
+     * Обновить приемку позиции поставки
+     */
+    DeliveryItemDto updateDeliveryItemAcceptance(UUID deliveryId, UUID itemId, DeliveryItemDto acceptanceDto);
 } 

@@ -16,6 +16,11 @@ public interface DeliveryItemRepository extends JpaRepository<DeliveryItem, UUID
     List<DeliveryItem> findByDeliveryId(UUID deliveryId);
     
     /**
+     * Удалить позиции по поставке
+     */
+    void deleteByDeliveryId(UUID deliveryId);
+    
+    /**
      * Найти позиции по материалу
      */
     List<DeliveryItem> findByMaterialId(UUID materialId);

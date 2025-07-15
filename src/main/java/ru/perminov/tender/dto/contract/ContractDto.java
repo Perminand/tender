@@ -29,4 +29,6 @@ public class ContractDto {
     private LocalDateTime updatedAt;
     private List<ContractItemDto> contractItems;
     private TenderDto tender;
+    private UUID warehouseId;
+    private String warehouseName;
 } 

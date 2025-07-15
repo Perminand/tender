@@ -32,4 +32,6 @@ public class TenderDto {
     private UUID awardedSupplierId;
     private CompanyDto awardedSupplier;
     private UUID parentTenderId;
+    private UUID warehouseId;
+    private String warehouseName;
 } 

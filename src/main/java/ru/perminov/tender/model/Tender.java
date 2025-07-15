@@ -58,6 +58,10 @@ public class Tender {
     @JoinColumn(name = "parent_tender_id")
     private Tender parentTender;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
     @OneToMany(mappedBy = "tender", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<TenderItem> tenderItems = new ArrayList<>();
 
