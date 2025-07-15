@@ -9,6 +9,7 @@ import ru.perminov.tender.dto.contract.ContractDtoNew;
 import ru.perminov.tender.dto.contract.ContractDtoUpdate;
 import ru.perminov.tender.dto.contract.ContractItemDto;
 import ru.perminov.tender.mapper.ContractMapper;
+import ru.perminov.tender.mapper.company.CompanyMapper;
 import ru.perminov.tender.model.Contract;
 import ru.perminov.tender.model.ContractItem;
 import ru.perminov.tender.model.Tender;
@@ -25,6 +26,8 @@ import ru.perminov.tender.repository.ProposalItemRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.ContractService;
 import ru.perminov.tender.model.Material;
+import ru.perminov.tender.dto.tender.TenderDto;
+import ru.perminov.tender.mapper.TenderMapper;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -47,6 +50,8 @@ public class ContractServiceImpl implements ContractService {
     private final ProposalItemRepository proposalItemRepository;
     private final CompanyRepository companyRepository;
     private final ContractMapper contractMapper;
+    private final CompanyMapper companyMapper;
+    private final TenderMapper tenderMapper;
 
     @Override
     public ContractDto createContract(ContractDtoNew contractDtoNew) {
@@ -68,6 +73,21 @@ public class ContractServiceImpl implements ContractService {
         
         ContractDto dto = contractMapper.toDto(contract);
         
+        // Заполняем тендер с заказчиком и поставщиком
+        if (contract.getTender() != null) {
+            TenderDto tenderDto = tenderMapper.toDto(contract.getTender());
+            
+            // Заполняем awardedSupplier если есть awardedSupplierId
+            if (contract.getTender().getAwardedSupplierId() != null) {
+                Company awardedSupplier = companyRepository.findById(contract.getTender().getAwardedSupplierId()).orElse(null);
+                if (awardedSupplier != null) {
+                    tenderDto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                }
+            }
+            
+            dto.setTender(tenderDto);
+        }
+        
         // Вручную заполняем позиции контракта
         List<ContractItemDto> items = getContractItems(id);
         dto.setContractItems(items);
@@ -81,6 +101,22 @@ public class ContractServiceImpl implements ContractService {
         return contracts.stream()
                 .map(contract -> {
                     ContractDto dto = contractMapper.toDto(contract);
+                    
+                    // Заполняем тендер с заказчиком и поставщиком
+                    if (contract.getTender() != null) {
+                        TenderDto tenderDto = tenderMapper.toDto(contract.getTender());
+                        
+                        // Заполняем awardedSupplier если есть awardedSupplierId
+                        if (contract.getTender().getAwardedSupplierId() != null) {
+                            Company awardedSupplier = companyRepository.findById(contract.getTender().getAwardedSupplierId()).orElse(null);
+                            if (awardedSupplier != null) {
+                                tenderDto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                            }
+                        }
+                        
+                        dto.setTender(tenderDto);
+                    }
+                    
                     // Вручную заполняем позиции контракта
                     List<ContractItemDto> items = getContractItems(contract.getId());
                     dto.setContractItems(items);
@@ -97,6 +133,22 @@ public class ContractServiceImpl implements ContractService {
             return contracts.stream()
                     .map(contract -> {
                         ContractDto dto = contractMapper.toDto(contract);
+                        
+                        // Заполняем тендер с заказчиком и поставщиком
+                        if (contract.getTender() != null) {
+                            TenderDto tenderDto = tenderMapper.toDto(contract.getTender());
+                            
+                            // Заполняем awardedSupplier если есть awardedSupplierId
+                            if (contract.getTender().getAwardedSupplierId() != null) {
+                                Company awardedSupplier = companyRepository.findById(contract.getTender().getAwardedSupplierId()).orElse(null);
+                                if (awardedSupplier != null) {
+                                    tenderDto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                                }
+                            }
+                            
+                            dto.setTender(tenderDto);
+                        }
+                        
                         // Вручную заполняем позиции контракта
                         List<ContractItemDto> items = getContractItems(contract.getId());
                         dto.setContractItems(items);
@@ -110,10 +162,28 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     public List<ContractDto> getContractsBySupplier(UUID supplierId) {
-        List<Contract> contracts = contractRepository.findBySupplierId(supplierId);
+        // Этот метод теперь должен фильтровать по contract.getTender().getAwardedSupplierId()
+        List<Contract> contracts = contractRepository.findAll();
         return contracts.stream()
+                .filter(contract -> supplierId.equals(contract.getTender().getAwardedSupplierId()))
                 .map(contract -> {
                     ContractDto dto = contractMapper.toDto(contract);
+                    
+                    // Заполняем тендер с заказчиком и поставщиком
+                    if (contract.getTender() != null) {
+                        TenderDto tenderDto = tenderMapper.toDto(contract.getTender());
+                        
+                        // Заполняем awardedSupplier если есть awardedSupplierId
+                        if (contract.getTender().getAwardedSupplierId() != null) {
+                            Company awardedSupplier = companyRepository.findById(contract.getTender().getAwardedSupplierId()).orElse(null);
+                            if (awardedSupplier != null) {
+                                tenderDto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                            }
+                        }
+                        
+                        dto.setTender(tenderDto);
+                    }
+                    
                     // Вручную заполняем позиции контракта
                     List<ContractItemDto> items = getContractItems(contract.getId());
                     dto.setContractItems(items);
@@ -172,9 +242,11 @@ public class ContractServiceImpl implements ContractService {
     public ContractDto createContractFromTender(UUID tenderId, UUID supplierId) {
         log.info("Создание контракта на основе тендера {} и поставщика {}", tenderId, supplierId);
         
-        // Получаем тендер
-        Tender tender = tenderRepository.findById(tenderId)
+        // Получаем тендер с заказчиком
+        Tender tender = tenderRepository.findByIdWithCustomer(tenderId)
                 .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        Company customer = tender.getCustomer();
+        log.info("Tender customer: {}", customer != null ? customer.getName() : "null");
         
         log.info("Найден тендер: {} - {}", tender.getTenderNumber(), tender.getTitle());
         
@@ -201,12 +273,14 @@ public class ContractServiceImpl implements ContractService {
         
         log.info("Найден поставщик: {} - {}", supplier.getName(), supplier.getId());
         
+        // Получаем заказчика
+        if (customer == null) {
+            throw new RuntimeException("У тендера не найден заказчик");
+        }
         // Создаем контракт
         Contract contract = new Contract();
         contract.setTender(tender);
         contract.setSupplierProposal(proposal);
-        contract.setCustomer(tender.getCustomer());
-        contract.setSupplier(supplier);
         contract.setContractNumber("CON-" + System.currentTimeMillis());
         contract.setTitle("Контракт по тендеру " + tender.getTenderNumber());
         contract.setContractDate(LocalDate.now());

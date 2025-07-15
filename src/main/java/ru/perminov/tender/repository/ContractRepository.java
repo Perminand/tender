@@ -19,16 +19,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     List<Contract> findByStatus(Contract.ContractStatus status);
     
     /**
-     * Найти контракты по поставщику
-     */
-    List<Contract> findBySupplierId(UUID supplierId);
-    
-    /**
-     * Найти контракты по заказчику
-     */
-    List<Contract> findByCustomerId(UUID customerId);
-    
-    /**
      * Найти контракты по тендеру
      */
     List<Contract> findByTenderId(UUID tenderId);

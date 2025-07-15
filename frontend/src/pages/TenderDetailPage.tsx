@@ -36,7 +36,7 @@ import {
   Clear as ClearIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -154,7 +154,7 @@ const TenderDetailPage: React.FC = () => {
   const loadTender = async () => {
     try {
       setLoading(true);
-      const response = await fnsApi.get(`/api/tenders/${id}/with-best-prices-by-items`);
+      const response = await api.get(`/api/tenders/${id}/with-best-prices-by-items`);
       setTender(response.data);
     } catch (error) {
       console.error('Error loading tender:', error);
@@ -201,7 +201,7 @@ const TenderDetailPage: React.FC = () => {
   const handleCloseBidding = async () => {
     if (!id) return;
     try {
-      await fnsApi.post(`/api/tenders/${id}/close`);
+      await api.post(`/api/tenders/${id}/close`);
       setCloseDialogOpen(false);
       setError(null);
       await loadTender();
@@ -213,7 +213,7 @@ const TenderDetailPage: React.FC = () => {
   const handleCancelTender = async () => {
     if (!id) return;
     try {
-      await fnsApi.post(`/api/tenders/${id}/cancel`);
+      await api.post(`/api/tenders/${id}/cancel`);
       setCancelDialogOpen(false);
       setError(null);
       await loadTender();
@@ -243,7 +243,7 @@ const TenderDetailPage: React.FC = () => {
     if (!tender) return;
     setAwarding(prev => ({ ...prev, tender: true }));
     try {
-      await fnsApi.post(`/api/tenders/${tender.id}/award`, { supplierId });
+      await api.post(`/api/tenders/${tender.id}/award`, { supplierId });
       setSelectedWinner(supplierId);
       await loadTender();
     } catch (e: any) {
@@ -329,7 +329,7 @@ const TenderDetailPage: React.FC = () => {
   const handleCompleteTender = async () => {
     if (!tender) return;
     try {
-      await fnsApi.post(`/api/tenders/${tender.id}/complete`);
+      await api.post(`/api/tenders/${tender.id}/complete`);
       await loadTender();
     } catch (e: any) {
       setError(e.response?.data?.message || 'Ошибка завершения тендера');
@@ -933,7 +933,7 @@ const TenderDetailPage: React.FC = () => {
           <Button
             onClick={async () => {
               try {
-                await fnsApi.post(`/api/tenders/${id}/publish`);
+                await api.post(`/api/tenders/${id}/publish`);
                 setPublishDialogOpen(false);
                 await loadTender();
               } catch (e: any) {
@@ -970,7 +970,7 @@ const TenderDetailPage: React.FC = () => {
           <Button
             onClick={async () => {
               try {
-                await fnsApi.post(`/api/tenders/${id}/start-bidding`);
+                await api.post(`/api/tenders/${id}/start-bidding`);
                 setStartBiddingDialogOpen(false);
                 await loadTender();
               } catch (e: any) {

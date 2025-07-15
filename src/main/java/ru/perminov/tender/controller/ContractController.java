@@ -84,12 +84,12 @@ public class ContractController {
         log.info("Создание контракта на основе тендера и поставщика через тело запроса: {}", contractDtoNew);
         try {
             ContractDto dto = contractService.createContract(contractDtoNew);
-            log.info("Контракт успешно создан из тендера. contractId={}, tenderId={}, supplierId={}",
-                    dto.getId(), contractDtoNew.getTenderId(), contractDtoNew.getSupplierId());
+            log.info("Контракт успешно создан из тендера. contractId={}, tenderId={}",
+                    dto.getId(), contractDtoNew.getTenderId());
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
-            log.error("Ошибка при создании контракта из тендера: tenderId={}, supplierId={}, ошибка: {}",
-                    contractDtoNew.getTenderId(), contractDtoNew.getSupplierId(), e.getMessage(), e);
+            log.error("Ошибка при создании контракта из тендера: tenderId={}, ошибка: {}",
+                    contractDtoNew.getTenderId(), e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
     }

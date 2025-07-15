@@ -87,4 +87,6 @@ databaseChangeLog:
       file: db/changelog/changes/V045_add_awarded_supplier_to_tender_items.sql
   - include:
       file: db/changelog/changes/V046_add_parent_tender_id_to_tenders.sql
+  - include:
+      file: db/changelog/changes/V047_remove_supplier_customer_from_contracts.sql
 

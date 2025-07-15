@@ -38,8 +38,6 @@ interface Contract {
   contractNumber: string;
   title: string;
   tenderId: string;
-  supplierId: string;
-  customerId: string;
   status: string;
   totalAmount: number;
   startDate: string;
@@ -54,6 +52,20 @@ interface Contract {
   createdAt: string;
   updatedAt: string;
   contractItems: ContractItem[];
+  tender: {
+    id: string;
+    customer?: {
+      id: string;
+      name: string;
+      shortName: string;
+    };
+    awardedSupplierId?: string;
+    awardedSupplier?: {
+      id: string;
+      name: string;
+      shortName: string;
+    };
+  };
 }
 
 const ContractDetailPage: React.FC = () => {
@@ -157,6 +169,14 @@ const ContractDetailPage: React.FC = () => {
             <Grid item xs={12} sm={6}>
               <Typography color="textSecondary">Дата окончания:</Typography>
               <Typography>{contract.endDate ? dayjs(contract.endDate).format('DD.MM.YYYY') : '-'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography color="textSecondary">Поставщик:</Typography>
+              <Typography>{contract.tender?.awardedSupplier?.shortName || contract.tender?.awardedSupplier?.name || contract.tender?.awardedSupplierId || 'Не указан'}</Typography>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <Typography color="textSecondary">Заказчик:</Typography>
+              <Typography>{contract.tender?.customer?.shortName || contract.tender?.customer?.name || 'Не указан'}</Typography>
             </Grid>
           </Grid>
         </CardContent>

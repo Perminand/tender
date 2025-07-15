@@ -34,7 +34,7 @@ import {
   Email as EmailIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 
 interface NotificationDto {
   id: string;
@@ -73,7 +73,7 @@ const NotificationListPage: React.FC = () => {
       if (selectedStatus !== 'ALL') {
         url += `/status/${selectedStatus}`;
       }
-      const response = await fnsApi.get(url);
+      const response = await api.get(url);
       setNotifications(response.data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -84,7 +84,7 @@ const NotificationListPage: React.FC = () => {
 
   const handleRetry = async (notificationId: string) => {
     try {
-      const response = await fnsApi.post(`/api/notifications/${notificationId}/retry`);
+      const response = await api.post(`/api/notifications/${notificationId}/retry`);
       if (response.data) {
         fetchNotifications();
       }
@@ -95,7 +95,7 @@ const NotificationListPage: React.FC = () => {
 
   const handleCancel = async (notificationId: string) => {
     try {
-      await fnsApi.post(`/api/notifications/${notificationId}/cancel`);
+      await api.post(`/api/notifications/${notificationId}/cancel`);
       fetchNotifications();
     } catch (error) {
       console.error('Error cancelling notification:', error);
@@ -104,7 +104,7 @@ const NotificationListPage: React.FC = () => {
 
   const handleSendPending = async () => {
     try {
-      await fnsApi.post('/api/notifications/send-pending');
+      await api.post('/api/notifications/send-pending');
       fetchNotifications();
     } catch (error) {
       console.error('Error sending pending notifications:', error);

@@ -78,8 +78,6 @@ const App: React.FC = () => (
       <Route path="/notifications" element={<NotificationListPage />} />
       <Route path="/analytics" element={<AnalyticsPage />} />
       <Route path="/reporting" element={<ReportingPage />} />
-      
-      {/* Новые роуты для Фазы 1 */}
       <Route path="/contracts" element={<ContractListPage />} />
       <Route path="/contracts/new" element={<ContractEditPage />} />
       <Route path="/contracts/:id" element={<ContractDetailPage />} />

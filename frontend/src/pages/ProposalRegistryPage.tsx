@@ -37,7 +37,7 @@ import {
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
 import { useNavigate, Link } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 import Pagination from '@mui/material/Pagination';
 
 interface ProposalDto {
@@ -94,7 +94,7 @@ const ProposalRegistryPage: React.FC = () => {
   const loadProposals = async () => {
     try {
       setLoading(true);
-      const response = await fnsApi.get('/api/proposals');
+      const response = await api.get('/api/proposals');
       setProposals(response.data);
     } catch (error) {
       console.error('Error loading proposals:', error);
@@ -105,7 +105,7 @@ const ProposalRegistryPage: React.FC = () => {
 
   const loadSuppliers = async () => {
     try {
-      const response = await fnsApi.get('/api/companies');
+      const response = await api.get('/api/companies');
       setSuppliers(response.data);
     } catch (error) {
       console.error('Error loading suppliers:', error);
@@ -115,7 +115,7 @@ const ProposalRegistryPage: React.FC = () => {
   const handleDelete = async () => {
     if (selectedProposalId) {
       try {
-        await fnsApi.delete(`/api/proposals/${selectedProposalId}`);
+        await api.delete(`/api/proposals/${selectedProposalId}`);
         await loadProposals();
         setDeleteDialogOpen(false);
         setSelectedProposalId(null);
@@ -127,7 +127,7 @@ const ProposalRegistryPage: React.FC = () => {
 
   const handleSubmit = async (proposalId: string) => {
     try {
-      await fnsApi.post(`/api/proposals/${proposalId}/submit`);
+      await api.post(`/api/proposals/${proposalId}/submit`);
       await loadProposals();
     } catch (error) {
       console.error('Error submitting proposal:', error);
@@ -136,7 +136,7 @@ const ProposalRegistryPage: React.FC = () => {
 
   const handleAccept = async (proposalId: string) => {
     try {
-      await fnsApi.post(`/api/proposals/${proposalId}/accept`);
+      await api.post(`/api/proposals/${proposalId}/accept`);
       await loadProposals();
     } catch (error) {
       console.error('Error accepting proposal:', error);
@@ -145,7 +145,7 @@ const ProposalRegistryPage: React.FC = () => {
 
   const handleReject = async (proposalId: string) => {
     try {
-      await fnsApi.post(`/api/proposals/${proposalId}/reject`);
+      await api.post(`/api/proposals/${proposalId}/reject`);
       await loadProposals();
     } catch (error) {
       console.error('Error rejecting proposal:', error);

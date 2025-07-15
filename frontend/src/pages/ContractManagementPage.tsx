@@ -166,6 +166,17 @@ interface Contract {
     name: string;
     shortName: string;
   };
+  tender?: {
+    awardedSupplierId?: string;
+    awardedSupplier?: {
+      name: string;
+      shortName: string;
+    };
+    customer?: {
+      name: string;
+      shortName: string;
+    };
+  };
 }
 
 interface TabPanelProps {
@@ -438,16 +449,16 @@ const ContractManagementPage: React.FC = () => {
             <Grid item xs={12} md={6}>
               <Typography variant="h6" gutterBottom>Участники</Typography>
               <Grid container spacing={2}>
-                <Grid item xs={12}>
-                  <Typography color="textSecondary" variant="body2">Поставщик:</Typography>
-                  <Typography variant="body1">
-                    {contract.supplier?.shortName || contract.supplier?.name || 'Не указан'}
+                <Grid item xs={12} sm={6}>
+                  <Typography color="textSecondary">Поставщик:</Typography>
+                  <Typography>
+                    {contract.tender?.awardedSupplier?.shortName || contract.tender?.awardedSupplier?.name || contract.tender?.awardedSupplierId || 'Не указан'}
                   </Typography>
                 </Grid>
-                <Grid item xs={12}>
-                  <Typography color="textSecondary" variant="body2">Заказчик:</Typography>
-                  <Typography variant="body1">
-                    {contract.customer?.shortName || contract.customer?.name || 'Не указан'}
+                <Grid item xs={12} sm={6}>
+                  <Typography color="textSecondary">Заказчик:</Typography>
+                  <Typography>
+                    {contract.tender?.customer?.shortName || contract.tender?.customer?.name || 'Не указан'}
                   </Typography>
                 </Grid>
               </Grid>

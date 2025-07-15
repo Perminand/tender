@@ -28,7 +28,7 @@ import {
   TrendingUp as TrendingUpIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 
 interface ProposalItemDto {
   id: string;
@@ -107,7 +107,7 @@ const ProposalDetailPage: React.FC = () => {
   const loadProposal = async () => {
     try {
       setLoading(true);
-      const response = await fnsApi.get(`/api/proposals/${id}/with-best-offers`);
+      const response = await api.get(`/api/proposals/${id}/with-best-offers`);
       setProposal(response.data);
     } catch (error) {
       console.error('Error loading proposal:', error);
@@ -120,7 +120,7 @@ const ProposalDetailPage: React.FC = () => {
     if (!proposal) return;
     
     try {
-      await fnsApi.post(`/api/proposals/${proposal.id}/submit`);
+      await api.post(`/api/proposals/${proposal.id}/submit`);
       await loadProposal();
     } catch (error) {
       console.error('Error submitting proposal:', error);
@@ -131,7 +131,7 @@ const ProposalDetailPage: React.FC = () => {
     if (!proposal) return;
     
     try {
-      await fnsApi.post(`/api/proposals/${proposal.id}/accept`);
+      await api.post(`/api/proposals/${proposal.id}/accept`);
       await loadProposal();
     } catch (error) {
       console.error('Error accepting proposal:', error);
@@ -142,7 +142,7 @@ const ProposalDetailPage: React.FC = () => {
     if (!proposal) return;
     
     try {
-      await fnsApi.post(`/api/proposals/${proposal.id}/reject`);
+      await api.post(`/api/proposals/${proposal.id}/reject`);
       await loadProposal();
     } catch (error) {
       console.error('Error rejecting proposal:', error);

@@ -2,6 +2,7 @@ package ru.perminov.tender.dto.tender;
 
 import lombok.Data;
 import ru.perminov.tender.model.Tender;
+import ru.perminov.tender.dto.company.CompanyDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -16,6 +17,7 @@ public class TenderDto {
     private String description;
     private UUID customerId;
     private String customerName;
+    private CompanyDto customer;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private LocalDateTime submissionDeadline;
@@ -28,5 +30,6 @@ public class TenderDto {
     private Double bestPrice;
     private String bestSupplierName;
     private UUID awardedSupplierId;
+    private CompanyDto awardedSupplier;
     private UUID parentTenderId;
 } 

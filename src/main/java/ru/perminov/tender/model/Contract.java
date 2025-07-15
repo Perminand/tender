@@ -34,14 +34,6 @@ public class Contract {
     @JoinColumn(name = "supplier_proposal_id")
     private SupplierProposal supplierProposal;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "customer_id")
-    private Company customer;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "supplier_id")
-    private Company supplier;
-
     private String contractNumber;
 
     private String title;

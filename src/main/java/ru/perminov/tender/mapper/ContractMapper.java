@@ -7,21 +7,23 @@ import ru.perminov.tender.dto.contract.ContractDto;
 import ru.perminov.tender.dto.contract.ContractDtoNew;
 import ru.perminov.tender.dto.contract.ContractDtoUpdate;
 import ru.perminov.tender.model.Contract;
+import org.mapstruct.factory.Mappers;
+import ru.perminov.tender.mapper.company.CompanyMapper;
+import ru.perminov.tender.mapper.TenderMapper;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {CompanyMapper.class, TenderMapper.class})
 public interface ContractMapper {
     
     /**
      * Преобразовать модель в DTO
      */
     @Mapping(target = "tenderId", source = "tender.id")
-    @Mapping(target = "supplierId", source = "supplier.id")
-    @Mapping(target = "customerId", source = "customer.id")
     @Mapping(target = "startDate", source = "startDate")
     @Mapping(target = "endDate", source = "endDate")
     @Mapping(target = "contractItems", ignore = true)
+    @Mapping(target = "tender", source = "tender")
     ContractDto toDto(Contract contract);
     
     /**
@@ -37,8 +39,6 @@ public interface ContractMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "tender", ignore = true)
     @Mapping(target = "supplierProposal", ignore = true)
-    @Mapping(target = "customer", ignore = true)
-    @Mapping(target = "supplier", ignore = true)
     @Mapping(target = "contractItems", ignore = true)
     Contract toEntity(ContractDtoNew contractDtoNew);
     
@@ -48,8 +48,6 @@ public interface ContractMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "tender", ignore = true)
     @Mapping(target = "supplierProposal", ignore = true)
-    @Mapping(target = "customer", ignore = true)
-    @Mapping(target = "supplier", ignore = true)
     @Mapping(target = "contractItems", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)

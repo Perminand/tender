@@ -8,7 +8,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
-import { searchCompanyByInn } from '../utils/fnsApi';
+import { searchCompanyByInn } from '../utils/fns';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 
 interface CompanyType {

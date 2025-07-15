@@ -22,7 +22,7 @@ import {
   DialogTitle
 } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 
 interface TenderFormData {
@@ -105,7 +105,7 @@ const TenderEditPage: React.FC = () => {
 
   const loadCompanies = async () => {
     try {
-      const response = await fnsApi.get('/api/companies');
+      const response = await api.get('/api/companies');
       setCompanies(response.data);
     } catch (error) {
       console.error('Error loading companies:', error);
@@ -114,7 +114,7 @@ const TenderEditPage: React.FC = () => {
 
   const loadRequests = async () => {
     try {
-      const response = await fnsApi.get('/api/requests');
+      const response = await api.get('/api/requests');
       setRequests(response.data);
     } catch (error) {
       console.error('Error loading requests:', error);
@@ -125,7 +125,7 @@ const TenderEditPage: React.FC = () => {
     if (!id) return;
     
     try {
-      const response = await fnsApi.get(`/api/tenders/${id}`);
+      const response = await api.get(`/api/tenders/${id}`);
       setTenderStatus({
         id: response.data.id,
         status: response.data.status
@@ -140,7 +140,7 @@ const TenderEditPage: React.FC = () => {
     
     try {
       setLoading(true);
-      const response = await fnsApi.get(`/api/tenders/${id}`);
+      const response = await api.get(`/api/tenders/${id}`);
       const tender = response.data;
       
       setFormData({
@@ -176,9 +176,9 @@ const TenderEditPage: React.FC = () => {
       };
 
       if (isEdit) {
-        await fnsApi.put(`/api/tenders/${id}`, tenderData);
+        await api.put(`/api/tenders/${id}`, tenderData);
       } else {
-        await fnsApi.post('/api/tenders', tenderData);
+        await api.post('/api/tenders', tenderData);
       }
 
       navigate('/tenders');
@@ -201,7 +201,7 @@ const TenderEditPage: React.FC = () => {
   // Функции управления статусом
   const handlePublish = async () => {
     try {
-      await fnsApi.post(`/api/tenders/${id}/publish`);
+      await api.post(`/api/tenders/${id}/publish`);
       await loadTenderStatus();
       setStatusDialog(prev => ({ ...prev, open: false }));
     } catch (error: any) {
@@ -213,7 +213,7 @@ const TenderEditPage: React.FC = () => {
 
   const handleStartBidding = async () => {
     try {
-      await fnsApi.post(`/api/tenders/${id}/start-bidding`);
+      await api.post(`/api/tenders/${id}/start-bidding`);
       await loadTenderStatus();
       setStatusDialog(prev => ({ ...prev, open: false }));
     } catch (error: any) {
@@ -225,7 +225,7 @@ const TenderEditPage: React.FC = () => {
 
   const handleCloseBidding = async () => {
     try {
-      await fnsApi.post(`/api/tenders/${id}/close`);
+      await api.post(`/api/tenders/${id}/close`);
       await loadTenderStatus();
       setStatusDialog(prev => ({ ...prev, open: false }));
     } catch (error: any) {
@@ -237,7 +237,7 @@ const TenderEditPage: React.FC = () => {
 
   const handleComplete = async () => {
     try {
-      await fnsApi.post(`/api/tenders/${id}/complete`);
+      await api.post(`/api/tenders/${id}/complete`);
       await loadTenderStatus();
       setStatusDialog(prev => ({ ...prev, open: false }));
     } catch (error: any) {
@@ -284,7 +284,7 @@ const TenderEditPage: React.FC = () => {
   const handleCancelTender = async () => {
     if (!id) return;
     try {
-      await fnsApi.post(`/api/tenders/${id}/cancel`);
+      await api.post(`/api/tenders/${id}/cancel`);
       setCancelDialogOpen(false);
       setError(null);
       await loadTenderStatus();

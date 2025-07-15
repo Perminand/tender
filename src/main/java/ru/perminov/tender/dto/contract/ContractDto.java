@@ -6,6 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.List;
+import ru.perminov.tender.dto.tender.TenderDto;
 
 @Data
 public class ContractDto {
@@ -13,8 +14,6 @@ public class ContractDto {
     private String contractNumber;
     private String title;
     private UUID tenderId;
-    private UUID supplierId;
-    private UUID customerId;
     private String status;
     private BigDecimal totalAmount;
     private LocalDate startDate;
@@ -29,4 +28,5 @@ public class ContractDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private List<ContractItemDto> contractItems;
+    private TenderDto tender;
 } 

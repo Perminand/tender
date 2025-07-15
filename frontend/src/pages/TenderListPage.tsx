@@ -50,7 +50,7 @@ import {
   Description as ContractIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 import type { SelectChangeEvent } from '@mui/material/Select';
 import Pagination from '@mui/material/Pagination';
 
@@ -122,7 +122,7 @@ const TenderListPage: React.FC = () => {
   const loadTenders = async () => {
     try {
       setLoading(true);
-      const response = await fnsApi.get('/api/tenders');
+      const response = await api.get('/api/tenders');
       setTenders(response.data);
     } catch (error) {
       console.error('Error loading tenders:', error);
@@ -140,7 +140,7 @@ const TenderListPage: React.FC = () => {
   const handleDelete = async () => {
     if (selectedTenderId) {
       try {
-        await fnsApi.delete(`/api/tenders/${selectedTenderId}`);
+        await api.delete(`/api/tenders/${selectedTenderId}`);
         await loadTenders();
         setDeleteDialogOpen(false);
         setSelectedTenderId(null);
@@ -157,7 +157,7 @@ const TenderListPage: React.FC = () => {
 
   const handlePublish = async (tenderId: string) => {
     try {
-      await fnsApi.post(`/api/tenders/${tenderId}/publish`);
+      await api.post(`/api/tenders/${tenderId}/publish`);
       await loadTenders();
       setError(null);
     } catch (error: any) {
@@ -169,7 +169,7 @@ const TenderListPage: React.FC = () => {
 
   const handleClose = async (tenderId: string) => {
     try {
-      await fnsApi.post(`/api/tenders/${tenderId}/close`);
+      await api.post(`/api/tenders/${tenderId}/close`);
       await loadTenders();
       setError(null);
     } catch (error: any) {
@@ -181,7 +181,7 @@ const TenderListPage: React.FC = () => {
 
   const handleStartBidding = async (tenderId: string) => {
     try {
-      await fnsApi.post(`/api/tenders/${tenderId}/start-bidding`);
+      await api.post(`/api/tenders/${tenderId}/start-bidding`);
       await loadTenders();
       setError(null);
     } catch (error: any) {
@@ -193,7 +193,7 @@ const TenderListPage: React.FC = () => {
 
   const handleComplete = async (tenderId: string) => {
     try {
-      await fnsApi.post(`/api/tenders/${tenderId}/complete`);
+      await api.post(`/api/tenders/${tenderId}/complete`);
       await loadTenders();
       setError(null);
     } catch (error: any) {
@@ -205,7 +205,7 @@ const TenderListPage: React.FC = () => {
 
   const handleCancel = async (tenderId: string) => {
     try {
-      await fnsApi.post(`/api/tenders/${tenderId}/cancel`);
+      await api.post(`/api/tenders/${tenderId}/cancel`);
       await loadTenders();
       setError(null);
     } catch (error: any) {

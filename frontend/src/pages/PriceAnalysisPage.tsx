@@ -36,7 +36,7 @@ import {
   SaveAlt as SaveAltIcon,
   ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 
 interface PriceAnalysisDto {
   tenderId: string;
@@ -103,7 +103,7 @@ const PriceAnalysisPage: React.FC = () => {
   const loadPriceAnalysis = async () => {
     try {
       setLoading(true);
-      const response = await fnsApi.get(`/api/tenders/${tenderId}/price-analysis`);
+      const response = await api.get(`/api/tenders/${tenderId}/price-analysis`);
       setAnalysis(response.data);
       setError(null);
     } catch (error) {
@@ -116,7 +116,7 @@ const PriceAnalysisPage: React.FC = () => {
 
   const loadRecommendations = async () => {
     try {
-      const response = await fnsApi.get(`/api/tenders/${tenderId}/recommendations`);
+      const response = await api.get(`/api/tenders/${tenderId}/recommendations`);
       setRecommendations(response.data);
     } catch (error) {
       console.error('Error loading recommendations:', error);
@@ -149,7 +149,7 @@ const PriceAnalysisPage: React.FC = () => {
   const handleExport = async () => {
     if (!tenderId) return;
     try {
-      const response = await fnsApi.get(`/api/price-analysis/tender/${tenderId}/export`, {
+      const response = await api.get(`/api/price-analysis/tender/${tenderId}/export`, {
         responseType: 'blob',
       });
       const url = window.URL.createObjectURL(new Blob([response.data]));

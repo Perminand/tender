@@ -358,7 +358,7 @@ const DeliveryListPage: React.FC = () => {
                   {(() => {
                     const contract = contracts.find(c => c.id === delivery.contractId || c.id === String(delivery.contractId));
                     return contract
-                      ? `${contract.contractNumber} | ${contract.supplier?.shortName || contract.supplier?.name}`
+                      ? `${contract.contractNumber} | ${contract.tender?.awardedSupplier?.shortName || contract.tender?.awardedSupplier?.name || contract.tender?.awardedSupplierId}`
                       : delivery.contractId;
                   })()}
                 </TableCell>

@@ -23,7 +23,7 @@ import {
   MenuItem,
   Chip
 } from '@mui/material';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 
 interface TenderItemDto {
   id: string;
@@ -135,7 +135,7 @@ const TenderSplitDialog: React.FC<TenderSplitDialogProps> = ({
         itemSplits: validSplits
       };
 
-      const response = await fnsApi.post<TenderSplitResponseDto>(`/api/tenders/${tenderId}/split`, request);
+      const response = await api.post<TenderSplitResponseDto>(`/api/tenders/${tenderId}/split`, request);
       
       setSuccess(response.data.message);
       onSplitSuccess(response.data);

@@ -32,6 +32,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import ru.perminov.tender.repository.ProposalItemRepository;
 import ru.perminov.tender.model.ProposalItem;
+import ru.perminov.tender.mapper.company.CompanyMapper;
 
 @Service
 @RequiredArgsConstructor
@@ -49,6 +50,7 @@ public class TenderServiceImpl implements TenderService {
     private final TenderMapper tenderMapper;
     private final TenderItemMapper tenderItemMapper;
     private final ProposalItemRepository proposalItemRepository;
+    private final CompanyMapper companyMapper;
 
     @Override
     public TenderDto createTender(TenderDto tenderDto) {
@@ -117,6 +119,15 @@ public class TenderServiceImpl implements TenderService {
         Tender tender = tenderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Тендер не найден"));
         TenderDto dto = tenderMapper.toDto(tender);
+        
+        // Заполняем awardedSupplier если есть awardedSupplierId
+        if (tender.getAwardedSupplierId() != null) {
+            Company awardedSupplier = companyRepository.findById(tender.getAwardedSupplierId()).orElse(null);
+            if (awardedSupplier != null) {
+                dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+            }
+        }
+        
         // Добавляем пометки в title
         if (tender.getParentTender() != null) {
             dto.setTitle(dto.getTitle() + " (отделённая часть)");
@@ -133,6 +144,15 @@ public class TenderServiceImpl implements TenderService {
         return tenders.stream()
                 .map(tender -> {
                     TenderDto dto = tenderMapper.toDto(tender);
+                    
+                    // Заполняем awardedSupplier если есть awardedSupplierId
+                    if (tender.getAwardedSupplierId() != null) {
+                        Company awardedSupplier = companyRepository.findById(tender.getAwardedSupplierId()).orElse(null);
+                        if (awardedSupplier != null) {
+                            dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                        }
+                    }
+                    
                     int count = supplierProposalService.getProposalsByTender(tender.getId()).size();
                     dto.setProposalsCount(count);
                     // Добавляем пометки в title
@@ -153,6 +173,15 @@ public class TenderServiceImpl implements TenderService {
         return tenders.stream()
                 .map(tender -> {
                     TenderDto dto = tenderMapper.toDto(tender);
+                    
+                    // Заполняем awardedSupplier если есть awardedSupplierId
+                    if (tender.getAwardedSupplierId() != null) {
+                        Company awardedSupplier = companyRepository.findById(tender.getAwardedSupplierId()).orElse(null);
+                        if (awardedSupplier != null) {
+                            dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                        }
+                    }
+                    
                     int count = supplierProposalService.getProposalsByTender(tender.getId()).size();
                     dto.setProposalsCount(count);
                     // Добавляем пометки в title
@@ -173,6 +202,15 @@ public class TenderServiceImpl implements TenderService {
         return tenders.stream()
                 .map(tender -> {
                     TenderDto dto = tenderMapper.toDto(tender);
+                    
+                    // Заполняем awardedSupplier если есть awardedSupplierId
+                    if (tender.getAwardedSupplierId() != null) {
+                        Company awardedSupplier = companyRepository.findById(tender.getAwardedSupplierId()).orElse(null);
+                        if (awardedSupplier != null) {
+                            dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                        }
+                    }
+                    
                     int count = supplierProposalService.getProposalsByTender(tender.getId()).size();
                     dto.setProposalsCount(count);
                     // Добавляем пометки в title
@@ -221,7 +259,17 @@ public class TenderServiceImpl implements TenderService {
             log.error("Ошибка отправки уведомлений о публикации тендера: {}", id, e);
         }
         
-        return tenderMapper.toDto(savedTender);
+        TenderDto dto = tenderMapper.toDto(savedTender);
+        
+        // Заполняем awardedSupplier если есть awardedSupplierId
+        if (savedTender.getAwardedSupplierId() != null) {
+            Company awardedSupplier = companyRepository.findById(savedTender.getAwardedSupplierId()).orElse(null);
+            if (awardedSupplier != null) {
+                dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+            }
+        }
+        
+        return dto;
     }
 
     @Override
@@ -247,7 +295,17 @@ public class TenderServiceImpl implements TenderService {
             // Не прерываем выполнение, так как основная операция завершена успешно
         }
         
-        return tenderMapper.toDto(savedTender);
+        TenderDto dto = tenderMapper.toDto(savedTender);
+        
+        // Заполняем awardedSupplier если есть awardedSupplierId
+        if (savedTender.getAwardedSupplierId() != null) {
+            Company awardedSupplier = companyRepository.findById(savedTender.getAwardedSupplierId()).orElse(null);
+            if (awardedSupplier != null) {
+                dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+            }
+        }
+        
+        return dto;
     }
 
     @Override
@@ -367,8 +425,19 @@ public class TenderServiceImpl implements TenderService {
             throw new RuntimeException("Можно начать прием предложений только для опубликованного тендера");
         }
         tender.setStatus(Tender.TenderStatus.BIDDING);
-        tenderRepository.save(tender);
-        return tenderMapper.toDto(tender);
+        Tender savedTender = tenderRepository.save(tender);
+        
+        TenderDto dto = tenderMapper.toDto(savedTender);
+        
+        // Заполняем awardedSupplier если есть awardedSupplierId
+        if (savedTender.getAwardedSupplierId() != null) {
+            Company awardedSupplier = companyRepository.findById(savedTender.getAwardedSupplierId()).orElse(null);
+            if (awardedSupplier != null) {
+                dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+            }
+        }
+        
+        return dto;
     }
 
     @Override
@@ -380,7 +449,18 @@ public class TenderServiceImpl implements TenderService {
         }
         tender.setStatus(Tender.TenderStatus.AWARDED);
         Tender savedTender = tenderRepository.save(tender);
-        return tenderMapper.toDto(savedTender);
+        
+        TenderDto dto = tenderMapper.toDto(savedTender);
+        
+        // Заполняем awardedSupplier если есть awardedSupplierId
+        if (savedTender.getAwardedSupplierId() != null) {
+            Company awardedSupplier = companyRepository.findById(savedTender.getAwardedSupplierId()).orElse(null);
+            if (awardedSupplier != null) {
+                dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+            }
+        }
+        
+        return dto;
     }
 
     @Override
@@ -395,7 +475,18 @@ public class TenderServiceImpl implements TenderService {
         }
         tender.setStatus(Tender.TenderStatus.CANCELLED);
         Tender saved = tenderRepository.save(tender);
-        return tenderMapper.toDto(saved);
+        
+        TenderDto dto = tenderMapper.toDto(saved);
+        
+        // Заполняем awardedSupplier если есть awardedSupplierId
+        if (saved.getAwardedSupplierId() != null) {
+            Company awardedSupplier = companyRepository.findById(saved.getAwardedSupplierId()).orElse(null);
+            if (awardedSupplier != null) {
+                dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+            }
+        }
+        
+        return dto;
     }
 
     @Override
@@ -421,7 +512,18 @@ public class TenderServiceImpl implements TenderService {
             // tender.setStatus(Tender.TenderStatus.AWARDED); // Не менять статус!
         }
         Tender saved = tenderRepository.save(tender);
-        return tenderMapper.toDto(saved);
+        
+        TenderDto dto = tenderMapper.toDto(saved);
+        
+        // Заполняем awardedSupplier если есть awardedSupplierId
+        if (saved.getAwardedSupplierId() != null) {
+            Company awardedSupplier = companyRepository.findById(saved.getAwardedSupplierId()).orElse(null);
+            if (awardedSupplier != null) {
+                dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+            }
+        }
+        
+        return dto;
     }
 
     private void createTenderItemsFromRequest(Tender tender, Request request) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Card, CardContent, Divider, Button, CircularProgress, Alert, Paper } from '@mui/material';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { getAnalyticsStats, AnalyticsStats } from '../utils/fnsApi';
+import { getAnalyticsStats, AnalyticsStats } from '../utils/api';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 

@@ -17,7 +17,7 @@ import {
   AttachMoney as MoneyIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 
 interface PriceSummaryDto {
   totalEstimatedPrice: number;
@@ -53,7 +53,7 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
   const loadPriceSummary = async () => {
     try {
       setLoading(true);
-      const response = await fnsApi.get(`/api/tenders/${tenderId}/statistics`);
+      const response = await api.get(`/api/tenders/${tenderId}/statistics`);
       setSummary(response.data);
       setError(null);
     } catch (error) {

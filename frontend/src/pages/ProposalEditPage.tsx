@@ -36,7 +36,7 @@ import {
   Send as SendIcon
 } from '@mui/icons-material';
 import { useNavigate, useParams } from 'react-router-dom';
-import { fnsApi } from '../utils/fnsApi';
+import { api } from '../utils/api';
 
 interface TenderItem {
   id: string;
@@ -112,7 +112,7 @@ const ProposalEditPage: React.FC = () => {
 
   const loadCompanies = async () => {
     try {
-      const response = await fnsApi.get('/api/companies?role=SUPPLIER');
+      const response = await api.get('/api/companies?role=SUPPLIER');
       setCompanies(response.data);
     } catch (error) {
       console.error('Error loading companies:', error);
@@ -123,7 +123,7 @@ const ProposalEditPage: React.FC = () => {
     if (!tenderId) return;
     
     try {
-      const response = await fnsApi.get(`/api/tenders/${tenderId}/items`);
+      const response = await api.get(`/api/tenders/${tenderId}/items`);
       setTenderItems(response.data);
       
       // Создаем формы для каждой позиции тендера
@@ -187,7 +187,7 @@ const ProposalEditPage: React.FC = () => {
           totalPrice: item.quantity * item.unitPrice
         }))
       };
-      await fnsApi.post('/api/proposals', proposalData);
+      await api.post('/api/proposals', proposalData);
       navigate(`/tenders/${tenderId}`);
     } catch (error: any) {
       console.error('Error saving proposal:', error);
@@ -245,9 +245,9 @@ const ProposalEditPage: React.FC = () => {
           totalPrice: item.quantity * item.unitPrice
         }))
       };
-      const response = await fnsApi.post('/api/proposals', proposalData);
+      const response = await api.post('/api/proposals', proposalData);
       // Затем подаем предложение
-      await fnsApi.post(`/api/proposals/${response.data.id}/submit`);
+      await api.post(`/api/proposals/${response.data.id}/submit`);
       navigate(`/tenders/${tenderId}`);
     } catch (error: any) {
       console.error('Error submitting proposal:', error);
