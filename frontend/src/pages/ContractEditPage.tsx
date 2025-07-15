@@ -300,6 +300,16 @@ const ContractEditPage: React.FC = () => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  if (!id && !isCreatingFromTender) {
+    return (
+      <Box sx={{ p: 3 }}>
+        <Alert severity="error">
+          Создание контракта возможно только через тендер и победителя. Перейдите в тендер и выберите победителя для заключения контракта.
+        </Alert>
+      </Box>
+    );
+  }
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight="400px">

@@ -20,12 +20,6 @@ import java.util.UUID;
 public class ContractController {
     private final ContractService contractService;
 
-    @PostMapping
-    public ResponseEntity<ContractDto> createContract(@RequestBody ContractDtoNew contractDtoNew) {
-        log.info("Создание контракта: {}", contractDtoNew);
-        return ResponseEntity.ok(contractService.createContract(contractDtoNew));
-    }
-
     @GetMapping("/{id}")
     public ResponseEntity<ContractDto> getContractById(@PathVariable UUID id) {
         log.info("Получение контракта по id: {}", id);
@@ -83,7 +77,7 @@ public class ContractController {
     public ResponseEntity<ContractDto> createContractFromTender(@RequestBody ContractDtoNew contractDtoNew) {
         log.info("Создание контракта на основе тендера и поставщика через тело запроса: {}", contractDtoNew);
         try {
-            ContractDto dto = contractService.createContract(contractDtoNew);
+            ContractDto dto = contractService.createContractFromTender(contractDtoNew.getTenderId(), contractDtoNew.getSupplierId());
             log.info("Контракт успешно создан из тендера. contractId={}, tenderId={}",
                     dto.getId(), contractDtoNew.getTenderId());
             return ResponseEntity.ok(dto);

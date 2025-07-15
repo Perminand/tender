@@ -11,11 +11,6 @@ import java.util.UUID;
 public interface ContractService {
     
     /**
-     * Создать новый контракт
-     */
-    ContractDto createContract(ContractDtoNew contractDtoNew);
-    
-    /**
      * Получить контракт по ID
      */
     ContractDto getContractById(UUID id);

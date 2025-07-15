@@ -258,15 +258,6 @@ const ContractListPage: React.FC = () => {
       </Grid>
 
       {/* Кнопка создания */}
-      <Box sx={{ mb: 2 }}>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={handleCreate}
-        >
-          Создать контракт
-        </Button>
-      </Box>
 
       {/* Таблица */}
       <TableContainer component={Paper}>

@@ -10,6 +10,7 @@ public class ContractDtoNew {
     private String contractNumber;
     private String title;
     private UUID tenderId;
+    private UUID supplierId;
     private BigDecimal totalAmount;
     private LocalDate startDate;
     private LocalDate endDate;

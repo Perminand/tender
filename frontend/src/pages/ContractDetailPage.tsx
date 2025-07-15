@@ -33,6 +33,24 @@ interface ContractItem {
   description: string;
 }
 
+interface TenderItem {
+  id: string;
+  tenderId: string;
+  requestMaterialId: string;
+  materialId: string;
+  itemNumber: number;
+  description: string;
+  quantity: number;
+  unitId: string;
+  unitName: string;
+  specifications: string;
+  deliveryRequirements: string;
+  estimatedPrice: number;
+  bestPrice?: number;
+  materialName?: string;
+  materialTypeName?: string;
+}
+
 interface Contract {
   id: string;
   contractNumber: string;
@@ -65,6 +83,7 @@ interface Contract {
       name: string;
       shortName: string;
     };
+    tenderItems?: TenderItem[];
   };
 }
 
@@ -121,6 +140,9 @@ const ContractDetailPage: React.FC = () => {
   if (!contract) {
     return <Alert severity="info">Контракт не найден</Alert>;
   }
+
+  // Позиции для отображения: contractItems
+  const hasContractItems = contract.contractItems && contract.contractItems.length > 0;
 
   return (
     <Box sx={{ p: 3 }}>
@@ -232,7 +254,7 @@ const ContractDetailPage: React.FC = () => {
       )}
 
       {/* Позиции контракта */}
-      {contract.contractItems && contract.contractItems.length > 0 && (
+      {hasContractItems && (
         <Card>
           <CardContent>
             <Typography variant="h6" gutterBottom>

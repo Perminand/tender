@@ -54,16 +54,6 @@ public class ContractServiceImpl implements ContractService {
     private final TenderMapper tenderMapper;
 
     @Override
-    public ContractDto createContract(ContractDtoNew contractDtoNew) {
-        Contract contract = contractMapper.toEntity(contractDtoNew);
-        contract.setStatus(Contract.ContractStatus.DRAFT);
-        Tender tender = tenderRepository.getReferenceById(contractDtoNew.getTenderId());
-        contract.setTender(tender);
-        Contract saved = contractRepository.save(contract);
-        return contractMapper.toDto(saved);
-    }
-
-    @Override
     public ContractDto getContractById(UUID id) {
         Contract contract = contractRepository.findById(id)
                 .orElse(null);
