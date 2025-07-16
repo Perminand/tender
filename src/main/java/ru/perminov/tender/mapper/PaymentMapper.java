@@ -16,7 +16,10 @@ public interface PaymentMapper {
      * Преобразовать модель в DTO
      */
     @Mapping(target = "contractId", source = "contract.id")
+    @Mapping(target = "contractNumber", source = "contract.contractNumber")
+    @Mapping(target = "deliveryNumber", expression = "java(payment.getDelivery() != null ? payment.getDelivery().getDeliveryNumber() : null)")
     @Mapping(target = "supplierId", source = "supplier.id")
+    @Mapping(target = "supplierName", expression = "java(payment.getSupplier() != null ? (payment.getSupplier().getShortName() != null ? payment.getSupplier().getShortName() : payment.getSupplier().getName()) : null)")
     @Mapping(target = "paymentType", source = "type")
     @Mapping(target = "dueDate", source = "dueDate")
     @Mapping(target = "paidDate", source = "paidDate")
@@ -39,6 +42,7 @@ public interface PaymentMapper {
     @Mapping(target = "supplier", ignore = true)
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "type", source = "paymentType")
+    @Mapping(target = "status", expression = "java(paymentDtoNew.getStatus() != null ? ru.perminov.tender.model.Payment.PaymentStatus.valueOf(paymentDtoNew.getStatus()) : null)")
     Payment toEntity(PaymentDtoNew paymentDtoNew);
     
     /**
@@ -52,5 +56,6 @@ public interface PaymentMapper {
     @Mapping(target = "supplier", ignore = true)
     @Mapping(target = "customer", ignore = true)
     @Mapping(target = "type", source = "paymentType")
+    @Mapping(target = "status", expression = "java(paymentDtoNew.getStatus() != null ? ru.perminov.tender.model.Payment.PaymentStatus.valueOf(paymentDtoNew.getStatus()) : null)")
     void updateEntity(@MappingTarget Payment payment, PaymentDtoNew paymentDtoNew);
 } 

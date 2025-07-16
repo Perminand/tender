@@ -12,6 +12,7 @@ public class PaymentDto {
     private String paymentNumber;
     private UUID contractId;
     private UUID supplierId;
+    private String supplierName;
     private String paymentType;
     private String status;
     private BigDecimal amount;
@@ -19,6 +20,8 @@ public class PaymentDto {
     private LocalDate paidDate;
     private String invoiceNumber;
     private String notes;
+    private String contractNumber;
+    private String deliveryNumber;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 } 

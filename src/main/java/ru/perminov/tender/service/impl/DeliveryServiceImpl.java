@@ -24,6 +24,7 @@ import ru.perminov.tender.model.Warehouse;
 import ru.perminov.tender.repository.ContractRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.WarehouseRepository;
+import ru.perminov.tender.service.PaymentService;
 
 
 import java.math.BigDecimal;
@@ -55,6 +56,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final ContractRepository contractRepository;
     private final CompanyRepository companyRepository;
     private final WarehouseRepository warehouseRepository;
+    private final PaymentService paymentService;
 
     @Override
     public DeliveryDto createDelivery(DeliveryDtoNew deliveryDtoNew) {
@@ -223,7 +225,7 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     @Override
     public List<DeliveryDto> getDeliveriesByContract(UUID contractId) {
-        return deliveryMapper.toDtoList(deliveryRepository.findByContract_Id(contractId));
+        return deliveryMapper.toDtoList(deliveryRepository.findByContractIdWithItems(contractId));
     }
 
     @Override
@@ -323,8 +325,12 @@ public class DeliveryServiceImpl implements DeliveryService {
                     timestamp, status, comment);
                 delivery.setNotes(currentNotes + (currentNotes.isEmpty() ? "" : "\n") + statusChangeNote);
             }
-            
-            return deliveryMapper.toDto(deliveryRepository.save(delivery));
+            Delivery saved = deliveryRepository.save(delivery);
+            // Если статус приемки — создать платеж
+            if (status == Delivery.DeliveryStatus.ACCEPTED || status == Delivery.DeliveryStatus.PARTIALLY_ACCEPTED) {
+                paymentService.createPaymentFromDelivery(saved);
+            }
+            return deliveryMapper.toDto(saved);
         } catch (IllegalArgumentException e) {
             return null;
         }

@@ -40,11 +40,17 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
 
+interface DeliveryRef {
+  id: string;
+  deliveryNumber?: string;
+}
 interface Payment {
   id: number;
   paymentNumber: string;
   contractId: number;
+  contractNumber?: string;
   supplierId: number;
+  supplierName?: string;
   paymentType: string;
   status: string;
   amount: number;
@@ -54,6 +60,8 @@ interface Payment {
   notes: string;
   createdAt: string;
   updatedAt: string;
+  delivery?: DeliveryRef | null;
+  deliveryNumber?: string;
 }
 
 const PaymentListPage: React.FC = () => {
@@ -89,16 +97,6 @@ const PaymentListPage: React.FC = () => {
     setSnackbar({ open: true, message, severity });
   };
 
-  const handleCreate = () => {
-    setEditingPayment(null);
-    setDialogOpen(true);
-  };
-
-  const handleEdit = (payment: Payment) => {
-    setEditingPayment(payment);
-    setDialogOpen(true);
-  };
-
   const handleDelete = async (id: number) => {
     setSelectedPaymentId(id);
     setDeleteDialogOpen(true);
@@ -126,45 +124,6 @@ const PaymentListPage: React.FC = () => {
       fetchPayments();
     } catch (error) {
       showSnackbar('Ошибка при подтверждении платежа', 'error');
-    }
-  };
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    
-    try {
-      const submitData = {
-        paymentNumber: formData.get('paymentNumber'),
-        paymentType: formData.get('paymentType'),
-        contractId: Number(formData.get('contractId')),
-        supplierId: Number(formData.get('supplierId')),
-        amount: Number(formData.get('amount')),
-        dueDate: formData.get('dueDate'),
-        invoiceNumber: formData.get('invoiceNumber'),
-        notes: formData.get('notes'),
-      };
-
-      if (editingPayment) {
-        await fetch(`/api/payments/${editingPayment.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
-        showSnackbar('Платеж обновлен', 'success');
-      } else {
-        await fetch('/api/payments', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
-        showSnackbar('Платеж создан', 'success');
-      }
-      
-      setDialogOpen(false);
-      fetchPayments();
-    } catch (error) {
-      showSnackbar('Ошибка при сохранении платежа', 'error');
     }
   };
 
@@ -386,7 +345,7 @@ const PaymentListPage: React.FC = () => {
         <Button
           variant="contained"
           startIcon={<AddIcon />}
-          onClick={handleCreate}
+          onClick={() => navigate('/payments/new')}
         >
           Создать платеж
         </Button>
@@ -399,6 +358,8 @@ const PaymentListPage: React.FC = () => {
             <TableRow>
               <TableCell>Номер</TableCell>
               <TableCell>Контракт</TableCell>
+              <TableCell>Поставщик</TableCell>
+              <TableCell>Поставка</TableCell>
               <TableCell>Тип</TableCell>
               <TableCell>Статус</TableCell>
               <TableCell>Сумма</TableCell>
@@ -412,7 +373,21 @@ const PaymentListPage: React.FC = () => {
             {filteredPayments.map((payment) => (
               <TableRow key={payment.id}>
                 <TableCell>{payment.paymentNumber}</TableCell>
-                <TableCell>{payment.contractId}</TableCell>
+                <TableCell>{payment.contractNumber || payment.contractId}</TableCell>
+                <TableCell>{payment.supplierName || payment.supplierId}</TableCell>
+                <TableCell>
+                  {payment.deliveryNumber ? (
+                    <Button
+                      size="small"
+                      variant="text"
+                      onClick={() => navigate(`/deliveries/${payment.delivery?.id}`)}
+                    >
+                      {payment.deliveryNumber}
+                    </Button>
+                  ) : (
+                    <span style={{ color: '#aaa' }}>-</span>
+                  )}
+                </TableCell>
                 <TableCell>{getPaymentTypeText(payment.paymentType)}</TableCell>
                 <TableCell>
                   <Chip
@@ -438,7 +413,7 @@ const PaymentListPage: React.FC = () => {
                   </IconButton>
                   <IconButton
                     size="small"
-                    onClick={() => handleEdit(payment)}
+                    onClick={() => navigate(`/payments/${payment.id}/edit`)}
                   >
                     <EditIcon />
                   </IconButton>
@@ -464,109 +439,6 @@ const PaymentListPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
-
-      {/* Диалог создания/редактирования */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingPayment ? 'Редактировать платеж' : 'Создать платеж'}
-        </DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  name="paymentNumber"
-                  label="Номер платежа"
-                  fullWidth
-                  required
-                  defaultValue={editingPayment?.paymentNumber}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Тип платежа</InputLabel>
-                  <Select name="paymentType" defaultValue={editingPayment?.paymentType || 'PAYMENT'}>
-                    <MenuItem value="ADVANCE">Аванс</MenuItem>
-                    <MenuItem value="PAYMENT">Оплата</MenuItem>
-                    <MenuItem value="FINAL">Финальная оплата</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  name="contractId"
-                  label="ID контракта"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingPayment?.contractId}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  name="supplierId"
-                  label="ID поставщика"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingPayment?.supplierId}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  name="amount"
-                  label="Сумма"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingPayment?.amount}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Срок оплаты"
-                    slotProps={{
-                      textField: {
-                        name: 'dueDate',
-                        fullWidth: true,
-                        required: true,
-                      },
-                    }}
-                    defaultValue={editingPayment?.dueDate ? dayjs(editingPayment.dueDate) : null}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="invoiceNumber"
-                  label="Номер счета"
-                  fullWidth
-                  defaultValue={editingPayment?.invoiceNumber}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="notes"
-                  label="Примечания"
-                  multiline
-                  rows={3}
-                  fullWidth
-                  defaultValue={editingPayment?.notes}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" variant="contained">
-              {editingPayment ? 'Обновить' : 'Создать'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
 
       {/* Снэкбар для уведомлений */}
       <Snackbar

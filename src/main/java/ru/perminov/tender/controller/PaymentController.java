@@ -7,11 +7,14 @@ import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.payment.PaymentDto;
 import ru.perminov.tender.dto.payment.PaymentDtoNew;
 import ru.perminov.tender.service.PaymentService;
+import ru.perminov.tender.repository.DeliveryRepository;
+import jakarta.persistence.EntityNotFoundException;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import ru.perminov.tender.model.Delivery;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -19,6 +22,7 @@ import java.util.UUID;
 @Slf4j
 public class PaymentController {
     private final PaymentService paymentService;
+    private final DeliveryRepository deliveryRepository;
 
     @PostMapping
     public ResponseEntity<PaymentDto> createPayment(@RequestBody PaymentDtoNew paymentDtoNew) {
@@ -103,8 +107,25 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.createPaymentsFromDeliveries(contractId));
     }
 
+    @PostMapping("/from-delivery/{deliveryId}")
+    public ResponseEntity<PaymentDto> createPaymentFromDelivery(@PathVariable UUID deliveryId) {
+        Delivery delivery = deliveryRepository.findById(deliveryId)
+            .orElseThrow(() -> new EntityNotFoundException("Поставка не найдена"));
+        PaymentDto payment = paymentService.createPaymentFromDelivery(delivery);
+        if (payment == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(payment);
+    }
+
     @GetMapping("/status-stats")
     public ResponseEntity<Map<String, Long>> getStatusStats() {
         return ResponseEntity.ok(paymentService.getStatusStats());
+    }
+
+    @GetMapping("/delivery/{deliveryId}")
+    public ResponseEntity<List<PaymentDto>> getPaymentsByDelivery(@PathVariable UUID deliveryId) {
+        log.info("Получение платежей по поставке: {}", deliveryId);
+        return ResponseEntity.ok(paymentService.getPaymentsByDelivery(deliveryId));
     }
 } 

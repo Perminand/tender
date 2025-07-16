@@ -63,4 +63,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     BigDecimal getTotalPendingAmountByContract(@Param("contractId") UUID contractId);
 
     long countByStatus(Payment.PaymentStatus status);
+
+    boolean existsByDeliveryId(UUID deliveryId);
+
+    List<Payment> findAllByDeliveryId(UUID deliveryId);
 } 

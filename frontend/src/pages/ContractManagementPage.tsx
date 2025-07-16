@@ -39,7 +39,8 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Snackbar
+  Snackbar,
+  DialogContentText
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
@@ -221,6 +222,8 @@ const ContractManagementPage: React.FC = () => {
   const [documentDialogOpen, setDocumentDialogOpen] = useState(false);
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false);
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [createPaymentDialogOpen, setCreatePaymentDialogOpen] = useState(false);
+  const [selectedDeliveryForPayment, setSelectedDeliveryForPayment] = useState<Delivery | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -340,6 +343,34 @@ const ContractManagementPage: React.FC = () => {
 
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
     setSnackbar({ open: true, message, severity });
+  };
+
+  const handleCreatePaymentFromDelivery = (delivery: Delivery) => {
+    setSelectedDeliveryForPayment(delivery);
+    setCreatePaymentDialogOpen(true);
+  };
+
+  const handleConfirmCreatePayment = async () => {
+    if (selectedDeliveryForPayment) {
+      try {
+        const response = await fetch(`/api/payments/from-delivery/${selectedDeliveryForPayment.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          showSnackbar('Платеж по поставке создан', 'success');
+          // Обновляем данные контракта, чтобы показать новый платеж
+          fetchContractData();
+        } else {
+          showSnackbar('Ошибка при создании платежа', 'error');
+        }
+      } catch (error) {
+        showSnackbar('Ошибка при создании платежа', 'error');
+      } finally {
+        setCreatePaymentDialogOpen(false);
+        setSelectedDeliveryForPayment(null);
+      }
+    }
   };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -619,6 +650,12 @@ const ContractManagementPage: React.FC = () => {
                         <IconButton onClick={() => navigate(`/deliveries/${delivery.id}`)}>
                           <VisibilityIcon />
                         </IconButton>
+                        <IconButton 
+                          onClick={() => handleCreatePaymentFromDelivery(delivery)}
+                          title="Создать платеж по поставке"
+                        >
+                          <PaymentIcon />
+                        </IconButton>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -637,7 +674,7 @@ const ContractManagementPage: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => setPaymentDialogOpen(true)}
+              onClick={() => navigate(`/payments/new?contractId=${contract.id}`)}
             >
               Добавить платеж
             </Button>
@@ -783,6 +820,39 @@ const ContractManagementPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Диалог создания платежа по поставке */}
+      <Dialog open={createPaymentDialogOpen} onClose={() => setCreatePaymentDialogOpen(false)}>
+        <DialogTitle>Создать платеж по поставке</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Будет создан платеж по поставке:
+          </DialogContentText>
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="body1">
+              <strong>Номер поставки:</strong> {selectedDeliveryForPayment?.deliveryNumber}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Статус:</strong> {selectedDeliveryForPayment ? getDeliveryStatusLabel(selectedDeliveryForPayment.status) : ''}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Контракт:</strong> {contract?.contractNumber}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Сумма:</strong> {selectedDeliveryForPayment?.deliveryItems?.reduce((sum, item) => sum + item.totalPrice, 0)?.toLocaleString()} ₽
+            </Typography>
+          </Box>
+          <DialogContentText sx={{ mt: 2 }}>
+            Платеж будет создан со статусом "Ожидает оплаты" и привязан к данной поставке.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreatePaymentDialogOpen(false)}>Отмена</Button>
+          <Button onClick={handleConfirmCreatePayment} color="primary" variant="contained">
+            Создать платеж
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

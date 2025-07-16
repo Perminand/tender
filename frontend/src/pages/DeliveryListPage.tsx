@@ -38,7 +38,8 @@ import {
   Visibility as VisibilityIcon,
   Check as CheckIcon,
   Close as CloseIcon,
-  Settings as SettingsIcon
+  Settings as SettingsIcon,
+  Payment as PaymentIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -185,6 +186,8 @@ const DeliveryListPage: React.FC = () => {
   const [selectedContract, setSelectedContract] = useState<any>(null);
 
   const [statusStats, setStatusStats] = useState<{ [key: string]: number }>({});
+  const [createPaymentDialogOpen, setCreatePaymentDialogOpen] = useState(false);
+  const [selectedDeliveryForPayment, setSelectedDeliveryForPayment] = useState<Delivery | null>(null);
 
   // Подгружаем списки при открытии диалога
   useEffect(() => {
@@ -322,7 +325,7 @@ const DeliveryListPage: React.FC = () => {
       
       const response = await fetch(`/api/deliveries?${params.toString()}`);
       if (response.ok) {
-        const data = await response.json();
+      const data = await response.json();
         setDeliveries(data.content || data);
         setTotalCount(data.totalElements || data.length);
       } else {
@@ -429,6 +432,32 @@ const DeliveryListPage: React.FC = () => {
     }
   };
 
+  const handleCreatePayment = (delivery: Delivery) => {
+    setSelectedDeliveryForPayment(delivery);
+    setCreatePaymentDialogOpen(true);
+  };
+
+  const handleConfirmCreatePayment = async () => {
+    if (selectedDeliveryForPayment) {
+      try {
+        const response = await fetch(`/api/payments/from-delivery/${selectedDeliveryForPayment.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (response.ok) {
+          showSnackbar('Платеж по поставке создан', 'success');
+        } else {
+          showSnackbar('Ошибка при создании платежа', 'error');
+        }
+      } catch (error) {
+        showSnackbar('Ошибка при создании платежа', 'error');
+      } finally {
+        setCreatePaymentDialogOpen(false);
+        setSelectedDeliveryForPayment(null);
+      }
+    }
+  };
+
   // Функции для фильтров и пагинации
   const handleFilterChange = (field: string, value: any) => {
     setFilters(prev => ({ ...prev, [field]: value }));
@@ -499,15 +528,15 @@ const DeliveryListPage: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(submitData),
-      });
+          body: JSON.stringify(submitData),
+        });
 
       if (response.ok) {
         showSnackbar(
           editingDelivery ? 'Поставка обновлена' : 'Поставка создана', 
           'success'
         );
-        setDialogOpen(false);
+      setDialogOpen(false);
         reloadAll();
       } else {
         showSnackbar('Ошибка при сохранении поставки', 'error');
@@ -935,6 +964,14 @@ const DeliveryListPage: React.FC = () => {
                   )}
                   <IconButton
                     size="small"
+                    color="primary"
+                    onClick={() => handleCreatePayment(delivery)}
+                    title="Создать платеж по поставке"
+                  >
+                    <PaymentIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
                     color="error"
                     onClick={() => handleDelete(delivery.id)}
                   >
@@ -1006,20 +1043,20 @@ const DeliveryListPage: React.FC = () => {
                     disabled
                   />
                 ) : (
-                  <FormControl fullWidth required>
-                    <InputLabel>Поставщик</InputLabel>
-                    <Select
-                      value={selectedSupplierId}
-                      onChange={e => setSelectedSupplierId(e.target.value)}
-                      label="Поставщик"
-                    >
-                      {suppliers.map(s => (
-                        <MenuItem key={s.id} value={s.id}>
-                          {s.shortName || s.legalName || s.name}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                <FormControl fullWidth required>
+                  <InputLabel>Поставщик</InputLabel>
+                  <Select
+                    value={selectedSupplierId}
+                    onChange={e => setSelectedSupplierId(e.target.value)}
+                    label="Поставщик"
+                  >
+                    {suppliers.map(s => (
+                      <MenuItem key={s.id} value={s.id}>
+                        {s.shortName || s.legalName || s.name}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
                 )}
                 {/* Скрытое поле для supplierId, чтобы оно отправлялось в submitData */}
                 {selectedContractId && (
@@ -1234,6 +1271,39 @@ const DeliveryListPage: React.FC = () => {
           onStatusChange={handleStatusChangeSubmit}
         />
       )}
+
+      {/* Диалог создания платежа */}
+      <Dialog open={createPaymentDialogOpen} onClose={() => setCreatePaymentDialogOpen(false)}>
+        <DialogTitle>Создать платеж по поставке</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Будет создан платеж по поставке:
+          </DialogContentText>
+          <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+            <Typography variant="body1">
+              <strong>Номер поставки:</strong> {selectedDeliveryForPayment?.deliveryNumber}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Статус:</strong> {selectedDeliveryForPayment ? getStatusText(selectedDeliveryForPayment.status) : ''}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Контракт:</strong> {selectedDeliveryForPayment?.contractNumber}
+            </Typography>
+            <Typography variant="body1">
+              <strong>Сумма:</strong> {selectedDeliveryForPayment?.deliveryItems?.reduce((sum, item) => sum + (item.orderedQuantity * item.unitPrice), 0)?.toLocaleString()} ₽
+            </Typography>
+          </Box>
+          <DialogContentText sx={{ mt: 2 }}>
+            Платеж будет создан со статусом "Ожидает оплаты" и привязан к данной поставке.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setCreatePaymentDialogOpen(false)}>Отмена</Button>
+          <Button onClick={handleConfirmCreatePayment} color="primary" variant="contained">
+            Создать платеж
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

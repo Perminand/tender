@@ -5,11 +5,13 @@ import org.mapstruct.Mapping;
 import org.mapstruct.MappingTarget;
 import ru.perminov.tender.dto.delivery.DeliveryDto;
 import ru.perminov.tender.dto.delivery.DeliveryDtoNew;
+import ru.perminov.tender.dto.delivery.DeliveryItemDto;
 import ru.perminov.tender.model.Delivery;
+import ru.perminov.tender.model.DeliveryItem;
 
 import java.util.List;
 
-@Mapper(componentModel = "spring")
+@Mapper(componentModel = "spring", uses = {DeliveryItemMapper.class})
 public interface DeliveryMapper {
     
     /**
@@ -23,6 +25,7 @@ public interface DeliveryMapper {
     @Mapping(target = "warehouseId", source = "warehouse.id")
     @Mapping(target = "warehouseName", source = "warehouse.name")
     @Mapping(target = "plannedDate", source = "plannedDeliveryDate")
+    @Mapping(target = "deliveryItems", source = "deliveryItems")
     DeliveryDto toDto(Delivery delivery);
     
     /**

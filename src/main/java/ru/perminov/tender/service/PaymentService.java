@@ -76,7 +76,17 @@ public interface PaymentService {
     List<PaymentDto> createPaymentsFromDeliveries(UUID contractId);
 
     /**
+     * Создать платеж по поставке
+     */
+    PaymentDto createPaymentFromDelivery(ru.perminov.tender.model.Delivery delivery);
+
+    /**
      * Получить статистику по статусам платежей
      */
     Map<String, Long> getStatusStats();
+
+    /**
+     * Получить платежи по поставке
+     */
+    List<PaymentDto> getPaymentsByDelivery(UUID deliveryId);
 } 

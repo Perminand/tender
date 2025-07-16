@@ -4,6 +4,7 @@ import lombok.Data;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.List;
 
 @Data
 public class DeliveryDto {
@@ -23,4 +24,5 @@ public class DeliveryDto {
     private String notes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private List<DeliveryItemDto> deliveryItems;
 } 

@@ -93,3 +93,6 @@ databaseChangeLog:
       file: db/changelog/changes/V048_add_warehouse_to_tenders.sql
   - include:
       file: db/changelog/changes/V049_add_delivery_statuses.sql
+  - include:
+      file: db/changelog/changes/V050_add_delivery_id_to_payments.sql
+

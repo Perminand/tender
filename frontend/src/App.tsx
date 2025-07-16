@@ -35,6 +35,8 @@ import ContractManagementPage from './pages/ContractManagementPage';
 import RequestDetailPage from './pages/RequestDetailPage';
 import ReportingPage from './pages/ReportingPage';
 import DeliveryEditPage from './pages/DeliveryEditPage';
+import PaymentEditPage from './pages/PaymentEditPage';
+import PaymentDetailPage from './pages/PaymentDetailPage';
 
 const App: React.FC = () => (
   <Layout>
@@ -89,6 +91,9 @@ const App: React.FC = () => (
       <Route path="/deliveries/new" element={<DeliveryEditPage />} />
       <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
       <Route path="/payments" element={<PaymentListPage />} />
+      <Route path="/payments/new" element={<PaymentEditPage />} />
+      <Route path="/payments/:id" element={<PaymentDetailPage />} />
+      <Route path="/payments/:id/edit" element={<PaymentEditPage />} />
       <Route path="/documents" element={<DocumentListPage />} />
     </Routes>
   </Layout>

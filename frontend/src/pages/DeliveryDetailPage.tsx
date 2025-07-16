@@ -32,7 +32,7 @@ import {
   Edit as EditIcon,
   Settings as SettingsIcon
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import DeliveryStatusManager from '../components/DeliveryStatusManager';
 
@@ -92,10 +92,12 @@ const DeliveryDetailPage: React.FC = () => {
     qualityNotes: '',
     rejectionReason: ''
   });
+  const [payments, setPayments] = useState<Payment[]>([]);
 
   useEffect(() => {
     if (id) {
       fetchDelivery();
+      fetchPayments();
     }
   }, [id]);
 
@@ -114,6 +116,16 @@ const DeliveryDetailPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchPayments = async () => {
+    try {
+      const response = await fetch(`/api/payments/delivery/${id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setPayments(data);
+      }
+    } catch {}
   };
 
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
@@ -354,6 +366,43 @@ const DeliveryDetailPage: React.FC = () => {
                         >
                           Приемка
                         </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Платежи по поставке */}
+      {payments.length > 0 && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Платежи по поставке
+            </Typography>
+            <TableContainer component={Paper}>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Номер</TableCell>
+                    <TableCell>Сумма</TableCell>
+                    <TableCell>Статус</TableCell>
+                    <TableCell>Срок оплаты</TableCell>
+                    <TableCell>Действия</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {payments.map((p) => (
+                    <TableRow key={p.id}>
+                      <TableCell>{p.paymentNumber}</TableCell>
+                      <TableCell>{p.amount?.toLocaleString()} ₽</TableCell>
+                      <TableCell>{p.status}</TableCell>
+                      <TableCell>{p.dueDate ? dayjs(p.dueDate).format('DD.MM.YYYY') : '-'}</TableCell>
+                      <TableCell>
+                        <Button component={Link} to={`/payments/${p.id}`} size="small">Подробнее</Button>
                       </TableCell>
                     </TableRow>
                   ))}

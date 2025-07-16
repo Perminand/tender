@@ -36,6 +36,10 @@ public class Payment {
     @JoinColumn(name = "customer_id")
     private Company customer;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivery_id")
+    private Delivery delivery;
+
     private String paymentNumber;
 
     private LocalDate paymentDate;

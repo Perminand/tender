@@ -15,4 +15,6 @@ public class PaymentDtoNew {
     private LocalDate dueDate;
     private String invoiceNumber;
     private String notes;
+    private UUID deliveryId;
+    private String status;
 } 
