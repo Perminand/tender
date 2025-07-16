@@ -16,8 +16,12 @@ public interface DeliveryMapper {
      * Преобразовать модель в DTO
      */
     @Mapping(target = "contractId", source = "contract.id")
+    @Mapping(target = "contractNumber", source = "contract.contractNumber")
+    @Mapping(target = "contractTitle", source = "contract.title")
     @Mapping(target = "supplierId", source = "supplier.id")
+    @Mapping(target = "supplierName", source = "supplier.shortName")
     @Mapping(target = "warehouseId", source = "warehouse.id")
+    @Mapping(target = "warehouseName", source = "warehouse.name")
     @Mapping(target = "plannedDate", source = "plannedDeliveryDate")
     DeliveryDto toDto(Delivery delivery);
     

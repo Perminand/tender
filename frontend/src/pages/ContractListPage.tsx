@@ -84,11 +84,26 @@ const ContractListPage: React.FC = () => {
   const [status, setStatus] = useState<string>('DRAFT');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
+  const [statusStats, setStatusStats] = useState<{ [key: string]: number }>({});
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchContracts();
   }, []);
+
+  // Загрузка статистики по статусам
+  const fetchStatusStats = async () => {
+    try {
+      const response = await fetch('/api/contracts/status-stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStatusStats(data);
+      }
+    } catch (e) {}
+  };
+  useEffect(() => { fetchStatusStats(); }, []);
+  const reloadAll = () => { fetchContracts(); fetchStatusStats(); };
 
   const fetchContracts = async () => {
     setLoading(true);
@@ -127,7 +142,7 @@ const ContractListPage: React.FC = () => {
       try {
         await fetch(`/api/contracts/${selectedContractId}`, { method: 'DELETE' });
         showSnackbar('Контракт удален', 'success');
-        fetchContracts();
+        reloadAll();
       } catch (error) {
         showSnackbar('Ошибка при удалении контракта', 'error');
       } finally {
@@ -176,7 +191,7 @@ const ContractListPage: React.FC = () => {
       }
       
       setDialogOpen(false);
-      fetchContracts();
+      reloadAll();
     } catch (error) {
       showSnackbar('Ошибка при сохранении контракта', 'error');
     }
@@ -199,6 +214,9 @@ const ContractListPage: React.FC = () => {
     totalAmount: contracts.reduce((sum, c) => sum + (c.totalAmount || 0), 0),
   };
 
+  // Фильтрация контрактов по статусу
+  const filteredContracts = statusFilter ? contracts.filter(c => c.status === statusFilter) : contracts;
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
@@ -206,56 +224,155 @@ const ContractListPage: React.FC = () => {
       </Typography>
 
       {/* Статистика */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={3}>
-          <Card>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={2.4}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Всего контрактов
               </Typography>
               <Typography variant="h4">
-                {stats.total}
+                {Object.values(statusStats).reduce((a, b) => a + b, 0)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={3}>
-          <Card>
+        <Grid item xs={2.4}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'DRAFT' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('DRAFT')}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Черновики
+              </Typography>
+              <Typography variant="h4">
+                {statusStats.DRAFT || 0}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={2.4}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'ACTIVE' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('ACTIVE')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Активные
               </Typography>
               <Typography variant="h4">
-                {stats.active}
+                {statusStats.ACTIVE || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={3}>
-          <Card>
+        <Grid item xs={2.4}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'COMPLETED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('COMPLETED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Завершенные
+                Завершённые
               </Typography>
               <Typography variant="h4">
-                {stats.completed}
+                {statusStats.COMPLETED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={3}>
-          <Card>
+        <Grid item xs={2.4}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'CANCELLED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('CANCELLED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Общая сумма
+                Отменённые
               </Typography>
               <Typography variant="h4">
-                {stats.totalAmount?.toLocaleString()} ₽
+                {statusStats.CANCELLED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Панель фильтров */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Статус</InputLabel>
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  label="Статус"
+                >
+                  <MenuItem value="">Все статусы</MenuItem>
+                  <MenuItem value="DRAFT">Черновик</MenuItem>
+                  <MenuItem value="ACTIVE">Активный</MenuItem>
+                  <MenuItem value="COMPLETED">Завершён</MenuItem>
+                  <MenuItem value="CANCELLED">Отменён</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={2}>
+              <TextField
+                label="Номер контракта"
+                size="small"
+                fullWidth
+                value={''}
+                // TODO: добавить фильтр по номеру контракта при необходимости
+                disabled
+              />
+            </Grid>
+            <Grid item xs={2}>
+              <TextField
+                label="Поставщик"
+                size="small"
+                fullWidth
+                value={''}
+                // TODO: добавить фильтр по поставщику при необходимости
+                disabled
+              />
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата от"
+                  value={null}
+                  onChange={() => {}}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                  disabled
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата до"
+                  value={null}
+                  onChange={() => {}}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                  disabled
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <Button
+                variant="outlined"
+                onClick={() => setStatusFilter('')}
+                fullWidth
+              >
+                Очистить фильтры
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* Кнопка создания */}
 
@@ -274,7 +391,7 @@ const ContractListPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {contracts.map((contract) => (
+            {filteredContracts.map((contract) => (
               <TableRow key={contract.id}>
                 <TableCell>{contract.contractNumber}</TableCell>
                 <TableCell>{contract.title}</TableCell>

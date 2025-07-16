@@ -12,6 +12,7 @@ import ru.perminov.tender.service.ContractService;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/contracts")
@@ -86,5 +87,10 @@ public class ContractController {
                     contractDtoNew.getTenderId(), e.getMessage(), e);
             return ResponseEntity.badRequest().build();
         }
+    }
+
+    @GetMapping("/status-stats")
+    public ResponseEntity<Map<String, Long>> getStatusStats() {
+        return ResponseEntity.ok(contractService.getStatusStats());
     }
 } 

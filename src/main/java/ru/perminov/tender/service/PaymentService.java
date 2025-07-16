@@ -6,6 +6,7 @@ import ru.perminov.tender.dto.payment.PaymentDtoNew;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 public interface PaymentService {
     
@@ -73,4 +74,9 @@ public interface PaymentService {
      * Создать платежи на основе поставок
      */
     List<PaymentDto> createPaymentsFromDeliveries(UUID contractId);
+
+    /**
+     * Получить статистику по статусам платежей
+     */
+    Map<String, Long> getStatusStats();
 } 

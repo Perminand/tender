@@ -67,11 +67,14 @@ public class Delivery {
     private LocalDateTime updatedAt = LocalDateTime.now();
 
     public enum DeliveryStatus {
-        PLANNED,        // Запланирована
-        IN_TRANSIT,     // В пути
-        DELIVERED,      // Доставлена
-        ACCEPTED,       // Принята
-        REJECTED,       // Отклонена
-        PARTIALLY_ACCEPTED // Частично принята
+        PLANNED,           // Запланирована
+        CONFIRMED,         // Подтверждена поставщиком
+        IN_TRANSIT,        // В пути
+        ARRIVED,           // Прибыла на склад
+        DELIVERED,         // Доставлена
+        ACCEPTED,          // Принята
+        REJECTED,          // Отклонена
+        PARTIALLY_ACCEPTED, // Частично принята
+        CANCELLED          // Отменена
     }
 } 

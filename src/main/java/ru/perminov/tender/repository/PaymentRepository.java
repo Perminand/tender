@@ -61,4 +61,6 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
      */
     @Query("SELECT SUM(p.amount) FROM Payment p WHERE p.contract.id = :contractId AND p.status = 'PENDING'")
     BigDecimal getTotalPendingAmountByContract(@Param("contractId") UUID contractId);
+
+    long countByStatus(Payment.PaymentStatus status);
 } 

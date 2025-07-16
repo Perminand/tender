@@ -39,4 +39,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
      */
     @Query("SELECT c FROM Contract c WHERE c.endDate <= :endDate AND c.status = 'ACTIVE'")
     List<Contract> findContractsExpiringBy(@Param("endDate") LocalDate endDate);
+
+    long countByStatus(Contract.ContractStatus status);
 } 

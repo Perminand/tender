@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -368,5 +369,14 @@ public class ContractServiceImpl implements ContractService {
         
         // Возвращаем контракт с позициями
         return getContractById(savedContract.getId());
+    }
+
+    @Override
+    public Map<String, Long> getStatusStats() {
+        Map<String, Long> stats = new java.util.LinkedHashMap<>();
+        for (Contract.ContractStatus status : Contract.ContractStatus.values()) {
+            stats.put(status.name(), contractRepository.countByStatus(status));
+        }
+        return stats;
     }
 } 

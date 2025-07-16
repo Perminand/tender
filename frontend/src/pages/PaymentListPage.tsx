@@ -64,6 +64,8 @@ const PaymentListPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedPaymentId, setSelectedPaymentId] = useState<number | null>(null);
+  const [statusStats, setStatusStats] = useState<{ [key: string]: number }>({});
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -206,6 +208,22 @@ const PaymentListPage: React.FC = () => {
       .reduce((sum, p) => sum + (p.amount || 0), 0),
   };
 
+  // Загрузка статистики по статусам
+  const fetchStatusStats = async () => {
+    try {
+      const response = await fetch('/api/payments/status-stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStatusStats(data);
+      }
+    } catch (e) {}
+  };
+  useEffect(() => { fetchStatusStats(); }, []);
+  const reloadAll = () => { fetchPayments(); fetchStatusStats(); };
+
+  // Фильтрация платежей по статусу
+  const filteredPayments = statusFilter ? payments.filter(p => p.status === statusFilter) : payments;
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
@@ -213,80 +231,155 @@ const PaymentListPage: React.FC = () => {
       </Typography>
 
       {/* Статистика */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={2}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Всего платежей
               </Typography>
               <Typography variant="h4">
-                {stats.total}
+                {Object.values(statusStats).reduce((a, b) => a + b, 0)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'PENDING' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('PENDING')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Ожидают оплаты
               </Typography>
               <Typography variant="h4">
-                {stats.pending}
+                {statusStats.PENDING || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'PAID' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('PAID')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Оплачены
               </Typography>
               <Typography variant="h4">
-                {stats.paid}
+                {statusStats.PAID || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'OVERDUE' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('OVERDUE')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Просрочены
               </Typography>
               <Typography variant="h4">
-                {stats.overdue}
+                {statusStats.OVERDUE || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'CANCELLED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('CANCELLED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Общая сумма
+                Отменены
               </Typography>
               <Typography variant="h4">
-                {stats.totalAmount?.toLocaleString()} ₽
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={2}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Оплачено
-              </Typography>
-              <Typography variant="h4">
-                {stats.paidAmount?.toLocaleString()} ₽
+                {statusStats.CANCELLED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Панель фильтров */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Статус</InputLabel>
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  label="Статус"
+                >
+                  <MenuItem value="">Все статусы</MenuItem>
+                  <MenuItem value="PENDING">Ожидает оплаты</MenuItem>
+                  <MenuItem value="PAID">Оплачен</MenuItem>
+                  <MenuItem value="OVERDUE">Просрочен</MenuItem>
+                  <MenuItem value="CANCELLED">Отменён</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={2}>
+              <TextField
+                label="Номер платежа"
+                size="small"
+                fullWidth
+                value={''}
+                // TODO: добавить фильтр по номеру платежа при необходимости
+                disabled
+              />
+            </Grid>
+            <Grid item xs={2}>
+              <TextField
+                label="Поставщик"
+                size="small"
+                fullWidth
+                value={''}
+                // TODO: добавить фильтр по поставщику при необходимости
+                disabled
+              />
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата от"
+                  value={null}
+                  onChange={() => {}}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                  disabled
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата до"
+                  value={null}
+                  onChange={() => {}}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                  disabled
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <Button
+                variant="outlined"
+                onClick={() => setStatusFilter('')}
+                fullWidth
+              >
+                Очистить фильтры
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* Кнопка создания */}
       <Box sx={{ mb: 2 }}>
@@ -316,7 +409,7 @@ const PaymentListPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {payments.map((payment) => (
+            {filteredPayments.map((payment) => (
               <TableRow key={payment.id}>
                 <TableCell>{payment.paymentNumber}</TableCell>
                 <TableCell>{payment.contractId}</TableCell>

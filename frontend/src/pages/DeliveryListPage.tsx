@@ -26,7 +26,10 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  DialogContentText
+  DialogContentText,
+  TablePagination,
+  Collapse,
+  Divider
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -34,19 +37,25 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   Check as CheckIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
+import DeliveryStatusManager from '../components/DeliveryStatusManager';
 
 interface Delivery {
   id: number;
   deliveryNumber: string;
   contractId: number;
+  contractNumber?: string;
+  contractTitle?: string;
   supplierId: number;
+  supplierName?: string;
   warehouseId: number;
+  warehouseName?: string;
   status: string;
   plannedDate: string;
   actualDate: string;
@@ -146,6 +155,18 @@ const DeliveryListPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedDeliveryId, setSelectedDeliveryId] = useState<number | null>(null);
+  const [statusManagerOpen, setStatusManagerOpen] = useState(false);
+  const [selectedDeliveryForStatus, setSelectedDeliveryForStatus] = useState<Delivery | null>(null);
+  const [filters, setFilters] = useState({
+    status: '',
+    contractId: '',
+    supplierId: '',
+    dateFrom: null as Dayjs | null,
+    dateTo: null as Dayjs | null,
+  });
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -162,6 +183,8 @@ const DeliveryListPage: React.FC = () => {
   const [contractItems, setContractItems] = useState<ContractItem[]>([]);
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
   const [selectedContract, setSelectedContract] = useState<any>(null);
+
+  const [statusStats, setStatusStats] = useState<{ [key: string]: number }>({});
 
   // Подгружаем списки при открытии диалога
   useEffect(() => {
@@ -185,20 +208,27 @@ const DeliveryListPage: React.FC = () => {
   useEffect(() => {
     if (selectedContractId && contracts.length > 0 && suppliers.length > 0) {
       const contract = contracts.find(c => String(c.id) === String(selectedContractId));
-      let supplierId = contract?.supplierId;
-      if (!supplierId && contract?.tender) {
-        supplierId = contract.tender.awardedSupplierId || contract.tender.awardedSupplier?.id;
+      console.log('Selected contract:', contract);
+      
+      // Получаем supplierId из тендера
+      let supplierId = null;
+      if (contract?.tender?.awardedSupplierId) {
+        supplierId = contract.tender.awardedSupplierId;
+        console.log('Found awardedSupplierId:', supplierId);
       }
+      
       if (supplierId) {
         const supplier = suppliers.find(s => String(s.id) === String(supplierId));
         if (supplier) {
           setSelectedSupplierId(String(supplier.id));
+          console.log('Set selected supplier ID:', supplier.id);
         }
       }
       
       // Устанавливаем склад из контракта
       if (contract?.warehouseId) {
         setSelectedWarehouseId(String(contract.warehouseId));
+        console.log('Set selected warehouse ID:', contract.warehouseId);
       }
     }
   }, [selectedContractId, contracts, suppliers]);
@@ -272,14 +302,32 @@ const DeliveryListPage: React.FC = () => {
 
   useEffect(() => {
     fetchDeliveries();
-  }, []);
+  }, [filters, page, rowsPerPage]);
 
   const fetchDeliveries = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/deliveries');
-      const data = await response.json();
-      setDeliveries(data);
+      // Строим query параметры для фильтров
+      const params = new URLSearchParams();
+      
+      if (filters.status) params.append('status', filters.status);
+      if (filters.contractId) params.append('contractId', filters.contractId);
+      if (filters.supplierId) params.append('supplierId', filters.supplierId);
+      if (filters.dateFrom) params.append('dateFrom', filters.dateFrom.format('YYYY-MM-DD'));
+      if (filters.dateTo) params.append('dateTo', filters.dateTo.format('YYYY-MM-DD'));
+      
+      // Добавляем параметры пагинации
+      params.append('page', page.toString());
+      params.append('size', rowsPerPage.toString());
+      
+      const response = await fetch(`/api/deliveries?${params.toString()}`);
+      if (response.ok) {
+        const data = await response.json();
+        setDeliveries(data.content || data);
+        setTotalCount(data.totalElements || data.length);
+      } else {
+        showSnackbar('Ошибка при загрузке поставок', 'error');
+      }
     } catch (error) {
       showSnackbar('Ошибка при загрузке поставок', 'error');
     } finally {
@@ -311,7 +359,7 @@ const DeliveryListPage: React.FC = () => {
       try {
         await fetch(`/api/deliveries/${selectedDeliveryId}`, { method: 'DELETE' });
         showSnackbar('Поставка удалена', 'success');
-        fetchDeliveries();
+        reloadAll();
       } catch (error) {
         showSnackbar('Ошибка при удалении поставки', 'error');
       } finally {
@@ -325,7 +373,7 @@ const DeliveryListPage: React.FC = () => {
     try {
       await fetch(`/api/deliveries/${id}/confirm`, { method: 'POST' });
       showSnackbar('Поставка подтверждена', 'success');
-      fetchDeliveries();
+      reloadAll();
     } catch (error) {
       showSnackbar('Ошибка при подтверждении поставки', 'error');
     }
@@ -342,10 +390,73 @@ const DeliveryListPage: React.FC = () => {
       setRejectDialogOpen(false);
       setRejectReason('');
       setSelectedDelivery(null);
-      fetchDeliveries();
+      reloadAll();
     } catch (error) {
       showSnackbar('Ошибка при отклонении поставки', 'error');
     }
+  };
+
+  const handleStatusChange = (delivery: Delivery) => {
+    setSelectedDeliveryForStatus(delivery);
+    setStatusManagerOpen(true);
+  };
+
+  const handleStatusChangeSubmit = async (newStatus: string, comment: string) => {
+    if (!selectedDeliveryForStatus) return;
+    
+    try {
+      const response = await fetch(`/api/deliveries/${selectedDeliveryForStatus.id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          comment: comment
+        }),
+      });
+
+      if (response.ok) {
+        showSnackbar('Статус поставки изменен', 'success');
+        setStatusManagerOpen(false);
+        reloadAll();
+      } else {
+        throw new Error('Ошибка при изменении статуса');
+      }
+    } catch (error) {
+      showSnackbar('Ошибка при изменении статуса', 'error');
+      throw error;
+    }
+  };
+
+  // Функции для фильтров и пагинации
+  const handleFilterChange = (field: string, value: any) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+    setPage(0); // Сбрасываем страницу при изменении фильтров
+  };
+
+  const handlePageChange = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const handleStatusFilter = (status: string) => {
+    handleFilterChange('status', status);
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      status: '',
+      contractId: '',
+      supplierId: '',
+      dateFrom: null,
+      dateTo: null,
+    });
+    setPage(0);
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -363,14 +474,19 @@ const DeliveryListPage: React.FC = () => {
     try {
       const submitData = {
         deliveryNumber: formData.get('deliveryNumber'),
-        contractId: Number(selectedContractId),
-        supplierId: Number(selectedSupplierId),
-        warehouseId: Number(selectedWarehouseId),
+        contractId: selectedContractId,
+        supplierId: selectedSupplierId,
+        warehouseId: selectedWarehouseId,
         plannedDate: plannedDate ? plannedDate.format('YYYY-MM-DD') : null,
         trackingNumber: formData.get('trackingNumber'),
         notes: formData.get('notes'),
         deliveryItems: itemsToSubmit
       };
+      
+      console.log('Submitting delivery data:', submitData);
+      console.log('Selected contract ID:', selectedContractId);
+      console.log('Selected supplier ID:', selectedSupplierId);
+      console.log('Selected warehouse ID:', selectedWarehouseId);
 
       const url = editingDelivery 
         ? `/api/deliveries/${editingDelivery.id}` 
@@ -392,7 +508,7 @@ const DeliveryListPage: React.FC = () => {
           'success'
         );
         setDialogOpen(false);
-        fetchDeliveries();
+        reloadAll();
       } else {
         showSnackbar('Ошибка при сохранении поставки', 'error');
       }
@@ -427,10 +543,14 @@ const DeliveryListPage: React.FC = () => {
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' } = {
       PLANNED: 'default',
+      CONFIRMED: 'primary',
       IN_TRANSIT: 'info',
       ARRIVED: 'warning',
+      DELIVERED: 'success',
       ACCEPTED: 'success',
       REJECTED: 'error',
+      PARTIALLY_ACCEPTED: 'warning',
+      CANCELLED: 'error',
     };
     return colors[status] || 'default';
   };
@@ -438,20 +558,52 @@ const DeliveryListPage: React.FC = () => {
   const getStatusText = (status: string) => {
     const texts: { [key: string]: string } = {
       PLANNED: 'Запланирована',
+      CONFIRMED: 'Подтверждена',
       IN_TRANSIT: 'В пути',
       ARRIVED: 'Прибыла',
+      DELIVERED: 'Доставлена',
       ACCEPTED: 'Принята',
       REJECTED: 'Отклонена',
+      PARTIALLY_ACCEPTED: 'Частично принята',
+      CANCELLED: 'Отменена',
     };
     return texts[status] || status;
   };
 
   const stats = {
-    total: deliveries.length,
-    planned: deliveries.filter(d => d.status === 'PLANNED').length,
-    inTransit: deliveries.filter(d => d.status === 'IN_TRANSIT').length,
-    arrived: deliveries.filter(d => d.status === 'ARRIVED').length,
-    accepted: deliveries.filter(d => d.status === 'ACCEPTED').length,
+    total: Object.values(statusStats).reduce((a, b) => a + b, 0),
+    planned: statusStats.PLANNED || 0,
+    confirmed: statusStats.CONFIRMED || 0,
+    inTransit: statusStats.IN_TRANSIT || 0,
+    arrived: statusStats.ARRIVED || 0,
+    delivered: statusStats.DELIVERED || 0,
+    accepted: statusStats.ACCEPTED || 0,
+    rejected: statusStats.REJECTED || 0,
+    partiallyAccepted: statusStats.PARTIALLY_ACCEPTED || 0,
+    cancelled: statusStats.CANCELLED || 0,
+  };
+
+  // Загрузка статистики по статусам
+  const fetchStatusStats = async () => {
+    try {
+      const response = await fetch('/api/deliveries/status-stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStatusStats(data);
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
+  useEffect(() => {
+    fetchStatusStats();
+  }, []);
+
+  // После создания/удаления/изменения статуса тоже обновлять статистику
+  const reloadAll = () => {
+    fetchDeliveries();
+    fetchStatusStats();
   };
 
   return (
@@ -461,12 +613,12 @@ const DeliveryListPage: React.FC = () => {
       </Typography>
 
       {/* Статистика */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={2.4}>
-          <Card>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => clearFilters()}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Всего поставок
+                Всего
               </Typography>
               <Typography variant="h4">
                 {stats.total}
@@ -474,11 +626,11 @@ const DeliveryListPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'PLANNED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('PLANNED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Запланированные
+                Запланированы
               </Typography>
               <Typography variant="h4">
                 {stats.planned}
@@ -486,8 +638,20 @@ const DeliveryListPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'CONFIRMED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('CONFIRMED')}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Подтверждены
+              </Typography>
+              <Typography variant="h4">
+                {stats.confirmed}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'IN_TRANSIT' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('IN_TRANSIT')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 В пути
@@ -498,8 +662,8 @@ const DeliveryListPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'ARRIVED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('ARRIVED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Прибыли
@@ -510,8 +674,20 @@ const DeliveryListPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'DELIVERED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('DELIVERED')}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Доставлены
+              </Typography>
+              <Typography variant="h4">
+                {stats.delivered}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'ACCEPTED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('ACCEPTED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Приняты
@@ -522,10 +698,150 @@ const DeliveryListPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'REJECTED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('REJECTED')}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Отклонены
+              </Typography>
+              <Typography variant="h4">
+                {stats.rejected}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'PARTIALLY_ACCEPTED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('PARTIALLY_ACCEPTED')}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Частично приняты
+              </Typography>
+              <Typography variant="h4">
+                {stats.partiallyAccepted}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={1.5}>
+          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === 'CANCELLED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => handleStatusFilter('CANCELLED')}>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>
+                Отменены
+              </Typography>
+              <Typography variant="h4">
+                {stats.cancelled}
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
       </Grid>
 
+      {/* Панель фильтров */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Статус</InputLabel>
+                <Select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  label="Статус"
+                >
+                  <MenuItem value="">Все статусы</MenuItem>
+                  <MenuItem value="PLANNED">Запланирована</MenuItem>
+                  <MenuItem value="CONFIRMED">Подтверждена</MenuItem>
+                  <MenuItem value="IN_TRANSIT">В пути</MenuItem>
+                  <MenuItem value="ARRIVED">Прибыла</MenuItem>
+                  <MenuItem value="DELIVERED">Доставлена</MenuItem>
+                  <MenuItem value="ACCEPTED">Принята</MenuItem>
+                  <MenuItem value="REJECTED">Отклонена</MenuItem>
+                  <MenuItem value="PARTIALLY_ACCEPTED">Частично принята</MenuItem>
+                  <MenuItem value="CANCELLED">Отменена</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Контракт</InputLabel>
+                <Select
+                  value={filters.contractId}
+                  onChange={(e) => handleFilterChange('contractId', e.target.value)}
+                  label="Контракт"
+                >
+                  <MenuItem value="">Все контракты</MenuItem>
+                  {contracts.map(contract => (
+                    <MenuItem key={contract.id} value={contract.id}>
+                      {contract.contractNumber}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Поставщик</InputLabel>
+                <Select
+                  value={filters.supplierId}
+                  onChange={(e) => handleFilterChange('supplierId', e.target.value)}
+                  label="Поставщик"
+                >
+                  <MenuItem value="">Все поставщики</MenuItem>
+                  {suppliers.map(supplier => (
+                    <MenuItem key={supplier.id} value={supplier.id}>
+                      {supplier.shortName || supplier.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата от"
+                  value={filters.dateFrom}
+                  onChange={(date) => handleFilterChange('dateFrom', date)}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата до"
+                  value={filters.dateTo}
+                  onChange={(date) => handleFilterChange('dateTo', date)}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <Button
+                variant="outlined"
+                onClick={clearFilters}
+                fullWidth
+              >
+                Очистить фильтры
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
+
       {/* Кнопка создания */}
-      <Box sx={{ mb: 2 }}>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Button
           variant="contained"
           startIcon={<AddIcon />}
@@ -533,6 +849,9 @@ const DeliveryListPage: React.FC = () => {
         >
           Создать поставку
         </Button>
+        <Typography variant="body2" color="textSecondary">
+          Показано {deliveries.length} из {totalCount} поставок
+        </Typography>
       </Box>
 
       {/* Таблица */}
@@ -554,12 +873,10 @@ const DeliveryListPage: React.FC = () => {
               <TableRow key={delivery.id}>
                 <TableCell>{delivery.deliveryNumber}</TableCell>
                 <TableCell>
-                  {(() => {
-                    const contract = contracts.find(c => c.id === delivery.contractId || c.id === String(delivery.contractId));
-                    return contract
-                      ? `${contract.contractNumber} | ${contract.tender?.awardedSupplier?.shortName || contract.tender?.awardedSupplier?.name || contract.tender?.awardedSupplierId}`
-                      : delivery.contractId;
-                  })()}
+                  {delivery.contractNumber 
+                    ? `${delivery.contractNumber}${delivery.contractTitle ? ` | ${delivery.contractTitle}` : ''}`
+                    : delivery.contractId
+                  }
                 </TableCell>
                 <TableCell>
                   <Chip
@@ -587,6 +904,13 @@ const DeliveryListPage: React.FC = () => {
                     onClick={() => handleEdit(delivery)}
                   >
                     <EditIcon />
+                  </IconButton>
+                  <IconButton
+                    size="small"
+                    color="primary"
+                    onClick={() => handleStatusChange(delivery)}
+                  >
+                    <SettingsIcon />
                   </IconButton>
                   {delivery.status === 'ARRIVED' && (
                     <>
@@ -622,6 +946,19 @@ const DeliveryListPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      
+      {/* Пагинация */}
+      <TablePagination
+        component="div"
+        count={totalCount}
+        page={page}
+        onPageChange={handlePageChange}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={handleRowsPerPageChange}
+        labelRowsPerPage="Строк на странице:"
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+      />
 
       {/* Диалог создания/редактирования */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
@@ -886,6 +1223,17 @@ const DeliveryListPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Диалог управления статусом */}
+      {selectedDeliveryForStatus && (
+        <DeliveryStatusManager
+          open={statusManagerOpen}
+          onClose={() => setStatusManagerOpen(false)}
+          currentStatus={selectedDeliveryForStatus.status}
+          deliveryNumber={selectedDeliveryForStatus.deliveryNumber}
+          onStatusChange={handleStatusChangeSubmit}
+        />
+      )}
     </Box>
   );
 };

@@ -64,11 +64,26 @@ const DocumentListPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [statusStats, setStatusStats] = useState<{ [key: string]: number }>({});
+  const [statusFilter, setStatusFilter] = useState<string>('');
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchDocuments();
   }, []);
+
+  // Загрузка статистики по статусам
+  const fetchStatusStats = async () => {
+    try {
+      const response = await fetch('/api/documents/status-stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStatusStats(data);
+      }
+    } catch (e) {}
+  };
+  useEffect(() => { fetchStatusStats(); }, []);
+  const reloadAll = () => { fetchDocuments(); fetchStatusStats(); };
 
   const fetchDocuments = async () => {
     setLoading(true);
@@ -101,7 +116,7 @@ const DocumentListPage: React.FC = () => {
     try {
       await fetch(`/api/documents/${id}`, { method: 'DELETE' });
       showSnackbar('Документ удален', 'success');
-      fetchDocuments();
+      reloadAll();
     } catch (error) {
       showSnackbar('Ошибка при удалении документа', 'error');
     }
@@ -129,7 +144,7 @@ const DocumentListPage: React.FC = () => {
     try {
       await fetch(`/api/documents/${id}/sign`, { method: 'POST' });
       showSnackbar('Документ подписан', 'success');
-      fetchDocuments();
+      reloadAll();
     } catch (error) {
       showSnackbar('Ошибка при подписании документа', 'error');
     }
@@ -166,7 +181,7 @@ const DocumentListPage: React.FC = () => {
       }
       
       setDialogOpen(false);
-      fetchDocuments();
+      reloadAll();
     } catch (error) {
       showSnackbar('Ошибка при сохранении документа', 'error');
     }
@@ -219,6 +234,9 @@ const DocumentListPage: React.FC = () => {
     totalSize: documents.reduce((sum, d) => sum + (d.fileSize || 0), 0),
   };
 
+  // Фильтрация документов по статусу
+  const filteredDocuments = statusFilter ? documents.filter(d => d.status === statusFilter) : documents;
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
@@ -226,68 +244,155 @@ const DocumentListPage: React.FC = () => {
       </Typography>
 
       {/* Статистика */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={2.4}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Всего документов
               </Typography>
               <Typography variant="h4">
-                {stats.total}
+                {Object.values(statusStats).reduce((a, b) => a + b, 0)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2.4}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'DRAFT' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('DRAFT')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Черновики
               </Typography>
               <Typography variant="h4">
-                {stats.draft}
+                {statusStats.DRAFT || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2.4}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'UPLOADED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('UPLOADED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Загружены
               </Typography>
               <Typography variant="h4">
-                {stats.uploaded}
+                {statusStats.UPLOADED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2.4}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'SIGNED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('SIGNED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
                 Подписаны
               </Typography>
               <Typography variant="h4">
-                {stats.signed}
+                {statusStats.SIGNED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
         <Grid item xs={2.4}>
-          <Card>
+          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'EXPIRED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('EXPIRED')}>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>
-                Общий размер
+                Истёкшие
               </Typography>
               <Typography variant="h4">
-                {formatFileSize(stats.totalSize)}
+                {statusStats.EXPIRED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
       </Grid>
+
+      {/* Панель фильтров */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <Grid container spacing={2} alignItems="center">
+            <Grid item xs={2}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Статус</InputLabel>
+                <Select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  label="Статус"
+                >
+                  <MenuItem value="">Все статусы</MenuItem>
+                  <MenuItem value="DRAFT">Черновик</MenuItem>
+                  <MenuItem value="UPLOADED">Загружен</MenuItem>
+                  <MenuItem value="SIGNED">Подписан</MenuItem>
+                  <MenuItem value="EXPIRED">Истёк</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={2}>
+              <TextField
+                label="Номер документа"
+                size="small"
+                fullWidth
+                value={''}
+                // TODO: добавить фильтр по номеру документа при необходимости
+                disabled
+              />
+            </Grid>
+            <Grid item xs={2}>
+              <TextField
+                label="Поставщик"
+                size="small"
+                fullWidth
+                value={''}
+                // TODO: добавить фильтр по поставщику при необходимости
+                disabled
+              />
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата от"
+                  value={null}
+                  onChange={() => {}}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                  disabled
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <DatePicker
+                  label="Дата до"
+                  value={null}
+                  onChange={() => {}}
+                  format="DD.MM.YYYY"
+                  slotProps={{
+                    textField: {
+                      size: 'small',
+                      fullWidth: true,
+                    },
+                  }}
+                  disabled
+                />
+              </LocalizationProvider>
+            </Grid>
+            <Grid item xs={2}>
+              <Button
+                variant="outlined"
+                onClick={() => setStatusFilter('')}
+                fullWidth
+              >
+                Очистить фильтры
+              </Button>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
 
       {/* Кнопка создания */}
       <Box sx={{ mb: 2 }}>
@@ -317,7 +422,7 @@ const DocumentListPage: React.FC = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {documents.map((document) => (
+            {filteredDocuments.map((document) => (
               <TableRow key={document.id}>
                 <TableCell>{document.documentNumber}</TableCell>
                 <TableCell>{document.title}</TableCell>

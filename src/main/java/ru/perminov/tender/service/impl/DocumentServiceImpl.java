@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -146,5 +147,14 @@ public class DocumentServiceImpl implements DocumentService {
         Document document = documentOpt.get();
         document.setStatus(Document.DocumentStatus.ACTIVE);
         return documentMapper.toDto(documentRepository.save(document));
+    }
+
+    @Override
+    public Map<String, Long> getStatusStats() {
+        Map<String, Long> stats = new java.util.LinkedHashMap<>();
+        for (Document.DocumentStatus status : Document.DocumentStatus.values()) {
+            stats.put(status.name(), documentRepository.countByStatus(status));
+        }
+        return stats;
     }
 } 

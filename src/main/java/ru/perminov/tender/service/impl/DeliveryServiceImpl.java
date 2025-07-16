@@ -18,14 +18,29 @@ import ru.perminov.tender.repository.ContractItemRepository;
 import ru.perminov.tender.repository.MaterialRepository;
 import ru.perminov.tender.repository.UnitRepository;
 import ru.perminov.tender.service.DeliveryService;
+import ru.perminov.tender.model.Contract;
+import ru.perminov.tender.model.company.Company;
+import ru.perminov.tender.model.Warehouse;
+import ru.perminov.tender.repository.ContractRepository;
+import ru.perminov.tender.repository.company.CompanyRepository;
+import ru.perminov.tender.repository.WarehouseRepository;
+
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import jakarta.persistence.criteria.Predicate;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -37,11 +52,34 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final MaterialRepository materialRepository;
     private final UnitRepository unitRepository;
     private final DeliveryMapper deliveryMapper;
+    private final ContractRepository contractRepository;
+    private final CompanyRepository companyRepository;
+    private final WarehouseRepository warehouseRepository;
 
     @Override
     public DeliveryDto createDelivery(DeliveryDtoNew deliveryDtoNew) {
         Delivery delivery = deliveryMapper.toEntity(deliveryDtoNew);
         delivery.setStatus(Delivery.DeliveryStatus.PLANNED);
+        
+        // Устанавливаем связи с контрактом, поставщиком и складом
+        if (deliveryDtoNew.getContractId() != null) {
+            Contract contract = contractRepository.findById(deliveryDtoNew.getContractId())
+                .orElseThrow(() -> new RuntimeException("Контракт не найден: " + deliveryDtoNew.getContractId()));
+            delivery.setContract(contract);
+        }
+        
+        if (deliveryDtoNew.getSupplierId() != null) {
+            Company supplier = companyRepository.findById(deliveryDtoNew.getSupplierId())
+                .orElseThrow(() -> new RuntimeException("Поставщик не найден: " + deliveryDtoNew.getSupplierId()));
+            delivery.setSupplier(supplier);
+        }
+        
+        if (deliveryDtoNew.getWarehouseId() != null) {
+            Warehouse warehouse = warehouseRepository.findById(deliveryDtoNew.getWarehouseId())
+                .orElseThrow(() -> new RuntimeException("Склад не найден: " + deliveryDtoNew.getWarehouseId()));
+            delivery.setWarehouse(warehouse);
+        }
+        
         Delivery saved = deliveryRepository.save(delivery);
         
         // Создаем позиции поставки
@@ -111,7 +149,66 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     @Override
     public List<DeliveryDto> getAllDeliveries() {
-        return deliveryMapper.toDtoList(deliveryRepository.findAll());
+        return deliveryMapper.toDtoList(deliveryRepository.findAllWithRelations());
+    }
+
+    @Override
+    public Page<DeliveryDto> getDeliveriesWithFilters(int page, int size, String status, String contractId, String supplierId, String dateFrom, String dateTo) {
+        Pageable pageable = PageRequest.of(page, size);
+        
+        Specification<Delivery> spec = (root, query, criteriaBuilder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            
+            if (status != null && !status.isEmpty()) {
+                try {
+                    Delivery.DeliveryStatus deliveryStatus = Delivery.DeliveryStatus.valueOf(status);
+                    predicates.add(criteriaBuilder.equal(root.get("status"), deliveryStatus));
+                } catch (IllegalArgumentException e) {
+                    // Игнорируем неверный статус
+                }
+            }
+            
+            if (contractId != null && !contractId.isEmpty()) {
+                try {
+                    UUID contractUuid = UUID.fromString(contractId);
+                    predicates.add(criteriaBuilder.equal(root.get("contract").get("id"), contractUuid));
+                } catch (IllegalArgumentException e) {
+                    // Игнорируем неверный UUID
+                }
+            }
+            
+            if (supplierId != null && !supplierId.isEmpty()) {
+                try {
+                    UUID supplierUuid = UUID.fromString(supplierId);
+                    predicates.add(criteriaBuilder.equal(root.get("supplier").get("id"), supplierUuid));
+                } catch (IllegalArgumentException e) {
+                    // Игнорируем неверный UUID
+                }
+            }
+            
+            if (dateFrom != null && !dateFrom.isEmpty()) {
+                try {
+                    LocalDate fromDate = LocalDate.parse(dateFrom);
+                    predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("plannedDeliveryDate"), fromDate));
+                } catch (Exception e) {
+                    // Игнорируем неверную дату
+                }
+            }
+            
+            if (dateTo != null && !dateTo.isEmpty()) {
+                try {
+                    LocalDate toDate = LocalDate.parse(dateTo);
+                    predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("plannedDeliveryDate"), toDate));
+                } catch (Exception e) {
+                    // Игнорируем неверную дату
+                }
+            }
+            
+            return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
+        };
+        
+        return deliveryRepository.findAll(spec, pageable)
+                .map(deliveryMapper::toDto);
     }
 
     @Override
@@ -126,7 +223,7 @@ public class DeliveryServiceImpl implements DeliveryService {
 
     @Override
     public List<DeliveryDto> getDeliveriesByContract(UUID contractId) {
-        return deliveryMapper.toDtoList(deliveryRepository.findByContractId(contractId));
+        return deliveryMapper.toDtoList(deliveryRepository.findByContract_Id(contractId));
     }
 
     @Override
@@ -210,13 +307,23 @@ public class DeliveryServiceImpl implements DeliveryService {
     }
 
     @Override
-    public DeliveryDto changeDeliveryStatus(UUID id, String newStatus) {
+    public DeliveryDto changeDeliveryStatus(UUID id, String newStatus, String comment) {
         Optional<Delivery> deliveryOpt = deliveryRepository.findById(id);
         if (deliveryOpt.isEmpty()) return null;
         Delivery delivery = deliveryOpt.get();
         try {
             Delivery.DeliveryStatus status = Delivery.DeliveryStatus.valueOf(newStatus.toUpperCase());
             delivery.setStatus(status);
+            
+            // Добавляем комментарий к изменению статуса
+            if (comment != null && !comment.trim().isEmpty()) {
+                String currentNotes = delivery.getNotes() != null ? delivery.getNotes() : "";
+                String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm"));
+                String statusChangeNote = String.format("[%s] Статус изменен на '%s'. Комментарий: %s", 
+                    timestamp, status, comment);
+                delivery.setNotes(currentNotes + (currentNotes.isEmpty() ? "" : "\n") + statusChangeNote);
+            }
+            
             return deliveryMapper.toDto(deliveryRepository.save(delivery));
         } catch (IllegalArgumentException e) {
             return null;
@@ -335,5 +442,14 @@ public class DeliveryServiceImpl implements DeliveryService {
         dto.setAcceptanceStatus(savedItem.getAcceptanceStatus() != null ? savedItem.getAcceptanceStatus().name() : null);
         
         return dto;
+    }
+
+    @Override
+    public Map<String, Long> getStatusStats() {
+        Map<String, Long> stats = new java.util.LinkedHashMap<>();
+        for (Delivery.DeliveryStatus status : Delivery.DeliveryStatus.values()) {
+            stats.put(status.name(), deliveryRepository.countByStatus(status));
+        }
+        return stats;
     }
 } 

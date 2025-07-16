@@ -91,3 +91,5 @@ databaseChangeLog:
       file: db/changelog/changes/V047_remove_supplier_customer_from_contracts.sql
   - include:
       file: db/changelog/changes/V048_add_warehouse_to_tenders.sql
+  - include:
+      file: db/changelog/changes/V049_add_delivery_statuses.sql

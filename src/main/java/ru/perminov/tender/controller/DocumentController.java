@@ -13,6 +13,7 @@ import ru.perminov.tender.dto.document.DocumentDtoNew;
 import ru.perminov.tender.service.DocumentService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -118,5 +119,10 @@ public class DocumentController {
         log.info("Подписание документа id {}", id);
         DocumentDto dto = documentService.signDocument(id);
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/status-stats")
+    public ResponseEntity<Map<String, Long>> getStatusStats() {
+        return ResponseEntity.ok(documentService.getStatusStats());
     }
 } 

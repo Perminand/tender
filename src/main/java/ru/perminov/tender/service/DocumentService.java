@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 public interface DocumentService {
     
@@ -63,4 +64,9 @@ public interface DocumentService {
      * Подписать документ
      */
     DocumentDto signDocument(UUID id);
+
+    /**
+     * Получить статистику по статусам документов
+     */
+    Map<String, Long> getStatusStats();
 } 

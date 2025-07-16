@@ -81,7 +81,7 @@ interface Delivery {
   id: string;
   deliveryNumber: string;
   deliveryDate: string;
-  plannedDeliveryDate: string;
+  plannedDate: string;
   status: string;
   supplierId: string;
   supplierName: string;
@@ -358,16 +358,16 @@ const ContractManagementPage: React.FC = () => {
     return <Alert severity="info">Контракт не найден</Alert>;
   }
 
-  const totalDelivered = deliveries.reduce((sum, delivery) => 
-    sum + delivery.deliveryItems.reduce((itemSum, item) => itemSum + item.deliveredQuantity, 0), 0
+  const totalDelivered = (deliveries || []).reduce((sum, delivery) => 
+    sum + (delivery.deliveryItems || []).reduce((itemSum, item) => itemSum + item.deliveredQuantity, 0), 0
   );
 
-  const totalPaid = payments
+  const totalPaid = (payments || [])
     .filter(p => p.status === 'PAID')
     .reduce((sum, payment) => sum + payment.amount, 0);
 
-  const overduePayments = payments.filter(p => p.status === 'OVERDUE');
-  const pendingDeliveries = deliveries.filter(d => d.status === 'PLANNED' || d.status === 'IN_TRANSIT');
+  const overduePayments = (payments || []).filter(p => p.status === 'OVERDUE');
+  const pendingDeliveries = (deliveries || []).filter(d => d.status === 'PLANNED' || d.status === 'IN_TRANSIT');
 
   return (
     <Box sx={{ p: 3 }}>
@@ -481,7 +481,7 @@ const ContractManagementPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>Поставки</Typography>
-              <Typography variant="h4">{deliveries.length}</Typography>
+              <Typography variant="h4">{(deliveries || []).length}</Typography>
               <Typography variant="body2" color="textSecondary">
                 {pendingDeliveries.length} ожидают
               </Typography>
@@ -492,7 +492,7 @@ const ContractManagementPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>Платежи</Typography>
-              <Typography variant="h4">{payments.length}</Typography>
+              <Typography variant="h4">{(payments || []).length}</Typography>
               <Typography variant="body2" color="textSecondary">
                 {overduePayments.length} просрочены
               </Typography>
@@ -516,7 +516,7 @@ const ContractManagementPage: React.FC = () => {
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>Документы</Typography>
-              <Typography variant="h4">{documents.length}</Typography>
+              <Typography variant="h4">{(documents || []).length}</Typography>
               <Typography variant="body2" color="textSecondary">
                 Прикреплено файлов
               </Typography>
@@ -589,12 +589,12 @@ const ContractManagementPage: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
-              onClick={() => navigate(`/deliveries?contractId=${contract.id}`)}
+              onClick={() => navigate(`/deliveries/new?contractId=${contract.id}`)}
             >
               Добавить поставку
             </Button>
           </Box>
-          {deliveries.length > 0 ? (
+          {(deliveries || []).length > 0 ? (
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
@@ -602,19 +602,19 @@ const ContractManagementPage: React.FC = () => {
                     <TableCell>Номер</TableCell>
                     <TableCell>Дата поставки</TableCell>
                     <TableCell>Статус</TableCell>
-                    <TableCell>Поставщик</TableCell>
                     <TableCell>Сумма</TableCell>
                     <TableCell>Действия</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {deliveries.map((delivery) => (
+                  {(deliveries || []).map((delivery) => (
                     <TableRow key={delivery.id}>
                       <TableCell>{delivery.deliveryNumber}</TableCell>
-                      <TableCell>{delivery.plannedDeliveryDate}</TableCell>
+                      <TableCell>
+                        {delivery.plannedDate ? dayjs(delivery.plannedDate).format('DD.MM.YYYY') : '-'}
+                      </TableCell>
                       <TableCell>{getDeliveryStatusLabel(delivery.status)}</TableCell>
-                      <TableCell>{delivery.supplierName}</TableCell>
-                      <TableCell>{formatPrice(delivery.deliveryItems.reduce((sum, item) => sum + item.totalPrice, 0))}</TableCell>
+                      <TableCell>{formatPrice((delivery.deliveryItems || []).reduce((sum, item) => sum + item.totalPrice, 0))}</TableCell>
                       <TableCell>
                         <IconButton onClick={() => navigate(`/deliveries/${delivery.id}`)}>
                           <VisibilityIcon />
@@ -642,7 +642,7 @@ const ContractManagementPage: React.FC = () => {
               Добавить платеж
             </Button>
           </Box>
-          {payments.length > 0 ? (
+          {(payments || []).length > 0 ? (
             <TableContainer component={Paper}>
               <Table>
                 <TableHead>
@@ -656,7 +656,7 @@ const ContractManagementPage: React.FC = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {payments.map((payment) => (
+                  {(payments || []).map((payment) => (
                     <TableRow key={payment.id}>
                       <TableCell>{payment.paymentNumber}</TableCell>
                       <TableCell>
@@ -698,9 +698,9 @@ const ContractManagementPage: React.FC = () => {
               Загрузить документ
             </Button>
           </Box>
-          {documents.length > 0 ? (
+          {(documents || []).length > 0 ? (
             <List>
-              {documents.map((document) => (
+                              {(documents || []).map((document) => (
                 <ListItem key={document.id} divider>
                   <ListItemIcon>
                     <AttachFileIcon />
@@ -729,9 +729,9 @@ const ContractManagementPage: React.FC = () => {
         {/* История изменений */}
         <TabPanel value={tabValue} index={4}>
           <Typography variant="h6" gutterBottom>История изменений</Typography>
-          {auditLogs.length > 0 ? (
+          {(auditLogs || []).length > 0 ? (
             <List>
-              {auditLogs.map((log) => (
+                              {(auditLogs || []).map((log) => (
                 <ListItem key={log.id} divider>
                   <ListItemIcon>
                     <HistoryIcon />

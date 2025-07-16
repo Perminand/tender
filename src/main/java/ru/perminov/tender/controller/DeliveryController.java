@@ -2,14 +2,17 @@ package ru.perminov.tender.controller;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import ru.perminov.tender.dto.StatusChangeRequest;
 import ru.perminov.tender.dto.delivery.DeliveryDto;
 import ru.perminov.tender.dto.delivery.DeliveryDtoNew;
 import ru.perminov.tender.dto.delivery.DeliveryItemDto;
 import ru.perminov.tender.service.DeliveryService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -33,9 +36,17 @@ public class DeliveryController {
     }
 
     @GetMapping
-    public ResponseEntity<List<DeliveryDto>> getAllDeliveries() {
-        log.info("Получение всех поставок");
-        return ResponseEntity.ok(deliveryService.getAllDeliveries());
+    public ResponseEntity<Page<DeliveryDto>> getAllDeliveries(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String contractId,
+            @RequestParam(required = false) String supplierId,
+            @RequestParam(required = false) String dateFrom,
+            @RequestParam(required = false) String dateTo) {
+        log.info("Получение поставок с фильтрами: page={}, size={}, status={}, contractId={}, supplierId={}, dateFrom={}, dateTo={}", 
+                page, size, status, contractId, supplierId, dateFrom, dateTo);
+        return ResponseEntity.ok(deliveryService.getDeliveriesWithFilters(page, size, status, contractId, supplierId, dateFrom, dateTo));
     }
 
     @GetMapping("/status/{status}")
@@ -56,6 +67,11 @@ public class DeliveryController {
         return ResponseEntity.ok(deliveryService.getDeliveriesBySupplier(supplierId));
     }
 
+    @GetMapping("/status-stats")
+    public ResponseEntity<Map<String, Long>> getStatusStats() {
+        return ResponseEntity.ok(deliveryService.getStatusStats());
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<DeliveryDto> updateDelivery(@PathVariable UUID id, @RequestBody DeliveryDtoNew deliveryDtoNew) {
         log.info("Обновление поставки id {}: {}", id, deliveryDtoNew);
@@ -71,9 +87,9 @@ public class DeliveryController {
     }
 
     @PatchMapping("/{id}/status")
-    public ResponseEntity<DeliveryDto> changeDeliveryStatus(@PathVariable UUID id, @RequestParam String status) {
-        log.info("Изменение статуса поставки id {} на {}", id, status);
-        DeliveryDto dto = deliveryService.changeDeliveryStatus(id, status);
+    public ResponseEntity<DeliveryDto> changeDeliveryStatus(@PathVariable UUID id, @RequestBody StatusChangeRequest request) {
+        log.info("Изменение статуса поставки id {} на {} с комментарием: {}", id, request.getStatus(), request.getComment());
+        DeliveryDto dto = deliveryService.changeDeliveryStatus(id, request.getStatus(), request.getComment());
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 

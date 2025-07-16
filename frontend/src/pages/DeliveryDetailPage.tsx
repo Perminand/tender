@@ -29,10 +29,12 @@ import {
 import {
   Check as CheckIcon,
   Close as CloseIcon,
-  Edit as EditIcon
+  Edit as EditIcon,
+  Settings as SettingsIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
+import DeliveryStatusManager from '../components/DeliveryStatusManager';
 
 interface DeliveryItem {
   id: string;
@@ -59,8 +61,12 @@ interface Delivery {
   id: string;
   deliveryNumber: string;
   contractId: string;
+  contractNumber?: string;
+  contractTitle?: string;
   supplierId: string;
+  supplierName?: string;
   warehouseId: string;
+  warehouseName?: string;
   status: string;
   plannedDate: string;
   actualDate?: string;
@@ -69,21 +75,6 @@ interface Delivery {
   createdAt: string;
   updatedAt: string;
   deliveryItems?: DeliveryItem[];
-  contract?: {
-    contractNumber: string;
-    title: string;
-    supplier?: {
-      name: string;
-      shortName?: string;
-    };
-  };
-  supplier?: {
-    name: string;
-    shortName?: string;
-  };
-  warehouse?: {
-    name: string;
-  };
 }
 
 const DeliveryDetailPage: React.FC = () => {
@@ -94,6 +85,7 @@ const DeliveryDetailPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [acceptanceDialogOpen, setAcceptanceDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<DeliveryItem | null>(null);
+  const [statusManagerOpen, setStatusManagerOpen] = useState(false);
   const [acceptanceData, setAcceptanceData] = useState({
     acceptedQuantity: 0,
     rejectedQuantity: 0,
@@ -163,13 +155,42 @@ const DeliveryDetailPage: React.FC = () => {
     }
   };
 
+  const handleStatusChange = async (newStatus: string, comment: string) => {
+    try {
+      const response = await fetch(`/api/deliveries/${id}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          comment: comment
+        }),
+      });
+
+      if (response.ok) {
+        showSnackbar('Статус поставки изменен', 'success');
+        fetchDelivery(); // Обновляем данные
+      } else {
+        throw new Error('Ошибка при изменении статуса');
+      }
+    } catch (error) {
+      showSnackbar('Ошибка при изменении статуса', 'error');
+      throw error;
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' } = {
       PLANNED: 'default',
+      CONFIRMED: 'primary',
       IN_TRANSIT: 'info',
       ARRIVED: 'warning',
+      DELIVERED: 'success',
       ACCEPTED: 'success',
       REJECTED: 'error',
+      PARTIALLY_ACCEPTED: 'warning',
+      CANCELLED: 'error',
     };
     return colors[status] || 'default';
   };
@@ -177,10 +198,14 @@ const DeliveryDetailPage: React.FC = () => {
   const getStatusText = (status: string) => {
     const texts: { [key: string]: string } = {
       PLANNED: 'Запланирована',
+      CONFIRMED: 'Подтверждена',
       IN_TRANSIT: 'В пути',
       ARRIVED: 'Прибыла',
+      DELIVERED: 'Доставлена',
       ACCEPTED: 'Принята',
       REJECTED: 'Отклонена',
+      PARTIALLY_ACCEPTED: 'Частично принята',
+      CANCELLED: 'Отменена',
     };
     return texts[status] || status;
   };
@@ -223,9 +248,18 @@ const DeliveryDetailPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Поставка {delivery.deliveryNumber}
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4">
+          Поставка {delivery.deliveryNumber}
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<SettingsIcon />}
+          onClick={() => setStatusManagerOpen(true)}
+        >
+          Управление статусом
+        </Button>
+      </Box>
 
       {/* Основная информация */}
       <Card sx={{ mb: 3 }}>
@@ -236,17 +270,17 @@ const DeliveryDetailPage: React.FC = () => {
                 Основная информация
               </Typography>
               <Typography><strong>Номер:</strong> {delivery.deliveryNumber}</Typography>
-              <Typography><strong>Статус:</strong> 
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Typography><strong>Статус:</strong></Typography>
                 <Chip 
                   label={getStatusText(delivery.status)} 
                   color={getStatusColor(delivery.status)} 
-                  size="small" 
-                  sx={{ ml: 1 }}
+                  size="small"
                 />
-              </Typography>
-              <Typography><strong>Контракт:</strong> {delivery.contract?.contractNumber}</Typography>
-              <Typography><strong>Поставщик:</strong> {delivery.supplier?.shortName || delivery.supplier?.name}</Typography>
-              <Typography><strong>Склад:</strong> {delivery.warehouse?.name}</Typography>
+              </Box>
+              <Typography><strong>Контракт:</strong> {delivery.contractNumber ? `${delivery.contractNumber} | ${delivery.contractTitle}` : '-'}</Typography>
+              <Typography><strong>Поставщик:</strong> {delivery.supplierName || '-'}</Typography>
+              <Typography><strong>Склад:</strong> {delivery.warehouseName || '-'}</Typography>
             </Grid>
             <Grid item xs={6}>
               <Typography variant="h6" gutterBottom>
@@ -411,6 +445,15 @@ const DeliveryDetailPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Диалог управления статусом */}
+      <DeliveryStatusManager
+        open={statusManagerOpen}
+        onClose={() => setStatusManagerOpen(false)}
+        currentStatus={delivery.status}
+        deliveryNumber={delivery.deliveryNumber}
+        onStatusChange={handleStatusChange}
+      />
     </Box>
   );
 };

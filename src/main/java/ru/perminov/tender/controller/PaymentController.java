@@ -10,6 +10,7 @@ import ru.perminov.tender.service.PaymentService;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -100,5 +101,10 @@ public class PaymentController {
     public ResponseEntity<List<PaymentDto>> createPaymentsFromDeliveries(@RequestParam UUID contractId) {
         log.info("Создание платежей на основе поставок по контракту {}", contractId);
         return ResponseEntity.ok(paymentService.createPaymentsFromDeliveries(contractId));
+    }
+
+    @GetMapping("/status-stats")
+    public ResponseEntity<Map<String, Long>> getStatusStats() {
+        return ResponseEntity.ok(paymentService.getStatusStats());
     }
 } 

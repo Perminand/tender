@@ -1,11 +1,13 @@
 package ru.perminov.tender.service;
 
+import org.springframework.data.domain.Page;
 import ru.perminov.tender.dto.delivery.DeliveryDto;
 import ru.perminov.tender.dto.delivery.DeliveryDtoNew;
 import ru.perminov.tender.dto.delivery.DeliveryItemDto;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 public interface DeliveryService {
     
@@ -23,6 +25,11 @@ public interface DeliveryService {
      * Получить все поставки
      */
     List<DeliveryDto> getAllDeliveries();
+    
+    /**
+     * Получить поставки с фильтрами и пагинацией
+     */
+    Page<DeliveryDto> getDeliveriesWithFilters(int page, int size, String status, String contractId, String supplierId, String dateFrom, String dateTo);
     
     /**
      * Получить поставки по статусу
@@ -52,7 +59,7 @@ public interface DeliveryService {
     /**
      * Изменить статус поставки
      */
-    DeliveryDto changeDeliveryStatus(UUID id, String newStatus);
+    DeliveryDto changeDeliveryStatus(UUID id, String newStatus, String comment);
     
     /**
      * Получить позиции поставки
@@ -73,4 +80,9 @@ public interface DeliveryService {
      * Обновить приемку позиции поставки
      */
     DeliveryItemDto updateDeliveryItemAcceptance(UUID deliveryId, UUID itemId, DeliveryItemDto acceptanceDto);
+
+    /**
+     * Получить статистику по статусам
+     */
+    Map<String, Long> getStatusStats();
 } 

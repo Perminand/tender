@@ -54,4 +54,6 @@ public interface DocumentRepository extends JpaRepository<Document, UUID> {
      */
     @Query("SELECT d FROM Document d WHERE d.relatedEntityId = :entityId AND d.relatedEntityType = :entityType ORDER BY d.version DESC")
     List<Document> findLatestVersionsByEntity(@Param("entityId") UUID entityId, @Param("entityType") String entityType);
+
+    long countByStatus(Document.DocumentStatus status);
 } 

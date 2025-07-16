@@ -7,6 +7,7 @@ import ru.perminov.tender.dto.contract.ContractItemDto;
 
 import java.util.List;
 import java.util.UUID;
+import java.util.Map;
 
 public interface ContractService {
     
@@ -54,4 +55,9 @@ public interface ContractService {
      * Создать контракт на основе выигранного тендера
      */
     ContractDto createContractFromTender(UUID tenderId, UUID supplierId);
+
+    /**
+     * Получить статистику по статусам контрактов
+     */
+    Map<String, Long> getStatusStats();
 } 

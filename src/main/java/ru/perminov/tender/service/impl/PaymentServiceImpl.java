@@ -14,6 +14,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -123,5 +124,14 @@ public class PaymentServiceImpl implements PaymentService {
     public List<PaymentDto> createPaymentsFromDeliveries(UUID contractId) {
         // TODO: реализовать создание платежей на основе поставок
         return List.of();
+    }
+
+    @Override
+    public Map<String, Long> getStatusStats() {
+        Map<String, Long> stats = new java.util.LinkedHashMap<>();
+        for (Payment.PaymentStatus status : Payment.PaymentStatus.values()) {
+            stats.put(status.name(), paymentRepository.countByStatus(status));
+        }
+        return stats;
     }
 } 
