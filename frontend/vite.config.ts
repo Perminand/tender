@@ -11,4 +11,8 @@ export default defineConfig({
       '/api': 'http://127.0.0.1:8080', // Explicitly use IPv4 for the backend
     },
   },
+  build: {
+    target: 'esnext',
+    modulePreload: false,
+  },
 }); 
