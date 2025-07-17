@@ -1086,6 +1086,7 @@ const DeliveryListPage: React.FC = () => {
                     label="Запланированная дата"
                     value={plannedDate}
                     onChange={setPlannedDate}
+                    format="DD.MM.YYYY"
                     slotProps={{
                       textField: {
                         name: 'plannedDate',

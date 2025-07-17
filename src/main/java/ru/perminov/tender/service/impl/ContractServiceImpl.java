@@ -254,11 +254,11 @@ public class ContractServiceImpl implements ContractService {
     }
 
     @Override
-    public ContractDto createContractFromTender(UUID tenderId, UUID supplierId) {
-        log.info("Создание контракта на основе тендера {} и поставщика {}", tenderId, supplierId);
+    public ContractDto createContractFromTender(ContractDtoNew contractDtoNew ) {
+        log.info("Создание контракта на основе тендера {} и поставщика {}", contractDtoNew.tenderId(), contractDtoNew.supplierId());
         
         // Получаем тендер с заказчиком
-        Tender tender = tenderRepository.findByIdWithCustomer(tenderId)
+        Tender tender = tenderRepository.findByIdWithCustomer(contractDtoNew.tenderId())
                 .orElseThrow(() -> new RuntimeException("Тендер не найден"));
         Company customer = tender.getCustomer();
         log.info("Tender customer: {}", customer != null ? customer.getName() : "null");
@@ -272,18 +272,18 @@ public class ContractServiceImpl implements ContractService {
         }
         
         // Получаем предложение поставщика
-        List<SupplierProposal> proposals = supplierProposalRepository.findByTenderIdAndSupplierId(tenderId, supplierId);
-        log.info("Найдено {} предложений поставщика для тендера {}", proposals.size(), tenderId);
+        List<SupplierProposal> proposals = supplierProposalRepository.findByTenderIdAndSupplierId(contractDtoNew.tenderId(), contractDtoNew.supplierId());
+        log.info("Найдено {} предложений поставщика для тендера {}", proposals.size(), contractDtoNew.tenderId());
         
         SupplierProposal proposal = proposals.stream()
                 .filter(p -> p.getStatus() == SupplierProposal.ProposalStatus.ACCEPTED)
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Принятое предложение поставщика не найдено"));
         
-        log.info("Найдено принятое предложение: {} от поставщика {}", proposal.getProposalNumber(), supplierId);
+        log.info("Найдено принятое предложение: {} от поставщика {}", proposal.getProposalNumber(), contractDtoNew.supplierId());
         
         // Получаем поставщика
-        Company supplier = companyRepository.findById(supplierId)
+        Company supplier = companyRepository.findById(contractDtoNew.supplierId())
                 .orElseThrow(() -> new RuntimeException("Поставщик не найден"));
         
         log.info("Найден поставщик: {} - {}", supplier.getName(), supplier.getId());
@@ -299,15 +299,8 @@ public class ContractServiceImpl implements ContractService {
         contract.setContractNumber("CON-" + System.currentTimeMillis());
         contract.setTitle("Контракт по тендеру " + tender.getTenderNumber());
         contract.setContractDate(LocalDate.now());
-        contract.setStartDate(LocalDate.now());
-        
-        // Устанавливаем дату окончания из тендера или по умолчанию
-        if (tender.getEndDate() != null) {
-            contract.setEndDate(tender.getEndDate().toLocalDate());
-        } else {
-            contract.setEndDate(LocalDate.now().plusYears(1)); // По умолчанию +1 год
-        }
-        
+        contract.setStartDate(contractDtoNew.startDate());
+        contract.setEndDate(contractDtoNew.endDate());
         contract.setStatus(Contract.ContractStatus.DRAFT);
         contract.setTotalAmount(BigDecimal.valueOf(proposal.getTotalPrice()));
         contract.setCurrency(proposal.getCurrency());

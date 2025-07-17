@@ -22,7 +22,6 @@ import ProposalEditPage from './pages/ProposalEditPage';
 import ProposalRegistryPage from './pages/ProposalRegistryPage';
 import ProposalDetailPage from './pages/ProposalDetailPage';
 import NotificationListPage from './pages/NotificationListPage';
-import AnalyticsPage from './pages/AnalyticsPage';
 import PriceAnalysisPage from './pages/PriceAnalysisPage';
 import ContractListPage from './pages/ContractListPage';
 import ContractEditPage from './pages/ContractEditPage';
@@ -34,15 +33,15 @@ import DocumentDetailPage from './pages/DocumentDetailPage';
 import ContractDetailPage from './pages/ContractDetailPage';
 import ContractManagementPage from './pages/ContractManagementPage';
 import RequestDetailPage from './pages/RequestDetailPage';
-import ReportingPage from './pages/ReportingPage';
 import DeliveryEditPage from './pages/DeliveryEditPage';
+import DashboardPage from './pages/DashboardPage';
 import PaymentEditPage from './pages/PaymentEditPage';
 import PaymentDetailPage from './pages/PaymentDetailPage';
 
 const App: React.FC = () => (
   <Layout>
     <Routes>
-      <Route path="/" element={<Navigate to="/reporting" replace />} />
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="/counterparties" element={<CounterpartyListPage />} />
       <Route path="/counterparties/new" element={<CounterpartyEditPage isEdit={false} />} />
       <Route path="/counterparties/:id/edit" element={<CounterpartyEditPage isEdit={true} />} />
@@ -81,8 +80,6 @@ const App: React.FC = () => (
       <Route path="/proposals" element={<ProposalRegistryPage />} />
       <Route path="/proposals/:id" element={<ProposalDetailPage />} />
       <Route path="/notifications" element={<NotificationListPage />} />
-      <Route path="/analytics" element={<AnalyticsPage />} />
-      <Route path="/reporting" element={<ReportingPage />} />
       <Route path="/contracts" element={<ContractListPage />} />
       <Route path="/contracts/new" element={<ContractEditPage />} />
       <Route path="/contracts/:id" element={<ContractDetailPage />} />
@@ -97,6 +94,7 @@ const App: React.FC = () => (
       <Route path="/payments/:id/edit" element={<PaymentEditPage />} />
       <Route path="/documents" element={<DocumentListPage />} />
       <Route path="/documents/:id" element={<DocumentDetailPage />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
     </Routes>
   </Layout>
 );

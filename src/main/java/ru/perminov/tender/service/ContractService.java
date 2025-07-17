@@ -54,7 +54,7 @@ public interface ContractService {
     /**
      * Создать контракт на основе выигранного тендера
      */
-    ContractDto createContractFromTender(UUID tenderId, UUID supplierId);
+    ContractDto createContractFromTender(ContractDtoNew contractDtoNew);
 
     /**
      * Получить статистику по статусам контрактов

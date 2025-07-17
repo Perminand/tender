@@ -477,6 +477,7 @@ const ContractEditPage: React.FC = () => {
                         handleInputChange('endDate', date.add(1, 'year'));
                       }
                     }}
+                    format="DD.MM.YYYY"
                     slotProps={{ textField: { fullWidth: true } }}
                   />
                 </LocalizationProvider>
@@ -489,6 +490,7 @@ const ContractEditPage: React.FC = () => {
                     value={formData.endDate}
                     onChange={(date) => handleInputChange('endDate', date)}
                     minDate={formData.startDate}
+                    format="DD.MM.YYYY"
                     slotProps={{ 
                       textField: { 
                         fullWidth: true,

@@ -23,11 +23,14 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import DashboardIcon from '@mui/icons-material/Dashboard';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
+import AlertNotification from './AlertNotification';
 
 const menuItems = [
+  { label: 'Дашборд', to: '/dashboard', icon: <DashboardIcon /> },
   { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon /> },
   { label: 'Тендеры', to: '/tenders', icon: <GavelIcon /> },
   { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon /> },
@@ -38,8 +41,6 @@ const menuItems = [
   { label: 'Уведомления', to: '/notifications', icon: <NotificationsIcon /> },
   { label: 'Справочники', to: '/reference', icon: <MenuBookIcon /> },
   { label: 'Настройки', to: '/settings', icon: <SettingsIcon /> },
-  { label: 'Аналитика', to: '/analytics', icon: <BarChartIcon /> },
-  { label: 'Отчетность', to: '/reporting', icon: <AssessmentIcon /> },
 ];
 
 const drawerWidth = 220;
@@ -112,6 +113,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Typography variant="h6" noWrap component={RouterLink} to="/" sx={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>
             Тендерная система
           </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <AlertNotification />
         </Toolbar>
       </AppBar>
       {/* Permanent drawer for desktop, temporary for mobile */}

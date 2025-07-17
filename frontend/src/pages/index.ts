@@ -12,4 +12,5 @@ export { default as PaymentListPage } from './PaymentListPage';
 export { default as DocumentListPage } from './DocumentListPage';
 export { default as DocumentDetailPage } from './DocumentDetailPage';
 export { default as ContractDetailPage } from './ContractDetailPage';
-export { default as RequestDetailPage } from './RequestDetailPage'; 
+export { default as RequestDetailPage } from './RequestDetailPage';
+export { default as DashboardPage } from './DashboardPage'; 

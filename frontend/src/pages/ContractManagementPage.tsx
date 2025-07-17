@@ -343,9 +343,9 @@ const ContractManagementPage: React.FC = () => {
   const handleStatusChange = async (newStatus: string) => {
     try {
       await api.patch(`/api/contracts/${id}/status?status=${newStatus}`);
-      await fetchContractData();
-      showSnackbar('Статус контракта обновлен', 'success');
-      setStatusDialogOpen(false);
+        await fetchContractData();
+        showSnackbar('Статус контракта обновлен', 'success');
+        setStatusDialogOpen(false);
     } catch (error) {
       showSnackbar('Ошибка при изменении статуса', 'error');
     }
@@ -364,9 +364,9 @@ const ContractManagementPage: React.FC = () => {
     if (selectedDeliveryForPayment) {
       try {
         await api.post(`/api/payments/from-delivery/${selectedDeliveryForPayment.id}`);
-        showSnackbar('Платеж по поставке создан', 'success');
-        // Обновляем данные контракта, чтобы показать новый платеж
-        fetchContractData();
+          showSnackbar('Платеж по поставке создан', 'success');
+          // Обновляем данные контракта, чтобы показать новый платеж
+          fetchContractData();
       } catch (error) {
         showSnackbar('Ошибка при создании платежа', 'error');
       } finally {
@@ -474,8 +474,8 @@ const ContractManagementPage: React.FC = () => {
   const handleDocumentDelete = async (documentId: string) => {
     try {
       await api.delete(`/api/documents/${documentId}`);
-      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
-      showSnackbar('Документ удален', 'success');
+        setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+        showSnackbar('Документ удален', 'success');
     } catch (error) {
       showSnackbar('Ошибка при удалении документа', 'error');
     }
