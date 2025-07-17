@@ -10,6 +10,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { searchCompanyByInn } from '../utils/fns';
 import ConfirmationDialog from '../components/ConfirmationDialog';
+import { api } from '../utils/api';
 
 interface CompanyType {
   id: string;
@@ -98,22 +99,15 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   }, [watchedCompanyTypeId, companyTypes]);
 
   useEffect(() => {
-    fetch('/api/company/type-companies')
-      .then(res => res.json())
-      .then(data => setCompanyTypes(data))
+    api.get('/api/company/type-companies')
+      .then(response => setCompanyTypes(response.data))
       .catch(error => {
         console.error('Ошибка при загрузке типов компаний:', error);
         setCompanyTypes([]);
       });
     
-    fetch('/api/contact-types')
-      .then(res => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        return res.json();
-      })
-      .then(data => setAllContactTypes(Array.isArray(data) ? data : []))
+    api.get('/api/contact-types')
+      .then(response => setAllContactTypes(Array.isArray(response.data) ? response.data : []))
       .catch(error => {
         console.error('Ошибка при загрузке типов контактов:', error);
         setAllContactTypes([]);
@@ -122,9 +116,9 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
 
   useEffect(() => {
     if (isEdit && id) {
-      fetch(`/api/companies/${id}`)
-        .then(res => res.json())
-        .then((data) => {
+      api.get(`/api/companies/${id}`)
+        .then((response) => {
+          const data = response.data;
           const formData: FormData = {
             name: data.name || '',
             legalName: data.shortName || '',
@@ -299,24 +293,15 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         delete payload.companyType;
 
         try {
-            const response = await fetch(url, {
-                method: method,
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-            });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                setSaveError(`Не удалось сохранить контрагента. ${errorText}`);
-                return;
+            if (method === 'POST') {
+                await api.post(url, payload);
+            } else {
+                await api.put(url, payload);
             }
             navigate('/counterparties');
-        } catch (error) {
-            if (error instanceof Error) {
-                setSaveError(error.message);
-            } else {
-                setSaveError('Произошла неизвестная ошибка');
-            }
+        } catch (error: any) {
+            const errorText = error.response?.data || error.message || 'Произошла неизвестная ошибка';
+            setSaveError(`Не удалось сохранить контрагента. ${errorText}`);
         }
     };
 
@@ -388,16 +373,9 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                 const handleSaveNewType = async () => {
                   if (newTypeName.trim()) {
                     try {
-                      const res = await fetch('/api/company/type-companies', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ name: newTypeName }),
-                      });
-                      if (res.ok) {
-                        const newType = await res.json();
-                        setCompanyTypes(prev => [...prev, newType]);
-                        field.onChange(newType.id);
-                      }
+                      const response = await api.post('/api/company/type-companies', { name: newTypeName });
+                      setCompanyTypes(prev => [...prev, response.data]);
+                      field.onChange(response.data.id);
                     } catch (e) { console.error(e); }
                     handleCloseDialog();
                   }

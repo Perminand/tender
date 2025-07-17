@@ -10,6 +10,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
+import { api } from '../utils/api';
 
 // DTOs for related entities
 interface CategoryDto {
@@ -96,10 +97,8 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   useEffect(() => {
     const fetchDict = async (url: string, setter: React.Dispatch<React.SetStateAction<any[]>>) => {
       try {
-        const response = await fetch(`http://localhost:8080/api${url}`);
-        if (!response.ok) throw new Error(`Failed to fetch ${url}`);
-        const data = await response.json();
-        setter(data);
+        const response = await api.get(`/api${url}`);
+        setter(response.data);
       } catch (error) {
         console.error(error);
         setter([]);
@@ -113,9 +112,9 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   // Fetch material data if in edit mode
   useEffect(() => {
     if (isEdit && id) {
-      fetch(`http://localhost:8080/api/materials/${id}`)
-        .then(res => res.json())
-        .then((data: MaterialDto) => {
+      api.get(`/api/materials/${id}`)
+        .then((response) => {
+          const data: MaterialDto = response.data;
           const formData: FormData = {
             name: data.name || '',
             description: data.description || '',
@@ -146,16 +145,14 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
 
   useEffect(() => {
     if (isEdit && id) {
-      fetch(`/api/supplier-material-names/by-material/${id}`)
-        .then(res => res.json())
-        .then((data: any[]) => setSupplierNames(data.map(n => n.name)))
+      api.get(`/api/supplier-material-names/by-material/${id}`)
+        .then((response) => setSupplierNames(response.data.map((n: any) => n.name)))
         .catch(() => setSupplierNames([]));
     }
   }, [isEdit, id]);
 
   const onSubmit = async (data: FormData) => {
-    const url = isEdit ? `http://localhost:8080/api/materials/${id}` : 'http://localhost:8080/api/materials';
-    const method = isEdit ? 'PUT' : 'POST';
+    const url = isEdit ? `/api/materials/${id}` : '/api/materials';
 
     // The payload now matches MaterialDtoNew/MaterialDtoUpdate
     const payload = {
@@ -164,20 +161,12 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
     };
     
     try {
-      const response = await fetch(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        setSaveError(errorData.message || 'Не удалось сохранить материал.');
-        return;
-      }
-
-      if (!isEdit) {
-        const createdMaterial = await response.json();
+      if (isEdit) {
+        await api.put(url, payload);
+      } else {
+        const response = await api.post(url, payload);
+        const createdMaterial = response.data;
+        
         if (window.opener) {
           window.opener.postMessage(
             {
@@ -195,8 +184,8 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       }
 
       navigate('/reference/materials');
-    } catch (error) {
-      setSaveError('Произошла ошибка сети.');
+    } catch (error: any) {
+      setSaveError(error.response?.data?.message || 'Не удалось сохранить материал.');
     }
   };
 
@@ -204,53 +193,35 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
   const handleCreateCategory = async () => {
     if (!newCategoryName.trim()) return;
     try {
-      const res = await fetch('http://localhost:8080/api/categories', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newCategoryName })
-      });
-      if (res.ok) {
-        const created = await res.json();
-        setCategories(prev => [...prev, created]);
-        setValue('categoryId', created.id);
-        setOpenNewCategoryDialog(false);
-        setNewCategoryName('');
-      }
+      const response = await api.post('/api/categories', { name: newCategoryName });
+      const created = response.data;
+      setCategories(prev => [...prev, created]);
+      setValue('categoryId', created.id);
+      setOpenNewCategoryDialog(false);
+      setNewCategoryName('');
     } catch (e) { /* handle error */ }
   };
   const handleCreateType = async () => {
     if (!newTypeName.trim()) return;
     try {
-      const res = await fetch('http://localhost:8080/api/material-types', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTypeName })
-      });
-      if (res.ok) {
-        const created = await res.json();
-        setMaterialTypes(prev => [...prev, created]);
-        setValue('materialTypeId', created.id);
-        setOpenNewTypeDialog(false);
-        setNewTypeName('');
-      }
+      const response = await api.post('/api/material-types', { name: newTypeName });
+      const created = response.data;
+      setMaterialTypes(prev => [...prev, created]);
+      setValue('materialTypeId', created.id);
+      setOpenNewTypeDialog(false);
+      setNewTypeName('');
     } catch (e) { /* handle error */ }
   };
   const handleCreateUnit = async () => {
     if (!newUnitName.trim()) return;
     try {
-      const res = await fetch('http://localhost:8080/api/units', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newUnitName, shortName: newUnitShortName || newUnitName })
-      });
-      if (res.ok) {
-        const created = await res.json();
-        setUnits(prev => [...prev, created]);
-        setValue('unitIds', [...(Array.isArray(control._formValues.unitIds) ? control._formValues.unitIds : []), created.id]);
-        setOpenNewUnitDialog(false);
-        setNewUnitName('');
-        setNewUnitShortName('');
-      }
+      const response = await api.post('/api/units', { name: newUnitName, shortName: newUnitShortName || newUnitName });
+      const created = response.data;
+      setUnits(prev => [...prev, created]);
+      setValue('unitIds', [...(Array.isArray(control._formValues.unitIds) ? control._formValues.unitIds : []), created.id]);
+      setOpenNewUnitDialog(false);
+      setNewUnitName('');
+      setNewUnitShortName('');
     } catch (e) { /* handle error */ }
   };
 
@@ -457,11 +428,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                 {editSupplierIdx === idx ? (
                   <>
                     <IconButton edge="end" onClick={async () => {
-                      await fetch(`/api/supplier-material-names`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ materialId: id, name: editSupplierValue })
-                      });
+                      await api.post(`/api/supplier-material-names`, { materialId: id, name: editSupplierValue });
                       setSupplierNames(sn => sn.map((n, i) => i === idx ? editSupplierValue : n));
                       setEditSupplierIdx(null);
                       setEditSupplierValue('');
@@ -478,11 +445,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                       <EditIcon />
                     </IconButton>
                     <IconButton edge="end" onClick={async () => {
-                      await fetch(`/api/supplier-material-names`, {
-                        method: 'DELETE',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ materialId: id, name })
-                      });
+                      await api.delete(`/api/supplier-material-names`, { data: { materialId: id, name } });
                       setSupplierNames(sn => sn.filter((_, i) => i !== idx));
                     }}>
                       <DeleteIcon />
@@ -506,11 +469,7 @@ const MaterialEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               size="small"
               onClick={async () => {
                 if (newSupplierName.trim()) {
-                  await fetch(`/api/supplier-material-names`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ materialId: id, name: newSupplierName })
-                  });
+                  await api.post(`/api/supplier-material-names`, { materialId: id, name: newSupplierName });
                   setSupplierNames(sn => [...sn, newSupplierName]);
                   setNewSupplierName('');
                 }

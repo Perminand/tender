@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 
 interface Unit {
   id: string;
@@ -49,11 +50,8 @@ const UnitListPage: React.FC = () => {
 
   const fetchUnits = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/units');
-      if (response.ok) {
-        const data = await response.json();
-        setUnits(data);
-      }
+      const response = await api.get('/api/units');
+      setUnits(response.data);
     } catch (error) {
       console.error('Error fetching units:', error);
     } finally {
@@ -84,26 +82,13 @@ const UnitListPage: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const url = editingUnit 
-        ? `http://localhost:8080/api/units/${editingUnit.id}`
-        : 'http://localhost:8080/api/units';
-      
-      const method = editingUnit ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        handleCloseDialog();
-        fetchUnits();
+      if (editingUnit) {
+        await api.put(`/api/units/${editingUnit.id}`, formData);
       } else {
-        console.error('Error saving unit');
+        await api.post('/api/units', formData);
       }
+      handleCloseDialog();
+      fetchUnits();
     } catch (error) {
       console.error('Error saving unit:', error);
     }
@@ -112,15 +97,8 @@ const UnitListPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить эту единицу измерения?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/units/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          fetchUnits();
-        } else {
-          console.error('Error deleting unit');
-        }
+        await api.delete(`/api/units/${id}`);
+        fetchUnits();
       } catch (error) {
         console.error('Error deleting unit:', error);
       }
@@ -129,12 +107,8 @@ const UnitListPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/units/export');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      
-      const blob = await response.blob();
+      const response = await api.get('/api/units/export', { responseType: 'blob' });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -154,19 +128,13 @@ const UnitListPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('http://localhost:8080/api/units/import', { method: 'POST', body: formData });
-      if (!response.ok) {
-        const text = await response.text();
-        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
-        setImportDialogOpen(true);
-        return;
-      }
-      const result = await response.json();
-      setImportLog(result);
+      const response = await api.post('/api/units/import', formData);
+      setImportLog(response.data);
       setImportDialogOpen(true);
       fetchUnits();
-    } catch (e) {
-      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+    } catch (error: any) {
+      const errorMessage = error.response?.data || 'Ошибка сети или сервера';
+      setImportLog({imported: 0, errors: [{row: 0, message: errorMessage}]});
       setImportDialogOpen(true);
     }
   };

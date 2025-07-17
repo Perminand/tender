@@ -30,20 +30,8 @@ export interface AnalyticsStats {
 
 export const getAnalyticsStats = async (): Promise<AnalyticsStats> => {
   try {
-    const response = await fetch(`${getBaseURL()}/api/analytics/stats`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка при получении статистики аналитики');
-    }
-
-    const data = await response.json();
-    return data;
+    const response = await api.get('/api/analytics/stats');
+    return response.data;
   } catch (error) {
     console.error('Ошибка при получении статистики аналитики:', error);
     throw error;

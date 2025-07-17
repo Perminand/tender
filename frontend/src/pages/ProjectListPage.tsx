@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 
 interface ProjectDto {
   id: string;
@@ -45,11 +46,8 @@ const ProjectListPage: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/projects');
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data);
-      }
+      const response = await api.get('/api/projects');
+      setProjects(response.data);
     } catch (error) {
       console.error('Error fetching projects:', error);
     } finally {
@@ -80,21 +78,13 @@ const ProjectListPage: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const url = editingProject 
-        ? `http://localhost:8080/api/projects/${editingProject.id}`
-        : 'http://localhost:8080/api/projects';
-      const method = editingProject ? 'PUT' : 'POST';
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
-      });
-      if (response.ok) {
-        handleCloseDialog();
-        fetchProjects();
+      if (editingProject) {
+        await api.put(`/api/projects/${editingProject.id}`, formData);
       } else {
-        console.error('Error saving project');
+        await api.post('/api/projects', formData);
       }
+      handleCloseDialog();
+      fetchProjects();
     } catch (error) {
       console.error('Error saving project:', error);
     }
@@ -103,14 +93,8 @@ const ProjectListPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот объект?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/projects/${id}`, {
-          method: 'DELETE',
-        });
-        if (response.ok) {
-          fetchProjects();
-        } else {
-          console.error('Error deleting project');
-        }
+        await api.delete(`/api/projects/${id}`);
+        fetchProjects();
       } catch (error) {
         console.error('Error deleting project:', error);
       }
@@ -119,11 +103,10 @@ const ProjectListPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/projects/export');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      const blob = await response.blob();
+      const response = await api.get('/api/projects/export', {
+        responseType: 'blob'
+      });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -151,12 +134,12 @@ const ProjectListPage: React.FC = () => {
     formData.append('file', file);
 
     try {
-      const response = await fetch('http://localhost:8080/api/projects/import', {
-        method: 'POST',
-        body: formData,
+      const response = await api.post('/api/projects/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
-      const result = await response.text();
-      alert(result);
+      alert(response.data);
       fetchProjects(); // обновить список после импорта
     } catch (error) {
       alert('Ошибка при импорте: ' + (error as Error).message);

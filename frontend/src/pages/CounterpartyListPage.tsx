@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -37,13 +38,9 @@ const CounterpartyListPage: React.FC = () => {
   useEffect(() => {
     const fetchCounterparties = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/companies');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        setCounterparties(data);
-        setFilteredCounterparties(data);
+        const response = await api.get('/api/companies');
+        setCounterparties(response.data);
+        setFilteredCounterparties(response.data);
       } catch (error) {
         console.error("Failed to fetch counterparties:", error);
       }
@@ -80,12 +77,8 @@ const CounterpartyListPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/companies/export');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      
-      const blob = await response.blob();
+      const response = await api.get('/api/companies/export', { responseType: 'blob' });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -109,14 +102,13 @@ const CounterpartyListPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('http://localhost:8080/api/companies/import', { method: 'POST', body: formData });
-      const result = await response.json();
-      setImportLog(result);
+      const response = await api.post('/api/companies/import', formData);
+      setImportLog(response.data);
       setImportDialogOpen(true);
       // обновить список
-      const data = await fetch('http://localhost:8080/api/companies').then(r => r.json());
-      setCounterparties(data);
-      setFilteredCounterparties(data);
+      const dataResponse = await api.get('/api/companies');
+      setCounterparties(dataResponse.data);
+      setFilteredCounterparties(dataResponse.data);
     } catch (e) {
       setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
       setImportDialogOpen(true);
@@ -126,18 +118,14 @@ const CounterpartyListPage: React.FC = () => {
   const handleDelete = async (id: number) => {
     if (!window.confirm('Вы уверены, что хотите удалить этого контрагента?')) return;
     try {
-      const response = await fetch(`http://localhost:8080/api/companies/${id}`, { method: 'DELETE' });
-      if (response.ok) {
-        setSnackbar({open: true, message: 'Контрагент удалён', severity: 'success'});
-        const data = await fetch('http://localhost:8080/api/companies').then(r => r.json());
-        setCounterparties(data);
-        setFilteredCounterparties(data);
-      } else {
-        const text = await response.text();
-        setSnackbar({open: true, message: 'Ошибка удаления: ' + text, severity: 'error'});
-      }
-    } catch (e) {
-      setSnackbar({open: true, message: 'Ошибка удаления', severity: 'error'});
+      await api.delete(`/api/companies/${id}`);
+      setSnackbar({open: true, message: 'Контрагент удалён', severity: 'success'});
+      const dataResponse = await api.get('/api/companies');
+      setCounterparties(dataResponse.data);
+      setFilteredCounterparties(dataResponse.data);
+    } catch (error: any) {
+      const errorText = error.response?.data || error.message || 'Ошибка удаления';
+      setSnackbar({open: true, message: `Ошибка удаления: ${errorText}`, severity: 'error'});
     }
   };
 

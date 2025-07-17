@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 
 interface MaterialType {
   id: string;
@@ -48,11 +49,8 @@ const MaterialTypeListPage: React.FC = () => {
 
   const fetchMaterialTypes = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/material-types');
-      if (response.ok) {
-        const data = await response.json();
-        setMaterialTypes(data);
-      }
+      const response = await api.get('/api/material-types');
+      setMaterialTypes(response.data);
     } catch (error) {
       console.error('Error fetching material types:', error);
     } finally {
@@ -83,26 +81,13 @@ const MaterialTypeListPage: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const url = editingMaterialType 
-        ? `http://localhost:8080/api/material-types/${editingMaterialType.id}`
-        : 'http://localhost:8080/api/material-types';
-      
-      const method = editingMaterialType ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        handleCloseDialog();
-        fetchMaterialTypes();
+      if (editingMaterialType) {
+        await api.put(`/api/material-types/${editingMaterialType.id}`, formData);
       } else {
-        console.error('Error saving material type');
+        await api.post('/api/material-types', formData);
       }
+      handleCloseDialog();
+      fetchMaterialTypes();
     } catch (error) {
       console.error('Error saving material type:', error);
     }
@@ -111,15 +96,8 @@ const MaterialTypeListPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот тип материала?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/material-types/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          fetchMaterialTypes();
-        } else {
-          console.error('Error deleting material type');
-        }
+        await api.delete(`/api/material-types/${id}`);
+        fetchMaterialTypes();
       } catch (error) {
         console.error('Error deleting material type:', error);
       }
@@ -128,12 +106,8 @@ const MaterialTypeListPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/material-types/export');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      
-      const blob = await response.blob();
+      const response = await api.get('/api/material-types/export', { responseType: 'blob' });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -157,19 +131,13 @@ const MaterialTypeListPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('http://localhost:8080/api/material-types/import', { method: 'POST', body: formData });
-      if (!response.ok) {
-        const text = await response.text();
-        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
-        setImportDialogOpen(true);
-        return;
-      }
-      const result = await response.json();
-      setImportLog(result);
+      const response = await api.post('/api/material-types/import', formData);
+      setImportLog(response.data);
       setImportDialogOpen(true);
       fetchMaterialTypes();
-    } catch (e) {
-      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+    } catch (error: any) {
+      const errorMessage = error.response?.data || 'Ошибка сети или сервера';
+      setImportLog({imported: 0, errors: [{row: 0, message: errorMessage}]});
       setImportDialogOpen(true);
     }
   };

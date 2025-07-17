@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 
 interface Category {
   id: string;
@@ -48,11 +49,8 @@ const CategoryListPage: React.FC = () => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/categories');
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data);
-      }
+      const response = await api.get('/api/categories');
+      setCategories(response.data);
     } catch (error) {
       console.error('Error fetching categories:', error);
     } finally {
@@ -83,26 +81,13 @@ const CategoryListPage: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const url = editingCategory 
-        ? `http://localhost:8080/api/categories/${editingCategory.id}`
-        : 'http://localhost:8080/api/categories';
-      
-      const method = editingCategory ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        handleCloseDialog();
-        fetchCategories();
+      if (editingCategory) {
+        await api.put(`/api/categories/${editingCategory.id}`, formData);
       } else {
-        console.error('Error saving category');
+        await api.post('/api/categories', formData);
       }
+      handleCloseDialog();
+      fetchCategories();
     } catch (error) {
       console.error('Error saving category:', error);
     }
@@ -111,15 +96,8 @@ const CategoryListPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить эту категорию?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/categories/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          fetchCategories();
-        } else {
-          console.error('Error deleting category');
-        }
+        await api.delete(`/api/categories/${id}`);
+        fetchCategories();
       } catch (error) {
         console.error('Error deleting category:', error);
       }
@@ -128,12 +106,10 @@ const CategoryListPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/categories/export');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      
-      const blob = await response.blob();
+      const response = await api.get('/api/categories/export', {
+        responseType: 'blob'
+      });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -157,19 +133,16 @@ const CategoryListPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('http://localhost:8080/api/categories/import', { method: 'POST', body: formData });
-      if (!response.ok) {
-        const text = await response.text();
-        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
-        setImportDialogOpen(true);
-        return;
-      }
-      const result = await response.json();
-      setImportLog(result);
+      const response = await api.post('/api/categories/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setImportLog(response.data);
       setImportDialogOpen(true);
       fetchCategories();
-    } catch (e) {
-      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+    } catch (error: any) {
+      setImportLog({imported: 0, errors: [{row: 0, message: error.response?.data || 'Ошибка сети или сервера'}]});
       setImportDialogOpen(true);
     }
   };

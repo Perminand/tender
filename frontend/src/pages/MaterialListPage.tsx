@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -58,13 +59,9 @@ const MaterialListPage: React.FC = () => {
   useEffect(() => {
     const fetchMaterials = async () => {
       try {
-        const response = await fetch('http://localhost:8080/api/materials');
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        const data = await response.json();
-        setMaterials(data);
-        setFilteredMaterials(data);
+        const response = await api.get('/api/materials');
+        setMaterials(response.data);
+        setFilteredMaterials(response.data);
       } catch (error) {
         console.error("Failed to fetch materials:", error);
       }
@@ -94,12 +91,8 @@ const MaterialListPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/materials/export');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      
-      const blob = await response.blob();
+      const response = await api.get('/api/materials/export', { responseType: 'blob' });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -116,16 +109,8 @@ const MaterialListPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот материал?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/materials/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          setMaterials(materials.filter(m => m.id !== id));
-        } else {
-          console.error('Error deleting material');
-          // Тут можно добавить уведомление для пользователя
-        }
+        await api.delete(`/api/materials/${id}`);
+        setMaterials(materials.filter(m => m.id !== id));
       } catch (error) {
         console.error('Error deleting material:', error);
       }
@@ -142,25 +127,16 @@ const MaterialListPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('http://localhost:8080/api/materials/import', { method: 'POST', body: formData });
-      if (!response.ok) {
-        const text = await response.text();
-        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
-        setImportDialogOpen(true);
-        return;
-      }
-      const result = await response.json();
-      setImportLog(result);
+      const response = await api.post('/api/materials/import', formData);
+      setImportLog(response.data);
       setImportDialogOpen(true);
       // обновить список материалов
-      const materialsResp = await fetch('http://localhost:8080/api/materials');
-      if (materialsResp.ok) {
-        const data = await materialsResp.json();
-        setMaterials(data);
-        setFilteredMaterials(data);
-      }
-    } catch (e) {
-      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+      const materialsResp = await api.get('/api/materials');
+      setMaterials(materialsResp.data);
+      setFilteredMaterials(materialsResp.data);
+    } catch (error: any) {
+      const errorMessage = error.response?.data || 'Ошибка сети или сервера';
+      setImportLog({imported: 0, errors: [{row: 0, message: errorMessage}]});
       setImportDialogOpen(true);
     }
   };

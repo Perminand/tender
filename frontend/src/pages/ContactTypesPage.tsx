@@ -25,6 +25,7 @@ import {
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 
 interface ContactType {
   id: string;
@@ -48,11 +49,8 @@ const ContactTypesPage: React.FC = () => {
 
   const fetchContactTypes = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types');
-      if (response.ok) {
-        const data = await response.json();
-        setContactTypes(data);
-      }
+      const response = await api.get('/api/contact-types');
+      setContactTypes(response.data);
     } catch (error) {
       console.error('Error fetching contact types:', error);
     } finally {
@@ -83,26 +81,13 @@ const ContactTypesPage: React.FC = () => {
 
   const handleSubmit = async () => {
     try {
-      const url = editingContactType 
-        ? `http://localhost:8080/api/contact-types/${editingContactType.id}`
-        : 'http://localhost:8080/api/contact-types';
-      
-      const method = editingContactType ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        handleCloseDialog();
-        fetchContactTypes();
+      if (editingContactType) {
+        await api.put(`/api/contact-types/${editingContactType.id}`, formData);
       } else {
-        console.error('Error saving contact type');
+        await api.post('/api/contact-types', formData);
       }
+      handleCloseDialog();
+      fetchContactTypes();
     } catch (error) {
       console.error('Error saving contact type:', error);
     }
@@ -111,15 +96,8 @@ const ContactTypesPage: React.FC = () => {
   const handleDelete = async (id: string) => {
     if (window.confirm('Вы уверены, что хотите удалить этот тип контакта?')) {
       try {
-        const response = await fetch(`http://localhost:8080/api/contact-types/${id}`, {
-          method: 'DELETE',
-        });
-
-        if (response.ok) {
-          fetchContactTypes();
-        } else {
-          console.error('Error deleting contact type');
-        }
+        await api.delete(`/api/contact-types/${id}`);
+        fetchContactTypes();
       } catch (error) {
         console.error('Error deleting contact type:', error);
       }
@@ -128,12 +106,10 @@ const ContactTypesPage: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types/export');
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      
-      const blob = await response.blob();
+      const response = await api.get('/api/contact-types/export', {
+        responseType: 'blob'
+      });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -157,19 +133,16 @@ const ContactTypesPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch('http://localhost:8080/api/contact-types/import', { method: 'POST', body: formData });
-      if (!response.ok) {
-        const text = await response.text();
-        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
-        setImportDialogOpen(true);
-        return;
-      }
-      const result = await response.json();
-      setImportLog(result);
+      const response = await api.post('/api/contact-types/import', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      setImportLog(response.data);
       setImportDialogOpen(true);
       fetchContactTypes();
-    } catch (e) {
-      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+    } catch (error: any) {
+      setImportLog({imported: 0, errors: [{row: 0, message: error.response?.data || 'Ошибка сети или сервера'}]});
       setImportDialogOpen(true);
     }
   };

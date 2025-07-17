@@ -1,4 +1,6 @@
 // Функции для работы с ФНС
+import { api } from './api';
+
 export interface CompanyData {
   name: string;
   shortName: string;
@@ -15,19 +17,9 @@ export interface CompanyData {
 
 export const searchCompanyByInn = async (inn: string): Promise<CompanyData> => {
   try {
-    const response = await fetch(`http://localhost:8080/api/fns/search?inn=${inn}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await api.get(`/api/fns/search?inn=${inn}`);
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Ошибка при получении данных о компании');
-    }
-
-    const data = await response.json();
+    const data = response.data;
     console.log('Ответ от бэкенда:', data);
 
     return {
