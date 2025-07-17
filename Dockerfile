@@ -1,7 +1,7 @@
-FROM node:18 AS frontend-build
+FROM node:20 AS frontend-build
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm install
+RUN rm -rf node_modules package-lock.json && npm cache clean --force && npm install
 COPY frontend/. ./
 RUN npm run build
 
