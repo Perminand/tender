@@ -15,9 +15,4 @@ export default defineConfig({
     target: 'esnext',
     modulePreload: false,
   },
-  optimizeDeps: {
-    esbuildOptions: {
-      target: 'esnext',
-    },
-  },
 }); 

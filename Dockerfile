@@ -1,9 +1,9 @@
 FROM node:20 AS frontend-build
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm cache clean --force && npm install
+RUN rm -rf node_modules package-lock.json && npm cache clean --force && npm install
 COPY frontend/. ./
-RUN npm cache clean --force && npm run build
+RUN npm run build
 
 # Сборка backend
 FROM maven:3.8.5-openjdk-23 AS backend-build
