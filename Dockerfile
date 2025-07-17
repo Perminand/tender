@@ -6,7 +6,7 @@ COPY frontend/. ./
 RUN npm run build
 
 # Сборка backend
-FROM maven:3.9.6-openjdk-21 AS backend-build
+FROM maven:latest AS backend-build
 WORKDIR /app
 COPY pom.xml .
 COPY src/ ./src/
