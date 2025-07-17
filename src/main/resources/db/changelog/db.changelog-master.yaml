@@ -97,6 +97,4 @@ databaseChangeLog:
       file: db/changelog/changes/V050_add_delivery_id_to_payments.sql
   - include:
       file: db/changelog/changes/V051_add_awarded_supplier_id_to_tenders.sql
-  - include:
-      file: db/changelog/data/V002_set_company_roles.sql
 
