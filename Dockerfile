@@ -1,4 +1,4 @@
-FROM node:18 AS frontend-build
+FROM node:20 AS frontend-build
 WORKDIR /app
 COPY frontend/package*.json ./
 RUN npm install
@@ -21,4 +21,4 @@ COPY --from=frontend-build /app/dist ./static
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"] 
