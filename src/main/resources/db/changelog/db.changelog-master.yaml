@@ -98,5 +98,5 @@ databaseChangeLog:
   - include:
       file: db/changelog/changes/V051_add_awarded_supplier_id_to_tenders.sql
   - include:
-      file: db/changelog/changes/V052_set_company_roles.sql
+      file: db/changelog/data/V002_set_company_roles.sql
 
