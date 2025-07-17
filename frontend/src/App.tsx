@@ -41,7 +41,7 @@ import PaymentDetailPage from './pages/PaymentDetailPage';
 const App: React.FC = () => (
   <Layout>
     <Routes>
-      <Route path="/" element={<Navigate to="/reference" replace />} />
+      <Route path="/" element={<Navigate to="/reporting" replace />} />
       <Route path="/counterparties" element={<CounterpartyListPage />} />
       <Route path="/counterparties/new" element={<CounterpartyEditPage isEdit={false} />} />
       <Route path="/counterparties/:id/edit" element={<CounterpartyEditPage isEdit={true} />} />
