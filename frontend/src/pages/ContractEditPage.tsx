@@ -201,6 +201,9 @@ const ContractEditPage: React.FC = () => {
       const selectedProposal = proposalsData.find((p: SupplierProposal) => p.supplierId === supplierId);
       
       // Устанавливаем данные по умолчанию
+      const startDate = dayjs();
+      const endDate = startDate.add(1, 'year');
+      
       setFormData(prev => ({
         ...prev,
         tenderId: tenderId,
@@ -208,6 +211,8 @@ const ContractEditPage: React.FC = () => {
         title: `Контракт по тендеру ${tenderData.tenderNumber || ''}`,
         contractNumber: `CON-${Date.now()}`,
         totalAmount: selectedProposal?.totalPrice || 0,
+        startDate: startDate,
+        endDate: endDate,
         terms: tenderData.termsAndConditions || tenderData.terms || '',
         description: tenderData.description || ''
       }));
@@ -245,6 +250,14 @@ const ContractEditPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
+
+    // Проверка дат
+    if (formData.startDate && formData.endDate && 
+        (formData.endDate.isSame(formData.startDate) || formData.endDate.isBefore(formData.startDate))) {
+      showSnackbar('Ошибка: Дата окончания должна быть больше даты начала!', 'error');
+      setLoading(false);
+      return;
+    }
 
     // Проверка и логирование UUID
     console.log('tenderId:', tenderId, 'supplierId:', supplierId);
@@ -457,7 +470,13 @@ const ContractEditPage: React.FC = () => {
                   <DatePicker
                     label="Дата начала"
                     value={formData.startDate}
-                    onChange={(date) => handleInputChange('startDate', date)}
+                    onChange={(date) => {
+                      handleInputChange('startDate', date);
+                      // Если дата окончания меньше или равна дате начала, увеличиваем её на год
+                      if (date && formData.endDate && date.isAfter(formData.endDate)) {
+                        handleInputChange('endDate', date.add(1, 'year'));
+                      }
+                    }}
                     slotProps={{ textField: { fullWidth: true } }}
                   />
                 </LocalizationProvider>
@@ -469,7 +488,16 @@ const ContractEditPage: React.FC = () => {
                     label="Дата окончания"
                     value={formData.endDate}
                     onChange={(date) => handleInputChange('endDate', date)}
-                    slotProps={{ textField: { fullWidth: true } }}
+                    minDate={formData.startDate}
+                    slotProps={{ 
+                      textField: { 
+                        fullWidth: true,
+                        helperText: formData.endDate && formData.startDate && 
+                          formData.endDate.isSame(formData.startDate) || formData.endDate.isBefore(formData.startDate)
+                          ? 'Дата окончания должна быть больше даты начала' 
+                          : ''
+                      } 
+                    }}
                   />
                 </LocalizationProvider>
               </Grid>

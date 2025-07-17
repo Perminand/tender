@@ -1,34 +1,62 @@
 import React from 'react';
-import { Button, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle } from '@mui/material';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Button,
+  Typography
+} from '@mui/material';
 
 interface ConfirmationDialogProps {
   open: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
   title: string;
-  description: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  confirmText?: string;
+  cancelText?: string;
+  severity?: 'warning' | 'error' | 'info';
 }
 
-const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({ open, onClose, onConfirm, title, description }) => {
+const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
+  open,
+  title,
+  message,
+  onConfirm,
+  onCancel,
+  confirmText = 'Подтвердить',
+  cancelText = 'Отмена',
+  severity = 'warning'
+}) => {
+  const getConfirmButtonColor = () => {
+    switch (severity) {
+      case 'error':
+        return 'error';
+      case 'warning':
+        return 'warning';
+      default:
+        return 'primary';
+    }
+  };
+
   return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      aria-labelledby="alert-dialog-title"
-      aria-describedby="alert-dialog-description"
-    >
-      <DialogTitle id="alert-dialog-title">{title}</DialogTitle>
+    <Dialog open={open} onClose={onCancel} maxWidth="sm" fullWidth>
+      <DialogTitle>{title}</DialogTitle>
       <DialogContent>
-        <DialogContentText id="alert-dialog-description">
-          {description}
-        </DialogContentText>
+        <Typography>{message}</Typography>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="primary">
-          Отмена
+        <Button onClick={onCancel} color="inherit">
+          {cancelText}
         </Button>
-        <Button onClick={onConfirm} color="secondary" autoFocus>
-          Удалить
+        <Button 
+          onClick={onConfirm} 
+          color={getConfirmButtonColor()} 
+          variant="contained"
+          autoFocus
+        >
+          {confirmText}
         </Button>
       </DialogActions>
     </Dialog>

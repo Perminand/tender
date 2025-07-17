@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 import {
   Box,
   Typography,
@@ -65,6 +66,7 @@ import {
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
+import DocumentEditDialog from '../components/DocumentEditDialog';
 
 interface ContractItem {
   id: string;
@@ -119,12 +121,14 @@ interface Payment {
 interface Document {
   id: string;
   fileName: string;
-  originalFileName: string;
-  type: string;
+  documentNumber: string;
+  title: string;
+  documentType: string;
   status: string;
   uploadedAt: string;
-  description: string;
   fileSize: number;
+  mimeType: string;
+  filePath: string;
 }
 
 interface AuditLog {
@@ -235,38 +239,48 @@ const ContractManagementPage: React.FC = () => {
     setLoading(true);
     try {
       // Загружаем контракт
-      const contractResponse = await fetch(`/api/contracts/${id}`);
-      if (!contractResponse.ok) throw new Error('Ошибка загрузки контракта');
-      const contractData = await contractResponse.json();
-      setContract(contractData);
+      try {
+        const contractResponse = await api.get(`/api/contracts/${id}`);
+        setContract(contractResponse.data);
+      } catch (error) {
+        console.error('Ошибка загрузки контракта:', error);
+        setError('Ошибка загрузки данных контракта');
+        return;
+      }
 
       // Загружаем поставки
-      const deliveriesResponse = await fetch(`/api/deliveries/contract/${id}`);
-      if (deliveriesResponse.ok) {
-        const deliveriesData = await deliveriesResponse.json();
-        setDeliveries(deliveriesData);
+      try {
+        const deliveriesResponse = await api.get(`/api/deliveries/contract/${id}`);
+        setDeliveries(deliveriesResponse.data);
+      } catch (error) {
+        console.error('Ошибка загрузки поставок:', error);
+        setDeliveries([]);
       }
 
       // Загружаем платежи
-      const paymentsResponse = await fetch(`/api/payments/contract/${id}`);
-      if (paymentsResponse.ok) {
-        const paymentsData = await paymentsResponse.json();
-        setPayments(paymentsData);
+      try {
+        const paymentsResponse = await api.get(`/api/payments/contract/${id}`);
+        setPayments(paymentsResponse.data);
+      } catch (error) {
+        console.error('Ошибка загрузки платежей:', error);
+        setPayments([]);
       }
 
       // Загружаем документы
-      const documentsResponse = await fetch(`/api/documents/entity/${id}?entityType=CONTRACT`);
-      if (documentsResponse.ok) {
-        const documentsData = await documentsResponse.json();
-        setDocuments(documentsData);
+      try {
+        const documentsResponse = await api.get(`/api/documents/entity/CONTRACT/${id}`);
+        console.log('Документы загружены:', documentsResponse.data);
+        setDocuments(documentsResponse.data);
+      } catch (error) {
+        console.error('Ошибка загрузки документов:', error);
+        setDocuments([]);
       }
 
       // Загружаем аудит
-      const auditResponse = await fetch(`/api/audit/entity/${id}?entityType=CONTRACT`);
-      if (auditResponse.ok) {
-        const auditData = await auditResponse.json();
-        setAuditLogs(auditData);
-      }
+      // TODO: Реализовать контроллер аудита
+      // const auditResponse = await api.get(`/api/audit/entity/${id}?entityType=CONTRACT`);
+      // setAuditLogs(auditResponse.data);
+      setAuditLogs([]); // Временно пустой массив
 
       setError(null);
     } catch (e) {
@@ -328,14 +342,10 @@ const ContractManagementPage: React.FC = () => {
 
   const handleStatusChange = async (newStatus: string) => {
     try {
-      const response = await fetch(`/api/contracts/${id}/status?status=${newStatus}`, {
-        method: 'PATCH'
-      });
-      if (response.ok) {
-        await fetchContractData();
-        showSnackbar('Статус контракта обновлен', 'success');
-        setStatusDialogOpen(false);
-      }
+      await api.patch(`/api/contracts/${id}/status?status=${newStatus}`);
+      await fetchContractData();
+      showSnackbar('Статус контракта обновлен', 'success');
+      setStatusDialogOpen(false);
     } catch (error) {
       showSnackbar('Ошибка при изменении статуса', 'error');
     }
@@ -353,17 +363,10 @@ const ContractManagementPage: React.FC = () => {
   const handleConfirmCreatePayment = async () => {
     if (selectedDeliveryForPayment) {
       try {
-        const response = await fetch(`/api/payments/from-delivery/${selectedDeliveryForPayment.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (response.ok) {
-          showSnackbar('Платеж по поставке создан', 'success');
-          // Обновляем данные контракта, чтобы показать новый платеж
-          fetchContractData();
-        } else {
-          showSnackbar('Ошибка при создании платежа', 'error');
-        }
+        await api.post(`/api/payments/from-delivery/${selectedDeliveryForPayment.id}`);
+        showSnackbar('Платеж по поставке создан', 'success');
+        // Обновляем данные контракта, чтобы показать новый платеж
+        fetchContractData();
       } catch (error) {
         showSnackbar('Ошибка при создании платежа', 'error');
       } finally {
@@ -375,6 +378,107 @@ const ContractManagementPage: React.FC = () => {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+  };
+
+  const handleDocumentSave = (savedDocument: any) => {
+    // Обновляем список документов
+    setDocuments(prev => [...prev, savedDocument]);
+    showSnackbar('Документ успешно создан', 'success');
+  };
+
+  const handleDocumentEdit = (document: Document) => {
+    // TODO: Реализовать редактирование документа
+    console.log('Редактирование документа:', document);
+  };
+
+  const handleDocumentDownload = async (documentId: string) => {
+    try {
+      // Сначала получаем информацию о документе
+      const documentInfo = documents.find(doc => doc.id === documentId);
+      console.log('Информация о документе:', documentInfo);
+      
+      const response = await api.get(`/api/documents/${documentId}/download`, {
+        responseType: 'blob'
+      });
+      
+      console.log('Ответ сервера:', response);
+      console.log('Content-Type:', response.headers['content-type']);
+      console.log('Content-Disposition:', response.headers['content-disposition']);
+      
+      const blob = response.data;
+      console.log('Blob:', blob);
+      console.log('Blob size:', blob.size);
+      console.log('Blob type:', blob.type);
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      
+      // Используем правильное имя файла и расширение
+      const fileName = documentInfo?.fileName || documentInfo?.title || `document_${documentId}`;
+      const mimeType = documentInfo?.mimeType || 'application/octet-stream';
+      
+      console.log('Имя файла:', fileName);
+      console.log('MIME тип:', mimeType);
+      
+      // Определяем расширение файла на основе MIME-типа
+      let extension = '';
+      if (mimeType.includes('pdf')) extension = '.pdf';
+      else if (mimeType.includes('image')) extension = '.jpg';
+      else if (mimeType.includes('word')) extension = '.docx';
+      else if (mimeType.includes('excel')) extension = '.xlsx';
+      else extension = '.bin';
+      
+      const finalFileName = `${fileName}${extension}`;
+      console.log('Финальное имя файла:', finalFileName);
+      
+      a.download = finalFileName;
+      window.document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      window.document.body.removeChild(a);
+      showSnackbar('Документ скачан', 'success');
+    } catch (error) {
+      console.error('Ошибка скачивания документа:', error);
+      showSnackbar('Ошибка при скачивании документа', 'error');
+    }
+  };
+
+  const handleDocumentView = async (documentId: string) => {
+    try {
+      // Сначала получаем информацию о документе
+      const documentInfo = documents.find(doc => doc.id === documentId);
+      
+      const response = await api.get(`/api/documents/${documentId}/download`, {
+        responseType: 'blob'
+      });
+      
+      const blob = response.data;
+      const url = window.URL.createObjectURL(blob);
+      
+      // Открываем файл в новой вкладке
+      window.open(url, '_blank');
+      
+      // Очищаем URL через некоторое время
+      setTimeout(() => {
+        window.URL.revokeObjectURL(url);
+      }, 1000);
+      
+      showSnackbar('Документ открыт в новой вкладке', 'success');
+    } catch (error) {
+      console.error('Ошибка просмотра документа:', error);
+      showSnackbar('Ошибка при просмотре документа', 'error');
+    }
+  };
+
+  const handleDocumentDelete = async (documentId: string) => {
+    try {
+      await api.delete(`/api/documents/${documentId}`);
+      setDocuments(prev => prev.filter(doc => doc.id !== documentId));
+      showSnackbar('Документ удален', 'success');
+    } catch (error) {
+      showSnackbar('Ошибка при удалении документа', 'error');
+    }
   };
 
   if (loading) {
@@ -475,6 +579,15 @@ const ContractManagementPage: React.FC = () => {
                   <Typography color="textSecondary" variant="body2">Дата окончания:</Typography>
                   <Typography variant="body1">
                     {contract.endDate ? dayjs(contract.endDate).format('DD.MM.YYYY') : '-'}
+                    {contract.endDate && contract.startDate && 
+                     dayjs(contract.endDate).isSame(dayjs(contract.startDate)) && (
+                      <Chip 
+                        label="Требует исправления" 
+                        color="warning" 
+                        size="small" 
+                        sx={{ ml: 1 }}
+                      />
+                    )}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>
@@ -729,37 +842,56 @@ const ContractManagementPage: React.FC = () => {
             <Typography variant="h6">Документы</Typography>
             <Button
               variant="contained"
-              startIcon={<UploadIcon />}
+              startIcon={<AddIcon />}
               onClick={() => setDocumentDialogOpen(true)}
             >
-              Загрузить документ
+              Создать документ
             </Button>
           </Box>
           {(documents || []).length > 0 ? (
             <List>
-                              {(documents || []).map((document) => (
+              {(documents || []).map((document) => (
                 <ListItem key={document.id} divider>
                   <ListItemIcon>
                     <AttachFileIcon />
                   </ListItemIcon>
                   <ListItemText
-                    primary={document.originalFileName}
-                    secondary={`${document.type} • ${dayjs(document.uploadedAt).format('DD.MM.YYYY HH:mm')} • ${(document.fileSize / 1024).toFixed(1)} KB`}
+                    primary={document.title || document.documentNumber || document.fileName || 'Без названия'}
+                    secondary={`${document.documentType} • ${dayjs(document.uploadedAt).format('DD.MM.YYYY HH:mm')} • ${(document.fileSize / 1024).toFixed(1)} KB`}
                   />
-                  <IconButton size="small">
+                  <IconButton 
+                    size="small"
+                    onClick={() => handleDocumentDownload(document.id)}
+                  >
                     <DownloadIcon />
                   </IconButton>
-                  <IconButton size="small">
+                  <IconButton 
+                    size="small"
+                    onClick={() => handleDocumentView(document.id)}
+                  >
                     <VisibilityIcon />
                   </IconButton>
-                  <IconButton size="small" color="error">
+                  <IconButton 
+                    size="small" 
+                    color="error"
+                    onClick={() => handleDocumentDelete(document.id)}
+                  >
                     <DeleteIcon />
                   </IconButton>
                 </ListItem>
               ))}
             </List>
           ) : (
-            <Alert severity="info">Документы не найдены</Alert>
+            <Box>
+              <Alert severity="info" sx={{ mb: 2 }}>Документы не найдены</Alert>
+              <Button 
+                variant="outlined" 
+                onClick={() => setDocumentDialogOpen(true)}
+                startIcon={<AddIcon />}
+              >
+                Создать первый документ
+              </Button>
+            </Box>
           )}
         </TabPanel>
 
@@ -853,6 +985,21 @@ const ContractManagementPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Диалог создания/редактирования документа */}
+      <DocumentEditDialog
+        open={documentDialogOpen}
+        onClose={() => setDocumentDialogOpen(false)}
+        onSave={handleDocumentSave}
+        relatedEntityId={contract?.id}
+        relatedEntityType="CONTRACT"
+        relatedEntityData={{
+          contractNumber: contract?.contractNumber,
+          tenderNumber: contract?.tender?.tenderNumber,
+          supplierName: contract?.supplier?.name,
+          customerName: contract?.customer?.name
+        }}
+      />
     </Box>
   );
 };

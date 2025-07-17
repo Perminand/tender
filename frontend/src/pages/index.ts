@@ -10,5 +10,6 @@ export { default as ContractListPage } from './ContractListPage';
 export { default as DeliveryListPage } from './DeliveryListPage';
 export { default as PaymentListPage } from './PaymentListPage';
 export { default as DocumentListPage } from './DocumentListPage';
+export { default as DocumentDetailPage } from './DocumentDetailPage';
 export { default as ContractDetailPage } from './ContractDetailPage';
 export { default as RequestDetailPage } from './RequestDetailPage'; 

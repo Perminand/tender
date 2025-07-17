@@ -987,7 +987,7 @@ const DeliveryListPage: React.FC = () => {
       {/* Пагинация */}
       <TablePagination
         component="div"
-        count={totalCount}
+        count={totalCount || 0}
         page={page}
         onPageChange={handlePageChange}
         rowsPerPage={rowsPerPage}

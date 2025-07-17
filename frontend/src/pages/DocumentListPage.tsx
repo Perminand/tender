@@ -39,6 +39,9 @@ import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
+import DocumentEditDialog from '../components/DocumentEditDialog';
+import ConfirmationDialog from '../components/ConfirmationDialog';
+import { api } from '../utils/api';
 
 interface Document {
   id: number;
@@ -63,6 +66,8 @@ const DocumentListPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingDocument, setEditingDocument] = useState<Document | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [documentToDelete, setDocumentToDelete] = useState<Document | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
   const [statusStats, setStatusStats] = useState<{ [key: string]: number }>({});
   const [statusFilter, setStatusFilter] = useState<string>('');
@@ -75,11 +80,8 @@ const DocumentListPage: React.FC = () => {
   // Загрузка статистики по статусам
   const fetchStatusStats = async () => {
     try {
-      const response = await fetch('/api/documents/status-stats');
-      if (response.ok) {
-        const data = await response.json();
-        setStatusStats(data);
-      }
+      const response = await api.get('/api/documents/status-stats');
+      setStatusStats(response.data);
     } catch (e) {}
   };
   useEffect(() => { fetchStatusStats(); }, []);
@@ -88,9 +90,8 @@ const DocumentListPage: React.FC = () => {
   const fetchDocuments = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/documents');
-      const data = await response.json();
-      setDocuments(data);
+      const response = await api.get('/api/documents');
+      setDocuments(response.data);
     } catch (error) {
       showSnackbar('Ошибка при загрузке документов', 'error');
     } finally {
@@ -112,28 +113,40 @@ const DocumentListPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = (document: Document) => {
+    setDocumentToDelete(document);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!documentToDelete) return;
+    
     try {
-      await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+      await api.delete(`/api/documents/${documentToDelete.id}`);
       showSnackbar('Документ удален', 'success');
       reloadAll();
     } catch (error) {
       showSnackbar('Ошибка при удалении документа', 'error');
+    } finally {
+      setDeleteDialogOpen(false);
+      setDocumentToDelete(null);
     }
   };
 
   const handleDownload = async (id: number) => {
     try {
-      const response = await fetch(`/api/documents/${id}/download`);
-      const blob = await response.blob();
+      const response = await api.get(`/api/documents/${id}/download`, {
+        responseType: 'blob'
+      });
+      const blob = response.data;
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = window.document.createElement('a');
       a.href = url;
       a.download = `document_${id}.pdf`;
-      document.body.appendChild(a);
+      window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      window.document.body.removeChild(a);
       showSnackbar('Документ скачан', 'success');
     } catch (error) {
       showSnackbar('Ошибка при скачивании документа', 'error');
@@ -142,7 +155,7 @@ const DocumentListPage: React.FC = () => {
 
   const handleSign = async (id: number) => {
     try {
-      await fetch(`/api/documents/${id}/sign`, { method: 'POST' });
+      await api.post(`/api/documents/${id}/sign`);
       showSnackbar('Документ подписан', 'success');
       reloadAll();
     } catch (error) {
@@ -475,7 +488,7 @@ const DocumentListPage: React.FC = () => {
                   <IconButton
                     size="small"
                     color="error"
-                    onClick={() => handleDelete(document.id)}
+                    onClick={() => handleDelete(document)}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -486,86 +499,32 @@ const DocumentListPage: React.FC = () => {
         </Table>
       </TableContainer>
 
-      {/* Диалог создания/редактирования */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingDocument ? 'Редактировать документ' : 'Создать документ'}
-        </DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  name="documentNumber"
-                  label="Номер документа"
-                  fullWidth
-                  required
-                  defaultValue={editingDocument?.documentNumber}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Тип документа</InputLabel>
-                  <Select name="documentType" defaultValue={editingDocument?.documentType || 'CONTRACT'}>
-                    <MenuItem value="CONTRACT">Контракт</MenuItem>
-                    <MenuItem value="INVOICE">Счет</MenuItem>
-                    <MenuItem value="ACT">Акт</MenuItem>
-                    <MenuItem value="SPECIFICATION">Спецификация</MenuItem>
-                    <MenuItem value="CERTIFICATE">Сертификат</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="title"
-                  label="Название"
-                  fullWidth
-                  required
-                  defaultValue={editingDocument?.title}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  name="contractId"
-                  label="ID контракта"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingDocument?.contractId}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  name="supplierId"
-                  label="ID поставщика"
-                  type="number"
-                  fullWidth
-                  required
-                  defaultValue={editingDocument?.supplierId}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="notes"
-                  label="Примечания"
-                  multiline
-                  rows={3}
-                  fullWidth
-                  defaultValue={editingDocument?.notes}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" variant="contained">
-              {editingDocument ? 'Обновить' : 'Создать'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+      {/* Диалог создания/редактирования документа */}
+      <DocumentEditDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSave={(savedDocument) => {
+          setDocuments(prev => [...prev, savedDocument]);
+          showSnackbar('Документ успешно создан', 'success');
+          setDialogOpen(false);
+        }}
+        editingDocument={editingDocument}
+      />
+
+      {/* Диалог подтверждения удаления */}
+      <ConfirmationDialog
+        open={deleteDialogOpen}
+        title="Подтверждение удаления"
+        message={`Вы уверены, что хотите удалить документ "${documentToDelete?.title || documentToDelete?.documentNumber}"? Это действие нельзя отменить.`}
+        onConfirm={confirmDelete}
+        onCancel={() => {
+          setDeleteDialogOpen(false);
+          setDocumentToDelete(null);
+        }}
+        confirmText="Удалить"
+        cancelText="Отмена"
+        severity="error"
+      />
 
       {/* Снэкбар для уведомлений */}
       <Snackbar
