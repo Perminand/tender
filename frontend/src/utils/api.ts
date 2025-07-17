@@ -1,8 +1,17 @@
 import axios from 'axios';
 
+// Определяем базовый URL в зависимости от окружения
+const getBaseURL = () => {
+  if (import.meta.env.DEV) {
+    return 'http://localhost:8080';
+  }
+  // В продакшене используем текущий хост
+  return window.location.origin.replace(':5173', ':8080');
+};
+
 // Общий HTTP-клиент для API
 export const api = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: getBaseURL(),
   headers: {
     'Content-Type': 'application/json',
   },
@@ -21,7 +30,7 @@ export interface AnalyticsStats {
 
 export const getAnalyticsStats = async (): Promise<AnalyticsStats> => {
   try {
-    const response = await fetch(`http://localhost:8080/api/analytics/stats`, {
+    const response = await fetch(`${getBaseURL()}/api/analytics/stats`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
