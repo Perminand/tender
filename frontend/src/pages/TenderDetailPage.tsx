@@ -154,7 +154,16 @@ const TenderDetailPage: React.FC = () => {
   const loadTender = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/tenders/${id}/with-best-prices-by-items`);
+      
+      // Получаем роль пользователя из localStorage
+      const userRole = localStorage.getItem('userRole');
+      
+      // Для поставщика используем специальный эндпоинт
+      const endpoint = userRole === 'SUPPLIER' 
+        ? `/api/tenders/${id}/supplier-view`
+        : `/api/tenders/${id}/with-best-prices-by-items`;
+      
+      const response = await api.get(endpoint);
       setTender(response.data);
     } catch (error) {
       console.error('Error loading tender:', error);
@@ -336,6 +345,9 @@ const TenderDetailPage: React.FC = () => {
     }
   };
 
+  // Получаем роль пользователя
+  const userRole = localStorage.getItem('userRole');
+  const isSupplier = userRole === 'SUPPLIER';
 
   if (loading) {
     return <Typography>Загрузка...</Typography>;
@@ -358,109 +370,136 @@ const TenderDetailPage: React.FC = () => {
         </Typography>
       </Box>
 
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">Управление статусом тендера</Typography>
-            <Chip
-              label={getStatusLabel(tender.status)}
-              color={getStatusColor(tender.status)}
-            />
+      {/* Управление статусом тендера - скрыто для поставщика */}
+      {!isSupplier && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Управление статусом тендера</Typography>
+              <Chip
+                label={getStatusLabel(tender.status)}
+                color={getStatusColor(tender.status)}
+              />
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {/* Кнопки смены статуса */}
+              {tender.status === 'DRAFT' && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setPublishDialogOpen(true)}
+                >
+                  Опубликовать тендер
+                </Button>
+              )}
+              {tender.status === 'PUBLISHED' && (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setStartBiddingDialogOpen(true)}
+                >
+                  Принимать предложения
+                </Button>
+              )}
+              {tender.status === 'BIDDING' && (
+            <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={() => setCloseDialogOpen(true)}
+            >
+                  Закрыть прием
+            </Button>
+              )}
+              {tender.status === 'BIDDING' && (
+            <Button
+              variant="contained"
+                  color="success"
+              onClick={() => navigate(`/tenders/${id}/proposals/new`)}
+            >
+              Подать предложение
+            </Button>
+              )}
+              {/* Кнопка завершения тендера (Присудить) */}
+              {tender.status === 'EVALUATION' && tender.awardedSupplierId && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={handleCompleteTender}
+                >
+                  Завершить тендер (Присудить)
+            </Button>
+              )}
+              {/* Кнопка анализа цен */}
+              {(tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+                <Button
+                  variant="outlined"
+                  color="info"
+                  startIcon={<AssessmentIcon />}
+                  onClick={() => navigate(`/tenders/${id}/price-analysis`)}
+                >
+                  Анализ цен
+                </Button>
+              )}
+              {/* Кнопка создания контракта */}
+              {tender.status === 'AWARDED' && tender.awardedSupplierId && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  onClick={() => {
+                    navigate(`/contracts/new?tenderId=${tender.id}&supplierId=${tender.awardedSupplierId}&amount=${tender.bestPrice}&supplierName=${encodeURIComponent(tender.bestSupplierName)}`);
+                  }}
+                >
+                  Заключить контракт
+                </Button>
+              )}
+              {/* Кнопка разделения тендера */}
+              {tender.status === 'BIDDING' && (
+                <Button
+                  variant="outlined"
+                  color="secondary"
+                  onClick={() => setSplitDialogOpen(true)}
+                >
+                  Разделить тендер
+                </Button>
+              )}
+              {/* Кнопка отмены */}
+              {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => setCancelDialogOpen(true)}
+                >
+                  Отменить тендер
+                </Button>
+              )}
           </Box>
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-            {/* Кнопки смены статуса */}
-            {tender.status === 'DRAFT' && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setPublishDialogOpen(true)}
-              >
-                Опубликовать тендер
-              </Button>
-            )}
-            {tender.status === 'PUBLISHED' && (
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setStartBiddingDialogOpen(true)}
-              >
-                Принимать предложения
-              </Button>
-            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Статус тендера для поставщика */}
+      {isSupplier && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6">Статус тендера</Typography>
+              <Chip
+                label={getStatusLabel(tender.status)}
+                color={getStatusColor(tender.status)}
+              />
+            </Box>
             {tender.status === 'BIDDING' && (
-          <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setCloseDialogOpen(true)}
-          >
-                Закрыть прием
-          </Button>
-            )}
-            {tender.status === 'BIDDING' && (
-          <Button
-            variant="contained"
-                color="success"
-            onClick={() => navigate(`/tenders/${id}/proposals/new`)}
-          >
-            Подать предложение
-          </Button>
-            )}
-            {/* Кнопка завершения тендера (Присудить) */}
-            {tender.status === 'EVALUATION' && tender.awardedSupplierId && (
               <Button
                 variant="contained"
                 color="success"
-                onClick={handleCompleteTender}
+                onClick={() => navigate(`/tenders/${id}/proposals/new`)}
               >
-                Завершить тендер (Присудить)
-          </Button>
-            )}
-            {/* Кнопка анализа цен */}
-            {(tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
-              <Button
-                variant="outlined"
-                color="info"
-                startIcon={<AssessmentIcon />}
-                onClick={() => navigate(`/tenders/${id}/price-analysis`)}
-              >
-                Анализ цен
+                Подать предложение
               </Button>
             )}
-            {/* Кнопка создания контракта */}
-            {tender.status === 'AWARDED' && tender.awardedSupplierId && (
-              <Button
-                variant="contained"
-                color="success"
-                onClick={() => {
-                  navigate(`/contracts/new?tenderId=${tender.id}&supplierId=${tender.awardedSupplierId}&amount=${tender.bestPrice}&supplierName=${encodeURIComponent(tender.bestSupplierName)}`);
-                }}
-              >
-                Заключить контракт
-              </Button>
-            )}
-            {/* Кнопка разделения тендера */}
-            {tender.status === 'BIDDING' && (
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={() => setSplitDialogOpen(true)}
-              >
-                Разделить тендер
-              </Button>
-            )}
-            {/* Кнопка отмены */}
-            {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={() => setCancelDialogOpen(true)}
-              >
-                Отменить тендер
-              </Button>
-            )}
-        </Box>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       <Grid container spacing={3}>
         {/* Основная информация */}
@@ -506,7 +545,8 @@ const TenderDetailPage: React.FC = () => {
                 </Alert>
               )}
 
-              {tender.bestPrice && (
+              {/* Лучшее предложение - скрыто для поставщика */}
+              {!isSupplier && tender.bestPrice && (
                 <Alert severity="success" sx={{ mb: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <TrendingUpIcon sx={{ mr: 1 }} />
@@ -535,8 +575,8 @@ const TenderDetailPage: React.FC = () => {
                 </Alert>
               )}
 
-              {/* Победитель тендера — сразу под лучшим предложением */}
-              {(tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+              {/* Победитель тендера — скрыто для поставщика */}
+              {!isSupplier && (tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
                 <Box sx={{ mt: 2, mb: 2 }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>Победитель тендера</Typography>
                   {tender.supplierProposals.length > 0 ? (
@@ -626,31 +666,37 @@ const TenderDetailPage: React.FC = () => {
                 </Typography>
               </Box>
 
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  Предложений
-                </Typography>
-                <Typography variant="h4">
-                  {tender.supplierProposals.length}
-                </Typography>
-              </Box>
+              {/* Статистика предложений - скрыта для поставщика */}
+              {!isSupplier && (
+                <>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      Предложений
+                    </Typography>
+                    <Typography variant="h4">
+                      {tender.supplierProposals.length}
+                    </Typography>
+                  </Box>
 
-              {tender.bestPrice && (
-                <Box>
-                  <Typography variant="body2" color="text.secondary">
-                    Лучшая цена
-                  </Typography>
-                  <Typography variant="h4" color="success.main">
-                    {formatPrice(tender.bestPrice)}
-                  </Typography>
-                </Box>
+                  {tender.bestPrice && (
+                    <Box>
+                      <Typography variant="body2" color="text.secondary">
+                        Лучшая цена
+                      </Typography>
+                      <Typography variant="h4" color="success.main">
+                        {formatPrice(tender.bestPrice)}
+                      </Typography>
+                    </Box>
+                  )}
+                </>
               )}
+
             </CardContent>
           </Card>
         </Grid>
 
         {/* Анализ цен */}
-        {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+        {!isSupplier && (tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
           <Grid item xs={12}>
             <PriceAnalysisSummary
               tenderId={tender.id}
@@ -677,7 +723,7 @@ const TenderDetailPage: React.FC = () => {
                       <TableCell>Количество</TableCell>
                       <TableCell>Ед. изм.</TableCell>
                       <TableCell>Сметная цена</TableCell>
-                      <TableCell>Лучшая цена</TableCell>
+                      {!isSupplier && <TableCell>Лучшая цена</TableCell>}
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -720,20 +766,22 @@ const TenderDetailPage: React.FC = () => {
                           <TableCell>{item.quantity}</TableCell>
                           <TableCell>{item.unitName}</TableCell>
                           <TableCell>{formatPrice(item.estimatedPrice)}</TableCell>
-                          <TableCell>
-                            {item.bestPrice != null ? (
-                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                {formatPrice(item.bestPrice)}
-                                {bestProposal ? (
-                                  <IconButton size="small" onClick={() => setBestProposalOpenId(bestProposal.id)}>
-                                    <VisibilityIcon />
-                                  </IconButton>
-                                ) : (
-                                  <Typography variant="caption" color="error">нет bestProposal</Typography>
-                                )}
-                              </Box>
-                            ) : ''}
-                          </TableCell>
+                          {!isSupplier && (
+                            <TableCell>
+                              {item.bestPrice != null ? (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  {formatPrice(item.bestPrice)}
+                                  {bestProposal ? (
+                                    <IconButton size="small" onClick={() => setBestProposalOpenId(bestProposal.id)}>
+                                      <VisibilityIcon />
+                                    </IconButton>
+                                  ) : (
+                                    <Typography variant="caption" color="error">нет bestProposal</Typography>
+                                  )}
+                                </Box>
+                              ) : ''}
+                            </TableCell>
+                          )}
                         </TableRow>
                       );
                     })}
@@ -745,125 +793,127 @@ const TenderDetailPage: React.FC = () => {
         </Grid>
 
         {/* Предложения поставщиков */}
-        <Grid item xs={12}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>
-                Предложения поставщиков
-              </Typography>
+        {!isSupplier && (
+          <Grid item xs={12}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" sx={{ mb: 2 }}>
+                  Предложения поставщиков
+                </Typography>
 
-              {tender.supplierProposals.map((proposal, index) => (
-                <Accordion key={proposal.id} expanded={bestProposalOpenId === proposal.id} onChange={() => setBestProposalOpenId(bestProposalOpenId === proposal.id ? null : proposal.id)}>
-                  <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-                      <Typography sx={{ flex: 1 }}>
-                        {proposal.supplierName} - {formatPrice(proposal.totalPrice != null ? proposal.totalPrice : getProposalTotal(proposal))}
-                      </Typography>
-                      {proposal.isBestOffer && (
-                        <Tooltip title="Лучшее предложение">
-                          <StarIcon color="primary" />
-                        </Tooltip>
-                      )}
-                      <Box
-                        sx={{
-                          ml: 2,
-                          px: 1.5,
-                          py: 0.5,
-                          borderRadius: 2,
-                          backgroundColor: proposal.status === 'SUBMITTED' ? 'info.light' : 'grey.200',
-                          display: 'inline-block',
-                          fontWeight: 500,
-                          fontSize: 14,
-                        }}
-                      >
-                        {getStatusLabel(proposal.status)}
+                {tender.supplierProposals.map((proposal, index) => (
+                  <Accordion key={proposal.id} expanded={bestProposalOpenId === proposal.id} onChange={() => setBestProposalOpenId(bestProposalOpenId === proposal.id ? null : proposal.id)}>
+                    <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+                        <Typography sx={{ flex: 1 }}>
+                          {proposal.supplierName} - {formatPrice(proposal.totalPrice != null ? proposal.totalPrice : getProposalTotal(proposal))}
+                        </Typography>
+                        {proposal.isBestOffer && (
+                          <Tooltip title="Лучшее предложение">
+                            <StarIcon color="primary" />
+                          </Tooltip>
+                        )}
+                        <Box
+                          sx={{
+                            ml: 2,
+                            px: 1.5,
+                            py: 0.5,
+                            borderRadius: 2,
+                            backgroundColor: proposal.status === 'SUBMITTED' ? 'info.light' : 'grey.200',
+                            display: 'inline-block',
+                            fontWeight: 500,
+                            fontSize: 14,
+                          }}
+                        >
+                          {getStatusLabel(proposal.status)}
+                        </Box>
                       </Box>
-                    </Box>
-                  </AccordionSummary>
-                  <AccordionDetails>
-                    <Grid container spacing={2}>
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                          Коммерческие условия
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 2 }}>
-                          {proposal.paymentTerms}
-                        </Typography>
+                    </AccordionSummary>
+                    <AccordionDetails>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            Коммерческие условия
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 2 }}>
+                            {proposal.paymentTerms}
+                          </Typography>
+                          
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            Условия поставки
+                          </Typography>
+                          <Typography variant="body2" sx={{ mb: 2 }}>
+                            {proposal.deliveryTerms}
+                          </Typography>
+                          
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            Гарантия
+                          </Typography>
+                          <Typography variant="body2">
+                            {proposal.warrantyTerms}
+                          </Typography>
+                        </Grid>
                         
-                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                          Условия поставки
-                        </Typography>
-                        <Typography variant="body2" sx={{ mb: 2 }}>
-                          {proposal.deliveryTerms}
-                        </Typography>
-                        
-                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                          Гарантия
-                        </Typography>
-                        <Typography variant="body2">
-                          {proposal.warrantyTerms}
-                        </Typography>
-                      </Grid>
-                      
-                      <Grid item xs={12} md={6}>
-                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                          Позиции предложения
-                        </Typography>
-                        <TableContainer component={Paper} variant="outlined">
-                          <Table size="small">
-                            <TableHead>
-                              <TableRow>
-                                <TableCell>№</TableCell>
-                                <TableCell>Описание</TableCell>
-                                <TableCell>Цена</TableCell>
-                                <TableCell>Лучшая</TableCell>
-                                {tender.status === 'EVALUATION' && <TableCell>Действия</TableCell>}
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {proposal.proposalItems.map((item) => (
-                                <TableRow key={item.id}>
-                                  <TableCell>{item.itemNumber}</TableCell>
-                                  <TableCell>{item.description}</TableCell>
-                                  <TableCell>{formatPrice(item.totalPrice)}</TableCell>
-                                  <TableCell>
-                                    {item.isBestPrice && (
-                                      <StarIcon color="primary" fontSize="small" />
-                                    )}
-                                  </TableCell>
-                                  {tender.status === 'EVALUATION' && (
-                                    <TableCell>
-                                      <Button
-                                        size="small"
-                                        variant="outlined"
-                                        sx={{ mr: 1 }}
-                                        onClick={() => navigate(`/proposals/${proposal.id}`)}
-                                      >
-                                        Посмотреть предложение
-                                      </Button>
-                                      <Button
-                                        variant="contained"
-                                        color="primary"
-                                        size="small"
-                                        onClick={() => navigate(`/tenders/${tender.id}/contract/new/${proposal.supplierId}`)}
-                                      >
-                                        ЗАКЛЮЧИТЬ КОНТРАКТ
-                                      </Button>
-                                    </TableCell>
-                                  )}
+                        <Grid item xs={12} md={6}>
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            Позиции предложения
+                          </Typography>
+                          <TableContainer component={Paper} variant="outlined">
+                            <Table size="small">
+                              <TableHead>
+                                <TableRow>
+                                  <TableCell>№</TableCell>
+                                  <TableCell>Описание</TableCell>
+                                  <TableCell>Цена</TableCell>
+                                  <TableCell>Лучшая</TableCell>
+                                  {tender.status === 'EVALUATION' && <TableCell>Действия</TableCell>}
                                 </TableRow>
-                              ))}
-                            </TableBody>
-                          </Table>
-                        </TableContainer>
+                              </TableHead>
+                              <TableBody>
+                                {proposal.proposalItems.map((item) => (
+                                  <TableRow key={item.id}>
+                                    <TableCell>{item.itemNumber}</TableCell>
+                                    <TableCell>{item.description}</TableCell>
+                                    <TableCell>{formatPrice(item.totalPrice)}</TableCell>
+                                    <TableCell>
+                                      {item.isBestPrice && (
+                                        <StarIcon color="primary" fontSize="small" />
+                                      )}
+                                    </TableCell>
+                                    {tender.status === 'EVALUATION' && (
+                                      <TableCell>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          sx={{ mr: 1 }}
+                                          onClick={() => navigate(`/proposals/${proposal.id}`)}
+                                        >
+                                          Посмотреть предложение
+                                        </Button>
+                                        <Button
+                                          variant="contained"
+                                          color="primary"
+                                          size="small"
+                                          onClick={() => navigate(`/tenders/${tender.id}/contract/new/${proposal.supplierId}`)}
+                                        >
+                                          ЗАКЛЮЧИТЬ КОНТРАКТ
+                                        </Button>
+                                      </TableCell>
+                                    )}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </TableContainer>
+                        </Grid>
                       </Grid>
-                    </Grid>
-                  </AccordionDetails>
-                </Accordion>
-              ))}
-            </CardContent>
-          </Card>
-        </Grid>
+                    </AccordionDetails>
+                  </Accordion>
+                ))}
+              </CardContent>
+            </Card>
+          </Grid>
+        )}
       </Grid>
 
       <Dialog

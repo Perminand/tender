@@ -26,31 +26,88 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import LogoutIcon from '@mui/icons-material/Logout';
+import BusinessIcon from '@mui/icons-material/Business';
+import PeopleIcon from '@mui/icons-material/People';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import CategoryIcon from '@mui/icons-material/Category';
+import WarehouseIcon from '@mui/icons-material/Warehouse';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Avatar from '@mui/material/Avatar';
 import Chip from '@mui/material/Chip';
+import Divider from '@mui/material/Divider';
+import ListSubheader from '@mui/material/ListSubheader';
+import Collapse from '@mui/material/Collapse';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import AlertNotification from './AlertNotification';
+import Breadcrumbs from './Breadcrumbs';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 
-const menuItems = [
-  { label: 'Дашборд', to: '/dashboard', icon: <DashboardIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST', 'ROLE_VIEWER'] },
-  { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
-  { label: 'Тендеры', to: '/tenders', icon: <GavelIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_SUPPLIER', 'ROLE_VIEWER'] },
-  { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon />, roles: ['ROLE_SUPPLIER', 'ROLE_MANAGER', 'ROLE_ADMIN'] },
-  { label: 'Контракты', to: '/contracts', icon: <DescriptionIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_CUSTOMER', 'ROLE_VIEWER'] },
-  { label: 'Поставки', to: '/deliveries', icon: <LocalShippingIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
-  { label: 'Платежи', to: '/payments', icon: <PaymentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-  { label: 'Документы', to: '/documents', icon: <InsertDriveFileIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
-  { label: 'Уведомления', to: '/notifications', icon: <NotificationsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
-  { label: 'Справочники', to: '/reference', icon: <MenuBookIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-  { label: 'Настройки', to: '/settings', icon: <SettingsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+// Структурированное меню по функциональным блокам
+const menuStructure = [
+  {
+    title: 'Главная',
+    items: [
+      { label: 'Дашборд', to: '/dashboard', icon: <DashboardIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] }
+    ]
+  },
+  {
+    title: 'Тендерные процедуры',
+    items: [
+      { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
+      { label: 'Тендеры', to: '/tenders', icon: <GavelIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_SUPPLIER', 'ROLE_VIEWER'] },
+      { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon />, roles: ['ROLE_SUPPLIER', 'ROLE_MANAGER', 'ROLE_ADMIN'] }
+    ]
+  },
+  {
+    title: 'Контрактная работа',
+    items: [
+      { label: 'Контракты', to: '/contracts', icon: <DescriptionIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+      { label: 'Поставки', to: '/deliveries', icon: <LocalShippingIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+      { label: 'Платежи', to: '/payments', icon: <PaymentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] }
+    ]
+  },
+  {
+    title: 'Документооборот',
+    items: [
+      { label: 'Документы', to: '/documents', icon: <InsertDriveFileIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+      { label: 'Уведомления', to: '/notifications', icon: <NotificationsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] }
+    ]
+  },
+  {
+    title: 'Справочники',
+    items: [
+      { label: 'Контрагенты', to: '/counterparties', icon: <PeopleIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Материалы', to: '/materials', icon: <InventoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Категории', to: '/reference/categories', icon: <CategoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Типы материалов', to: '/reference/material-types', icon: <InventoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Единицы измерения', to: '/reference/units', icon: <CategoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Склады', to: '/warehouses', icon: <WarehouseIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Проекты', to: '/reference/projects', icon: <BusinessIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Типы контактов', to: '/reference/contact-types', icon: <PeopleIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] }
+    ]
+  },
+  {
+    title: 'Аналитика',
+    items: [
+      { label: 'Анализ цен', to: '/price-analysis', icon: <AssessmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST'] }
+    ]
+  },
+  {
+    title: 'Администрирование',
+    items: [
+      { label: 'Управление пользователями', to: '/users', icon: <PeopleIcon />, roles: ['ROLE_ADMIN'] },
+      { label: 'Настройки', to: '/settings', icon: <SettingsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] }
+    ]
+  }
 ];
 
-const drawerWidth = 220;
+const drawerWidth = 280;
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
@@ -58,7 +115,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const { user, logout } = useAuth();
+  const { canAccess } = usePermissions();
   const navigate = useNavigate();
 
   const handleDrawerToggle = () => {
@@ -79,46 +138,116 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     handleUserMenuClose();
   };
 
-  const filteredMenuItems = menuItems.filter(item =>
-    !item.roles || item.roles.some(role => user?.roles.includes(role))
-  );
+  const handleSectionToggle = (sectionTitle: string) => {
+    const newExpandedSections = new Set(expandedSections);
+    if (newExpandedSections.has(sectionTitle)) {
+      newExpandedSections.delete(sectionTitle);
+    } else {
+      newExpandedSections.add(sectionTitle);
+    }
+    setExpandedSections(newExpandedSections);
+  };
+
+  // Фильтрация меню по правам доступа
+  const filteredMenuStructure = menuStructure.map(section => ({
+    ...section,
+    items: section.items.filter(item => {
+      // Проверяем права доступа через централизованную систему
+      const menuPath = item.to.replace('/', '').replace('/', '/');
+      return canAccess(menuPath);
+    })
+  })).filter(section => section.items.length > 0);
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
       <Toolbar />
-      <List sx={{ flexGrow: 1 }}>
-        {filteredMenuItems.map((item) => {
-          const selected = location.pathname.startsWith(item.to);
+      <List sx={{ flexGrow: 1, py: 0 }}>
+        {filteredMenuStructure.map((section, sectionIndex) => {
+          const isExpanded = expandedSections.has(section.title);
+          const hasMultipleItems = section.items.length > 1;
+          
           return (
-            <ListItem key={item.to} disablePadding>
-              <ListItemButton
-                component={RouterLink}
-                to={item.to}
-                selected={selected}
-                sx={{
-                  borderRadius: 2,
-                  mx: 1,
-                  my: 0.5,
-                  color: selected ? 'primary.main' : 'text.primary',
-                  bgcolor: selected ? 'primary.50' : 'transparent',
-                  '&:hover': {
-                    bgcolor: 'primary.100',
-                  },
-                  transition: 'background 0.2s',
-                }}
-                onClick={() => isMobile && setMobileOpen(false)}
-              >
-                <ListItemIcon sx={{ color: selected ? 'primary.main' : 'text.secondary', minWidth: 36 }}>
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText primary={item.label} />
-              </ListItemButton>
-            </ListItem>
+            <React.Fragment key={section.title}>
+              <ListItem disablePadding>
+                <ListItemButton
+                  onClick={() => hasMultipleItems && handleSectionToggle(section.title)}
+                  sx={{
+                    borderRadius: 2,
+                    mx: 1,
+                    my: 0.5,
+                    color: 'text.secondary',
+                    bgcolor: 'transparent',
+                    '&:hover': {
+                      bgcolor: 'primary.100',
+                    },
+                    transition: 'background 0.2s',
+                    pl: 3,
+                    pr: 2,
+                  }}
+                >
+                  <ListItemText 
+                    primary={section.title} 
+                    primaryTypographyProps={{
+                      fontSize: '0.875rem',
+                      fontWeight: 600
+                    }}
+                  />
+                  {hasMultipleItems && (
+                    <ListItemIcon sx={{ minWidth: 'auto', color: 'text.secondary' }}>
+                      {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </ListItemIcon>
+                  )}
+                </ListItemButton>
+              </ListItem>
+              <Collapse in={!hasMultipleItems || isExpanded} timeout="auto" unmountOnExit>
+                <List component="div" disablePadding>
+                  {section.items.map((item) => {
+                    const selected = location.pathname.startsWith(item.to);
+                    return (
+                      <ListItem key={item.to} disablePadding>
+                        <ListItemButton
+                          component={RouterLink}
+                          to={item.to}
+                          selected={selected}
+                          sx={{
+                            borderRadius: 2,
+                            mx: 1,
+                            my: 0.5,
+                            color: selected ? 'primary.main' : 'text.primary',
+                            bgcolor: selected ? 'primary.50' : 'transparent',
+                            '&:hover': {
+                              bgcolor: 'primary.100',
+                            },
+                            transition: 'background 0.2s',
+                            pl: 5,
+                          }}
+                          onClick={() => isMobile && setMobileOpen(false)}
+                        >
+                          <ListItemIcon sx={{ color: selected ? 'primary.main' : 'text.secondary', minWidth: 36 }}>
+                            {item.icon}
+                          </ListItemIcon>
+                          <ListItemText 
+                            primary={item.label} 
+                            primaryTypographyProps={{
+                              fontSize: '0.875rem',
+                              fontWeight: selected ? 600 : 400
+                            }}
+                          />
+                        </ListItemButton>
+                      </ListItem>
+                    );
+                  })}
+                </List>
+              </Collapse>
+              {sectionIndex < filteredMenuStructure.length - 1 && (
+                <Divider sx={{ my: 1, mx: 2 }} />
+              )}
+            </React.Fragment>
           );
         })}
       </List>
       <Box sx={{ flexShrink: 0, p: 2, textAlign: 'center', color: 'text.secondary', fontSize: 13 }}>
-        &copy; {new Date().getFullYear()} Tender
+        &copy; {new Date().getFullYear()} Тендерная система
       </Box>
     </Box>
   );
@@ -142,7 +271,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             Тендерная система
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
-          <AlertNotification />
+          <AlertNotification username={user?.username} />
           
           {/* Пользовательское меню */}
           {user && (
@@ -216,6 +345,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Drawer>
       </Box>
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 1, sm: 2, md: 3 }, mt: 8, width: 0, minWidth: 0, maxWidth: '100vw', overflowX: 'auto', bgcolor: 'background.default', minHeight: '100vh' }}>
+        <Breadcrumbs />
         {children}
       </Box>
     </Box>

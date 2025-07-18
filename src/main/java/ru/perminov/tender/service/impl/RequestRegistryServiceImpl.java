@@ -24,8 +24,13 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
     private final RequestRepository requestRepository;
 
     @Override
-    public List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName) {
+    public List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName, String companyId) {
         List<Request> requests = requestRepository.findAll();
+        if (companyId != null) {
+            requests = requests.stream()
+                .filter(r -> r.getOrganization().getId().toString().equals(companyId))
+                .collect(Collectors.toList());
+        }
         List<RequestRegistryRowDto> result = new ArrayList<>();
         
         for (Request request : requests) {
@@ -94,7 +99,7 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
 
     @Override
     public ByteArrayInputStream exportRegistryToExcel(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName) {
-        List<RequestRegistryRowDto> rows = getRegistry(organization, project, fromDate, toDate, materialName);
+        List<RequestRegistryRowDto> rows = getRegistry(organization, project, fromDate, toDate, materialName, null);
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Реестр заявок");
             int rowIdx = 0;

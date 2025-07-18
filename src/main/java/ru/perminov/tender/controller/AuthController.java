@@ -11,6 +11,8 @@ import ru.perminov.tender.dto.auth.RegisterRequest;
 import ru.perminov.tender.dto.auth.RefreshTokenRequest;
 import ru.perminov.tender.service.AuthService;
 
+import java.util.Map;
+
 @Slf4j
 @RestController
 @RequestMapping("/api/auth")
@@ -76,5 +78,17 @@ public class AuthController {
         log.info("Получен GET-запрос: информация о текущем пользователе");
         // Здесь можно добавить логику для получения информации о текущем пользователе
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/permissions")
+    public ResponseEntity<Map<String, Object>> getPermissions(@RequestParam String username) {
+        log.info("Получен GET-запрос: разрешения для пользователя: {}", username);
+        try {
+            Map<String, Object> permissions = authService.getUserPermissions(username);
+            return ResponseEntity.ok(permissions);
+        } catch (Exception e) {
+            log.error("Ошибка при получении разрешений для пользователя: {}", username, e);
+            return ResponseEntity.badRequest().build();
+        }
     }
 } 

@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.model.User;
 import ru.perminov.tender.service.UserService;
+import ru.perminov.tender.dto.UserDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,60 +22,51 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    public ResponseEntity<List<User>> getAllUsers() {
+    public ResponseEntity<List<UserDto>> getAllUsers() {
         log.info("Получен GET-запрос: список всех пользователей");
-        List<User> users = userService.getAllUsers();
+        List<UserDto> users = userService.getAllUsers();
         log.info("Найдено пользователей: {}", users.size());
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(@PathVariable UUID id) {
+    public ResponseEntity<UserDto> getUserById(@PathVariable UUID id) {
         log.info("Получен GET-запрос: пользователь по ID={}", id);
         return userService.getUserById(id)
-                .map(user -> {
-                    log.info("Найден пользователь: {}", user.getUsername());
-                    return ResponseEntity.ok(user);
-                })
+                .map(user -> ResponseEntity.ok(userService.toDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/username/{username}")
-    public ResponseEntity<User> getUserByUsername(@PathVariable String username) {
+    public ResponseEntity<UserDto> getUserByUsername(@PathVariable String username) {
         log.info("Получен GET-запрос: пользователь по username={}", username);
         return userService.getUserByUsername(username)
-                .map(user -> {
-                    log.info("Найден пользователь: {}", user.getUsername());
-                    return ResponseEntity.ok(user);
-                })
+                .map(user -> ResponseEntity.ok(userService.toDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/email/{email}")
-    public ResponseEntity<User> getUserByEmail(@PathVariable String email) {
+    public ResponseEntity<UserDto> getUserByEmail(@PathVariable String email) {
         log.info("Получен GET-запрос: пользователь по email={}", email);
         return userService.getUserByEmail(email)
-                .map(user -> {
-                    log.info("Найден пользователь: {}", user.getUsername());
-                    return ResponseEntity.ok(user);
-                })
+                .map(user -> ResponseEntity.ok(userService.toDto(user)))
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/company/{companyId}")
-    public ResponseEntity<List<User>> getUsersByCompany(@PathVariable UUID companyId) {
+    public ResponseEntity<List<UserDto>> getUsersByCompany(@PathVariable UUID companyId) {
         log.info("Получен GET-запрос: пользователи компании={}", companyId);
-        List<User> users = userService.getUsersByCompany(companyId);
+        List<UserDto> users = userService.getUsersByCompany(companyId).stream().map(userService::toDto).toList();
         log.info("Найдено пользователей в компании: {}", users.size());
         return ResponseEntity.ok(users);
     }
 
     @GetMapping("/role/{role}")
-    public ResponseEntity<List<User>> getUsersByRole(@PathVariable String role) {
+    public ResponseEntity<List<UserDto>> getUsersByRole(@PathVariable String role) {
         log.info("Получен GET-запрос: пользователи с ролью={}", role);
         try {
             User.UserRole userRole = User.UserRole.valueOf(role.toUpperCase());
-            List<User> users = userService.getUsersByRole(userRole);
+            List<UserDto> users = userService.getUsersByRole(userRole).stream().map(userService::toDto).toList();
             log.info("Найдено пользователей с ролью {}: {}", role, users.size());
             return ResponseEntity.ok(users);
         } catch (IllegalArgumentException e) {

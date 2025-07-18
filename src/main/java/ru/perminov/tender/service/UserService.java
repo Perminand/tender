@@ -9,6 +9,7 @@ import ru.perminov.tender.model.User;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.UserRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
+import ru.perminov.tender.dto.UserDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,9 +26,31 @@ public class UserService {
     private final CompanyRepository companyRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public List<User> getAllUsers() {
+    public List<UserDto> getAllUsers() {
         log.info("Получение списка всех пользователей");
-        return userRepository.findAll();
+        return userRepository.findAll().stream()
+            .map(this::toDto)
+            .toList();
+    }
+
+    public UserDto toDto(User user) {
+        UserDto dto = new UserDto();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setEmail(user.getEmail());
+        dto.setFirstName(user.getFirstName());
+        dto.setLastName(user.getLastName());
+        dto.setMiddleName(user.getMiddleName());
+        dto.setPhone(user.getPhone());
+        dto.setStatus(user.getStatus() != null ? user.getStatus().name() : null);
+        dto.setRoles(user.getRoles() != null ? user.getRoles().stream().map(Enum::name).collect(java.util.stream.Collectors.toSet()) : null);
+        dto.setIsEnabled(user.getIsEnabled());
+        dto.setIsAccountNonLocked(user.getIsAccountNonLocked());
+        if (user.getCompany() != null) {
+            dto.setCompanyName(user.getCompany().getName());
+            dto.setCompanyId(user.getCompany().getId());
+        }
+        return dto;
     }
 
     public Optional<User> getUserById(UUID id) {

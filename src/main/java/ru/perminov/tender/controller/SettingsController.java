@@ -8,6 +8,7 @@ import ru.perminov.tender.dto.FnsApiKeyDto;
 import ru.perminov.tender.dto.SettingsDto;
 import ru.perminov.tender.dto.EmailSettingsDto;
 import ru.perminov.tender.service.SettingsService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Slf4j
 @RestController
@@ -17,6 +18,7 @@ public class SettingsController {
     @Autowired
     private SettingsService settingsService;
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping
     public ResponseEntity<SettingsDto> getSettings() {
         log.info("Получен GET-запрос: получить настройки");
@@ -24,6 +26,7 @@ public class SettingsController {
         return ResponseEntity.ok(settings);
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/fns-api-key")
     public ResponseEntity<String> saveFnsApiKey(@RequestBody FnsApiKeyDto dto) {
         log.info("Получен POST-запрос: сохранить API ключ ФНС");
@@ -36,6 +39,7 @@ public class SettingsController {
         }
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/fns-api-usage")
     public ResponseEntity<String> getFnsApiUsage() {
         log.info("Получен GET-запрос: получить информацию об использовании API ФНС");
@@ -48,6 +52,7 @@ public class SettingsController {
         }
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @GetMapping("/email")
     public ResponseEntity<EmailSettingsDto> getEmailSettings() {
         log.info("Получен GET-запрос: получить настройки email");
@@ -60,6 +65,7 @@ public class SettingsController {
         }
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/email")
     public ResponseEntity<String> saveEmailSettings(@RequestBody EmailSettingsDto emailSettings) {
         log.info("Получен POST-запрос: сохранить настройки email");
@@ -72,6 +78,7 @@ public class SettingsController {
         }
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/email/test")
     public ResponseEntity<String> testEmailConnection(@RequestBody EmailSettingsDto emailSettings) {
         log.info("Получен POST-запрос: протестировать соединение email");

@@ -21,9 +21,17 @@ import {
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon
 } from '@mui/material';
 import UserInfo from '../components/UserInfo';
+import QuickActions from '../components/QuickActions';
 import { useAuth } from '../contexts/AuthContext';
 import {
   TrendingUp as TrendingUpIcon,
@@ -40,7 +48,14 @@ import {
   Info as InfoIcon,
   BarChart as BarChartIcon,
   PieChart as PieChartIcon,
-  TableChart as TableChartIcon
+  TableChart as TableChartIcon,
+  ExpandMore as ExpandMoreIcon,
+  Assignment as AssignmentIcon,
+  LocalShipping as LocalShippingIcon,
+  Payment as PaymentIcon,
+  Business as BusinessIcon,
+  Timeline as TimelineIcon,
+  PriorityHigh as PriorityHighIcon
 } from '@mui/icons-material';
 import {
   LineChart,
@@ -166,13 +181,21 @@ const DashboardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const { user } = useAuth();
-  const username = user?.username || 'admin';
+  const username = user?.username;
 
   useEffect(() => {
+    if (username) {
     fetchDashboardData();
-  }, []);
+    }
+  }, [username]);
 
   const fetchDashboardData = async () => {
+    if (!username) {
+      setError('Имя пользователя не определено');
+      setLoading(false);
+      return;
+    }
+    
     try {
       setLoading(true);
       setError(null);
@@ -198,36 +221,41 @@ const DashboardPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'ACTIVE': return 'success';
-      case 'PENDING': return 'warning';
-      case 'OVERDUE': return 'error';
-      case 'COMPLETED': return 'info';
-      case 'BIDDING': return 'primary';
-      case 'DRAFT': return 'default';
-      case 'AWARDED': return 'success';
-      case 'CANCELLED': return 'error';
-      default: return 'default';
+      case 'ACTIVE':
+      case 'COMPLETED':
+        return 'success';
+      case 'PENDING':
+      case 'IN_PROGRESS':
+        return 'warning';
+      case 'CANCELLED':
+      case 'OVERDUE':
+        return 'error';
+      default:
+        return 'default';
     }
   };
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'CRITICAL': return 'error';
-      case 'HIGH': return 'warning';
-      case 'MEDIUM': return 'info';
-      case 'LOW': return 'success';
-      default: return 'default';
+      case 'HIGH':
+        return 'error';
+      case 'MEDIUM':
+        return 'warning';
+      case 'LOW':
+        return 'info';
+      default:
+        return 'default';
     }
   };
 
   const handleExportReport = (type: string) => {
-    // В реальном приложении здесь будет экспорт в Excel/PDF
-    console.log(`Экспорт отчета: ${type}`);
+    // Логика экспорта
+    console.log(`Экспорт ${type}`);
   };
 
   if (loading) {
     return (
-      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
       </Box>
     );
@@ -236,12 +264,7 @@ const DashboardPage: React.FC = () => {
   if (error) {
     return (
       <Box sx={{ p: 3 }}>
-        <Alert severity="error" sx={{ mb: 3 }}>
-          {error}
-        </Alert>
-        <Button variant="contained" onClick={fetchDashboardData}>
-          Попробовать снова
-        </Button>
+        <Alert severity="error">{error}</Alert>
       </Box>
     );
   }
@@ -255,6 +278,9 @@ const DashboardPage: React.FC = () => {
   return (
     <Box sx={{ p: 3 }}>
       <UserInfo />
+      
+      {/* Быстрые действия */}
+      <QuickActions />
       
       {/* Заголовок */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -284,21 +310,30 @@ const DashboardPage: React.FC = () => {
       <Paper sx={{ mb: 3 }}>
         <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
           <Tab label="Обзор" icon={<AssessmentIcon />} />
+          <Tab label="Тендеры" icon={<AssignmentIcon />} />
+          <Tab label="Поставки" icon={<LocalShippingIcon />} />
+          <Tab label="Финансы" icon={<PaymentIcon />} />
+          <Tab label="Поставщики" icon={<BusinessIcon />} />
           <Tab label="Аналитика" icon={<BarChartIcon />} />
-          <Tab label="Отчетность" icon={<TableChartIcon />} />
         </Tabs>
       </Paper>
 
       {/* Вкладка: Обзор */}
       {activeTab === 0 && (
-        <>
+        <Grid container spacing={3}>
           {/* Ключевые метрики */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AssessmentIcon />
+                Ключевые показатели
+              </Typography>
+              <Grid container spacing={3}>
             <Grid item xs={12} sm={6} md={3}>
               <Card>
                 <CardContent>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <AssessmentIcon sx={{ mr: 1, color: 'primary.main' }} />
+                        <AssignmentIcon sx={{ mr: 1, color: 'primary.main' }} />
                     <Typography color="textSecondary">Активные тендеры</Typography>
                   </Box>
                   <Typography variant="h4">{metrics.activeTenders}</Typography>
@@ -359,10 +394,11 @@ const DashboardPage: React.FC = () => {
                 </CardContent>
               </Card>
             </Grid>
+              </Grid>
+            </Paper>
           </Grid>
 
           {/* Графики */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3, height: 400 }}>
                 <Typography variant="h6" gutterBottom>Экономия по месяцам</Typography>
@@ -399,7 +435,7 @@ const DashboardPage: React.FC = () => {
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                              label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -413,14 +449,57 @@ const DashboardPage: React.FC = () => {
                 </ResponsiveContainer>
               </Paper>
             </Grid>
-          </Grid>
 
-          {/* Активные тендеры */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Активные тендеры</Typography>
+          {/* Срочные уведомления */}
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3, mb: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PriorityHighIcon />
+                Срочные уведомления
+              </Typography>
+              <Grid container spacing={2}>
+                {urgentDeliveries.slice(0, 3).map((delivery) => (
+                  <Grid item xs={12} md={4} key={delivery.id}>
+                    <Alert severity="warning" sx={{ mb: 1 }}>
+                      <Typography variant="subtitle2">
+                        Поставка {delivery.deliveryNumber}
+                      </Typography>
+                      <Typography variant="body2">
+                        {delivery.supplierName} - {delivery.daysOverdue} дней просрочки
+                      </Typography>
+                    </Alert>
+                  </Grid>
+                ))}
+                {overduePayments.slice(0, 3).map((payment) => (
+                  <Grid item xs={12} md={4} key={payment.id}>
+                    <Alert severity="error" sx={{ mb: 1 }}>
+                      <Typography variant="subtitle2">
+                        Платеж {payment.paymentNumber}
+                      </Typography>
+                      <Typography variant="body2">
+                        {formatCurrency(payment.amount)} - {payment.daysOverdue} дней просрочки
+                      </Typography>
+                    </Alert>
+                  </Grid>
+                ))}
+              </Grid>
+            </Paper>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Вкладка: Тендеры */}
+      {activeTab === 1 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <AssignmentIcon />
+                Активные тендеры
+              </Typography>
             <Grid container spacing={2}>
-              {activeTenders.slice(0, 4).map((tender) => (
-                <Grid item xs={12} sm={6} md={3} key={tender.id}>
+                {activeTenders.map((tender) => (
+                  <Grid item xs={12} sm={6} md={4} key={tender.id}>
                   <Card>
                     <CardContent>
                       <Typography variant="subtitle2" gutterBottom>
@@ -442,172 +521,241 @@ const DashboardPage: React.FC = () => {
                       <Typography variant="body2" color="textSecondary">
                         Предложений: {tender.proposalsCount}
                       </Typography>
+                        <Typography variant="body2" color="textSecondary">
+                          Экономия: {formatCurrency(tender.potentialSavings)}
+                      </Typography>
                     </CardContent>
                   </Card>
                 </Grid>
               ))}
             </Grid>
           </Paper>
+          </Grid>
+        </Grid>
+      )}
 
-          {/* Срочные поставки и просроченные платежи */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
+      {/* Вкладка: Поставки */}
+      {activeTab === 2 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <LocalShippingIcon />
+                Срочные поставки
+              </Typography>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Номер поставки</TableCell>
+                      <TableCell>Поставщик</TableCell>
+                      <TableCell>Контракт</TableCell>
+                      <TableCell>Срок поставки</TableCell>
+                      <TableCell>Просрочка</TableCell>
+                      <TableCell>Статус</TableCell>
+                      <TableCell>Сумма</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {urgentDeliveries.map((delivery) => (
+                      <TableRow key={delivery.id}>
+                        <TableCell>{delivery.deliveryNumber}</TableCell>
+                        <TableCell>{delivery.supplierName}</TableCell>
+                        <TableCell>{delivery.contractNumber}</TableCell>
+                        <TableCell>{delivery.dueDate}</TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={`${delivery.daysOverdue} дн.`} 
+                            color="error" 
+                            size="small" 
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={delivery.status} 
+                            color={getStatusColor(delivery.status) as any}
+                            size="small" 
+                          />
+                        </TableCell>
+                        <TableCell>{formatCurrency(delivery.totalValue)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Paper>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Вкладка: Финансы */}
+      {activeTab === 3 && (
+        <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>Срочные поставки</Typography>
-                {urgentDeliveries.slice(0, 3).map((delivery) => (
-                  <Box key={delivery.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                    <Typography variant="subtitle2">{delivery.deliveryNumber}</Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {delivery.supplierName} - {delivery.contractNumber}
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <PaymentIcon />
+                Просроченные платежи
                     </Typography>
-                    <Box sx={{ mt: 1 }}>
+              <List>
+                {overduePayments.map((payment) => (
+                  <ListItem key={payment.id} divider>
+                    <ListItemIcon>
+                      <ErrorIcon color="error" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={payment.paymentNumber}
+                      secondary={`${payment.supplierName} - ${formatCurrency(payment.amount)}`}
+                    />
                       <Chip 
-                        label={`Просрочено на ${delivery.daysOverdue} дней`} 
+                      label={`${payment.daysOverdue} дн.`} 
+                      color="error" 
                         size="small" 
-                        color="error"
                       />
-                    </Box>
-                  </Box>
+                  </ListItem>
                 ))}
+              </List>
               </Paper>
             </Grid>
 
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>Просроченные платежи</Typography>
-                {overduePayments.slice(0, 3).map((payment) => (
-                  <Box key={payment.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                    <Typography variant="subtitle2">{payment.paymentNumber}</Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {payment.supplierName} - {payment.contractNumber}
+              <Typography variant="h6" gutterBottom>Бюджет</Typography>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Общий бюджет
+                </Typography>
+                <Typography variant="h5">
+                  {formatCurrency(metrics.totalBudget)}
+                </Typography>
+              </Box>
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Потрачено
+                </Typography>
+                <Typography variant="h5" color="warning.main">
+                  {formatCurrency(metrics.spentBudget)}
+                </Typography>
+              </Box>
+              <Box>
+                <Typography variant="body2" color="text.secondary">
+                  Остаток
                     </Typography>
-                    <Typography variant="body2" color="error">
-                      {formatCurrency(payment.amount)} - Просрочено на {payment.daysOverdue} дней
+                <Typography variant="h5" color="success.main">
+                  {formatCurrency(metrics.remainingBudget)}
                     </Typography>
                   </Box>
-                ))}
               </Paper>
             </Grid>
           </Grid>
+      )}
 
-          {/* Топ поставщики */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Топ поставщики</Typography>
-            <Grid container spacing={2}>
-              {topSuppliers.slice(0, 4).map((supplier) => (
-                <Grid item xs={12} sm={6} md={3} key={supplier.id}>
-                  <Card>
-                    <CardContent>
-                      <Typography variant="subtitle2" gutterBottom>
-                        {supplier.name}
+      {/* Вкладка: Поставщики */}
+      {activeTab === 4 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <BusinessIcon />
+                Топ поставщики
                       </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                        <Typography variant="h6" color="primary">
-                          {supplier.rating.toFixed(1)}
-                        </Typography>
-                        <Typography variant="body2" color="textSecondary" sx={{ ml: 1 }}>
-                          / 5.0
-                        </Typography>
-                      </Box>
-                      <Typography variant="body2" color="textSecondary">
-                        Контрактов: {supplier.totalContracts}
+              <List>
+                {topSuppliers.map((supplier) => (
+                  <ListItem key={supplier.id} divider>
+                    <ListItemText
+                      primary={supplier.name}
+                      secondary={`Рейтинг: ${supplier.rating}/5 | Контрактов: ${supplier.totalContracts}`}
+                    />
+                    <Box sx={{ textAlign: 'right' }}>
+                      <Typography variant="body2" color="success.main">
+                        {formatCurrency(supplier.averageSavings)}
                       </Typography>
-                      <Typography variant="body2" color="textSecondary">
-                        Своевременность: {supplier.onTimeDeliveries}/{supplier.totalDeliveries}
+                      <Typography variant="caption" color="text.secondary">
+                        средняя экономия
                       </Typography>
-                    </CardContent>
-                  </Card>
-                </Grid>
+                    </Box>
+                  </ListItem>
               ))}
+              </List>
+            </Paper>
             </Grid>
-          </Paper>
 
-          {/* Алерты */}
+          <Grid item xs={12} md={6}>
           <Paper sx={{ p: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">Уведомления</Typography>
-              <Badge badgeContent={dashboardData.unreadAlertsCount} color="error">
-                <NotificationsIcon />
-              </Badge>
-            </Box>
-            {alerts.slice(0, 5).map((alert) => (
-              <Box key={alert.id} sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="subtitle2">{alert.title}</Typography>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <WarningIcon />
+                Проблемные поставщики
+              </Typography>
+              <List>
+                {problematicSuppliers.map((supplier) => (
+                  <ListItem key={supplier.id} divider>
+                    <ListItemIcon>
+                      <WarningIcon color="warning" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={supplier.name}
+                      secondary={`Риск: ${supplier.riskLevel} | Просрочек: ${supplier.delayedDeliveries}`}
+                    />
                   <Chip 
-                    label={alert.severity} 
+                      label={supplier.riskLevel} 
+                      color={supplier.riskLevel === 'HIGH' ? 'error' : 'warning'}
                     size="small" 
-                    color={getSeverityColor(alert.severity) as any}
                   />
-                </Box>
-                <Typography variant="body2" color="textSecondary">
-                  {alert.type} - {new Date(alert.createdAt).toLocaleDateString('ru-RU')}
-                </Typography>
-              </Box>
-            ))}
+                  </ListItem>
+                ))}
+              </List>
           </Paper>
-        </>
+          </Grid>
+        </Grid>
       )}
 
       {/* Вкладка: Аналитика */}
-      {activeTab === 1 && (
-        <>
-          {/* Статистика тендеров */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" color="textSecondary">Всего тендеров</Typography>
-                  <Typography variant="h4" color="primary">{metrics.totalTenders}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Активных: {metrics.activeTenders} | Завершённых: {metrics.completedTenders}
+      {activeTab === 5 && (
+        <Grid container spacing={3}>
+          <Grid item xs={12}>
+            <Paper sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <BarChartIcon />
+                Аналитические графики
                   </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" color="textSecondary">Контракты</Typography>
-                  <Typography variant="h4" color="primary">{metrics.totalContracts}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Активных: {metrics.activeContracts}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} sm={6} md={4}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" color="textSecondary">Поставки</Typography>
-                  <Typography variant="h4" color="primary">{metrics.totalDeliveries}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    В процессе: {metrics.pendingDeliveries} | Просрочено: {metrics.overdueDeliveries}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+              <Grid container spacing={3}>
+                <Grid item xs={12} md={6}>
+                  <Paper sx={{ p: 3, height: 400 }}>
+                    <Typography variant="h6" gutterBottom>Экономия по месяцам</Typography>
+                    <ResponsiveContainer width="100%" height={300}>
+                      <LineChart data={[
+                        { month: 'Янв', savings: 1200000 },
+                        { month: 'Фев', savings: 1500000 },
+                        { month: 'Мар', savings: 1800000 },
+                        { month: 'Апр', savings: 1600000 },
+                        { month: 'Май', savings: 2000000 },
+                        { month: 'Июн', savings: 2200000 }
+                      ]}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <RechartsTooltip formatter={(value) => formatCurrency(Number(value))} />
+                        <Line type="monotone" dataKey="savings" stroke="#8884d8" strokeWidth={2} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Paper>
           </Grid>
 
-          {/* Графики аналитики */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
             <Grid item xs={12} md={6}>
               <Paper sx={{ p: 3, height: 400 }}>
-                <Typography variant="h6" gutterBottom>Статусы тендеров</Typography>
+                    <Typography variant="h6" gutterBottom>Статусы поставок</Typography>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'Активные', value: metrics.activeTenders },
-                        { name: 'Завершённые', value: metrics.completedTenders },
-                        { name: 'Черновики', value: metrics.totalTenders - metrics.activeTenders - metrics.completedTenders }
+                            { name: 'Выполнено', value: metrics.totalDeliveries - metrics.pendingDeliveries - metrics.overdueDeliveries },
+                            { name: 'В процессе', value: metrics.pendingDeliveries },
+                            { name: 'Просрочено', value: metrics.overdueDeliveries }
                       ]}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                       outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
@@ -621,221 +769,10 @@ const DashboardPage: React.FC = () => {
                 </ResponsiveContainer>
               </Paper>
             </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Paper sx={{ p: 3, height: 400 }}>
-                <Typography variant="h6" gutterBottom>Бюджет и экономия</Typography>
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={[
-                    { name: 'Бюджет', value: metrics.totalBudget },
-                    { name: 'Потрачено', value: metrics.spentBudget },
-                    { name: 'Экономия', value: metrics.totalSavings }
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <RechartsTooltip formatter={(value) => formatCurrency(Number(value))} />
-                    <Bar dataKey="value" fill="#82ca9d" />
-                  </BarChart>
-                </ResponsiveContainer>
+              </Grid>
               </Paper>
             </Grid>
           </Grid>
-
-          {/* Проблемные поставщики */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Проблемные поставщики</Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Поставщик</TableCell>
-                    <TableCell>Рейтинг</TableCell>
-                    <TableCell>Проблемы качества</TableCell>
-                    <TableCell>Задержки поставок</TableCell>
-                    <TableCell>Уровень риска</TableCell>
-                    <TableCell>Рекомендации</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {problematicSuppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
-                      <TableCell>{supplier.name}</TableCell>
-                      <TableCell>{supplier.rating.toFixed(1)}</TableCell>
-                      <TableCell>{supplier.qualityIssues}</TableCell>
-                      <TableCell>{supplier.delayedDeliveries}</TableCell>
-                      <TableCell>
-                        <Chip 
-                          label={supplier.riskLevel} 
-                          size="small" 
-                          color={supplier.riskLevel === 'ВЫСОКИЙ' ? 'error' : 
-                                 supplier.riskLevel === 'СРЕДНИЙ' ? 'warning' : 'success'}
-                        />
-                      </TableCell>
-                      <TableCell>{supplier.recommendations}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-        </>
-      )}
-
-      {/* Вкладка: Отчетность */}
-      {activeTab === 2 && (
-        <>
-          {/* Основные метрики отчетности */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={3}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <AssessmentIcon sx={{ mr: 1, color: 'primary.main' }} />
-                    <Typography color="textSecondary">Тендеры</Typography>
-                  </Box>
-                  <Typography variant="h4">{metrics.totalTenders}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Активных: {metrics.activeTenders}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={3}>
-              <Card>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <TrendingUpIcon sx={{ mr: 1, color: 'success.main' }} />
-                    <Typography color="textSecondary">Контракты</Typography>
-                  </Box>
-                  <Typography variant="h4">{metrics.totalContracts}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Активных: {metrics.activeContracts}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={3}>
-              <Card>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>Поставки</Typography>
-                  <Typography variant="h4">{metrics.totalDeliveries}</Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    Ожидают: {metrics.pendingDeliveries}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={3}>
-              <Card>
-                <CardContent>
-                  <Typography color="textSecondary" gutterBottom>Экономия</Typography>
-                  <Typography variant="h4" color="success.main">
-                    {formatCurrency(metrics.totalSavings)}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    {formatPercentage(metrics.savingsPercentage)}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-
-          {/* Топ поставщики в таблице */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Топ поставщики</Typography>
-            <TableContainer>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Поставщик</TableCell>
-                    <TableCell>Рейтинг</TableCell>
-                    <TableCell>Контракты</TableCell>
-                    <TableCell>Общая стоимость</TableCell>
-                    <TableCell>Средняя экономия</TableCell>
-                    <TableCell>Своевременность</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {topSuppliers.map((supplier) => (
-                    <TableRow key={supplier.id}>
-                      <TableCell>{supplier.name}</TableCell>
-                      <TableCell>{supplier.rating.toFixed(1)}</TableCell>
-                      <TableCell>{supplier.totalContracts}</TableCell>
-                      <TableCell>{formatCurrency(supplier.totalValue)}</TableCell>
-                      <TableCell>{formatCurrency(supplier.averageSavings)}</TableCell>
-                      <TableCell>
-                        {supplier.totalDeliveries > 0 
-                          ? `${Math.round((supplier.onTimeDeliveries / supplier.totalDeliveries) * 100)}%`
-                          : '0%'
-                        }
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          </Paper>
-
-          {/* Последняя активность */}
-          <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>Последняя активность</Typography>
-            <Box sx={{ maxHeight: 300, overflow: 'auto' }}>
-              {dashboardData.recentActivities.map((activity, index) => (
-                <Box key={index} sx={{ mb: 2, p: 1, border: '1px solid #e0e0e0', borderRadius: 1 }}>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" fontWeight="bold">
-                      {activity.description}
-                    </Typography>
-                    <Chip
-                      label={activity.status}
-                      color={getStatusColor(activity.status) as any}
-                      size="small"
-                    />
-                  </Box>
-                  <Typography variant="caption" color="textSecondary">
-                    {new Date(activity.activityDate).toLocaleDateString('ru-RU')}
-                  </Typography>
-                </Box>
-              ))}
-            </Box>
-          </Paper>
-
-          {/* Кнопки экспорта */}
-          <Box sx={{ mt: 3, display: 'flex', gap: 2 }}>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={() => handleExportReport('tenders')}
-            >
-              Экспорт тендеров
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={() => handleExportReport('contracts')}
-            >
-              Экспорт контрактов
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={() => handleExportReport('deliveries')}
-            >
-              Экспорт поставок
-            </Button>
-            <Button
-              variant="outlined"
-              startIcon={<DownloadIcon />}
-              onClick={() => handleExportReport('payments')}
-            >
-              Экспорт платежей
-            </Button>
-          </Box>
-        </>
       )}
     </Box>
   );

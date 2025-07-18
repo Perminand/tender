@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.dashboard.DashboardDto;
 import ru.perminov.tender.service.DashboardService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.LocalDate;
 
@@ -21,12 +22,14 @@ public class DashboardController {
     private final DashboardService dashboardService;
     
     // Основной дашборд
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER', 'CUSTOMER')")
     @GetMapping
     public ResponseEntity<DashboardDto> getMainDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: основной дашборд для пользователя: {}", username);
         return ResponseEntity.ok(dashboardService.getMainDashboard(username));
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/period")
     public ResponseEntity<DashboardDto> getDashboardForPeriod(
             @RequestParam String username,
@@ -37,24 +40,28 @@ public class DashboardController {
     }
     
     // Специализированные дашборды
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/financial")
     public ResponseEntity<DashboardDto> getFinancialDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: финансовый дашборд для пользователя: {}", username);
         return ResponseEntity.ok(dashboardService.getFinancialDashboard(username));
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/operational")
     public ResponseEntity<DashboardDto> getOperationalDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: операционный дашборд для пользователя: {}", username);
         return ResponseEntity.ok(dashboardService.getOperationalDashboard(username));
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/supplier")
     public ResponseEntity<DashboardDto> getSupplierDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: дашборд поставщиков для пользователя: {}", username);
         return ResponseEntity.ok(dashboardService.getSupplierDashboard(username));
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/quality")
     public ResponseEntity<DashboardDto> getQualityDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: дашборд качества для пользователя: {}", username);
@@ -62,6 +69,7 @@ public class DashboardController {
     }
     
     // Персонализированные дашборды
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/personalized")
     public ResponseEntity<DashboardDto> getPersonalizedDashboard(
             @RequestParam String username,
@@ -70,12 +78,14 @@ public class DashboardController {
         return ResponseEntity.ok(dashboardService.getPersonalizedDashboard(username, preferences));
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/executive")
     public ResponseEntity<DashboardDto> getExecutiveDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: исполнительный дашборд для пользователя: {}", username);
         return ResponseEntity.ok(dashboardService.getExecutiveDashboard(username));
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/manager")
     public ResponseEntity<DashboardDto> getManagerDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: дашборд менеджера для пользователя: {}", username);
@@ -83,12 +93,14 @@ public class DashboardController {
     }
     
     // Обновление данных в реальном времени
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @PostMapping("/refresh")
     public ResponseEntity<DashboardDto> refreshDashboard(@RequestParam String username) {
         log.info("Получен POST-запрос: обновление дашборда для пользователя: {}", username);
         return ResponseEntity.ok(dashboardService.refreshDashboard(username));
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/live-metrics")
     public ResponseEntity<DashboardDto> getLiveMetrics(@RequestParam String username) {
         log.info("Получен GET-запрос: живые метрики для пользователя: {}", username);
@@ -96,6 +108,7 @@ public class DashboardController {
     }
     
     // Экспорт дашборда
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/export/pdf")
     public ResponseEntity<byte[]> exportDashboardToPDF(@RequestParam String username) {
         log.info("Получен GET-запрос: экспорт дашборда в PDF для пользователя: {}", username);
@@ -106,6 +119,7 @@ public class DashboardController {
                 .body(pdfData);
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/export/excel")
     public ResponseEntity<byte[]> exportDashboardToExcel(@RequestParam String username) {
         log.info("Получен GET-запрос: экспорт дашборда в Excel для пользователя: {}", username);
@@ -117,6 +131,7 @@ public class DashboardController {
     }
     
     // Настройки дашборда
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @PostMapping("/preferences")
     public ResponseEntity<Void> saveDashboardPreferences(
             @RequestParam String username,
@@ -126,6 +141,7 @@ public class DashboardController {
         return ResponseEntity.ok().build();
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @GetMapping("/preferences")
     public ResponseEntity<String> getDashboardPreferences(@RequestParam String username) {
         log.info("Получен GET-запрос: настройки дашборда для пользователя: {}", username);
@@ -133,6 +149,7 @@ public class DashboardController {
     }
     
     // Уведомления дашборда
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @PostMapping("/alerts")
     public ResponseEntity<Void> sendDashboardAlerts(@RequestParam String username) {
         log.info("Получен POST-запрос: отправка алертов дашборда для пользователя: {}", username);
@@ -140,6 +157,7 @@ public class DashboardController {
         return ResponseEntity.ok().build();
     }
     
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'ANALYST', 'VIEWER')")
     @PostMapping("/digest")
     public ResponseEntity<Void> sendDashboardDigest(@RequestParam String username) {
         log.info("Получен POST-запрос: отправка дайджеста дашборда для пользователя: {}", username);

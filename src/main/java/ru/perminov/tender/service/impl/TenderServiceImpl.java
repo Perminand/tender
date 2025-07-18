@@ -434,6 +434,79 @@ public class TenderServiceImpl implements TenderService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public TenderDto getTenderForSupplier(UUID tenderId) {
+        Tender tender = tenderRepository.findById(tenderId)
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        
+        // Проверяем, что тендер доступен для поставщика
+        if (tender.getStatus() != Tender.TenderStatus.PUBLISHED && 
+            tender.getStatus() != Tender.TenderStatus.BIDDING &&
+            tender.getStatus() != Tender.TenderStatus.EVALUATION &&
+            tender.getStatus() != Tender.TenderStatus.AWARDED) {
+            throw new RuntimeException("Тендер недоступен для просмотра поставщиком");
+        }
+        
+        TenderDto tenderDto = tenderMapper.toDto(tender);
+        
+        // Получаем только предложения текущего поставщика
+        // TODO: Получить userId из SecurityContext и найти его предложения
+        // Пока возвращаем тендер без предложений
+        tenderDto.setSupplierProposals(new ArrayList<>());
+        
+        // Получаем позиции тендера
+        List<TenderItemDto> items = getTenderItems(tenderId);
+        tenderDto.setTenderItems(items);
+        
+        // Добавляем пометки в title
+        if (tender.getParentTender() != null) {
+            tenderDto.setTitle(tenderDto.getTitle() + " (отделённая часть)");
+        } else if (tenderRepository.existsByParentTenderId(tender.getId())) {
+            tenderDto.setTitle(tenderDto.getTitle() + " (разделён)");
+        }
+        
+        return tenderDto;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TenderDto> getAllTendersForSupplier() {
+        // Получаем все тендеры в подходящих статусах
+        List<Tender> allTenders = tenderRepository.findAll();
+        
+        return allTenders.stream()
+                .filter(tender -> 
+                    tender.getStatus() == Tender.TenderStatus.PUBLISHED ||
+                    tender.getStatus() == Tender.TenderStatus.BIDDING ||
+                    tender.getStatus() == Tender.TenderStatus.EVALUATION ||
+                    tender.getStatus() == Tender.TenderStatus.AWARDED
+                )
+                .map(tender -> {
+                    TenderDto dto = tenderMapper.toDto(tender);
+                    
+                    // Заполняем awardedSupplier если есть awardedSupplierId
+                    if (tender.getAwardedSupplierId() != null) {
+                        Company awardedSupplier = companyRepository.findById(tender.getAwardedSupplierId()).orElse(null);
+                        if (awardedSupplier != null) {
+                            dto.setAwardedSupplier(companyMapper.toCompanyDto(awardedSupplier));
+                        }
+                    }
+                    
+                    // Не показываем предложения поставщику
+                    dto.setSupplierProposals(new ArrayList<>());
+                    
+                    // Добавляем пометки в title
+                    if (tender.getParentTender() != null) {
+                        dto.setTitle(dto.getTitle() + " (отделённая часть)");
+                    } else if (tenderRepository.existsByParentTenderId(tender.getId())) {
+                        dto.setTitle(dto.getTitle() + " (разделён)");
+                    }
+                    return dto;
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public TenderDto startBidding(UUID id) {
         Tender tender = tenderRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Тендер не найден"));

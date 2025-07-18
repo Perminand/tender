@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import ru.perminov.tender.model.Delivery;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/payments")
@@ -24,12 +25,14 @@ public class PaymentController {
     private final PaymentService paymentService;
     private final DeliveryRepository deliveryRepository;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping
     public ResponseEntity<PaymentDto> createPayment(@RequestBody PaymentDtoNew paymentDtoNew) {
         log.info("Создание платежа: {}", paymentDtoNew);
         return ResponseEntity.ok(paymentService.createPayment(paymentDtoNew));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping("/{id}")
     public ResponseEntity<PaymentDto> getPaymentById(@PathVariable UUID id) {
         log.info("Получение платежа по id: {}", id);
@@ -37,6 +40,7 @@ public class PaymentController {
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping
     public ResponseEntity<List<PaymentDto>> getAllPayments() {
         log.info("Получение всех платежей");
@@ -61,6 +65,7 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.getPaymentsBySupplier(supplierId));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PutMapping("/{id}")
     public ResponseEntity<PaymentDto> updatePayment(@PathVariable UUID id, @RequestBody PaymentDtoNew paymentDtoNew) {
         log.info("Обновление платежа id {}: {}", id, paymentDtoNew);
@@ -68,6 +73,7 @@ public class PaymentController {
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletePayment(@PathVariable UUID id) {
         log.info("Удаление платежа id {}", id);
@@ -75,6 +81,7 @@ public class PaymentController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<PaymentDto> changePaymentStatus(@PathVariable UUID id, @RequestParam String status) {
         log.info("Изменение статуса платежа id {} на {}", id, status);
@@ -82,6 +89,7 @@ public class PaymentController {
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/{id}/confirm")
     public ResponseEntity<PaymentDto> confirmPayment(@PathVariable UUID id) {
         log.info("Подтверждение оплаты платежа id {}", id);
@@ -101,12 +109,14 @@ public class PaymentController {
         return ResponseEntity.ok(paymentService.getOverduePayments());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/from-deliveries")
     public ResponseEntity<List<PaymentDto>> createPaymentsFromDeliveries(@RequestParam UUID contractId) {
         log.info("Создание платежей на основе поставок по контракту {}", contractId);
         return ResponseEntity.ok(paymentService.createPaymentsFromDeliveries(contractId));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/from-delivery/{deliveryId}")
     public ResponseEntity<PaymentDto> createPaymentFromDelivery(@PathVariable UUID deliveryId) {
         Delivery delivery = deliveryRepository.findById(deliveryId)
@@ -118,6 +128,7 @@ public class PaymentController {
         return ResponseEntity.ok(payment);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping("/status-stats")
     public ResponseEntity<Map<String, Long>> getStatusStats() {
         return ResponseEntity.ok(paymentService.getStatusStats());

@@ -10,6 +10,7 @@ import ru.perminov.tender.dto.delivery.DeliveryDto;
 import ru.perminov.tender.dto.delivery.DeliveryDtoNew;
 import ru.perminov.tender.dto.delivery.DeliveryItemDto;
 import ru.perminov.tender.service.DeliveryService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.Map;
@@ -22,12 +23,14 @@ import java.util.UUID;
 public class DeliveryController {
     private final DeliveryService deliveryService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @PostMapping
     public ResponseEntity<DeliveryDto> createDelivery(@RequestBody DeliveryDtoNew deliveryDtoNew) {
         log.info("Создание поставки: {}", deliveryDtoNew);
         return ResponseEntity.ok(deliveryService.createDelivery(deliveryDtoNew));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping("/{id}")
     public ResponseEntity<DeliveryDto> getDeliveryById(@PathVariable UUID id) {
         log.info("Получение поставки по id: {}", id);
@@ -35,6 +38,7 @@ public class DeliveryController {
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping
     public ResponseEntity<Page<DeliveryDto>> getAllDeliveries(
             @RequestParam(defaultValue = "0") int page,
@@ -67,11 +71,13 @@ public class DeliveryController {
         return ResponseEntity.ok(deliveryService.getDeliveriesBySupplier(supplierId));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping("/status-stats")
     public ResponseEntity<Map<String, Long>> getStatusStats() {
         return ResponseEntity.ok(deliveryService.getStatusStats());
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @PutMapping("/{id}")
     public ResponseEntity<DeliveryDto> updateDelivery(@PathVariable UUID id, @RequestBody DeliveryDtoNew deliveryDtoNew) {
         log.info("Обновление поставки id {}: {}", id, deliveryDtoNew);
@@ -79,6 +85,7 @@ public class DeliveryController {
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDelivery(@PathVariable UUID id) {
         log.info("Удаление поставки id {}", id);
@@ -86,6 +93,7 @@ public class DeliveryController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @PatchMapping("/{id}/status")
     public ResponseEntity<DeliveryDto> changeDeliveryStatus(@PathVariable UUID id, @RequestBody StatusChangeRequest request) {
         log.info("Изменение статуса поставки id {} на {} с комментарием: {}", id, request.getStatus(), request.getComment());
@@ -99,6 +107,7 @@ public class DeliveryController {
         return ResponseEntity.ok(deliveryService.getDeliveryItems(id));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @PostMapping("/{id}/confirm")
     public ResponseEntity<DeliveryDto> confirmDelivery(@PathVariable UUID id) {
         log.info("Подтверждение приемки поставки id {}", id);
@@ -106,6 +115,7 @@ public class DeliveryController {
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @PostMapping("/{id}/reject")
     public ResponseEntity<DeliveryDto> rejectDelivery(@PathVariable UUID id, @RequestParam String reason) {
         log.info("Отклонение поставки id {}: {}", id, reason);
@@ -113,6 +123,7 @@ public class DeliveryController {
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @PutMapping("/{deliveryId}/items/{itemId}/acceptance")
     public ResponseEntity<DeliveryItemDto> updateDeliveryItemAcceptance(
             @PathVariable UUID deliveryId,

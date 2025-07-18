@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.NotificationDto;
 import ru.perminov.tender.model.Notification;
 import ru.perminov.tender.service.NotificationService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.UUID;
@@ -19,6 +20,7 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping("/tender/{tenderId}")
     public ResponseEntity<List<NotificationDto>> getNotificationsByTender(@PathVariable UUID tenderId) {
         log.info("Получен GET-запрос: получить уведомления по тендеру {}", tenderId);
@@ -26,6 +28,7 @@ public class NotificationController {
         return ResponseEntity.ok(notifications);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @GetMapping("/supplier/{supplierId}")
     public ResponseEntity<List<NotificationDto>> getNotificationsBySupplier(@PathVariable UUID supplierId) {
         log.info("Получен GET-запрос: получить уведомления по поставщику {}", supplierId);
@@ -33,6 +36,7 @@ public class NotificationController {
         return ResponseEntity.ok(notifications);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @GetMapping("/status/{status}")
     public ResponseEntity<List<NotificationDto>> getNotificationsByStatus(@PathVariable Notification.NotificationStatus status) {
         log.info("Получен GET-запрос: получить уведомления по статусу {}", status);
@@ -72,6 +76,7 @@ public class NotificationController {
         return ResponseEntity.ok().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping
     public List<NotificationDto> getAll() {
         return notificationService.getAll();

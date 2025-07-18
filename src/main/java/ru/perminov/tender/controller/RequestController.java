@@ -10,6 +10,7 @@ import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.UUID;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @Slf4j
 @RestController
@@ -18,6 +19,7 @@ import java.util.UUID;
 public class RequestController {
     private final RequestService requestService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @GetMapping
     public ResponseEntity<List<RequestDto>> getAll() {
         log.info("Получен GET-запрос: получить все заявки");
@@ -30,12 +32,14 @@ public class RequestController {
         return ResponseEntity.ok(requests);
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @GetMapping("/{id}")
     public ResponseEntity<RequestDto> getById(@PathVariable UUID id) {
         log.info("Получен GET-запрос: получить заявку по id={}", id);
         return ResponseEntity.ok(requestService.findById(id));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @GetMapping("/test/{id}")
     public ResponseEntity<String> testById(@PathVariable UUID id) {
         log.info("Тестовый запрос для заявки id={}", id);
@@ -52,6 +56,7 @@ public class RequestController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @GetMapping("/{id}/status")
     public ResponseEntity<String> getStatus(@PathVariable UUID id) {
         log.info("Получен GET-запрос: получить статус заявки. id={}", id);
@@ -65,12 +70,14 @@ public class RequestController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @PostMapping
     public ResponseEntity<RequestDto> create(@Valid @RequestBody RequestDto dto) {
         log.info("Получен POST-запрос: создать заявку. Данные: {}", dto);
         return ResponseEntity.ok(requestService.create(dto));
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @PutMapping("/{id}")
     public ResponseEntity<RequestDto> update(@PathVariable UUID id, @Valid @RequestBody RequestDto dto) {
         log.info("Получен PUT-запрос: обновить заявку. id={}, данные: {}", id, dto);
@@ -91,6 +98,7 @@ public class RequestController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         log.info("Получен DELETE-запрос: удалить заявку. id={}", id);
@@ -98,6 +106,7 @@ public class RequestController {
         return ResponseEntity.noContent().build();
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @PostMapping("/{id}/create-tender")
     public ResponseEntity<ru.perminov.tender.dto.tender.TenderDto> createTenderFromRequest(@PathVariable UUID id) {
         log.info("Получен POST-запрос: создать тендер из заявки. id={}", id);

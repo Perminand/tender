@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.WarehouseDto;
 import ru.perminov.tender.service.WarehouseService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +18,7 @@ import java.util.UUID;
 public class WarehouseController {
     private final WarehouseService service;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping
     public ResponseEntity<List<WarehouseDto>> getAll() {
         log.info("Получен GET-запрос: получить все склады");

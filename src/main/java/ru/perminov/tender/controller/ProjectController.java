@@ -15,6 +15,7 @@ import ru.perminov.tender.dto.project.ProjectDtoNew;
 import ru.perminov.tender.dto.project.ProjectDtoUpdate;
 import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.ProjectService;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +28,7 @@ public class ProjectController {
     private final ProjectService projectService;
     private final ExcelService excelService;
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
     @GetMapping
     public ResponseEntity<List<ProjectDto>> getAll() {
         log.info("Получен GET-запрос: получить все проекты");

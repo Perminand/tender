@@ -115,6 +115,10 @@ const TenderListPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
 
+  // Получаем роль пользователя
+  const userRole = localStorage.getItem('userRole');
+  const isSupplier = userRole === 'SUPPLIER';
+
   useEffect(() => {
     loadTenders();
   }, []);
@@ -122,7 +126,16 @@ const TenderListPage: React.FC = () => {
   const loadTenders = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/tenders');
+      
+      // Получаем роль пользователя из localStorage
+      const userRole = localStorage.getItem('userRole');
+      
+      // Для поставщика используем специальный эндпоинт
+      const endpoint = userRole === 'SUPPLIER' 
+        ? '/api/tenders/supplier-list'
+        : '/api/tenders';
+      
+      const response = await api.get(endpoint);
       setTenders(response.data);
     } catch (error) {
       console.error('Error loading tenders:', error);
@@ -405,10 +418,13 @@ const TenderListPage: React.FC = () => {
               </Box>
             )}
           >
-            <MenuItem value="DRAFT">
-              <Checkbox checked={statusFilter.indexOf('DRAFT') > -1} />
-              <ListItemText primary="Черновик" />
-            </MenuItem>
+            {/* Статусы DRAFT и CANCELLED скрыты для поставщика */}
+            {!isSupplier && (
+              <MenuItem value="DRAFT">
+                <Checkbox checked={statusFilter.indexOf('DRAFT') > -1} />
+                <ListItemText primary="Черновик" />
+              </MenuItem>
+            )}
             <MenuItem value="PUBLISHED">
               <Checkbox checked={statusFilter.indexOf('PUBLISHED') > -1} />
               <ListItemText primary="Опубликован" />
@@ -425,10 +441,12 @@ const TenderListPage: React.FC = () => {
               <Checkbox checked={statusFilter.indexOf('AWARDED') > -1} />
               <ListItemText primary="Присужден" />
             </MenuItem>
-            <MenuItem value="CANCELLED">
-              <Checkbox checked={statusFilter.indexOf('CANCELLED') > -1} />
-              <ListItemText primary="Отменен" />
-            </MenuItem>
+            {!isSupplier && (
+              <MenuItem value="CANCELLED">
+                <Checkbox checked={statusFilter.indexOf('CANCELLED') > -1} />
+                <ListItemText primary="Отменен" />
+              </MenuItem>
+            )}
           </Select>
         </FormControl>
         
@@ -485,39 +503,44 @@ const TenderListPage: React.FC = () => {
                 InputLabelProps={{ shrink: true }}
               />
             </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Мин. предложений"
-                type="number"
-                value={proposalsCountFilter}
-                onChange={(e) => setProposalsCountFilter(e.target.value)}
-                inputProps={{ min: 0 }}
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Цена от"
-                type="number"
-                value={priceFromFilter}
-                onChange={(e) => setPriceFromFilter(e.target.value)}
-                inputProps={{ min: 0, step: 0.01 }}
-              />
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <TextField
-                fullWidth
-                size="small"
-                label="Цена до"
-                type="number"
-                value={priceToFilter}
-                onChange={(e) => setPriceToFilter(e.target.value)}
-                inputProps={{ min: 0, step: 0.01 }}
-              />
-            </Grid>
+            {/* Фильтры по предложениям и ценам - скрыты для поставщика */}
+            {!isSupplier && (
+              <>
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Мин. предложений"
+                    type="number"
+                    value={proposalsCountFilter}
+                    onChange={(e) => setProposalsCountFilter(e.target.value)}
+                    inputProps={{ min: 0 }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Цена от"
+                    type="number"
+                    value={priceFromFilter}
+                    onChange={(e) => setPriceFromFilter(e.target.value)}
+                    inputProps={{ min: 0, step: 0.01 }}
+                  />
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <TextField
+                    fullWidth
+                    size="small"
+                    label="Цена до"
+                    type="number"
+                    value={priceToFilter}
+                    onChange={(e) => setPriceToFilter(e.target.value)}
+                    inputProps={{ min: 0, step: 0.01 }}
+                  />
+                </Grid>
+              </>
+            )}
           </Grid>
         </Paper>
       </Collapse>
@@ -556,24 +579,29 @@ const TenderListPage: React.FC = () => {
                   Срок подачи: {formatDate(tender.submissionDeadline)}
                 </Typography>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Typography variant="body2" sx={{ mr: 1 }}>
-                    Предложений: {tender.proposalsCount}
-                  </Typography>
-                  {tender.bestPrice && (
-                    <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-                      <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5, color: 'success.main' }} />
-                      <Typography variant="body2" color="success.main">
-                        {formatPrice(tender.bestPrice)}
+                {/* Информация о предложениях - скрыта для поставщика */}
+                {!isSupplier && (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                      <Typography variant="body2" sx={{ mr: 1 }}>
+                        Предложений: {tender.proposalsCount}
                       </Typography>
+                      {tender.bestPrice && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
+                          <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5, color: 'success.main' }} />
+                          <Typography variant="body2" color="success.main">
+                            {formatPrice(tender.bestPrice)}
+                          </Typography>
+                        </Box>
+                      )}
                     </Box>
-                  )}
-                </Box>
 
-                {tender.bestSupplierName && (
-                  <Typography variant="body2" color="success.main" sx={{ mb: 2 }}>
-                    Лучшее предложение: {tender.bestSupplierName}
-                  </Typography>
+                    {tender.bestSupplierName && (
+                      <Typography variant="body2" color="success.main" sx={{ mb: 2 }}>
+                        Лучшее предложение: {tender.bestSupplierName}
+                      </Typography>
+                    )}
+                  </>
                 )}
 
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
@@ -586,97 +614,127 @@ const TenderListPage: React.FC = () => {
                     </IconButton>
                   </Tooltip>
 
-                  {tender.status === 'DRAFT' && (
-                    <Tooltip title="Редактировать">
-                      <IconButton
-                        size="small"
-                        onClick={() => navigate(`/tenders/${tender.id}/edit`)}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-
-                  {tender.status === 'DRAFT' && (
+                  {/* Кнопки управления - скрыты для поставщика */}
+                  {!isSupplier && (
                     <>
-                    <Tooltip title="Опубликовать">
-                        <IconButton
-                          size="small"
-                          onClick={() => openStatusDialog(tender.id, 'publish')}
-                        >
-                          <PublishIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Удалить">
+                      {tender.status === 'DRAFT' && (
+                        <Tooltip title="Редактировать">
+                          <IconButton
+                            size="small"
+                            onClick={() => navigate(`/tenders/${tender.id}/edit`)}
+                          >
+                            <EditIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {tender.status === 'DRAFT' && (
+                        <>
+                        <Tooltip title="Опубликовать">
+                            <IconButton
+                              size="small"
+                              onClick={() => openStatusDialog(tender.id, 'publish')}
+                            >
+                              <PublishIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Удалить">
+                            <IconButton
+                              size="small"
+                              color="error"
+                              onClick={() => handleDeleteClick(tender.id)}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+
+                      {tender.status === 'PUBLISHED' && (
+                        <Tooltip title="Начать прием предложений">
+                          <IconButton
+                            size="small"
+                            color="warning"
+                            onClick={() => openStatusDialog(tender.id, 'start-bidding')}
+                          >
+                            <TrendingUpIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {tender.status === 'BIDDING' && (
+                        <Tooltip title="Закрыть прием">
+                          <IconButton
+                            size="small"
+                            onClick={() => openStatusDialog(tender.id, 'close')}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {tender.status === 'EVALUATION' && (
+                        <>
+                          <Tooltip title="Завершить тендер">
+                            <IconButton
+                              size="small"
+                              color="success"
+                              onClick={() => openStatusDialog(tender.id, 'complete')}
+                            >
+                              <CheckCircleIcon />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="Заключить контракт">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => navigate(`/tenders/${tender.id}/contract/new`)}
+                            >
+                              <ContractIcon />
+                            </IconButton>
+                          </Tooltip>
+                        </>
+                      )}
+
+                      {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
+                        <Tooltip title="Отменить тендер">
                         <IconButton
                           size="small"
                           color="error"
-                          onClick={() => handleDeleteClick(tender.id)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Tooltip>
+                            onClick={() => openStatusDialog(tender.id, 'cancel')}
+                          >
+                            <CloseIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+                        <Tooltip title="Анализ цен">
+                          <IconButton
+                            size="small"
+                            color="info"
+                            onClick={() => navigate(`/tenders/${tender.id}/price-analysis`)}
+                          >
+                            <AssessmentIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
+
+                      {tender.status === 'AWARDED' && (
+                        <Tooltip title="Просмотр контракта">
+                          <IconButton
+                            size="small"
+                            color="primary"
+                            onClick={() => navigate(`/tenders/${tender.id}/contract`)}
+                          >
+                            <ContractIcon />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </>
                   )}
 
-                  {tender.status === 'PUBLISHED' && (
-                    <Tooltip title="Начать прием предложений">
-                      <IconButton
-                        size="small"
-                        color="warning"
-                        onClick={() => openStatusDialog(tender.id, 'start-bidding')}
-                      >
-                        <TrendingUpIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-
-                  {tender.status === 'BIDDING' && (
-                    <Tooltip title="Закрыть прием">
-                      <IconButton
-                        size="small"
-                        onClick={() => openStatusDialog(tender.id, 'close')}
-                      >
-                        <CloseIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-
-                  {tender.status === 'EVALUATION' && (
-                    <>
-                      <Tooltip title="Завершить тендер">
-                        <IconButton
-                          size="small"
-                          color="success"
-                          onClick={() => openStatusDialog(tender.id, 'complete')}
-                        >
-                          <CheckCircleIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Заключить контракт">
-                        <IconButton
-                          size="small"
-                          color="primary"
-                          onClick={() => navigate(`/tenders/${tender.id}/contract/new`)}
-                        >
-                          <ContractIcon />
-                        </IconButton>
-                      </Tooltip>
-                    </>
-                  )}
-
-                  {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
-                    <Tooltip title="Отменить тендер">
-                    <IconButton
-                      size="small"
-                      color="error"
-                        onClick={() => openStatusDialog(tender.id, 'cancel')}
-                      >
-                        <CloseIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-
+                  {/* Кнопка подачи предложения - доступна для всех в статусе BIDDING */}
                   {tender.status === 'BIDDING' && (
                     <Tooltip title="Подать предложение">
                       <IconButton
@@ -687,30 +745,6 @@ const TenderListPage: React.FC = () => {
                         <PublishIcon />
                     </IconButton>
                   </Tooltip>
-                  )}
-
-                  {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
-                    <Tooltip title="Анализ цен">
-                      <IconButton
-                        size="small"
-                        color="info"
-                        onClick={() => navigate(`/tenders/${tender.id}/price-analysis`)}
-                      >
-                        <AssessmentIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-
-                  {tender.status === 'AWARDED' && (
-                    <Tooltip title="Просмотр контракта">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => navigate(`/tenders/${tender.id}/contract`)}
-                      >
-                        <ContractIcon />
-                      </IconButton>
-                    </Tooltip>
                   )}
                 </Box>
               </CardContent>

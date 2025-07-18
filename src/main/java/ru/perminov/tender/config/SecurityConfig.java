@@ -47,45 +47,6 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
-                
-                // Эндпоинты для администраторов - полный доступ
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/settings/**").hasAnyRole("ADMIN", "MANAGER")
-                
-                // Эндпоинты для аналитиков
-                .requestMatchers("/api/analytics/**").hasAnyRole("ADMIN", "ANALYST")
-                .requestMatchers("/api/reports/**").hasAnyRole("ADMIN", "ANALYST", "MANAGER")
-                
-                // Эндпоинты для менеджеров
-                .requestMatchers("/api/dashboard/**").hasAnyRole("ADMIN", "MANAGER", "ANALYST")
-                .requestMatchers("/api/alerts/**").hasAnyRole("ADMIN", "MANAGER", "ANALYST")
-                
-                // Эндпоинты для поставщиков
-                .requestMatchers("/api/supplier/**").hasAnyRole("SUPPLIER", "ADMIN")
-                
-                // Эндпоинты для заказчиков
-                .requestMatchers("/api/customer/**").hasAnyRole("CUSTOMER", "ADMIN")
-                
-                // Основные эндпоинты системы - доступ для всех аутентифицированных пользователей
-                .requestMatchers("/api/requests/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/tenders/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/contracts/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/deliveries/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/payments/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/documents/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/proposals/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/projects/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/materials/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/categories/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/units/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/warehouses/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/companies/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/contacts/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/banks/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/notifications/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                .requestMatchers("/api/price-analysis/**").hasAnyRole("ADMIN", "MANAGER", "USER", "ANALYST")
-                
-                // Остальные эндпоинты требуют аутентификации
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

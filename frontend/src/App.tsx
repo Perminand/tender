@@ -1,9 +1,9 @@
 import React from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { getDefaultRoute as getDefaultRouteFromConfig } from './config/roles';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
 import CounterpartyListPage from './pages/CounterpartyListPage';
 import CounterpartyEditPage from './pages/CounterpartyEditPage';
 import MaterialListPage from './pages/MaterialListPage';
@@ -38,26 +38,22 @@ import ContractDetailPage from './pages/ContractDetailPage';
 import ContractManagementPage from './pages/ContractManagementPage';
 import RequestDetailPage from './pages/RequestDetailPage';
 import DeliveryEditPage from './pages/DeliveryEditPage';
-import DashboardPage from './pages/DashboardPage';
+import DashboardWrapper from './components/DashboardWrapper';
 import PaymentEditPage from './pages/PaymentEditPage';
 import PaymentDetailPage from './pages/PaymentDetailPage';
+import UserManagementPage from './pages/UserManagementPage';
+import PermissionSync from './components/PermissionSync';
 
 // Функция для определения стартовой страницы по ролям
 const getDefaultRoute = (roles: string[] = []) => {
-  if (roles.includes('ROLE_ADMIN')) return '/dashboard';
-  if (roles.includes('ROLE_MANAGER')) return '/requests/registry';
-  if (roles.includes('ROLE_SUPPLIER')) return '/proposals';
-  if (roles.includes('ROLE_CUSTOMER')) return '/contracts';
-  if (roles.includes('ROLE_ANALYST')) return '/dashboard';
-  if (roles.includes('ROLE_VIEWER')) return '/dashboard';
-  return '/login';
+  return getDefaultRouteFromConfig(roles);
 };
 
 const DefaultRedirect: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const navigate = useNavigate();
   React.useEffect(() => {
-    if (!isLoading && isAuthenticated && user) {
+    if (!isLoading && isAuthenticated && user && user.roles) {
       navigate(getDefaultRoute(user.roles), { replace: true });
     }
   }, [isLoading, isAuthenticated, user, navigate]);
@@ -66,10 +62,10 @@ const DefaultRedirect: React.FC = () => {
 
 const App: React.FC = () => (
   <AuthProvider>
+    <PermissionSync />
     <Routes>
       {/* Публичные маршруты */}
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/register" element={<RegisterPage />} />
       
       {/* Защищенные маршруты */}
       <Route path="/" element={
@@ -83,7 +79,7 @@ const App: React.FC = () => (
       <Route path="/dashboard" element={
         <ProtectedRoute>
           <Layout>
-            <DashboardPage />
+            <DashboardWrapper />
           </Layout>
         </ProtectedRoute>
       } />
@@ -281,6 +277,13 @@ const App: React.FC = () => (
           </Layout>
         </ProtectedRoute>
       } />
+      <Route path="/warehouses" element={
+        <ProtectedRoute>
+          <Layout>
+            <WarehouseListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
       <Route path="/tenders" element={
         <ProtectedRoute>
           <Layout>
@@ -423,11 +426,9 @@ const App: React.FC = () => (
       } />
       <Route path="/payments/new" element={
         <ProtectedRoute>
-          <ProtectedRoute>
-            <Layout>
-              <PaymentEditPage />
-            </Layout>
-          </ProtectedRoute>
+          <Layout>
+            <PaymentEditPage />
+          </Layout>
         </ProtectedRoute>
       } />
       <Route path="/payments/:id" element={
@@ -455,6 +456,22 @@ const App: React.FC = () => (
         <ProtectedRoute>
           <Layout>
             <DocumentDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/price-analysis" element={
+        <ProtectedRoute>
+          <Layout>
+            <PriceAnalysisPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Маршрут для управления пользователями (только для администраторов) */}
+      <Route path="/users" element={
+        <ProtectedRoute requiredRoles={['ROLE_ADMIN']}>
+          <Layout>
+            <UserManagementPage />
           </Layout>
         </ProtectedRoute>
       } />

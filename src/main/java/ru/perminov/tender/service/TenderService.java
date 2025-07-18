@@ -38,6 +38,10 @@ public interface TenderService {
     
     TenderDto getTenderWithBestPricesByItems(UUID tenderId);
 
+    TenderDto getTenderForSupplier(UUID tenderId);
+
+    List<TenderDto> getAllTendersForSupplier();
+
     TenderDto startBidding(UUID id);
 
     TenderDto completeTender(UUID id);

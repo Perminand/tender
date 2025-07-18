@@ -161,45 +161,14 @@ const LoginPage: React.FC = () => {
             <Button
               variant="outlined"
               size="small"
-              onClick={() => handleDemoLogin('supplier', 'password')}
-              disabled={isLoading}
-            >
-              Поставщик
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
               onClick={() => handleDemoLogin('customer', 'password')}
               disabled={isLoading}
             >
               Заказчик
             </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => handleDemoLogin('analyst', 'password')}
-              disabled={isLoading}
-            >
-              Аналитик
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              onClick={() => handleDemoLogin('viewer', 'password')}
-              disabled={isLoading}
-            >
-              Просмотр
-            </Button>
           </Box>
 
-          <Box sx={{ mt: 3, textAlign: 'center' }}>
-            <Typography variant="body2" color="text.secondary">
-              Нет аккаунта?{' '}
-              <Link component={RouterLink} to="/register" variant="body2">
-                Зарегистрироваться
-              </Link>
-            </Typography>
-          </Box>
+
         </Paper>
       </Box>
     </Container>

@@ -42,15 +42,17 @@ interface AlertNotificationProps {
   username?: string;
 }
 
-const AlertNotification: React.FC<AlertNotificationProps> = ({ username = 'admin' }) => {
+const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchAlerts();
-    fetchUnreadCount();
+    if (username) {
+      fetchAlerts();
+      fetchUnreadCount();
+    }
   }, [username]);
 
   const fetchAlerts = async () => {

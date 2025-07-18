@@ -20,6 +20,10 @@ import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -142,5 +146,94 @@ public class AuthService {
         log.info("Выход пользователя");
         // В stateless архитектуре logout обычно обрабатывается на клиенте
         // Здесь можно добавить логику для blacklist токенов если необходимо
+    }
+
+    public Map<String, Object> getUserPermissions(String username) {
+        log.info("Получение разрешений для пользователя: {}", username);
+        
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+        
+        Map<String, Object> permissions = new HashMap<>();
+        
+        // Добавляем роли пользователя
+        Set<String> roles = user.getRoles().stream()
+                .map(role -> role.name())
+                .collect(Collectors.toSet());
+        permissions.put("roles", roles);
+        
+        // Добавляем разрешения на основе ролей
+        Set<String> permissionsList = new HashSet<>();
+        
+        if (roles.contains("ADMIN")) {
+            permissionsList.addAll(Arrays.asList(
+                "dashboard:read", "dashboard:write",
+                "requests:read", "requests:write", "requests:delete",
+                "tenders:read", "tenders:write", "tenders:delete",
+                "contracts:read", "contracts:write", "contracts:delete",
+                "deliveries:read", "deliveries:write", "deliveries:delete",
+                "payments:read", "payments:write", "payments:delete",
+                "documents:read", "documents:write", "documents:delete",
+                "notifications:read", "notifications:write",
+                "alerts:read", "alerts:write",
+                "companies:read", "companies:write", "companies:delete",
+                "materials:read", "materials:write", "materials:delete",
+                "projects:read", "projects:write", "projects:delete",
+                "settings:read", "settings:write",
+                "users:read", "users:write", "users:delete"
+            ));
+        } else if (roles.contains("MANAGER")) {
+            permissionsList.addAll(Arrays.asList(
+                "dashboard:read", "dashboard:write",
+                "requests:read", "requests:write",
+                "tenders:read", "tenders:write",
+                "contracts:read", "contracts:write",
+                "deliveries:read", "deliveries:write",
+                "payments:read", "payments:write",
+                "documents:read", "documents:write",
+                "notifications:read", "notifications:write",
+                "alerts:read", "alerts:write",
+                "companies:read", "companies:write",
+                "materials:read", "materials:write",
+                "projects:read", "projects:write"
+            ));
+        } else if (roles.contains("CUSTOMER")) {
+            permissionsList.addAll(Arrays.asList(
+                "dashboard:read",
+                "requests:read", "requests:write",
+                "alerts:read",
+                "companies:read",
+                "materials:read",
+                "projects:read"
+            ));
+        } else if (roles.contains("SUPPLIER")) {
+            permissionsList.addAll(Arrays.asList(
+                "tenders:read",
+                "proposals:read", "proposals:write",
+                "notifications:read"
+            ));
+        } else if (roles.contains("VIEWER")) {
+            permissionsList.addAll(Arrays.asList(
+                "dashboard:read",
+                "requests:read",
+                "tenders:read",
+                "contracts:read",
+                "deliveries:read",
+                "payments:read",
+                "documents:read",
+                "notifications:read",
+                "alerts:read",
+                "companies:read",
+                "materials:read",
+                "projects:read"
+            ));
+        }
+        
+        permissions.put("permissions", permissionsList);
+        permissions.put("username", username);
+        permissions.put("companyId", user.getCompany() != null ? user.getCompany().getId().toString() : null);
+        
+        log.info("Разрешения для пользователя {}: {}", username, permissions);
+        return permissions;
     }
 } 

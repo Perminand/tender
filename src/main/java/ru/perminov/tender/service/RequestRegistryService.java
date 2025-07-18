@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface RequestRegistryService {
 
-    List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName);
+    List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName, String companyId);
 
     ByteArrayInputStream exportRegistryToExcel(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName);
 
