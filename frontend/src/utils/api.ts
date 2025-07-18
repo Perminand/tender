@@ -5,8 +5,8 @@ const getBaseURL = () => {
   if (import.meta.env.DEV) {
     return 'http://localhost:8080';
   }
-  // В продакшене используем текущий хост
-  return window.location.origin.replace(':5173', ':8080');
+  // В продакшене используем тот же хост, но порт 8080
+  return `${window.location.protocol}//${window.location.hostname}:8080`;
 };
 
 // Общий HTTP-клиент для API
