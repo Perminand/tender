@@ -45,6 +45,7 @@ public class SecurityConfig {
                 // Публичные эндпоинты
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
                 // Статические ресурсы и корневой путь
