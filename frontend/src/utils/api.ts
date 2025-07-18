@@ -5,8 +5,13 @@ const getBaseURL = () => {
   if (import.meta.env.DEV) {
     return 'http://localhost:8080';
   }
-  // В продакшене используем текущий хост
-  return window.location.origin.replace(':5173', ':8080');
+  // В продакшене используем тот же хост, но порт 8080
+  // Проверяем, что мы не на localhost в продакшене
+  const hostname = window.location.hostname;
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    console.warn('Frontend running on localhost in production mode');
+  }
+  return `${window.location.protocol}//${hostname}:8080`;
 };
 
 // Общий HTTP-клиент для API
@@ -15,7 +20,31 @@ export const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 секунд таймаут
 });
+
+// Добавляем перехватчик для логирования ошибок
+api.interceptors.request.use(
+  (config) => {
+    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('API Request Error:', error);
+    return Promise.reject(error);
+  }
+);
+
+api.interceptors.response.use(
+  (response) => {
+    console.log(`API Response: ${response.status} ${response.config.url}`);
+    return response;
+  },
+  (error) => {
+    console.error('API Response Error:', error.response?.status, error.response?.data);
+    return Promise.reject(error);
+  }
+);
 
 // Функция для добавления токена к запросам
 export const setAuthToken = (token: string | null) => {

@@ -1,20 +1,19 @@
 spring:
   datasource:
     driverClassName: org.postgresql.Driver
-    url: jdbc:postgresql://localhost:5432/tender
-    username: tender
-    password: tender
+    url: jdbc:postgresql://db:5432/tender
+    username: tender_user
+    password: tender_password
   output:
     ansi:
-      enabled: ALWAYS
+      enabled: NEVER
   jpa:
     hibernate:
       ddl-auto: none
-    open-in-view: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
-        format_sql: true
+        format_sql: false
   http:
     encoding:
       charset: UTF-8
@@ -40,13 +39,16 @@ server:
       charset: UTF-8
       enabled: true
       force: true
+  address: 0.0.0.0
 
 logging:
+  level:
+    root: INFO
+    ru.perminov.tender: DEBUG
+    org.springframework.security: DEBUG
   charset:
     console: UTF-8
     file: UTF-8
-  level:
-    org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
 
 # Notification settings
 notification:
@@ -64,4 +66,4 @@ notification:
 jwt:
   secret: ${JWT_SECRET:iuLTU8rq83ssfe4gfege5ge5hryjtyumjt7mt7mh6iu}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds 
