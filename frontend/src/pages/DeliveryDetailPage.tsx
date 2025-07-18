@@ -35,6 +35,7 @@ import {
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import DeliveryStatusManager from '../components/DeliveryStatusManager';
+import { api } from '../utils/api';
 
 interface DeliveryItem {
   id: string;
@@ -103,7 +104,7 @@ const DeliveryDetailPage: React.FC = () => {
 
   const fetchDelivery = async () => {
     try {
-      const response = await fetch(`/api/deliveries/${id}`);
+      const response = await api.get(`/deliveries/${id}`);
       if (response.ok) {
         const data = await response.json();
         setDelivery(data);
@@ -120,7 +121,7 @@ const DeliveryDetailPage: React.FC = () => {
 
   const fetchPayments = async () => {
     try {
-      const response = await fetch(`/api/payments/delivery/${id}`);
+      const response = await api.get(`/payments/delivery/${id}`);
       if (response.ok) {
         const data = await response.json();
         setPayments(data);
@@ -147,12 +148,11 @@ const DeliveryDetailPage: React.FC = () => {
     if (!selectedItem) return;
 
     try {
-      const response = await fetch(`/api/deliveries/${id}/items/${selectedItem.id}/acceptance`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(acceptanceData),
+      const response = await api.put(`/deliveries/${id}/items/${selectedItem.id}/acceptance`, {
+        acceptedQuantity: acceptanceData.acceptedQuantity,
+        rejectedQuantity: acceptanceData.rejectedQuantity,
+        qualityNotes: acceptanceData.qualityNotes,
+        rejectionReason: acceptanceData.rejectionReason,
       });
 
       if (response.ok) {
@@ -169,15 +169,9 @@ const DeliveryDetailPage: React.FC = () => {
 
   const handleStatusChange = async (newStatus: string, comment: string) => {
     try {
-      const response = await fetch(`/api/deliveries/${id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: newStatus,
-          comment: comment
-        }),
+      const response = await api.patch(`/deliveries/${id}/status`, {
+        status: newStatus,
+        comment: comment
       });
 
       if (response.ok) {

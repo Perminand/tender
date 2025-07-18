@@ -39,6 +39,7 @@ import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
+import { api } from '../utils/api';
 
 interface ContractItem {
   id: string;
@@ -95,12 +96,12 @@ const ContractListPage: React.FC = () => {
   // Загрузка статистики по статусам
   const fetchStatusStats = async () => {
     try {
-      const response = await fetch('/api/contracts/status-stats');
-      if (response.ok) {
-        const data = await response.json();
+      const response = await api.get('/api/contracts/status-stats');
+      const data = response.data;
         setStatusStats(data);
+    } catch (error) {
+      console.error('Ошибка при загрузке статистики статусов:', error);
       }
-    } catch (e) {}
   };
   useEffect(() => { fetchStatusStats(); }, []);
   const reloadAll = () => { fetchContracts(); fetchStatusStats(); };
@@ -108,10 +109,11 @@ const ContractListPage: React.FC = () => {
   const fetchContracts = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/contracts');
-      const data = await response.json();
+      const response = await api.get('/api/contracts');
+      const data = response.data;
       setContracts(data);
     } catch (error) {
+      console.error('Ошибка при загрузке контрактов:', error);
       showSnackbar('Ошибка при загрузке контрактов', 'error');
     } finally {
       setLoading(false);
@@ -132,7 +134,23 @@ const ContractListPage: React.FC = () => {
     setDialogOpen(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (selectedContractId) {
+      try {
+        await api.delete(`/api/contracts/${selectedContractId}`);
+        showSnackbar('Контракт удален', 'success');
+        reloadAll();
+      } catch (error) {
+        console.error('Ошибка при удалении контракта:', error);
+        showSnackbar('Ошибка при удалении контракта', 'error');
+      } finally {
+        setDeleteDialogOpen(false);
+        setSelectedContractId(null);
+      }
+    }
+  };
+
+  const openDeleteDialog = (id: string) => {
     setSelectedContractId(id);
     setDeleteDialogOpen(true);
   };
@@ -140,7 +158,7 @@ const ContractListPage: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (selectedContractId) {
       try {
-        await fetch(`/api/contracts/${selectedContractId}`, { method: 'DELETE' });
+        await api.delete(`/contracts/${selectedContractId}`);
         showSnackbar('Контракт удален', 'success');
         reloadAll();
       } catch (error) {
@@ -152,48 +170,33 @@ const ContractListPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    
-    try {
-      // Преобразуем даты в ISO-формат (yyyy-MM-dd)
-      const rawStartDate = formData.get('startDate');
-      const rawEndDate = formData.get('endDate');
-      const startDate = rawStartDate ? dayjs(rawStartDate as string).format('YYYY-MM-DD') : null;
-      const endDate = rawEndDate ? dayjs(rawEndDate as string).format('YYYY-MM-DD') : null;
+  const handleSubmit = async () => {
+    if (!formData.contractNumber || !formData.supplierId || !formData.tenderId) {
+      showSnackbar('Заполните все обязательные поля', 'error');
+      return;
+    }
 
+    try {
       const submitData = {
-        contractNumber: formData.get('contractNumber'),
-        title: formData.get('title'),
-        status: status,
-        totalAmount: Number(formData.get('totalAmount')),
-        startDate,
-        endDate,
-        terms: formData.get('terms'),
-        description: formData.get('description'),
+        ...formData,
+        startDate: formData.startDate?.toISOString(),
+        endDate: formData.endDate?.toISOString(),
       };
 
       if (editingContract) {
-        await fetch(`/api/contracts/${editingContract.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
+        await api.put(`/api/contracts/${editingContract.id}`, submitData);
         showSnackbar('Контракт обновлен', 'success');
       } else {
-        await fetch('/api/contracts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
+        await api.post('/api/contracts', submitData);
         showSnackbar('Контракт создан', 'success');
       }
       
-      setDialogOpen(false);
+      handleCloseDialog();
       reloadAll();
-    } catch (error) {
-      showSnackbar('Ошибка при сохранении контракта', 'error');
+    } catch (error: any) {
+      console.error('Ошибка при сохранении контракта:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка при сохранении контракта';
+      showSnackbar(errorMessage, 'error');
     }
   };
 
@@ -435,7 +438,7 @@ const ContractListPage: React.FC = () => {
                   <IconButton
                     size="small"
                     color="error"
-                    onClick={() => handleDelete(contract.id)}
+                    onClick={() => openDeleteDialog(contract.id)}
                     title="Удалить"
                   >
                     <DeleteIcon />

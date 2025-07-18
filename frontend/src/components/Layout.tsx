@@ -24,23 +24,30 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import LogoutIcon from '@mui/icons-material/Logout';
+import Menu from '@mui/material/Menu';
+import MenuItem from '@mui/material/MenuItem';
+import Avatar from '@mui/material/Avatar';
+import Chip from '@mui/material/Chip';
+import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import AlertNotification from './AlertNotification';
+import { useAuth } from '../contexts/AuthContext';
 
 const menuItems = [
-  { label: 'Дашборд', to: '/dashboard', icon: <DashboardIcon /> },
-  { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon /> },
-  { label: 'Тендеры', to: '/tenders', icon: <GavelIcon /> },
-  { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon /> },
-  { label: 'Контракты', to: '/contracts', icon: <DescriptionIcon /> },
-  { label: 'Поставки', to: '/deliveries', icon: <LocalShippingIcon /> },
-  { label: 'Платежи', to: '/payments', icon: <PaymentIcon /> },
-  { label: 'Документы', to: '/documents', icon: <InsertDriveFileIcon /> },
-  { label: 'Уведомления', to: '/notifications', icon: <NotificationsIcon /> },
-  { label: 'Справочники', to: '/reference', icon: <MenuBookIcon /> },
-  { label: 'Настройки', to: '/settings', icon: <SettingsIcon /> },
+  { label: 'Дашборд', to: '/dashboard', icon: <DashboardIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST', 'ROLE_VIEWER'] },
+  { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+  { label: 'Тендеры', to: '/tenders', icon: <GavelIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_SUPPLIER', 'ROLE_VIEWER'] },
+  { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon />, roles: ['ROLE_SUPPLIER', 'ROLE_MANAGER', 'ROLE_ADMIN'] },
+  { label: 'Контракты', to: '/contracts', icon: <DescriptionIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_CUSTOMER', 'ROLE_VIEWER'] },
+  { label: 'Поставки', to: '/deliveries', icon: <LocalShippingIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+  { label: 'Платежи', to: '/payments', icon: <PaymentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+  { label: 'Документы', to: '/documents', icon: <InsertDriveFileIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+  { label: 'Уведомления', to: '/notifications', icon: <NotificationsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+  { label: 'Справочники', to: '/reference', icon: <MenuBookIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+  { label: 'Настройки', to: '/settings', icon: <SettingsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
 ];
 
 const drawerWidth = 220;
@@ -50,16 +57,37 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
   };
 
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+    handleUserMenuClose();
+  };
+
+  const filteredMenuItems = menuItems.filter(item =>
+    !item.roles || item.roles.some(role => user?.roles.includes(role))
+  );
+
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
       <Toolbar />
       <List sx={{ flexGrow: 1 }}>
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const selected = location.pathname.startsWith(item.to);
           return (
             <ListItem key={item.to} disablePadding>
@@ -115,6 +143,55 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <AlertNotification />
+          
+          {/* Пользовательское меню */}
+          {user && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Chip
+                label={user.roles.join(', ')}
+                size="small"
+                color="secondary"
+                variant="outlined"
+              />
+              <IconButton
+                color="inherit"
+                onClick={handleUserMenuOpen}
+                sx={{ ml: 1 }}
+              >
+                <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                  {user.firstName.charAt(0).toUpperCase()}
+                </Avatar>
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                open={Boolean(anchorEl)}
+                onClose={handleUserMenuClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+              >
+                <MenuItem disabled>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                    <Typography variant="subtitle2">
+                      {user.firstName} {user.lastName}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {user.email}
+                    </Typography>
+                  </Box>
+                </MenuItem>
+                <MenuItem onClick={handleLogout}>
+                  <LogoutIcon sx={{ mr: 1 }} />
+                  Выйти
+                </MenuItem>
+              </Menu>
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
       {/* Permanent drawer for desktop, temporary for mobile */}

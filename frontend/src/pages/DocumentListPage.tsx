@@ -178,18 +178,10 @@ const DocumentListPage: React.FC = () => {
       };
 
       if (editingDocument) {
-        await fetch(`/api/documents/${editingDocument.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
+        await api.put(`/api/documents/${editingDocument.id}`, submitData);
         showSnackbar('Документ обновлен', 'success');
       } else {
-        await fetch('/api/documents', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
+        await api.post('/api/documents', submitData);
         showSnackbar('Документ создан', 'success');
       }
       

@@ -32,6 +32,7 @@ import {
   FileUpload as FileUploadIcon 
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { api } from '../utils/api';
 import ConfirmationDialog from './ConfirmationDialog';
 
 export interface DictionaryItem {
@@ -97,18 +98,10 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
   const fetchItems = async () => {
     try {
       setLoading(true);
-      const response = await fetch(apiEndpoint);
-      if (response.ok) {
-        const data = await response.json();
+      const response = await api.get(apiEndpoint);
+      const data = response.data;
         const transformedData = transformData ? data.map(transformData) : data;
         setItems(transformedData);
-      } else {
-        setSnackbar({
-          open: true,
-          message: 'Ошибка при загрузке данных',
-          severity: 'error'
-        });
-      }
     } catch (error) {
       console.error('Error fetching items:', error);
       setSnackbar({
@@ -173,17 +166,13 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
         ? `${apiEndpoint}/${editingItem.id}`
         : apiEndpoint;
       
-      const method = editingItem ? 'PUT' : 'POST';
-      
-      const response = await fetch(url, {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
-      });
+      let response;
+      if (editingItem) {
+        response = await api.put(url, formData);
+      } else {
+        response = await api.post(url, formData);
+      }
 
-      if (response.ok) {
         handleCloseDialog();
         fetchItems();
         setSnackbar({
@@ -191,19 +180,12 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
           message: editingItem ? 'Элемент успешно обновлен' : 'Элемент успешно добавлен',
           severity: 'success'
         });
-      } else {
-        const errorText = await response.text();
-        setSnackbar({
-          open: true,
-          message: errorText || 'Ошибка при сохранении',
-          severity: 'error'
-        });
-      }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving item:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data || 'Ошибка при сохранении';
       setSnackbar({
         open: true,
-        message: 'Ошибка сети при сохранении',
+        message: errorMessage,
         severity: 'error'
       });
     }
@@ -217,34 +199,19 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
   const confirmDelete = async () => {
     if (!itemToDelete) return;
     try {
-      const response = await fetch(`${apiEndpoint}/${itemToDelete.id}`, { method: 'DELETE' });
-      if (response.ok) {
+      await api.delete(`${apiEndpoint}/${itemToDelete.id}`);
         fetchItems();
         setSnackbar({
           open: true,
           message: 'Элемент успешно удален',
           severity: 'success'
         });
-      } else {
-        let errorText = await response.text();
-        let errorMessage = 'Ошибка при удалении';
-        try {
-          const errorJson = JSON.parse(errorText);
-          if (typeof errorJson === 'object' && errorJson !== null) {
-            const firstValue = Object.values(errorJson).find(v => typeof v === 'string');
-            if (firstValue) errorMessage = firstValue;
-          }
-        } catch {}
-        setSnackbar({
-          open: true,
-          message: errorMessage,
-          severity: 'error'
-        });
-      }
-    } catch {
+    } catch (error: any) {
+      console.error('Error deleting item:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data || 'Ошибка при удалении';
       setSnackbar({
         open: true,
-        message: 'Ошибка сети при удалении',
+        message: errorMessage,
         severity: 'error'
       });
     } finally {
@@ -255,12 +222,11 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
 
   const handleExport = async () => {
     try {
-      const response = await fetch(`${apiEndpoint}/export`);
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
+      const response = await api.get(`${apiEndpoint}/export`, {
+        responseType: 'blob'
+      });
       
-      const blob = await response.blob();
+      const blob = new Blob([response.data]);
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -295,19 +261,19 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
     const formData = new FormData();
     formData.append('file', file);
     try {
-      const response = await fetch(`${apiEndpoint}/import`, { method: 'POST', body: formData });
-      if (!response.ok) {
-        const text = await response.text();
-        setImportLog({imported: 0, errors: [{row: 0, message: text || 'Ошибка сети или сервера'}]});
-        setImportDialogOpen(true);
-        return;
-      }
-      const result = await response.json();
+      const response = await api.post(`${apiEndpoint}/import`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      const result = response.data;
       setImportLog(result);
       setImportDialogOpen(true);
       fetchItems();
-    } catch (e) {
-      setImportLog({imported: 0, errors: [{row: 0, message: 'Ошибка сети или сервера'}]});
+    } catch (error: any) {
+      console.error('Import error:', error);
+      const errorMessage = error.response?.data?.message || error.response?.data || 'Ошибка сети или сервера';
+      setImportLog({imported: 0, errors: [{row: 0, message: errorMessage}]});
       setImportDialogOpen(true);
     }
   };
@@ -507,9 +473,9 @@ const DictionaryPage: React.FC<DictionaryPageProps> = ({
         <ConfirmationDialog
           open={deleteDialogOpen}
           title="Удаление"
-          description={`Вы уверены, что хотите удалить этот элемент?`}
+          message={`Вы уверены, что хотите удалить этот элемент?`}
           onConfirm={confirmDelete}
-          onClose={() => {
+          onCancel={() => {
             setDeleteDialogOpen(false);
             setItemToDelete(null);
           }}

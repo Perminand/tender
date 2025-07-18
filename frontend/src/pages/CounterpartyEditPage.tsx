@@ -203,13 +203,9 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
         );
         if (!foundType && companyData.legalForm.trim()) {
           try {
-            const response = await fetch('/api/company/type-companies', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ name: companyData.legalForm }),
-            });
+            const response = await api.post('/api/company/type-companies', { name: companyData.legalForm });
             if (response.ok) {
-              const createdType: CompanyType = await response.json();
+              const createdType: CompanyType = response.data;
               setCompanyTypes(prev => [...prev, createdType]);
               foundType = createdType;
             } else {
@@ -245,14 +241,14 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
     }
     setBikLoading(prev => ({ ...prev, [index]: true }));
     try {
-      const response = await fetch(`/api/banks/bik/${bik}`);
+      const response = await api.get(`/api/banks/bik/${bik}`);
       if (!response.ok) {
         if (response.status === 404) {
           throw new Error('Банк не найден');
         }
         throw new Error('Ошибка сервера');
       }
-      const data: BankDetails = await response.json();
+      const data: BankDetails = response.data;
       setValue(`bankDetails.${index}.bankName`, data.bankName, { shouldValidate: true });
       setValue(`bankDetails.${index}.correspondentAccount`, data.correspondentAccount, { shouldValidate: true });
     } catch (error) {
@@ -683,20 +679,16 @@ const ContactList = ({ control, nestIndex, register, errors, fields, append, rem
     if (newContactTypeName.trim()) {
       try {
         console.log('Отправляем запрос на создание типа контакта:', newContactTypeName);
-        const res = await fetch('/api/contact-types', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: newContactTypeName }),
-        });
+        const res = await api.post('/api/contact-types', { name: newContactTypeName });
         console.log('Ответ сервера:', res.status, res.statusText);
         
         if (res.ok) {
-          const newType = await res.json();
+          const newType = res.data;
           console.log('Создан новый тип контакта:', newType);
           setAllContactTypes((prev: ContactType[]) => [...prev, newType]);
           fieldOnChange(newType.name);
         } else {
-          const errorText = await res.text();
+          const errorText = res.data || res.statusText;
           console.error('Ошибка создания типа контакта:', errorText);
           alert(`Ошибка создания типа контакта: ${errorText}`);
         }

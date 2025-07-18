@@ -46,6 +46,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
 import DeliveryStatusManager from '../components/DeliveryStatusManager';
+import { api } from '../utils/api';
 
 interface Delivery {
   id: number;
@@ -192,9 +193,9 @@ const DeliveryListPage: React.FC = () => {
   // Подгружаем списки при открытии диалога
   useEffect(() => {
     if (dialogOpen) {
-      fetch('/api/companies?role=SUPPLIER').then(res => res.json()).then(setSuppliers);
-      fetch('/api/contracts').then(res => res.json()).then(setContracts);
-      fetch('/api/warehouses').then(res => res.json()).then(setWarehouses);
+      api.get('/companies?role=SUPPLIER').then(res => setSuppliers(res.data));
+      api.get('/contracts').then(res => setContracts(res.data));
+      api.get('/warehouses').then(res => setWarehouses(res.data));
     }
   }, [dialogOpen]);
 
@@ -239,12 +240,11 @@ const DeliveryListPage: React.FC = () => {
   // Загружаем позиции контракта при выборе контракта
   useEffect(() => {
     if (selectedContractId && selectedContractId !== '') {
-      fetch(`/api/contracts/${selectedContractId}/items`)
-        .then(res => res.json())
-        .then((items: ContractItem[]) => {
-          setContractItems(items);
+      api.get(`/contracts/${selectedContractId}/items`)
+        .then(res => {
+          setContractItems(res.data);
           // Инициализируем позиции поставки на основе позиций контракта
-          const initialDeliveryItems: DeliveryItem[] = items.map((item, index) => ({
+          const initialDeliveryItems: DeliveryItem[] = res.data.map((item: ContractItem, index: number) => ({
             contractItemId: item.id,
             materialId: item.materialId,
             materialName: item.materialName,
@@ -278,9 +278,8 @@ const DeliveryListPage: React.FC = () => {
       setSelectedWarehouseId(editingDelivery.warehouseId?.toString() || '');
       // Загружаем позиции поставки для редактирования
       if (editingDelivery.id) {
-        fetch(`/api/deliveries/${editingDelivery.id}/items`)
-          .then(res => res.json())
-          .then(setDeliveryItems)
+        api.get(`/deliveries/${editingDelivery.id}/items`)
+          .then(res => setDeliveryItems(res.data))
           .catch(error => {
             console.error('Ошибка при загрузке позиций поставки:', error);
             setDeliveryItems([]);
@@ -323,9 +322,9 @@ const DeliveryListPage: React.FC = () => {
       params.append('page', page.toString());
       params.append('size', rowsPerPage.toString());
       
-      const response = await fetch(`/api/deliveries?${params.toString()}`);
-      if (response.ok) {
-      const data = await response.json();
+      const response = await api.get(`/api/deliveries?${params.toString()}`);
+      if (response.status === 200) {
+      const data = response.data;
         setDeliveries(data.content || data);
         setTotalCount(data.totalElements || data.length);
       } else {
@@ -360,7 +359,7 @@ const DeliveryListPage: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (selectedDeliveryId) {
       try {
-        await fetch(`/api/deliveries/${selectedDeliveryId}`, { method: 'DELETE' });
+        await api.delete(`/api/deliveries/${selectedDeliveryId}`);
         showSnackbar('Поставка удалена', 'success');
         reloadAll();
       } catch (error) {
@@ -374,7 +373,7 @@ const DeliveryListPage: React.FC = () => {
 
   const handleConfirm = async (id: number) => {
     try {
-      await fetch(`/api/deliveries/${id}/confirm`, { method: 'POST' });
+      await api.post(`/api/deliveries/${id}/confirm`);
       showSnackbar('Поставка подтверждена', 'success');
       reloadAll();
     } catch (error) {
@@ -386,9 +385,7 @@ const DeliveryListPage: React.FC = () => {
     if (!selectedDelivery || !rejectReason.trim()) return;
     
     try {
-      await fetch(`/api/deliveries/${selectedDelivery.id}/reject?reason=${encodeURIComponent(rejectReason)}`, { 
-        method: 'POST' 
-      });
+      await api.post(`/api/deliveries/${selectedDelivery.id}/reject?reason=${encodeURIComponent(rejectReason)}`);
       showSnackbar('Поставка отклонена', 'success');
       setRejectDialogOpen(false);
       setRejectReason('');
@@ -408,18 +405,12 @@ const DeliveryListPage: React.FC = () => {
     if (!selectedDeliveryForStatus) return;
     
     try {
-      const response = await fetch(`/api/deliveries/${selectedDeliveryForStatus.id}/status`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: newStatus,
-          comment: comment
-        }),
+      const response = await api.patch(`/api/deliveries/${selectedDeliveryForStatus.id}/status`, {
+        status: newStatus,
+        comment: comment
       });
 
-      if (response.ok) {
+      if (response.status === 200) {
         showSnackbar('Статус поставки изменен', 'success');
         setStatusManagerOpen(false);
         reloadAll();
@@ -440,11 +431,8 @@ const DeliveryListPage: React.FC = () => {
   const handleConfirmCreatePayment = async () => {
     if (selectedDeliveryForPayment) {
       try {
-        const response = await fetch(`/api/payments/from-delivery/${selectedDeliveryForPayment.id}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-        });
-        if (response.ok) {
+        const response = await api.post(`/payments/from-delivery/${selectedDeliveryForPayment.id}`);
+        if (response.status === 201) {
           showSnackbar('Платеж по поставке создан', 'success');
         } else {
           showSnackbar('Ошибка при создании платежа', 'error');
@@ -523,15 +511,16 @@ const DeliveryListPage: React.FC = () => {
       
       const method = editingDelivery ? 'PUT' : 'POST';
       
-      const response = await fetch(url, {
+      const response = await api.request({
+        url,
         method,
+        data: submitData,
         headers: {
           'Content-Type': 'application/json',
         },
-          body: JSON.stringify(submitData),
-        });
+      });
 
-      if (response.ok) {
+      if (response.status === 200) {
         showSnackbar(
           editingDelivery ? 'Поставка обновлена' : 'Поставка создана', 
           'success'
@@ -615,9 +604,9 @@ const DeliveryListPage: React.FC = () => {
   // Загрузка статистики по статусам
   const fetchStatusStats = async () => {
     try {
-      const response = await fetch('/api/deliveries/status-stats');
-      if (response.ok) {
-        const data = await response.json();
+      const response = await api.get('/api/deliveries/status-stats');
+      if (response.status === 200) {
+        const data = response.data;
         setStatusStats(data);
       }
     } catch (e) {

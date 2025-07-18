@@ -6,6 +6,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { api } from '../utils/api';
 
 interface DeliveryItem {
   contractItemId: string;
@@ -69,30 +70,28 @@ const DeliveryEditPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   useEffect(() => {
-    fetch('/api/contracts').then(res => res.json()).then(setContracts);
-    fetch('/api/companies?role=SUPPLIER').then(res => res.json()).then(setSuppliers);
-    fetch('/api/warehouses').then(res => res.json()).then(setWarehouses);
+    api.get('/contracts').then(res => setContracts(res.data));
+    api.get('/companies?role=SUPPLIER').then(res => setSuppliers(res.data));
+    api.get('/warehouses').then(res => setWarehouses(res.data));
   }, []);
 
   // Подгружаем контракт и его позиции
   useEffect(() => {
     if (contractId) {
-      fetch(`/api/contracts/${contractId}`)
-        .then(res => res.json())
-        .then((c: Contract) => {
-          console.log('Contract data:', c); // Отладочная информация
-          setContract(c);
-          if (c.tender?.awardedSupplierId) {
-            console.log('Awarded supplier ID:', c.tender.awardedSupplierId); // Отладочная информация
-            setSelectedSupplierId(c.tender.awardedSupplierId);
+      api.get(`/contracts/${contractId}`)
+        .then(res => {
+          console.log('Contract data:', res.data); // Отладочная информация
+          setContract(res.data);
+          if (res.data.tender?.awardedSupplierId) {
+            console.log('Awarded supplier ID:', res.data.tender.awardedSupplierId); // Отладочная информация
+            setSelectedSupplierId(res.data.tender.awardedSupplierId);
           }
-          if (c.warehouseId) setSelectedWarehouseId(c.warehouseId);
+          if (res.data.warehouseId) setSelectedWarehouseId(res.data.warehouseId);
         });
-      fetch(`/api/contracts/${contractId}/items`)
-        .then(res => res.json())
-        .then((items: ContractItem[]) => {
-          setContractItems(items);
-          setDeliveryItems(items.map((item, idx) => ({
+      api.get(`/contracts/${contractId}/items`)
+        .then(res => {
+          setContractItems(res.data);
+          setDeliveryItems(res.data.map((item: ContractItem, idx: number) => ({
             contractItemId: item.id,
             materialId: item.materialId,
             materialName: item.materialName,
@@ -137,12 +136,8 @@ const DeliveryEditPage: React.FC = () => {
         deliveryItems: itemsToSubmit
       };
       console.log('Submitting delivery data:', submitData); // Отладочная информация
-      const response = await fetch('/api/deliveries', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(submitData),
-      });
-      if (response.ok) {
+      const response = await api.post('/deliveries', submitData);
+      if (response.status === 201) { // 201 Created
         setSnackbar({ open: true, message: 'Поставка создана', severity: 'success' });
         setTimeout(() => {
           navigate(`/contracts/${contractId}/manage`);

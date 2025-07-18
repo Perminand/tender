@@ -19,6 +19,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import dayjs from 'dayjs';
+import { api } from '../utils/api';
 
 interface Company { id: string; name: string; shortName?: string; legalName?: string; }
 interface Project { id: string; name: string; }
@@ -73,12 +74,10 @@ const RequestDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const response = await fetch(`/api/requests/${id}`);
-        if (!response.ok) throw new Error('Ошибка загрузки заявки');
-        const data = await response.json();
+        const response = await api.get(`/requests/${id}`);
         setRequest({
-          ...data,
-          materials: data.requestMaterials || [],
+          ...response.data,
+          materials: response.data.requestMaterials || [],
         });
         setError(null);
       } catch (e) {

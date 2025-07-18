@@ -15,6 +15,7 @@ import {
   Alert
 } from '@mui/material';
 import { CheckCircle, Cancel, Payment } from '@mui/icons-material';
+import { api } from '../utils/api';
 
 const PaymentDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -32,7 +33,7 @@ const PaymentDetailPage: React.FC = () => {
 
   const fetchPayment = async () => {
     try {
-      const response = await fetch(`/api/payments/${id}`);
+      const response = await api.get(`/payments/${id}`);
       if (response.ok) {
         const data = await response.json();
         setPayment(data);
@@ -53,7 +54,7 @@ const PaymentDetailPage: React.FC = () => {
 
   const handleConfirm = async () => {
     try {
-      const response = await fetch(`/api/payments/${id}/confirm`, { method: 'POST' });
+      const response = await api.post(`/payments/${id}/confirm`);
       if (response.ok) {
         showSnackbar('Платеж подтвержден', 'success');
         setConfirmDialogOpen(false);

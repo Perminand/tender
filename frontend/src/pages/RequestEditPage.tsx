@@ -4,7 +4,7 @@ import {
   Paper, Typography, Box, Button, CircularProgress, TextField, MenuItem, Toolbar, Dialog, DialogTitle, DialogActions,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, DialogContent, DialogContentText, Container, InputAdornment, IconButton
 } from '@mui/material';
-import axios from 'axios';
+import { api } from '../utils/api';
 import { Autocomplete } from '@mui/material';
 import * as XLSX from 'xlsx';
 import EditIcon from '@mui/icons-material/Edit';
@@ -166,23 +166,23 @@ export default function RequestEditPage() {
   }, []);
 
   const fetchMaterials = () => {
-    axios.get('/api/materials').then(res => setMaterials(res.data));
+    api.get('/api/materials').then(res => setMaterials(res.data));
   };
 
   useEffect(() => {
-    axios.get('/api/companies?role=CUSTOMER').then(res => setCompanies(res.data));
-    axios.get('/api/projects').then(res => setProjects(res.data));
+    api.get('/api/companies?role=CUSTOMER').then(res => setCompanies(res.data));
+    api.get('/api/projects').then(res => setProjects(res.data));
     fetchMaterials();
-    axios.get('/api/units').then(res => setUnits(res.data));
-    axios.get('/api/work-types').then(res => setWorkTypes(res.data));
-    axios.get('/api/warehouses').then(res => setWarehouses(res.data));
-    axios.get('/api/characteristics').then(res => setCharacteristics(res.data));
+    api.get('/api/units').then(res => setUnits(res.data));
+    api.get('/api/work-types').then(res => setWorkTypes(res.data));
+    api.get('/api/warehouses').then(res => setWarehouses(res.data));
+    api.get('/api/characteristics').then(res => setCharacteristics(res.data));
   }, []);
 
   useEffect(() => {
     if (isEdit) {
       setLoading(true);
-      axios.get(`/api/requests/${id}`)
+      api.get(`/api/requests/${id}`)
         .then(res => {
           // Преобразуем requestMaterials в materials для совместимости с фронтендом
           const requestData = res.data;

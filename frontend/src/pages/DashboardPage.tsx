@@ -23,6 +23,8 @@ import {
   TableHead,
   TableRow
 } from '@mui/material';
+import UserInfo from '../components/UserInfo';
+import { useAuth } from '../contexts/AuthContext';
 import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
@@ -163,7 +165,8 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
-  const [username] = useState('admin'); // В реальном приложении получать из контекста
+  const { user } = useAuth();
+  const username = user?.username || 'admin';
 
   useEffect(() => {
     fetchDashboardData();
@@ -251,6 +254,8 @@ const DashboardPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      <UserInfo />
+      
       {/* Заголовок */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" gutterBottom>

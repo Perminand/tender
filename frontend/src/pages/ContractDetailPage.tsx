@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import dayjs from 'dayjs';
+import { api } from '../utils/api';
 
 interface ContractItem {
   id: string;
@@ -97,10 +98,8 @@ const ContractDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchContract = async () => {
       try {
-        const response = await fetch(`/api/contracts/${id}`);
-        if (!response.ok) throw new Error('Ошибка загрузки контракта');
-        const data = await response.json();
-        setContract(data);
+        const response = await api.get(`/contracts/${id}`);
+        setContract(response.data);
         setError(null);
       } catch (e) {
         setError('Ошибка загрузки контракта');

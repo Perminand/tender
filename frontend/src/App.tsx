@@ -1,5 +1,9 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
 import CounterpartyListPage from './pages/CounterpartyListPage';
 import CounterpartyEditPage from './pages/CounterpartyEditPage';
 import MaterialListPage from './pages/MaterialListPage';
@@ -38,65 +42,424 @@ import DashboardPage from './pages/DashboardPage';
 import PaymentEditPage from './pages/PaymentEditPage';
 import PaymentDetailPage from './pages/PaymentDetailPage';
 
+// Функция для определения стартовой страницы по ролям
+const getDefaultRoute = (roles: string[] = []) => {
+  if (roles.includes('ROLE_ADMIN')) return '/dashboard';
+  if (roles.includes('ROLE_MANAGER')) return '/requests/registry';
+  if (roles.includes('ROLE_SUPPLIER')) return '/proposals';
+  if (roles.includes('ROLE_CUSTOMER')) return '/contracts';
+  if (roles.includes('ROLE_ANALYST')) return '/dashboard';
+  if (roles.includes('ROLE_VIEWER')) return '/dashboard';
+  return '/login';
+};
+
+const DefaultRedirect: React.FC = () => {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+  React.useEffect(() => {
+    if (!isLoading && isAuthenticated && user) {
+      navigate(getDefaultRoute(user.roles), { replace: true });
+    }
+  }, [isLoading, isAuthenticated, user, navigate]);
+  return null;
+};
+
 const App: React.FC = () => (
-  <Layout>
+  <AuthProvider>
     <Routes>
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/counterparties" element={<CounterpartyListPage />} />
-      <Route path="/counterparties/new" element={<CounterpartyEditPage isEdit={false} />} />
-      <Route path="/counterparties/:id/edit" element={<CounterpartyEditPage isEdit={true} />} />
-      <Route path="/materials" element={<MaterialListPage />} />
-      <Route path="/materials/new" element={<MaterialEditPage isEdit={false} />} />
-      <Route path="/materials/:id/edit" element={<MaterialEditPage isEdit={true} />} />
-      <Route path="/units" element={<UnitListPage />} />
-      <Route path="/reference" element={<ReferenceBooksPage />} />
-      <Route path="/reference/categories" element={<CategoryListPage />} />
-      <Route path="/reference/material-types" element={<MaterialTypeListPage />} />
-      <Route path="/reference/units" element={<UnitListPage />} />
-      <Route path="/reference/contact-types" element={<ContactTypesPage />} />
-      <Route path="/reference/projects" element={<ProjectListPage />} />
-      <Route path="/reference/counterparties" element={<CounterpartyListPage />} />
-      <Route path="/reference/counterparties/new" element={<CounterpartyEditPage isEdit={false} />} />
-      <Route path="/reference/counterparties/:id/edit" element={<CounterpartyEditPage isEdit={true} />} />
-      <Route path="/reference/materials" element={<MaterialListPage />} />
-      <Route path="/reference/materials/new" element={<MaterialEditPage isEdit={false} />} />
-      <Route path="/reference/materials/:id/edit" element={<MaterialEditPage isEdit={true} />} />
-      <Route path="/contact-types" element={<ContactTypesPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
-      <Route path="/requests/registry" element={<RequestRegistryPage />} />
-      <Route path="/reference/requests/registry" element={<RequestRegistryPage />} />
-      <Route path="/requests/new" element={<RequestEditPage />} />
-      <Route path="/requests/:id/edit" element={<RequestEditPage />} />
-      <Route path="/requests/:id" element={<RequestDetailPage />} />
-      <Route path="/reference/warehouses" element={<WarehouseListPage />} />
-      <Route path="/tenders" element={<TenderListPage />} />
-      <Route path="/tenders/new" element={<TenderEditPage />} />
-      <Route path="/tenders/:id" element={<TenderDetailPage />} />
-      <Route path="/tenders/:id/edit" element={<TenderEditPage />} />
-      <Route path="/tenders/:tenderId/proposals/new" element={<ProposalEditPage />} />
-      <Route path="/tenders/:tenderId/price-analysis" element={<PriceAnalysisPage />} />
-      <Route path="/tenders/:tenderId/contract/new/:supplierId" element={<ContractEditPage />} />
-      <Route path="/tenders/:tenderId/contract/new" element={<ContractEditPage />} />
-      <Route path="/proposals" element={<ProposalRegistryPage />} />
-      <Route path="/proposals/:id" element={<ProposalDetailPage />} />
-      <Route path="/notifications" element={<NotificationListPage />} />
-      <Route path="/contracts" element={<ContractListPage />} />
-      <Route path="/contracts/new" element={<ContractEditPage />} />
-      <Route path="/contracts/:id" element={<ContractDetailPage />} />
-      <Route path="/contracts/:id/edit" element={<ContractEditPage />} />
-      <Route path="/contracts/:id/manage" element={<ContractManagementPage />} />
-      <Route path="/deliveries" element={<DeliveryListPage />} />
-      <Route path="/deliveries/new" element={<DeliveryEditPage />} />
-      <Route path="/deliveries/:id" element={<DeliveryDetailPage />} />
-      <Route path="/payments" element={<PaymentListPage />} />
-      <Route path="/payments/new" element={<PaymentEditPage />} />
-      <Route path="/payments/:id" element={<PaymentDetailPage />} />
-      <Route path="/payments/:id/edit" element={<PaymentEditPage />} />
-      <Route path="/documents" element={<DocumentListPage />} />
-      <Route path="/documents/:id" element={<DocumentDetailPage />} />
-      <Route path="/dashboard" element={<DashboardPage />} />
+      {/* Публичные маршруты */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+      
+      {/* Защищенные маршруты */}
+      <Route path="/" element={
+        <ProtectedRoute>
+          <Layout>
+            <DefaultRedirect />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/dashboard" element={
+        <ProtectedRoute>
+          <Layout>
+            <DashboardPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Маршруты для всех аутентифицированных пользователей */}
+      <Route path="/counterparties" element={
+        <ProtectedRoute>
+          <Layout>
+            <CounterpartyListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/counterparties/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <CounterpartyEditPage isEdit={false} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/counterparties/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <CounterpartyEditPage isEdit={true} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/materials" element={
+        <ProtectedRoute>
+          <Layout>
+            <MaterialListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/materials/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <MaterialEditPage isEdit={false} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/materials/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <MaterialEditPage isEdit={true} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/units" element={
+        <ProtectedRoute>
+          <Layout>
+            <UnitListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference" element={
+        <ProtectedRoute>
+          <Layout>
+            <ReferenceBooksPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/categories" element={
+        <ProtectedRoute>
+          <Layout>
+            <CategoryListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/material-types" element={
+        <ProtectedRoute>
+          <Layout>
+            <MaterialTypeListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/units" element={
+        <ProtectedRoute>
+          <Layout>
+            <UnitListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/contact-types" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContactTypesPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/projects" element={
+        <ProtectedRoute>
+          <Layout>
+            <ProjectListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/counterparties" element={
+        <ProtectedRoute>
+          <Layout>
+            <CounterpartyListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/counterparties/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <CounterpartyEditPage isEdit={false} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/counterparties/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <CounterpartyEditPage isEdit={true} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/materials" element={
+        <ProtectedRoute>
+          <Layout>
+            <MaterialListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/materials/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <MaterialEditPage isEdit={false} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/materials/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <MaterialEditPage isEdit={true} />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/contact-types" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContactTypesPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Маршруты для администраторов и менеджеров */}
+      <Route path="/settings" element={
+        <ProtectedRoute requiredRoles={['ROLE_ADMIN', 'ROLE_MANAGER']}>
+          <Layout>
+            <SettingsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      <Route path="/requests/registry" element={
+        <ProtectedRoute>
+          <Layout>
+            <RequestRegistryPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/requests/registry" element={
+        <ProtectedRoute>
+          <Layout>
+            <RequestRegistryPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/requests/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <RequestEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/requests/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <RequestEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/requests/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <RequestDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/warehouses" element={
+        <ProtectedRoute>
+          <Layout>
+            <WarehouseListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders" element={
+        <ProtectedRoute>
+          <Layout>
+            <TenderListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <TenderEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <TenderDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <TenderEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders/:tenderId/proposals/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <ProposalEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders/:tenderId/price-analysis" element={
+        <ProtectedRoute>
+          <Layout>
+            <PriceAnalysisPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders/:tenderId/contract/new/:supplierId" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContractEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/tenders/:tenderId/contract/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContractEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/proposals" element={
+        <ProtectedRoute>
+          <Layout>
+            <ProposalRegistryPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/proposals/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <ProposalDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/notifications" element={
+        <ProtectedRoute>
+          <Layout>
+            <NotificationListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/contracts" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContractListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/contracts/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContractEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/contracts/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContractDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/contracts/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContractEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/contracts/:id/manage" element={
+        <ProtectedRoute>
+          <Layout>
+            <ContractManagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/deliveries" element={
+        <ProtectedRoute>
+          <Layout>
+            <DeliveryListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/deliveries/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <DeliveryEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/deliveries/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <DeliveryDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/payments" element={
+        <ProtectedRoute>
+          <Layout>
+            <PaymentListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/payments/new" element={
+        <ProtectedRoute>
+          <ProtectedRoute>
+            <Layout>
+              <PaymentEditPage />
+            </Layout>
+          </ProtectedRoute>
+        </ProtectedRoute>
+      } />
+      <Route path="/payments/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <PaymentDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/payments/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <PaymentEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/documents" element={
+        <ProtectedRoute>
+          <Layout>
+            <DocumentListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/documents/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <DocumentDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
     </Routes>
-  </Layout>
+  </AuthProvider>
 );
 
 export default App; 

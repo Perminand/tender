@@ -17,6 +17,27 @@ export const api = axios.create({
   },
 });
 
+// Функция для добавления токена к запросам
+export const setAuthToken = (token: string | null) => {
+  if (token) {
+    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+  } else {
+    delete api.defaults.headers.common['Authorization'];
+  }
+};
+
+// Функция для получения токена из localStorage
+export const getAuthToken = (): string | null => {
+  return localStorage.getItem('token');
+};
+
+// Функция для удаления токена
+export const removeAuthToken = () => {
+  localStorage.removeItem('token');
+  localStorage.removeItem('refreshToken');
+  delete api.defaults.headers.common['Authorization'];
+};
+
 export interface AnalyticsStats {
   totalTenders: number;
   tendersWithProposals: number;

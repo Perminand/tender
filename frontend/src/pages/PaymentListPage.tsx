@@ -39,6 +39,7 @@ import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
+import { api } from '../utils/api';
 
 interface DeliveryRef {
   id: string;
@@ -83,10 +84,10 @@ const PaymentListPage: React.FC = () => {
   const fetchPayments = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/payments');
-      const data = await response.json();
-      setPayments(data);
+      const response = await api.get('/api/payments');
+      setPayments(response.data);
     } catch (error) {
+      console.error('Ошибка при загрузке платежей:', error);
       showSnackbar('Ошибка при загрузке платежей', 'error');
     } finally {
       setLoading(false);
@@ -97,18 +98,14 @@ const PaymentListPage: React.FC = () => {
     setSnackbar({ open: true, message, severity });
   };
 
-  const handleDelete = async (id: number) => {
-    setSelectedPaymentId(id);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
+  const handleDelete = async () => {
     if (selectedPaymentId) {
       try {
-        await fetch(`/api/payments/${selectedPaymentId}`, { method: 'DELETE' });
+        await api.delete(`/api/payments/${selectedPaymentId}`);
         showSnackbar('Платеж удален', 'success');
         fetchPayments();
       } catch (error) {
+        console.error('Ошибка при удалении платежа:', error);
         showSnackbar('Ошибка при удалении платежа', 'error');
       } finally {
         setDeleteDialogOpen(false);
@@ -117,12 +114,18 @@ const PaymentListPage: React.FC = () => {
     }
   };
 
+  const openDeleteDialog = (id: number) => {
+    setSelectedPaymentId(id);
+    setDeleteDialogOpen(true);
+  };
+
   const handleConfirm = async (id: number) => {
     try {
-      await fetch(`/api/payments/${id}/confirm`, { method: 'POST' });
+      await api.post(`/api/payments/${id}/confirm`);
       showSnackbar('Платеж подтвержден', 'success');
       fetchPayments();
     } catch (error) {
+      console.error('Ошибка при подтверждении платежа:', error);
       showSnackbar('Ошибка при подтверждении платежа', 'error');
     }
   };
@@ -170,12 +173,12 @@ const PaymentListPage: React.FC = () => {
   // Загрузка статистики по статусам
   const fetchStatusStats = async () => {
     try {
-      const response = await fetch('/api/payments/status-stats');
-      if (response.ok) {
-        const data = await response.json();
+      const response = await api.get('/api/payments/status-stats');
+      const data = response.data;
         setStatusStats(data);
+    } catch (error) {
+      console.error('Ошибка при загрузке статистики статусов:', error);
       }
-    } catch (e) {}
   };
   useEffect(() => { fetchStatusStats(); }, []);
   const reloadAll = () => { fetchPayments(); fetchStatusStats(); };
@@ -429,7 +432,7 @@ const PaymentListPage: React.FC = () => {
                   <IconButton
                     size="small"
                     color="error"
-                    onClick={() => handleDelete(payment.id)}
+                    onClick={() => openDeleteDialog(payment.id)}
                   >
                     <DeleteIcon />
                   </IconButton>
@@ -470,7 +473,7 @@ const PaymentListPage: React.FC = () => {
           <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
             Отмена
           </Button>
-          <Button onClick={handleConfirmDelete} color="error" autoFocus>
+          <Button onClick={handleDelete} color="error" autoFocus>
             Удалить
           </Button>
         </DialogActions>

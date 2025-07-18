@@ -15,6 +15,7 @@ import {
   getProviderSuggestions,
   EmailProvider 
 } from '../utils/emailProviders';
+import { api } from '../utils/api';
 import GmailSetupGuide from '../components/GmailSetupGuide';
 
 interface Settings {
@@ -69,17 +70,11 @@ const SettingsPage: React.FC = () => {
 
   const loadSettings = async () => {
     try {
-      const response = await fetch('/api/settings');
-      if (response.ok) {
-        const data = await response.json();
-        setSettings({
-          fnsApiKey: data.fnsApiKey || '',
-          fnsApiUsage: data.fnsApiUsage || '',
-        });
-      } else {
-        setErrorMessage('Ошибка при загрузке настроек');
-        setShowError(true);
-      }
+      const response = await api.get('/api/settings');
+      setSettings({
+        fnsApiKey: response.data.fnsApiKey || '',
+        fnsApiUsage: response.data.fnsApiUsage || '',
+      });
     } catch (error) {
       setErrorMessage('Ошибка при загрузке настроек');
       setShowError(true);
@@ -88,34 +83,24 @@ const SettingsPage: React.FC = () => {
 
   const loadEmailSettings = async () => {
     try {
-      const response = await fetch('/api/settings/email');
-      if (response.ok) {
-        const data = await response.json();
-        setEmailSettings(data);
-      } else {
-        console.warn('Не удалось загрузить настройки email');
-      }
+      const response = await api.get('/api/settings/email');
+      setEmailSettings(response.data);
     } catch (error) {
-      console.warn('Ошибка при загрузке настроек email:', error);
+      console.warn('Не удалось загрузить настройки email');
     }
   };
 
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/settings/fns-api-key', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey: settings.fnsApiKey }),
-      });
+      const response = await api.post('/api/settings/fns-api-key', { apiKey: settings.fnsApiKey });
       
-      if (response.ok) {
+      if (response.data) {
         setSuccessMessage('API-ключ успешно сохранен!');
         setShowSuccess(true);
         await loadSettings(); // Перезагружаем настройки
       } else {
-        const errorText = await response.text();
-        setErrorMessage(errorText);
+        setErrorMessage('Ошибка при сохранении настроек');
         setShowError(true);
       }
     } catch (error) {
@@ -136,23 +121,18 @@ const SettingsPage: React.FC = () => {
     setIsLoading(true);
     try {
       // Тестируем API с тестовым ИНН (например, ИНН Яндекса)
-      const response = await fetch(`https://api-fns.ru/api/search?q=7736207543&key=${settings.fnsApiKey}`);
+      const response = await api.get(`/api/fns/search?inn=7736207543&key=${settings.fnsApiKey}`);
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (data.items && data.items.length > 0) {
+      if (response.data) {
         setSuccessMessage('API-ключ работает корректно!');
         setShowSuccess(true);
       } else {
         setErrorMessage('API-ключ работает, но данные не найдены. Проверьте ключ.');
         setShowError(true);
       }
-    } catch (error) {
-      setErrorMessage('Ошибка при тестировании API. Проверьте правильность ключа.');
+    } catch (error: any) {
+      const errorMsg = error.response?.data?.error || error.message || 'Неизвестная ошибка';
+      setErrorMessage(errorMsg);
       setShowError(true);
     } finally {
       setIsLoading(false);
@@ -169,14 +149,12 @@ const SettingsPage: React.FC = () => {
     setIsLoadingUsage(true);
     setUsageInfo(null);
     try {
-      const response = await fetch('/api/settings/fns-api-usage');
+      const response = await api.get('/api/settings/fns-api-usage');
       
-      if (response.ok) {
-        const usage = await response.text();
-        setUsageInfo(usage);
+      if (response.data) {
+        setUsageInfo(response.data);
       } else {
-        const errorText = await response.text();
-        setErrorMessage(errorText);
+        setErrorMessage('Не удалось загрузить данные.');
         setShowError(true);
         setUsageInfo('Не удалось загрузить данные.');
       }
@@ -192,18 +170,13 @@ const SettingsPage: React.FC = () => {
   const handleSaveEmailSettings = async () => {
     setIsLoadingEmail(true);
     try {
-      const response = await fetch('/api/settings/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailSettings),
-      });
+      const response = await api.post('/api/settings/email', emailSettings);
       
-      if (response.ok) {
+      if (response.data) {
         setSuccessMessage('Настройки email успешно сохранены!');
         setShowSuccess(true);
       } else {
-        const errorText = await response.text();
-        setErrorMessage(errorText);
+        setErrorMessage('Ошибка при сохранении настроек email');
         setShowError(true);
       }
     } catch (error) {
@@ -217,18 +190,13 @@ const SettingsPage: React.FC = () => {
   const handleTestEmailConnection = async () => {
     setIsTestingEmail(true);
     try {
-      const response = await fetch('/api/settings/email/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(emailSettings),
-      });
+      const response = await api.post('/api/settings/email/test', emailSettings);
       
-      if (response.ok) {
+      if (response.data) {
         setSuccessMessage('Соединение с SMTP сервером успешно установлено!');
         setShowSuccess(true);
       } else {
-        const errorText = await response.text();
-        setErrorMessage(errorText);
+        setErrorMessage('Ошибка при тестировании соединения email');
         setShowError(true);
       }
     } catch (error) {

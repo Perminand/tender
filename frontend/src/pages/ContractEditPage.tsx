@@ -28,6 +28,7 @@ import { useParams, useNavigate, useLocation, useSearchParams } from 'react-rout
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
+import { api } from '../utils/api';
 
 interface Contract {
   id: string;
@@ -161,8 +162,8 @@ const ContractEditPage: React.FC = () => {
   const fetchContract = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/contracts/${id}`);
-      const data = await response.json();
+      const response = await api.get(`/contracts/${id}`);
+      const data = response.data;
       setContract(data);
       setFormData({
         contractNumber: data.contractNumber || '',
@@ -187,13 +188,13 @@ const ContractEditPage: React.FC = () => {
     setLoading(true);
     try {
       // Получаем данные тендера
-      const tenderResponse = await fetch(`/api/tenders/${tenderId}`);
-      const tenderData = await tenderResponse.json();
+      const tenderResponse = await api.get(`/tenders/${tenderId}`);
+      const tenderData = tenderResponse.data;
       setTenderData(tenderData);
       
       // Получаем предложения поставщика
-      const proposalsResponse = await fetch(`/api/proposals/tender/${tenderId}`);
-      const proposalsData = await proposalsResponse.json();
+      const proposalsResponse = await api.get(`/proposals/tender/${tenderId}`);
+      const proposalsData = proposalsResponse.data;
       
       setProposals(proposalsData);
       
@@ -225,8 +226,8 @@ const ContractEditPage: React.FC = () => {
 
   const fetchTenders = async () => {
     try {
-      const response = await fetch('/api/tenders');
-      const data = await response.json();
+      const response = await api.get('/tenders');
+      const data = response.data;
       setTenders(data.filter((tender: Tender) => tender.status === 'AWARDED'));
     } catch (error) {
       console.error('Ошибка при загрузке тендеров:', error);
@@ -235,8 +236,8 @@ const ContractEditPage: React.FC = () => {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await fetch('/api/companies?type=SUPPLIER');
-      const data = await response.json();
+      const response = await api.get('/companies?type=SUPPLIER');
+      const data = response.data;
       setSuppliers(data);
     } catch (error) {
       console.error('Ошибка при загрузке поставщиков:', error);
@@ -277,27 +278,15 @@ const ContractEditPage: React.FC = () => {
 
       if (id) {
         // Обновление существующего контракта
-        await fetch(`/api/contracts/${id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
+        await api.put(`/contracts/${id}`, submitData);
         showSnackbar('Контракт обновлен', 'success');
       } else if (isCreatingFromTender) {
         // Создание контракта из тендера (теперь через тело запроса)
-        await fetch(`/api/contracts/from-tender`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
+        await api.post('/contracts/from-tender', submitData);
         showSnackbar('Контракт создан из тендера', 'success');
       } else {
         // Создание нового контракта
-        await fetch('/api/contracts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(submitData),
-        });
+        await api.post('/contracts', submitData);
         showSnackbar('Контракт создан', 'success');
       }
 

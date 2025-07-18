@@ -6,6 +6,7 @@ import {
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
+import { api } from '../utils/api';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -60,7 +61,7 @@ const PaymentEditPage: React.FC = () => {
 
   const fetchContracts = async () => {
     try {
-      const response = await fetch('/api/contracts');
+      const response = await api.get('/contracts');
       if (response.ok) {
         const data = await response.json();
         setContracts(data);
@@ -70,7 +71,7 @@ const PaymentEditPage: React.FC = () => {
 
   const fetchPayment = async () => {
     try {
-      const response = await fetch(`/api/payments/${id}`);
+      const response = await api.get(`/payments/${id}`);
       if (response.ok) {
         const data = await response.json();
         setForm({
@@ -164,11 +165,7 @@ const PaymentEditPage: React.FC = () => {
       };
       const url = isEdit ? `/api/payments/${id}` : '/api/payments';
       const method = isEdit ? 'PUT' : 'POST';
-      const response = await fetch(url, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      const response = await api.post(url, payload);
       if (response.ok) {
         showSnackbar(isEdit ? 'Платеж обновлен' : 'Платеж создан', 'success');
         setTimeout(() => navigate(-1), 1000);

@@ -1,13 +1,35 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect } from 'react';
 import {
-  Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Toolbar, Typography, Button, TextField, Box, CircularProgress, Chip,
-  IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions
+  Box,
+  Button,
+  Paper,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  TextField,
+  Typography,
+  Toolbar,
+  Chip,
+  IconButton,
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  CircularProgress,
+  DialogContentText
 } from '@mui/material';
+import {
+  Edit,
+  Download as DownloadIcon,
+  Visibility as VisibilityIcon,
+  Add as AddIcon
+} from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { Visibility, Edit, Download } from '@mui/icons-material';
-import DownloadIcon from '@mui/icons-material/Download';
+import { api } from '../utils/api';
 
 interface RequestRegistryRowDto {
   requestId: string;
@@ -54,7 +76,7 @@ export default function RequestRegistryPage() {
       const params = Object.fromEntries(
         Object.entries(filters).filter(([_, v]) => v)
       );
-      const res = await axios.get<RequestRegistryRowDto[]>('/api/requests/registry', { params });
+      const res = await api.get<RequestRegistryRowDto[]>('/api/requests/registry', { params });
       setData(res.data);
     } catch (error) {
       console.error('Ошибка при загрузке реестра заявок:', error);
@@ -92,7 +114,7 @@ export default function RequestRegistryPage() {
       const params = Object.fromEntries(
         Object.entries(filters).filter(([_, v]) => v)
       );
-      const res = await axios.get('/api/requests/registry/export', {
+      const res = await api.get('/api/requests/registry/export', {
         params,
         responseType: 'blob',
       });
@@ -112,7 +134,7 @@ export default function RequestRegistryPage() {
     if (!selectedRequestId) return;
     
     try {
-      const response = await axios.post(`/api/requests/${selectedRequestId}/create-tender`);
+      const response = await api.post(`/api/requests/${selectedRequestId}/create-tender`);
       const tender = response.data;
       // Перезагружаем данные, так как статус обновляется на бэкенде
       fetchData();
@@ -328,7 +350,7 @@ export default function RequestRegistryPage() {
                         color="primary"
                         onClick={() => navigate(`/requests/${row.requestId}`)}
                       >
-                        <Visibility />
+                        <VisibilityIcon />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title="Редактировать">
@@ -349,7 +371,7 @@ export default function RequestRegistryPage() {
                           setConfirmCreateTender(true);
                         }}
                       >
-                        <Download />
+                        <DownloadIcon />
                       </IconButton>
                     </Tooltip>
                   </Box>

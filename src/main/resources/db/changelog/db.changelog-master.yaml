@@ -101,4 +101,8 @@ databaseChangeLog:
       file: db/changelog/changes/V052_add_procurement_management_tables.sql
   - include:
       file: db/changelog/changes/V053_add_reporting_and_alerts_tables.sql
+  - include:
+      file: db/changelog/changes/V054_create_users_table.sql
+  - include:
+      file: db/changelog/data/V003_insert_test_users.sql
 

@@ -56,3 +56,9 @@ notification:
       proposal-submitted: "proposal-submitted"
       tender-awarded: "tender-awarded"
       tender-cancelled: "tender-cancelled"
+
+# JWT settings
+jwt:
+  secret: ${JWT_SECRET:iuLTU8rq83ssfe4gfege5ge5hryjtyumjt7mt7mh6iu}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
