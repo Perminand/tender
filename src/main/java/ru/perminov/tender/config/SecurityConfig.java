@@ -47,6 +47,8 @@ public class SecurityConfig {
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/error").permitAll()
                 .requestMatchers("/actuator/health").permitAll()
+                // Статические ресурсы и корневой путь
+                .requestMatchers("/", "/index.html", "/static/**", "/assets/**", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

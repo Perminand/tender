@@ -42,7 +42,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         log.info("Authorization header: {}", authHeader);
         
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            log.warn("Отсутствует или неверный формат Authorization header для запроса: {}", request.getRequestURI());
+            // Не логируем предупреждения для публичных путей
+            String requestURI = request.getRequestURI();
+            if (!requestURI.equals("/") && !requestURI.equals("/health") && 
+                !requestURI.startsWith("/api/auth/") && !requestURI.startsWith("/api/public/") &&
+                !requestURI.startsWith("/static/") && !requestURI.startsWith("/assets/") &&
+                !requestURI.startsWith("/css/") && !requestURI.startsWith("/js/") &&
+                !requestURI.startsWith("/images/") && !requestURI.equals("/favicon.ico")) {
+                log.warn("Отсутствует или неверный формат Authorization header для запроса: {}", requestURI);
+            }
             filterChain.doFilter(request, response);
             return;
         }
