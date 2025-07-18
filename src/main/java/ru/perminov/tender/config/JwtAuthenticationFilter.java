@@ -37,23 +37,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String username;
         
+        String requestURI = request.getRequestURI();
+        
+        // Пропускаем JWT проверку для публичных путей
+        if (requestURI.equals("/") || requestURI.equals("/health") || 
+            requestURI.startsWith("/api/auth/") || requestURI.startsWith("/api/public/") ||
+            requestURI.startsWith("/static/") || requestURI.startsWith("/assets/") ||
+            requestURI.startsWith("/css/") || requestURI.startsWith("/js/") ||
+            requestURI.startsWith("/images/") || requestURI.equals("/favicon.ico") ||
+            requestURI.equals("/api/health")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+        
         log.info("=== JWT Filter Debug ===");
-        log.info("Обработка запроса: {} {} от {}", request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
+        log.info("Обработка запроса: {} {} от {}", request.getMethod(), requestURI, request.getRemoteAddr());
         log.info("Authorization header: {}", authHeader);
-        log.info("User-Agent: {}", request.getHeader("User-Agent"));
-        log.info("Origin: {}", request.getHeader("Origin"));
-        log.info("Referer: {}", request.getHeader("Referer"));
         
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            // Не логируем предупреждения для публичных путей
-            String requestURI = request.getRequestURI();
-            if (!requestURI.equals("/") && !requestURI.equals("/health") && 
-                !requestURI.startsWith("/api/auth/") && !requestURI.startsWith("/api/public/") &&
-                !requestURI.startsWith("/static/") && !requestURI.startsWith("/assets/") &&
-                !requestURI.startsWith("/css/") && !requestURI.startsWith("/js/") &&
-                !requestURI.startsWith("/images/") && !requestURI.equals("/favicon.ico")) {
-                log.warn("Отсутствует или неверный формат Authorization header для запроса: {}", requestURI);
-            }
+            log.warn("Отсутствует или неверный формат Authorization header для запроса: {}", requestURI);
             filterChain.doFilter(request, response);
             return;
         }

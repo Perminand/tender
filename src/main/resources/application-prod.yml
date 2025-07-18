@@ -1,1 +1,69 @@
- 
+spring:
+  datasource:
+    driverClassName: org.postgresql.Driver
+    url: jdbc:postgresql://db:5432/tender
+    username: tender_user
+    password: tender_password
+  output:
+    ansi:
+      enabled: NEVER
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  mail:
+    host: ${SPRING_MAIL_HOST:localhost}
+    port: ${SPRING_MAIL_PORT:1025}
+    username: ${SPRING_MAIL_USERNAME:}
+    password: ${SPRING_MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_AUTH:false}
+          starttls:
+            enable: ${SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE:false}
+    default-encoding: UTF-8
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+  address: 0.0.0.0
+
+logging:
+  level:
+    root: INFO
+    ru.perminov.tender: DEBUG
+    org.springframework.security: DEBUG
+  charset:
+    console: UTF-8
+    file: UTF-8
+
+# Notification settings
+notification:
+  email:
+    enabled: true
+    from: ${MAIL_USERNAME:your-email@gmail.com}
+    templates:
+      tender-published: "tender-published"
+      tender-reminder: "tender-reminder"
+      proposal-submitted: "proposal-submitted"
+      tender-awarded: "tender-awarded"
+      tender-cancelled: "tender-cancelled"
+
+# JWT settings
+jwt:
+  secret: ${JWT_SECRET:iuLTU8rq83ssfe4gfege5ge5hryjtyumjt7mt7mh6iu}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds 

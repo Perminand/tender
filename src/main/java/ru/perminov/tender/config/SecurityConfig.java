@@ -56,7 +56,9 @@ public class SecurityConfig {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )
             .authenticationProvider(authenticationProvider())
-            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            // Отключаем анонимную аутентификацию для предотвращения зацикливания
+            .anonymous(AbstractHttpConfigurer::disable);
 
         return http.build();
     }
