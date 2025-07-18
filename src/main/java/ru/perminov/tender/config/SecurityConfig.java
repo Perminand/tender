@@ -63,6 +63,7 @@ public class SecurityConfig {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
         authProvider.setPasswordEncoder(passwordEncoder());
+        log.info("Настроен DaoAuthenticationProvider с UserDetailsService");
         return authProvider;
     }
 
