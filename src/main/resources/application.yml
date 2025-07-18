@@ -4,6 +4,12 @@ spring:
     url: jdbc:postgresql://localhost:5432/tender
     username: tender
     password: tender
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
   output:
     ansi:
       enabled: ALWAYS
@@ -15,6 +21,20 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
+        # Предотвращение проблем с lazy loading
+        enable_lazy_load_no_trans: false
+        # Ограничение глубины загрузки
+        max_fetch_depth: 3
+        # Отключение автоматической загрузки связанных сущностей
+        default_batch_fetch_size: 16
+        # Настройки для предотвращения N+1 проблем
+        jdbc:
+          batch_size: 20
+          batch_versioned_data: true
+        # Настройки кэширования
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
   http:
     encoding:
       charset: UTF-8
@@ -40,6 +60,14 @@ server:
       charset: UTF-8
       enabled: true
       force: true
+  # Настройки для предотвращения таймаутов
+  tomcat:
+    threads:
+      max: 200
+      min-spare: 10
+    connection-timeout: 20000
+    max-connections: 8192
+    accept-count: 100
 
 logging:
   charset:
@@ -47,6 +75,10 @@ logging:
     file: UTF-8
   level:
     org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
+    # Добавляем логирование для отладки проблем
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    ru.perminov.tender: DEBUG
 
 # Notification settings
 notification:
