@@ -10,9 +10,12 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/tender
       - SPRING_DATASOURCE_USERNAME=tender_user
       - SPRING_DATASOURCE_PASSWORD=tender_password
+      - JWT_SECRET=iuLTU8rq83ssfe4gfege5ge5hryjtyumjt7mt7mh6iu
     depends_on:
       - db
     restart: unless-stopped
+    networks:
+      - tender-network
 
   db:
     image: postgres:15
@@ -23,6 +26,12 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
+    networks:
+      - tender-network
 
 volumes:
   postgres_data:
+
+networks:
+  tender-network:
+    driver: bridge

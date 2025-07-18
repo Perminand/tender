@@ -38,8 +38,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String username;
         
         log.info("=== JWT Filter Debug ===");
-        log.info("Обработка запроса: {} {}", request.getMethod(), request.getRequestURI());
+        log.info("Обработка запроса: {} {} от {}", request.getMethod(), request.getRequestURI(), request.getRemoteAddr());
         log.info("Authorization header: {}", authHeader);
+        log.info("User-Agent: {}", request.getHeader("User-Agent"));
+        log.info("Origin: {}", request.getHeader("Origin"));
+        log.info("Referer: {}", request.getHeader("Referer"));
         
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             log.warn("Отсутствует или неверный формат Authorization header для запроса: {}", request.getRequestURI());
