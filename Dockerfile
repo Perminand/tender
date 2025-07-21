@@ -10,13 +10,14 @@ FROM maven:latest AS backend-build
 WORKDIR /app
 COPY pom.xml .
 COPY src/ ./src/
+# Копируем фронт в ресурсы backend
+COPY --from=frontend-build /app/dist/* ./src/main/resources/static/
 RUN mvn clean package -DskipTests
 
 # Финальный образ
 FROM openjdk:21-jdk-slim
 WORKDIR /app
 COPY --from=backend-build /app/target/*.jar ./app.jar
-COPY --from=frontend-build /app/dist ./static
 
 ENV SPRING_PROFILES_ACTIVE=prod
 EXPOSE 8080
