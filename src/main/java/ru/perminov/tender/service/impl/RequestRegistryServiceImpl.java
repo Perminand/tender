@@ -14,38 +14,38 @@ import java.io.ByteArrayInputStream;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class RequestRegistryServiceImpl implements RequestRegistryService {
     private final RequestRepository requestRepository;
 
     @Override
-    @Transactional(readOnly = true)
     public List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName, String companyId) {
         List<Request> requests = requestRepository.findAll();
         if (companyId != null) {
             requests = requests.stream()
-                .filter(r -> r.getOrganization().getId().toString().equals(companyId))
-                .collect(Collectors.toList());
+                    .filter(r -> r.getOrganization().getId().toString().equals(companyId))
+                    .toList();
         }
         List<RequestRegistryRowDto> result = new ArrayList<>();
-        
+
         for (Request request : requests) {
             // Фильтрация по организации
             if (organization != null && !request.getOrganization().getName().toLowerCase().contains(organization.toLowerCase())) {
                 continue;
             }
-            
+
             // Фильтрация по проекту
             if (project != null && !request.getProject().getName().toLowerCase().contains(project.toLowerCase())) {
                 continue;
             }
-            
+
             // Фильтрация по датам
             if (fromDate != null && request.getDate().isBefore(fromDate)) {
                 continue;
@@ -53,50 +53,64 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
             if (toDate != null && request.getDate().isAfter(toDate)) {
                 continue;
             }
-            
+
             // Фильтрация по материалу (если указан)
             if (materialName != null) {
                 boolean hasMatchingMaterial = request.getRequestMaterials().stream()
-                    .anyMatch(material -> material.getMaterial().getName().toLowerCase().contains(materialName.toLowerCase()));
+                        .anyMatch(material -> material.getMaterial().getName().toLowerCase().contains(materialName.toLowerCase()));
                 if (!hasMatchingMaterial) {
                     continue;
                 }
             }
-            
+
             // Подсчет количества материалов и общей суммы
             int materialsCount = request.getRequestMaterials().size();
             double totalQuantity = request.getRequestMaterials().stream()
-                .mapToDouble(material -> material.getQuantity() != null ? material.getQuantity() : 0.0)
-                .sum();
-            
+                    .mapToDouble(material -> material.getQuantity() != null ? material.getQuantity() : 0.0)
+                    .sum();
+
             // Получение примечания (берем первое непустое примечание из материалов)
             String note = request.getRequestMaterials().stream()
-                .map(RequestMaterial::getNote)
-                .filter(n -> n != null && !n.trim().isEmpty())
-                .findFirst()
-                .orElse("");
-            
+                    .map(RequestMaterial::getNote)
+                    .filter(n -> n != null && !n.trim().isEmpty())
+                    .findFirst()
+                    .orElse("");
+
             result.add(new RequestRegistryRowDto(
-                request.getId(),
-                request.getRequestNumber() != null ? request.getRequestNumber() : request.getId().toString(),
-                request.getDate(),
-                request.getOrganization().getLegalName() != null && !request.getOrganization().getLegalName().isBlank()
-                    ? request.getOrganization().getLegalName()
-                    : (request.getOrganization().getShortName() != null && !request.getOrganization().getShortName().isBlank()
-                        ? request.getOrganization().getShortName()
-                        : request.getOrganization().getName()),
-                request.getProject().getName(),
-                materialsCount,
-                totalQuantity,
-                note,
-                request.getStatus() != null ? request.getStatus() : "DRAFT"
+                    request.getId(),
+                    request.getRequestNumber() != null ? request.getRequestNumber() : request.getId().toString(),
+                    request.getDate(),
+                    request.getOrganization().getLegalName() != null && !request.getOrganization().getLegalName().isBlank()
+                            ? request.getOrganization().getLegalName()
+                            : (request.getOrganization().getShortName() != null && !request.getOrganization().getShortName().isBlank()
+                            ? request.getOrganization().getShortName()
+                            : request.getOrganization().getName()),
+                    request.getProject().getName(),
+                    materialsCount,
+                    totalQuantity,
+                    note,
+                    request.getStatus() != null ? request.getStatus() : "DRAFT"
             ));
-            
+
             // Логируем статус для отладки
             log.info("Заявка {}: статус = {}", request.getId(), request.getStatus());
         }
-        
+
         return result;
+    }
+
+    private String getStatusRu(String status) {
+        if (status == null) return "";
+        return switch (status) {
+            case "DRAFT" -> "Черновик";
+            case "TENDER" -> "Тендер";
+            case "PUBLISHED" -> "Опубликован";
+            case "BIDDING" -> "Приём предложений";
+            case "EVALUATION" -> "Оценка";
+            case "AWARDED" -> "Выбран";
+            case "CANCELLED" -> "Отменён";
+            default -> status;
+        };
     }
 
     @Override
@@ -117,7 +131,7 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
                 row.createCell(2).setCellValue(dto.requestDate() != null ? dto.requestDate().toString() : "");
                 row.createCell(3).setCellValue(dto.organization() != null ? dto.organization() : "");
                 row.createCell(4).setCellValue(dto.project() != null ? dto.project() : "");
-                row.createCell(5).setCellValue(dto.status() != null ? dto.status() : "DRAFT");
+                row.createCell(5).setCellValue(getStatusRu(dto.status() != null ? dto.status() : "DRAFT"));
                 row.createCell(6).setCellValue(dto.materialsCount() != null ? dto.materialsCount() : 0);
                 row.createCell(7).setCellValue(dto.totalQuantity() != null ? dto.totalQuantity() : 0.0);
                 row.createCell(8).setCellValue(dto.note() != null ? dto.note() : "");
