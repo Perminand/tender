@@ -1,7 +1,6 @@
 FROM node:20 AS frontend-build
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN rm -r dist
 RUN npm install
 COPY frontend/. ./
 RUN npm run build
@@ -12,7 +11,7 @@ WORKDIR /app
 COPY pom.xml .
 COPY src/ ./src/
 # Копируем фронт в ресурсы backend
-COPY --from=frontend-build /app/dist/* ./src/main/resources/static/
+COPY --from=frontend-build /app/dist/. ./src/main/resources/static/
 RUN ls -l ./src/main/resources/static/
 RUN ls -l ./src/main/resources/static/assets
 RUN mvn clean package -DskipTests
