@@ -27,7 +27,7 @@ interface Unit { id: string; shortName: string; }
 interface Warehouse { id: string; name: string; projectId: string; }
 interface RequestMaterial {
   id?: string;
-  workType?: string;
+  workType?: { name: string } | string | null;
   material?: { id: string; name: string } | null;
   characteristics?: string;
   quantity?: string;
@@ -74,7 +74,7 @@ const RequestDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchRequest = async () => {
       try {
-        const response = await api.get(`/requests/${id}`);
+        const response = await api.get(`/api/requests/${id}`);
         setRequest({
           ...response.data,
           materials: response.data.requestMaterials || [],
@@ -149,7 +149,7 @@ const RequestDetailPage: React.FC = () => {
                 return (
                   <TableRow key={mat.id || idx}>
                     <TableCell>{idx + 1}</TableCell>
-                    <TableCell>{mat.workType && typeof mat.workType === 'object' ? mat.workType.name : mat.workType || '-'}</TableCell>
+                    <TableCell>{mat.workType && typeof mat.workType === 'object' ? (mat.workType as { name: string }).name : mat.workType || '-'}</TableCell>
                     <TableCell>{mat.material && typeof mat.material === 'object' ? mat.material.name : mat.material || '-'}</TableCell>
                     <TableCell>{mat.characteristics || '-'}</TableCell>
                     <TableCell>{mat.supplierMaterialName || '-'}</TableCell>
