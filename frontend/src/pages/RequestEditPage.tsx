@@ -65,6 +65,17 @@ const getToday = () => {
   return d.toISOString().slice(0, 10);
 };
 
+// --- Функция для нормализации названия организации ---
+function normalizeOrgName(str: string): string {
+  if (!str) return '';
+  return str
+    .toLowerCase()
+    .replace(/общество\s*с\s*ограниченной\s*ответственностью/g, 'ооо')
+    .replace(/строительное\s*предприятие/g, 'сп')
+    .replace(/[\s"'«»\-]/g, '') // убираем пробелы, кавычки, тире
+    .trim();
+}
+
 export default function RequestEditPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
@@ -134,6 +145,7 @@ export default function RequestEditPage() {
   const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[]}>({workTypes:[], characteristics:[], units:[]});
 
   const [missingMaterialIdx, setMissingMaterialIdx] = useState<number | null>(null);
+  const [missingCompanyName, setMissingCompanyName] = useState<string | null>(null);
 
   const handleMouseDown = (idx: number, e: React.MouseEvent) => {
     resizingCol.current = idx;
@@ -536,12 +548,23 @@ export default function RequestEditPage() {
         // ШАГ 2: Определяем организацию из справочника по имени из Excel
         let orgObj = null;
         if (org) {
-          const normalize = (str: any) => (str === undefined || str === null) ? '' : String(str).replace(/\s+/g, '').trim().toLowerCase();
-          orgObj = companies.find(c => [c.legalName, c.shortName, c.name].some(n => normalize(n) === normalize(org)));
+          const normOrg = normalizeOrgName(org);
+          orgObj = companies.find(c => [c.legalName, c.shortName, c.name].some(n => normalizeOrgName(n) === normOrg));
+          // Если не нашли — ищем по вхождению
+          if (!orgObj) {
+            orgObj = companies.find(c => [c.legalName, c.shortName, c.name].some(n => normalizeOrgName(n).includes(normOrg) || normOrg.includes(normalizeOrgName(n))));
+          }
           // Гарантируем, что orgObj — это объект из companies (по ссылке)
           if (orgObj) {
             orgObj = companies.find(c => c.id === orgObj.id) || orgObj;
           }
+        }
+        // Если организация не найдена, показываем модалку и прекращаем импорт
+        if (!orgObj && org) {
+          setMissingCompanyName(org);
+          setImportLoading(false);
+          setImportStep('idle');
+          return;
         }
 
         // ШАГ 3: Найти строку с заголовками материалов
@@ -1513,6 +1536,28 @@ export default function RequestEditPage() {
         <DialogActions>
           <Button onClick={() => setConfirmCreateTender(false)}>Отмена</Button>
           <Button color="success" onClick={() => { setConfirmCreateTender(false); handleCreateTender(); }}>Создать</Button>
+        </DialogActions>
+      </Dialog>
+
+      <Dialog open={!!missingCompanyName} onClose={() => setMissingCompanyName(null)}>
+        <DialogTitle>Организация не найдена</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Организация <b>{missingCompanyName}</b> не найдена в базе.<br/>
+            Создать новую организацию?
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setMissingCompanyName(null)}>Отмена</Button>
+          <Button
+            onClick={() => {
+              window.open(`/reference/counterparties/new?shortName=${encodeURIComponent(missingCompanyName || '')}`, '_blank');
+              setMissingCompanyName(null);
+            }}
+            variant="contained"
+          >
+            Создать
+          </Button>
         </DialogActions>
       </Dialog>
       </Box>

@@ -198,18 +198,29 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
       setValue('phone', companyData.phone || '');
       setValue('email', companyData.email || '');
       if (companyData.legalForm) {
+        // Нормализуем имена для поиска
+        const normalize = (str: string) => str.replace(/\s+/g, '').toLowerCase();
         let foundType = companyTypes.find(
-          (type) => type.name.toUpperCase() === companyData.legalForm?.toUpperCase()
+          (type) => normalize(type.name) === normalize(companyData.legalForm || '')
         );
         if (!foundType && companyData.legalForm.trim()) {
           try {
-            const response = await api.post('/api/company/type-companies', { name: companyData.legalForm });
-            if (response.ok) {
-              const createdType: CompanyType = response.data;
-              setCompanyTypes(prev => [...prev, createdType]);
-              foundType = createdType;
+            // Перед созданием ещё раз получаем актуальный список типов (на случай, если кто-то создал параллельно)
+            const typesRes = await api.get('/api/company/type-companies');
+            const allTypes = typesRes.data || [];
+            const againFound = allTypes.find((type: CompanyType) => normalize(type.name) === normalize(companyData.legalForm || ''));
+            if (againFound) {
+              setCompanyTypes(allTypes);
+              foundType = againFound;
             } else {
-              console.error("Failed to auto-create company type");
+              const response = await api.post('/api/company/type-companies', { name: companyData.legalForm });
+              if (response.status === 200) {
+                const createdType: CompanyType = response.data;
+                setCompanyTypes(prev => [...prev, createdType]);
+                foundType = createdType;
+              } else {
+                console.error("Failed to auto-create company type");
+              }
             }
           } catch (e) {
             console.error("Error auto-creating company type:", e);
@@ -682,7 +693,7 @@ const ContactList = ({ control, nestIndex, register, errors, fields, append, rem
         const res = await api.post('/api/contact-types', { name: newContactTypeName });
         console.log('Ответ сервера:', res.status, res.statusText);
         
-        if (res.ok) {
+        if (res.status === 200) {
           const newType = res.data;
           console.log('Создан новый тип контакта:', newType);
           setAllContactTypes((prev: ContactType[]) => [...prev, newType]);

@@ -11,7 +11,7 @@ public interface TenderItemMapper {
     TenderItemMapper INSTANCE = Mappers.getMapper(TenderItemMapper.class);
 
     @Mapping(target = "unitId", source = "unit.id")
-    @Mapping(target = "unitName", source = "unit.name")
+    @Mapping(target = "unitName", source = "unit.shortName")
     @Mapping(target = "tenderId", source = "tender.id")
     @Mapping(target = "requestMaterialId", source = "requestMaterial.id")
     @Mapping(target = "materialId", source = "requestMaterial.material.id")
