@@ -15,11 +15,8 @@ COPY --from=frontend-build /app/dist/* ./src/main/resources/static/
 RUN mvn clean package -DskipTests
 
 # Финальный образ
-FROM openjdk:21-jdk-slim
+FROM amazoncorretto:21-alpine
 WORKDIR /app
 COPY --from=backend-build /app/target/*.jar ./app.jar
 
-ENV SPRING_PROFILES_ACTIVE=prod
-EXPOSE 8080
-
-ENTRYPOINT ["java", "-jar", "app.jar"] 
+ENTRYPOINT ["java", "-jar", "app.jar"]
