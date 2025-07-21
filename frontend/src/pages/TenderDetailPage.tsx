@@ -45,7 +45,6 @@ import DialogActions from '@mui/material/DialogActions';
 import PriceAnalysisSummary from '../components/PriceAnalysisSummary';
 import TenderSplitDialog from '../components/TenderSplitDialog';
 import VisibilityIcon from '@mui/icons-material/Visibility';
-import axios from 'axios';
 
 interface TenderItemDto {
   id: string;
@@ -240,7 +239,7 @@ const TenderDetailPage: React.FC = () => {
     if (!tender) return;
     setAwarding(prev => ({ ...prev, [itemId]: true }));
     try {
-      await axios.post(`/api/tenders/${tender.id}/items/${itemId}/award`, { supplierId });
+      await api.post(`/api/tenders/${tender.id}/items/${itemId}/award`, { supplierId });
       // После успешного присвоения обновить тендер
       await loadTender();
     } finally {

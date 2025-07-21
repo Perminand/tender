@@ -209,7 +209,7 @@ export default function RequestEditPage() {
         const mat = request.materials[idx];
         if (mat.material?.id && request.organization?.id) {
           try {
-            const res = await axios.get('/api/supplier-material-names/by-material-and-supplier', {
+            const res = await api.get('/api/supplier-material-names/by-material-and-supplier', {
               params: { materialId: mat.material.id, supplierId: request.organization.id }
             });
             const supplierNames = res.data.map((n: any) => n.name);
@@ -290,7 +290,7 @@ export default function RequestEditPage() {
       newMaterials[idx].material = selectedMaterial;
       
       if (value && request.organization?.id) {
-        axios.get('/api/supplier-material-names/by-material-and-supplier', {
+        api.get('/api/supplier-material-names/by-material-and-supplier', {
           params: { materialId: value, supplierId: request.organization.id }
         })
           .then(res => {
@@ -403,9 +403,9 @@ export default function RequestEditPage() {
       console.log('requestMaterials:', JSON.stringify(requestToSend.requestMaterials, null, 2));
     
     if (isEdit) {
-      await axios.put(`/api/requests/${id}`, requestToSend);
+      await api.put(`/api/requests/${id}`, requestToSend);
     } else {
-      await axios.post('/api/requests', requestToSend);
+      await api.post('/api/requests', requestToSend);
     }
       
     setLoading(false);
@@ -426,7 +426,7 @@ export default function RequestEditPage() {
   const handleDelete = async () => {
     setLoading(true);
     try {
-    await axios.delete(`/api/requests/${id}`);
+    await api.delete(`/api/requests/${id}`);
     setLoading(false);
     navigate('/requests/registry');
     } catch (error: any) {
@@ -444,7 +444,7 @@ export default function RequestEditPage() {
 
   const handleCreateTender = async () => {
     try {
-      const response = await axios.post(`/api/requests/${id}/create-tender`);
+      const response = await api.post(`/api/requests/${id}/create-tender`);
       const tender = response.data;
       // После создания тендера меняем статус заявки на 'TENDER'
       setRequest(prev => ({ ...prev, status: 'TENDER' }));
@@ -613,7 +613,7 @@ export default function RequestEditPage() {
           for (const mat of importedMaterials) {
             if (!mat.material && mat.supplierMaterialName) {
               try {
-                const res = await axios.get('/api/org-supplier-material-mapping', {
+                const res = await api.get('/api/org-supplier-material-mapping', {
                   params: { organizationId: orgObj.id, supplierName: mat.supplierMaterialName }
                 });
                 if (res.data && res.data.materialId) {
@@ -696,35 +696,35 @@ export default function RequestEditPage() {
     if (!pendingImportData) return;
     let projectObj = projects.find(p => p.name.trim().toLowerCase() === (pendingImportData.projectName || '').trim().toLowerCase());
     if (!projectObj && pendingImportData.projectName) {
-      const res = await axios.post('/api/projects', { name: pendingImportData.projectName });
+      const res = await api.post('/api/projects', { name: pendingImportData.projectName });
       projectObj = res.data;
       setProjects(prev => [...prev, res.data]);
     }
     let warehouseObj = warehouses.find(w => w.name.trim().toLowerCase() === (pendingImportData.sklad || '').trim().toLowerCase());
     if (!warehouseObj && pendingImportData.sklad && projectObj) {
-      const res = await axios.post('/api/warehouses', { name: pendingImportData.sklad, projectId: projectObj.id });
+      const res = await api.post('/api/warehouses', { name: pendingImportData.sklad, projectId: projectObj.id });
       warehouseObj = res.data;
       setWarehouses(prev => [...prev, res.data]);
     }
     // Виды работ
     let workTypeMap: Record<string, any> = {};
     for (const w of importWillCreate.workTypes) {
-      const res = await axios.post('/api/work-types', { name: w });
+      const res = await api.post('/api/work-types', { name: w });
       setWorkTypes(prev => [...prev, res.data]);
       workTypeMap[w] = res.data;
     }
     // Характеристики
     let charMap: Record<string, any> = {};
     for (const c of importWillCreate.characteristics) {
-      const res = await axios.post('/api/characteristics', { name: c });
+      const res = await api.post('/api/characteristics', { name: c });
       setCharacteristics(prev => [...prev, res.data]);
       charMap[c] = res.data;
     }
     // Ед. изм.
     let unitMap: Record<string, any> = {};
     for (const u of importWillCreate.units) {
-      const res = await axios.post('/api/units', { name: u, shortName: u });
-      const unitsRes = await axios.get('/api/units');
+      const res = await api.post('/api/units', { name: u, shortName: u });
+      const unitsRes = await api.get('/api/units');
       setUnits(unitsRes.data);
       unitMap[u] = res.data;
     }
@@ -1235,7 +1235,7 @@ export default function RequestEditPage() {
           <Button onClick={async () => {
             if (newWorkType.trim()) {
               try {
-                const res = await axios.post('/api/work-types', { name: newWorkType });
+                const res = await api.post('/api/work-types', { name: newWorkType });
                 setWorkTypes(prev => [...prev, res.data]);
                 if (workTypeMaterialIdx !== null) {
                   handleMaterialChange(workTypeMaterialIdx, 'workType', res.data.id);
@@ -1276,7 +1276,7 @@ export default function RequestEditPage() {
           <Button onClick={async () => {
             if (newProject.trim()) {
               try {
-                const res = await axios.post('/api/projects', { name: newProject });
+                const res = await api.post('/api/projects', { name: newProject });
                 setProjects(prev => [...prev, res.data]);
                 handleSelectChange('project', res.data.id);
                 setRequest(r => ({ ...r, project: res.data }));
@@ -1336,10 +1336,10 @@ export default function RequestEditPage() {
           <Button onClick={async () => {
             if (newUnitName.trim()) {
             // Создать новую единицу через API
-            const res = await axios.post('/api/units', { name: newUnitName, shortName: newUnitName });
+            const res = await api.post('/api/units', { name: newUnitName, shortName: newUnitName });
             if (res.data && res.data.id) {
               // Обновить units
-              const unitsRes = await axios.get('/api/units');
+              const unitsRes = await api.get('/api/units');
               setUnits(unitsRes.data);
               setOpenUnitDialog(false);
               console.log('[IMPORT][UNIT] Единица измерения создана:', newUnitName);
@@ -1384,7 +1384,7 @@ export default function RequestEditPage() {
           <Button onClick={async () => {
             if (newWarehouse.trim() && request.project?.id) {
               try {
-                const res = await axios.post('/api/warehouses', { 
+                const res = await api.post('/api/warehouses', { 
                   name: newWarehouse, 
                   projectId: request.project.id 
                 });
@@ -1428,7 +1428,7 @@ export default function RequestEditPage() {
           <Button onClick={async () => {
             if (newCharacteristic.trim()) {
               try {
-                const res = await axios.post('/api/characteristics', { 
+                const res = await api.post('/api/characteristics', { 
                   name: newCharacteristic
                 });
                 setCharacteristics(prev => [...prev, res.data]);

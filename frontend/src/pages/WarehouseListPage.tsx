@@ -10,7 +10,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { api } from '../utils/api';
 import Pagination from '@mui/material/Pagination';
 
 interface Warehouse {
@@ -45,7 +45,7 @@ const WarehouseListPage: React.FC = () => {
   const fetchWarehouses = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/warehouses');
+      const response = await api.get('/warehouses');
       setWarehouses(response.data);
     } catch (error) {
       setSnackbar({open: true, message: 'Ошибка при загрузке складов', severity: 'error'});
@@ -56,7 +56,7 @@ const WarehouseListPage: React.FC = () => {
 
   const fetchProjects = async () => {
     try {
-      const response = await axios.get('/api/projects');
+      const response = await api.get('/projects');
       setProjects(response.data);
     } catch (error) {
       setSnackbar({open: true, message: 'Ошибка при загрузке проектов', severity: 'error'});
@@ -92,10 +92,10 @@ const WarehouseListPage: React.FC = () => {
     }
     try {
       if (editingWarehouse) {
-        await axios.put(`/api/warehouses/${editingWarehouse.id}`, formData);
+        await api.put(`/warehouses/${editingWarehouse.id}`, formData);
         setSnackbar({open: true, message: 'Склад успешно обновлён', severity: 'success'});
       } else {
-        await axios.post('/api/warehouses', formData);
+        await api.post('/warehouses', formData);
         setSnackbar({open: true, message: 'Склад успешно добавлен', severity: 'success'});
       }
       fetchWarehouses();
@@ -110,7 +110,7 @@ const WarehouseListPage: React.FC = () => {
       return;
     }
     try {
-      await axios.delete(`/api/warehouses/${id}`);
+      await api.delete(`/warehouses/${id}`);
       setSnackbar({open: true, message: 'Склад успешно удалён', severity: 'success'});
       fetchWarehouses();
     } catch (error) {
@@ -121,7 +121,7 @@ const WarehouseListPage: React.FC = () => {
   // --- Импорт/экспорт ---
   const handleExport = async () => {
     try {
-      const response = await axios.get('/api/warehouses/export', { responseType: 'blob' });
+      const response = await api.get('/warehouses/export', { responseType: 'blob' });
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
@@ -145,7 +145,7 @@ const WarehouseListPage: React.FC = () => {
     const formData = new FormData();
     formData.append('file', file);
     try {
-      await axios.post('/api/warehouses/import', formData);
+      await api.post('/warehouses/import', formData);
       setSnackbar({open: true, message: 'Импорт успешно завершён', severity: 'success'});
       fetchWarehouses();
     } catch (error) {
