@@ -20,7 +20,8 @@ import {
   DialogContent,
   DialogActions,
   CircularProgress,
-  DialogContentText
+  DialogContentText,
+  TablePagination
 } from '@mui/material';
 import {
   Edit,
@@ -67,6 +68,8 @@ export default function RequestRegistryPage() {
     toDate: '',
     materialName: '',
   });
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   const navigate = useNavigate();
 
@@ -175,6 +178,9 @@ export default function RequestRegistryPage() {
     }
   };
 
+  // Пагинация: slice данных для текущей страницы
+  const paginatedData = data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
   return (
     <Paper sx={{ p: 2 }}>
       <Toolbar sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
@@ -235,6 +241,7 @@ export default function RequestRegistryPage() {
               value={filters.fromDate}
               onChange={handleFilterChange}
               InputLabelProps={{ shrink: true }}
+              inputProps={{ placeholder: 'ДД.ММ.ГГГГ' }}
             />
             <TextField
               name="toDate"
@@ -244,6 +251,7 @@ export default function RequestRegistryPage() {
               value={filters.toDate}
               onChange={handleFilterChange}
               InputLabelProps={{ shrink: true }}
+              inputProps={{ placeholder: 'ДД.ММ.ГГГГ' }}
             />
             <Button type="submit" variant="contained" color="primary">
               Фильтровать
@@ -281,7 +289,7 @@ export default function RequestRegistryPage() {
                   <CircularProgress size={24} />
                 </TableCell>
               </TableRow>
-            ) : data.length === 0 ? (
+            ) : paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
                   <Typography variant="body2" color="text.secondary">
@@ -289,7 +297,7 @@ export default function RequestRegistryPage() {
                   </Typography>
                 </TableCell>
               </TableRow>
-            ) : data.map((row, idx) => (
+            ) : paginatedData.map((row, idx) => (
               <TableRow 
                 key={row.requestId + '-' + idx}
                 hover
@@ -381,6 +389,20 @@ export default function RequestRegistryPage() {
           </TableBody>
         </Table>
       </TableContainer>
+      <TablePagination
+        component="div"
+        count={data.length}
+        page={page}
+        onPageChange={(_, newPage) => setPage(newPage)}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={(e) => {
+          setRowsPerPage(parseInt(e.target.value, 10));
+          setPage(0);
+        }}
+        labelRowsPerPage="Строк на странице:"
+        labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
+        rowsPerPageOptions={[5, 10, 25, 50]}
+      />
 
       {/* Статистика */}
       {!loading && data.length > 0 && (
