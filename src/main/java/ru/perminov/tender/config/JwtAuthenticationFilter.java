@@ -39,13 +39,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         String requestURI = request.getRequestURI();
         
-        // Пропускаем JWT проверку для публичных путей
-        if (requestURI.equals("/") || requestURI.equals("/health") || 
-            requestURI.startsWith("/api/auth/") || requestURI.startsWith("/api/public/") ||
-            requestURI.startsWith("/static/") || requestURI.startsWith("/assets/") ||
-            requestURI.startsWith("/css/") || requestURI.startsWith("/js/") ||
-            requestURI.startsWith("/images/") || requestURI.equals("/favicon.ico") ||
-            requestURI.equals("/api/health")) {
+        // Пропускаем JWT проверку для публичных путей (используем централизованные константы)
+        if (SecurityPaths.isPublicPath(requestURI)) {
+            log.debug("Пропускаем JWT проверку для публичного пути: {}", requestURI);
             filterChain.doFilter(request, response);
             return;
         }
@@ -67,7 +63,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             username = jwtService.extractUsername(jwt);
             log.info("Извлеченное имя пользователя: {}", username);
             
-            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            if (username != null) {
                 log.info("Загрузка UserDetails для пользователя: {}", username);
                 UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
                 log.info("UserDetails загружены, роли: {}", userDetails.getAuthorities());
@@ -85,16 +81,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             username, userDetails.getAuthorities());
                 } else {
                     log.warn("JWT токен невалиден для пользователя: {}", username);
+                    // Очищаем контекст безопасности если токен невалиден
+                    SecurityContextHolder.clearContext();
                 }
             } else {
-                if (username == null) {
                     log.warn("Не удалось извлечь имя пользователя из JWT токена");
-                } else {
-                    log.info("Пользователь уже аутентифицирован: {}", username);
-                }
+                // Очищаем контекст безопасности если не удалось извлечь username
+                SecurityContextHolder.clearContext();
             }
         } catch (Exception e) {
             log.error("Ошибка при обработке JWT токена: {}", e.getMessage(), e);
+            // Очищаем контекст безопасности при ошибке
+            SecurityContextHolder.clearContext();
         }
         
         log.info("=== End JWT Filter Debug ===");

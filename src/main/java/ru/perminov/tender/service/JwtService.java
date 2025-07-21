@@ -81,7 +81,9 @@ public class JwtService {
                 .setExpiration(new Date(System.currentTimeMillis() + expiration))
                 .claim("userId", user.getId().toString())
                 .claim("email", user.getEmail())
-                .claim("roles", user.getRoles())
+                .claim("roles", user.getRoles().stream()
+                        .map(role -> "ROLE_" + role.name())
+                        .collect(java.util.stream.Collectors.toSet()))
                 .claim("companyId", user.getCompany() != null ? user.getCompany().getId().toString() : null)
                 .signWith(getSigningKey(), Jwts.SIG.HS256)
                 .compact();

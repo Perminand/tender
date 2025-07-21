@@ -16,6 +16,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +25,7 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
     private final RequestRepository requestRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public List<RequestRegistryRowDto> getRegistry(String organization, String project, LocalDate fromDate, LocalDate toDate, String materialName, String companyId) {
         List<Request> requests = requestRepository.findAll();
         if (companyId != null) {

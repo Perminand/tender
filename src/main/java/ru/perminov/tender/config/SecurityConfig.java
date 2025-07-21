@@ -42,14 +42,8 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
-                // Публичные эндпоинты
-                .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/public/**").permitAll()
-                .requestMatchers("/api/health").permitAll()
-                .requestMatchers("/error").permitAll()
-                .requestMatchers("/actuator/health").permitAll()
-                // Статические ресурсы и корневой путь
-                .requestMatchers("/", "/index.html", "/static/**", "/assets/**", "/css/**", "/js/**", "/images/**", "/favicon.ico").permitAll()
+                // Публичные эндпоинты (используем централизованные константы)
+                .requestMatchers(SecurityPaths.PUBLIC_PATHS).permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

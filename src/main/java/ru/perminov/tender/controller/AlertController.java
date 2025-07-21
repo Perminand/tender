@@ -21,56 +21,56 @@ public class AlertController {
     private final AlertService alertService;
     
     // Получение алертов
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping
     public ResponseEntity<List<AlertDto>> getAllAlerts() {
         log.info("Получен GET-запрос: все алерты");
         return ResponseEntity.ok(alertService.getAllAlerts());
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/active")
     public ResponseEntity<List<AlertDto>> getActiveAlerts() {
         log.info("Получен GET-запрос: активные алерты");
         return ResponseEntity.ok(alertService.getActiveAlerts());
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER')")
     @GetMapping("/unread")
     public ResponseEntity<List<AlertDto>> getUnreadAlerts(@RequestParam String username) {
         log.info("Получен GET-запрос: непрочитанные алерты для пользователя: {}", username);
         return ResponseEntity.ok(alertService.getUnreadAlerts(username));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/urgent")
     public ResponseEntity<List<AlertDto>> getUrgentAlerts() {
         log.info("Получен GET-запрос: срочные алерты");
         return ResponseEntity.ok(alertService.getUrgentAlerts());
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/type/{type}")
     public ResponseEntity<List<AlertDto>> getAlertsByType(@PathVariable Alert.AlertType type) {
         log.info("Получен GET-запрос: алерты по типу: {}", type);
         return ResponseEntity.ok(alertService.getAlertsByType(type));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/severity/{severity}")
     public ResponseEntity<List<AlertDto>> getAlertsBySeverity(@PathVariable Alert.AlertSeverity severity) {
         log.info("Получен GET-запрос: алерты по важности: {}", severity);
         return ResponseEntity.ok(alertService.getAlertsBySeverity(severity));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/user/{username}")
     public ResponseEntity<List<AlertDto>> getAlertsByUser(@PathVariable String username) {
         log.info("Получен GET-запрос: алерты пользователя: {}", username);
         return ResponseEntity.ok(alertService.getAlertsByUser(username));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/{id}")
     public ResponseEntity<AlertDto> getAlertById(@PathVariable UUID id) {
         log.info("Получен GET-запрос: алерт по id: {}", id);
@@ -78,28 +78,28 @@ public class AlertController {
     }
     
     // Управление статусом
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @PostMapping("/{id}/acknowledge")
     public ResponseEntity<AlertDto> acknowledgeAlert(@PathVariable UUID id) {
         log.info("Получен POST-запрос: подтверждение алерта id={}", id);
         return ResponseEntity.ok(alertService.acknowledgeAlert(id));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @PostMapping("/{id}/resolve")
     public ResponseEntity<AlertDto> resolveAlert(@PathVariable UUID id) {
         log.info("Получен POST-запрос: решение алерта id={}", id);
         return ResponseEntity.ok(alertService.resolveAlert(id));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER')")
     @PostMapping("/{id}/read")
     public ResponseEntity<AlertDto> markAsRead(@PathVariable UUID id) {
         log.info("Получен POST-запрос: отметить как прочитанный алерт id={}", id);
         return ResponseEntity.ok(alertService.markAsRead(id));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER')")
     @PostMapping("/mark-all-read")
     public ResponseEntity<Void> markAllAsRead(@RequestParam String username) {
         log.info("Получен POST-запрос: отметить все как прочитанные для пользователя: {}", username);
@@ -108,21 +108,21 @@ public class AlertController {
     }
     
     // Статистика
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER')")
     @GetMapping("/stats/unread-count")
     public ResponseEntity<Integer> getUnreadCount(@RequestParam String username) {
         log.info("Получен GET-запрос: количество непрочитанных алертов для пользователя: {}", username);
         return ResponseEntity.ok(alertService.getUnreadCount(username));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/stats/urgent-count")
     public ResponseEntity<Integer> getUrgentCount(@RequestParam String username) {
         log.info("Получен GET-запрос: количество срочных алертов для пользователя: {}", username);
         return ResponseEntity.ok(alertService.getUrgentCount(username));
     }
     
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @GetMapping("/stats/total-count")
     public ResponseEntity<Integer> getTotalCount(@RequestParam String username) {
         log.info("Получен GET-запрос: общее количество алертов для пользователя: {}", username);
@@ -130,7 +130,7 @@ public class AlertController {
     }
     
     // Автоматические проверки
-    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER')")
     @PostMapping("/check/overdue-deliveries")
     public ResponseEntity<Void> checkOverdueDeliveries() {
         log.info("Получен POST-запрос: проверка просроченных поставок");

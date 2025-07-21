@@ -33,6 +33,7 @@ public class UserService {
             .toList();
     }
 
+    @Transactional
     public UserDto toDto(User user) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());

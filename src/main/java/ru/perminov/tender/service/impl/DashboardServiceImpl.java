@@ -13,6 +13,7 @@ import ru.perminov.tender.repository.DeliveryRepository;
 import ru.perminov.tender.repository.PaymentRepository;
 import ru.perminov.tender.repository.TenderRepository;
 import ru.perminov.tender.service.DashboardService;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,6 +35,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final AlertRepository alertRepository;
 
     @Override
+    @Transactional(readOnly = true)
     public DashboardDto getMainDashboard(String username) {
         LocalDate today = LocalDate.now();
         LocalDate startOfMonth = today.withDayOfMonth(1);

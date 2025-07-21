@@ -79,6 +79,8 @@ logging:
     org.springframework.web: DEBUG
     org.springframework.security: DEBUG
     ru.perminov.tender: DEBUG
+    ru.perminov.tender.config.SecurityPaths: DEBUG
+    ru.perminov.tender.config.JwtAuthenticationFilter: DEBUG
 
 # Notification settings
 notification:

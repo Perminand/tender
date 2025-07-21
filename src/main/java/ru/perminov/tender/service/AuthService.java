@@ -36,6 +36,7 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
 
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         log.info("Попытка входа пользователя: {}", request.username());
         
@@ -117,6 +118,7 @@ public class AuthService {
         return LoginResponse.fromUser(user, jwtToken, refreshToken, expiresIn);
     }
 
+    @Transactional
     public LoginResponse refreshToken(RefreshTokenRequest request) {
         log.info("Обновление токена");
         
@@ -148,6 +150,7 @@ public class AuthService {
         // Здесь можно добавить логику для blacklist токенов если необходимо
     }
 
+    @Transactional
     public Map<String, Object> getUserPermissions(String username) {
         log.info("Получение разрешений для пользователя: {}", username);
         
@@ -158,14 +161,14 @@ public class AuthService {
         
         // Добавляем роли пользователя
         Set<String> roles = user.getRoles().stream()
-                .map(role -> role.name())
+                .map(role -> "ROLE_" + role.name())
                 .collect(Collectors.toSet());
         permissions.put("roles", roles);
         
         // Добавляем разрешения на основе ролей
         Set<String> permissionsList = new HashSet<>();
         
-        if (roles.contains("ADMIN")) {
+        if (roles.contains("ROLE_ADMIN")) {
             permissionsList.addAll(Arrays.asList(
                 "dashboard:read", "dashboard:write",
                 "requests:read", "requests:write", "requests:delete",
@@ -182,7 +185,7 @@ public class AuthService {
                 "settings:read", "settings:write",
                 "users:read", "users:write", "users:delete"
             ));
-        } else if (roles.contains("MANAGER")) {
+        } else if (roles.contains("ROLE_MANAGER")) {
             permissionsList.addAll(Arrays.asList(
                 "dashboard:read", "dashboard:write",
                 "requests:read", "requests:write",
@@ -197,7 +200,7 @@ public class AuthService {
                 "materials:read", "materials:write",
                 "projects:read", "projects:write"
             ));
-        } else if (roles.contains("CUSTOMER")) {
+        } else if (roles.contains("ROLE_CUSTOMER")) {
             permissionsList.addAll(Arrays.asList(
                 "dashboard:read",
                 "requests:read", "requests:write",
@@ -206,13 +209,13 @@ public class AuthService {
                 "materials:read",
                 "projects:read"
             ));
-        } else if (roles.contains("SUPPLIER")) {
+        } else if (roles.contains("ROLE_SUPPLIER")) {
             permissionsList.addAll(Arrays.asList(
                 "tenders:read",
                 "proposals:read", "proposals:write",
                 "notifications:read"
             ));
-        } else if (roles.contains("VIEWER")) {
+        } else if (roles.contains("ROLE_VIEWER")) {
             permissionsList.addAll(Arrays.asList(
                 "dashboard:read",
                 "requests:read",
