@@ -21,7 +21,5 @@ public class WebConfig implements WebMvcConfigurer {
                 .setViewName("forward:/index.html");
         registry.addViewController("/{spring:[a-zA-Z0-9-_]+}/**")
                 .setViewName("forward:/index.html");
-        registry.addViewController("/{spring:[a-zA-Z0-9-_]+}/**{spring:?!(\\.js|\\.css)$}")
-                .setViewName("forward:/index.html");
     }
 } 
