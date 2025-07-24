@@ -6,8 +6,9 @@ import org.mapstruct.factory.Mappers;
 import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.model.Tender;
 import ru.perminov.tender.mapper.company.CompanyMapper;
+import ru.perminov.tender.mapper.TenderItemMapper;
 
-@Mapper(componentModel = "spring", uses = {CompanyMapper.class})
+@Mapper(componentModel = "spring", uses = {CompanyMapper.class, TenderItemMapper.class})
 public interface TenderMapper {
     TenderMapper INSTANCE = Mappers.getMapper(TenderMapper.class);
 
@@ -20,6 +21,7 @@ public interface TenderMapper {
     @Mapping(target = "parentTenderId", source = "parentTender.id")
     @Mapping(target = "warehouseId", source = "warehouse.id")
     @Mapping(target = "warehouseName", source = "warehouse.name")
+    @Mapping(target = "tenderItems", source = "tenderItems")
     TenderDto toDto(Tender entity);
     
     Tender toEntity(TenderDto dto);

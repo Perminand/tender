@@ -47,7 +47,9 @@ import {
   Assessment as AssessmentIcon,
   FilterList as FilterListIcon,
   ExpandMore as ExpandMoreIcon,
-  Description as ContractIcon
+  Description as ContractIcon,
+  TableView as TableViewIcon,
+  ViewModule as ViewModuleIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -91,6 +93,7 @@ const TenderListPage: React.FC = () => {
     onConfirm: null
   });
   const navigate = useNavigate();
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   const statusOrder = [
     'DRAFT',
@@ -113,7 +116,9 @@ const TenderListPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   
   const [page, setPage] = useState(1);
-  const rowsPerPage = 50;
+  const cardRowsPerPage = 12;
+  const tableRowsPerPage = 50;
+  const rowsPerPage = viewMode === 'cards' ? cardRowsPerPage : tableRowsPerPage;
 
   // Получаем роль пользователя
   const userRole = localStorage.getItem('userRole');
@@ -377,13 +382,29 @@ const TenderListPage: React.FC = () => {
         <Typography variant="h4" component="h1">
           Тендеры
         </Typography>
-        <Button
-          variant="contained"
-          startIcon={<AddIcon />}
-          onClick={() => navigate('/tenders/new')}
-        >
-          Создать тендер
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant={viewMode === 'cards' ? 'contained' : 'outlined'}
+            startIcon={<ViewModuleIcon />}
+            onClick={() => setViewMode('cards')}
+          >
+            Карточки
+          </Button>
+          <Button
+            variant={viewMode === 'table' ? 'contained' : 'outlined'}
+            startIcon={<TableViewIcon />}
+            onClick={() => setViewMode('table')}
+          >
+            Таблица
+          </Button>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={() => navigate('/tenders/new')}
+          >
+            Создать тендер
+          </Button>
+        </Box>
       </Box>
 
       {error && (
@@ -551,207 +572,329 @@ const TenderListPage: React.FC = () => {
         </Typography>
       </Box>
 
-      <Grid container spacing={3}>
-        {paginatedTenders.map((tender) => (
-          <Grid item xs={12} md={6} lg={4} key={tender.id}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                  <Typography variant="h6" component="h2" sx={{ flex: 1 }}>
-                    {tender.title}
-                  </Typography>
-                  <Chip
-                    label={getStatusLabel(tender.status)}
-                    color={getStatusColor(tender.status)}
-                    size="small"
-                  />
-                </Box>
-
-                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                  №{tender.tenderNumber}
-                </Typography>
-
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Заказчик: {tender.customerName}
-                </Typography>
-
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Срок подачи: {formatDate(tender.submissionDeadline)}
-                </Typography>
-
-                {/* Информация о предложениях - скрыта для поставщика */}
-                {!isSupplier && (
-                  <>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Typography variant="body2" sx={{ mr: 1 }}>
-                        Предложений: {tender.proposalsCount}
-                      </Typography>
-                      {tender.bestPrice && (
-                        <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-                          <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5, color: 'success.main' }} />
-                          <Typography variant="body2" color="success.main">
-                            {formatPrice(tender.bestPrice)}
-                          </Typography>
-                        </Box>
-                      )}
-                    </Box>
-
-                    {tender.bestSupplierName && (
-                      <Typography variant="body2" color="success.main" sx={{ mb: 2 }}>
-                        Лучшее предложение: {tender.bestSupplierName}
-                      </Typography>
-                    )}
-                  </>
-                )}
-
-                <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Tooltip title="Просмотр">
-                    <IconButton
+      {viewMode === 'cards' ? (
+        <Grid container spacing={3}>
+          {paginatedTenders.map((tender) => (
+            <Grid item xs={12} md={6} lg={4} key={tender.id}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                    <Typography variant="h6" component="h2" sx={{ flex: 1 }}>
+                      {tender.title}
+                    </Typography>
+                    <Chip
+                      label={getStatusLabel(tender.status)}
+                      color={getStatusColor(tender.status)}
                       size="small"
-                      onClick={() => navigate(`/tenders/${tender.id}`)}
-                    >
-                      <ViewIcon />
-                    </IconButton>
-                  </Tooltip>
+                    />
+                  </Box>
 
-                  {/* Кнопки управления - скрыты для поставщика */}
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                    №{tender.tenderNumber}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Заказчик: {tender.customerName}
+                  </Typography>
+
+                  <Typography variant="body2" sx={{ mb: 1 }}>
+                    Срок подачи: {formatDate(tender.submissionDeadline)}
+                  </Typography>
+
+                  {/* Информация о предложениях - скрыта для поставщика */}
                   {!isSupplier && (
                     <>
-                      {tender.status === 'DRAFT' && (
-                        <Tooltip title="Редактировать">
-                          <IconButton
-                            size="small"
-                            onClick={() => navigate(`/tenders/${tender.id}/edit`)}
-                          >
-                            <EditIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <Typography variant="body2" sx={{ mr: 1 }}>
+                          Предложений: {tender.proposalsCount}
+                        </Typography>
+                        {tender.bestPrice && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
+                            <TrendingUpIcon sx={{ fontSize: 16, mr: 0.5, color: 'success.main' }} />
+                            <Typography variant="body2" color="success.main">
+                              {formatPrice(tender.bestPrice)}
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
 
-                      {tender.status === 'DRAFT' && (
-                        <>
-                        <Tooltip title="Опубликовать">
-                            <IconButton
-                              size="small"
-                              onClick={() => openStatusDialog(tender.id, 'publish')}
-                            >
-                              <PublishIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Удалить">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleDeleteClick(tender.id)}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </>
-                      )}
-
-                      {tender.status === 'PUBLISHED' && (
-                        <Tooltip title="Начать прием предложений">
-                          <IconButton
-                            size="small"
-                            color="warning"
-                            onClick={() => openStatusDialog(tender.id, 'start-bidding')}
-                          >
-                            <TrendingUpIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-
-                      {tender.status === 'BIDDING' && (
-                        <Tooltip title="Закрыть прием">
-                          <IconButton
-                            size="small"
-                            onClick={() => openStatusDialog(tender.id, 'close')}
-                          >
-                            <CloseIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-
-                      {tender.status === 'EVALUATION' && (
-                        <>
-                          <Tooltip title="Завершить тендер">
-                            <IconButton
-                              size="small"
-                              color="success"
-                              onClick={() => openStatusDialog(tender.id, 'complete')}
-                            >
-                              <CheckCircleIcon />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Заключить контракт">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => navigate(`/tenders/${tender.id}/contract/new`)}
-                            >
-                              <ContractIcon />
-                            </IconButton>
-                          </Tooltip>
-                        </>
-                      )}
-
-                      {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
-                        <Tooltip title="Отменить тендер">
-                        <IconButton
-                          size="small"
-                          color="error"
-                            onClick={() => openStatusDialog(tender.id, 'cancel')}
-                          >
-                            <CloseIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-
-                      {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
-                        <Tooltip title="Анализ цен">
-                          <IconButton
-                            size="small"
-                            color="info"
-                            onClick={() => navigate(`/tenders/${tender.id}/price-analysis`)}
-                          >
-                            <AssessmentIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-
-                      {tender.status === 'AWARDED' && (
-                        <Tooltip title="Просмотр контракта">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => navigate(`/tenders/${tender.id}/contract`)}
-                          >
-                            <ContractIcon />
-                          </IconButton>
-                        </Tooltip>
+                      {tender.bestSupplierName && (
+                        <Typography variant="body2" color="success.main" sx={{ mb: 2 }}>
+                          Лучшее предложение: {tender.bestSupplierName}
+                        </Typography>
                       )}
                     </>
                   )}
 
-                  {/* Кнопка подачи предложения - доступна для всех в статусе BIDDING */}
-                  {tender.status === 'BIDDING' && (
-                    <Tooltip title="Подать предложение">
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    <Tooltip title="Просмотр">
                       <IconButton
                         size="small"
-                        color="success"
-                        onClick={() => navigate(`/tenders/${tender.id}/proposals/new`)}
-                    >
-                        <PublishIcon />
-                    </IconButton>
-                  </Tooltip>
-                  )}
-                </Box>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                        onClick={() => navigate(`/tenders/${tender.id}`)}
+                      >
+                        <ViewIcon />
+                      </IconButton>
+                    </Tooltip>
+
+                    {/* Кнопки управления - скрыты для поставщика */}
+                    {!isSupplier && (
+                      <>
+                        {tender.status === 'DRAFT' && (
+                          <Tooltip title="Редактировать">
+                            <IconButton
+                              size="small"
+                              onClick={() => navigate(`/tenders/${tender.id}/edit`)}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
+                        {tender.status === 'DRAFT' && (
+                          <>
+                          <Tooltip title="Опубликовать">
+                              <IconButton
+                                size="small"
+                                onClick={() => openStatusDialog(tender.id, 'publish')}
+                              >
+                                <PublishIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Удалить">
+                              <IconButton
+                                size="small"
+                                color="error"
+                                onClick={() => handleDeleteClick(tender.id)}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+
+                        {tender.status === 'PUBLISHED' && (
+                          <Tooltip title="Начать прием предложений">
+                            <IconButton
+                              size="small"
+                              color="warning"
+                              onClick={() => openStatusDialog(tender.id, 'start-bidding')}
+                            >
+                              <TrendingUpIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
+                        {tender.status === 'BIDDING' && (
+                          <Tooltip title="Закрыть прием">
+                            <IconButton
+                              size="small"
+                              onClick={() => openStatusDialog(tender.id, 'close')}
+                            >
+                              <CloseIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
+                        {tender.status === 'EVALUATION' && (
+                          <>
+                            <Tooltip title="Завершить тендер">
+                              <IconButton
+                                size="small"
+                                color="success"
+                                onClick={() => openStatusDialog(tender.id, 'complete')}
+                              >
+                                <CheckCircleIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Заключить контракт">
+                              <IconButton
+                                size="small"
+                                color="primary"
+                                onClick={() => navigate(`/tenders/${tender.id}/contract/new`)}
+                              >
+                                <ContractIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+
+                        {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
+                          <Tooltip title="Отменить тендер">
+                          <IconButton
+                            size="small"
+                            color="error"
+                              onClick={() => openStatusDialog(tender.id, 'cancel')}
+                            >
+                              <CloseIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
+                        {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+                          <Tooltip title="Анализ цен">
+                            <IconButton
+                              size="small"
+                              color="info"
+                              onClick={() => navigate(`/tenders/${tender.id}/price-analysis`)}
+                            >
+                              <AssessmentIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+
+                        {tender.status === 'AWARDED' && (
+                          <Tooltip title="Просмотр контракта">
+                            <IconButton
+                              size="small"
+                              color="primary"
+                              onClick={() => navigate(`/tenders/${tender.id}/contract`)}
+                            >
+                              <ContractIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </>
+                    )}
+
+                    {/* Кнопка подачи предложения - доступна для всех в статусе BIDDING */}
+                    {tender.status === 'BIDDING' && (
+                      <Tooltip title="Подать предложение">
+                        <IconButton
+                          size="small"
+                          color="success"
+                          onClick={() => navigate(`/tenders/${tender.id}/proposals/new`)}
+                      >
+                          <PublishIcon />
+                      </IconButton>
+                    </Tooltip>
+                    )}
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <TableContainer component={Paper} sx={{ mb: 2 }}>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Номер</TableCell>
+                <TableCell>Название</TableCell>
+                <TableCell>Заказчик</TableCell>
+                <TableCell>Срок подачи</TableCell>
+                <TableCell>Статус</TableCell>
+                <TableCell>Предложений</TableCell>
+                <TableCell>Лучшая цена</TableCell>
+                <TableCell>Действия</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {paginatedTenders.map((tender) => (
+                <TableRow key={tender.id}>
+                  <TableCell>{tender.tenderNumber}</TableCell>
+                  <TableCell>{tender.title}</TableCell>
+                  <TableCell>{tender.customerName}</TableCell>
+                  <TableCell>{formatDate(tender.submissionDeadline)}</TableCell>
+                  <TableCell>
+                    <Chip label={getStatusLabel(tender.status)} color={getStatusColor(tender.status)} size="small" />
+                  </TableCell>
+                  <TableCell>{tender.proposalsCount}</TableCell>
+                  <TableCell>{tender.bestPrice ? formatPrice(tender.bestPrice) : '-'}</TableCell>
+                  <TableCell>
+                    <Tooltip title="Просмотр">
+                      <IconButton size="small" onClick={() => navigate(`/tenders/${tender.id}`)}>
+                        <ViewIcon />
+                      </IconButton>
+                    </Tooltip>
+                    {/* Кнопки управления - скрыты для поставщика */}
+                    {!isSupplier && (
+                      <>
+                        {tender.status === 'DRAFT' && (
+                          <>
+                            <Tooltip title="Редактировать">
+                              <IconButton size="small" onClick={() => navigate(`/tenders/${tender.id}/edit`)}>
+                                <EditIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Опубликовать">
+                              <IconButton size="small" onClick={() => openStatusDialog(tender.id, 'publish')}>
+                                <PublishIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Удалить">
+                              <IconButton size="small" color="error" onClick={() => handleDeleteClick(tender.id)}>
+                                <DeleteIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+                        {tender.status === 'PUBLISHED' && (
+                          <Tooltip title="Начать прием предложений">
+                            <IconButton size="small" color="warning" onClick={() => openStatusDialog(tender.id, 'start-bidding')}>
+                              <TrendingUpIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {tender.status === 'BIDDING' && (
+                          <Tooltip title="Закрыть прием">
+                            <IconButton size="small" onClick={() => openStatusDialog(tender.id, 'close')}>
+                              <CloseIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {tender.status === 'EVALUATION' && (
+                          <>
+                            <Tooltip title="Завершить тендер">
+                              <IconButton size="small" color="success" onClick={() => openStatusDialog(tender.id, 'complete')}>
+                                <CheckCircleIcon />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="Заключить контракт">
+                              <IconButton size="small" color="primary" onClick={() => navigate(`/tenders/${tender.id}/contract/new`)}>
+                                <ContractIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </>
+                        )}
+                        {tender.status !== 'CANCELLED' && tender.status !== 'AWARDED' && (
+                          <Tooltip title="Отменить тендер">
+                            <IconButton size="small" color="error" onClick={() => openStatusDialog(tender.id, 'cancel')}>
+                              <CloseIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {(tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+                          <Tooltip title="Анализ цен">
+                            <IconButton size="small" color="info" onClick={() => navigate(`/tenders/${tender.id}/price-analysis`)}>
+                              <AssessmentIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                        {tender.status === 'AWARDED' && (
+                          <Tooltip title="Просмотр контракта">
+                            <IconButton size="small" color="primary" onClick={() => navigate(`/tenders/${tender.id}/contract`)}>
+                              <ContractIcon />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </>
+                    )}
+                    {/* Кнопка подачи предложения - доступна для всех в статусе BIDDING */}
+                    {tender.status === 'BIDDING' && (
+                      <Tooltip title="Подать предложение">
+                        <IconButton size="small" color="success" onClick={() => navigate(`/tenders/${tender.id}/proposals/new`)}>
+                          <PublishIcon />
+                        </IconButton>
+                      </Tooltip>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
 
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <Pagination

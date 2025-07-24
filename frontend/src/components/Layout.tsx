@@ -102,7 +102,8 @@ const menuStructure = [
     title: 'Администрирование',
     items: [
       { label: 'Управление пользователями', to: '/users', icon: <PeopleIcon />, roles: ['ROLE_ADMIN'] },
-      { label: 'Настройки', to: '/settings', icon: <SettingsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] }
+      { label: 'Настройки', to: '/settings', icon: <SettingsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
+      { label: 'Журнал аудита', to: '/audit-log', icon: <BarChartIcon />, roles: ['ROLE_ADMIN'] }
     ]
   }
 ];
@@ -164,13 +165,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <List sx={{ flexGrow: 1, py: 0 }}>
         {filteredMenuStructure.map((section, sectionIndex) => {
           const isExpanded = expandedSections.has(section.title);
-          const hasMultipleItems = section.items.length > 1;
+          // Теперь все секции могут сворачиваться, даже если один пункт
+          const hasMultipleItems = true;
           
           return (
             <React.Fragment key={section.title}>
               <ListItem disablePadding>
                 <ListItemButton
-                  onClick={() => hasMultipleItems && handleSectionToggle(section.title)}
+                  onClick={() => handleSectionToggle(section.title)}
                   sx={{
                     borderRadius: 2,
                     mx: 1,
@@ -192,14 +194,12 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       fontWeight: 600
                     }}
                   />
-                  {hasMultipleItems && (
-                    <ListItemIcon sx={{ minWidth: 'auto', color: 'text.secondary' }}>
-                      {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </ListItemIcon>
-                  )}
+                  <ListItemIcon sx={{ minWidth: 'auto', color: 'text.secondary' }}>
+                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                  </ListItemIcon>
                 </ListItemButton>
               </ListItem>
-              <Collapse in={!hasMultipleItems || isExpanded} timeout="auto" unmountOnExit>
+              <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
                   {section.items.map((item) => {
                     const selected = location.pathname.startsWith(item.to);

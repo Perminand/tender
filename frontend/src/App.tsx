@@ -43,6 +43,7 @@ import PaymentEditPage from './pages/PaymentEditPage';
 import PaymentDetailPage from './pages/PaymentDetailPage';
 import UserManagementPage from './pages/UserManagementPage';
 import PermissionSync from './components/PermissionSync';
+import { AuditLogPage } from './pages';
 
 // Функция для определения стартовой страницы по ролям
 const getDefaultRoute = (roles: string[] = []) => {
@@ -472,6 +473,14 @@ const App: React.FC = () => (
         <ProtectedRoute requiredRoles={['ROLE_ADMIN']}>
           <Layout>
             <UserManagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      {/* Маршрут для журнала аудита (только для администраторов) */}
+      <Route path="/audit-log" element={
+        <ProtectedRoute requiredRoles={['ROLE_ADMIN']}>
+          <Layout>
+            <AuditLogPage />
           </Layout>
         </ProtectedRoute>
       } />

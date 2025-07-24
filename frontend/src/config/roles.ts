@@ -30,7 +30,8 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'reference/contact-types',
       'price-analysis',
       'settings',
-      'users'
+      'users',
+      'audit-log'
     ],
     apiEndpoints: [
       '/api/dashboard',

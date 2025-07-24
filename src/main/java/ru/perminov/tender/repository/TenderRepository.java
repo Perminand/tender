@@ -25,4 +25,7 @@ public interface TenderRepository extends JpaRepository<Tender, UUID> {
 
     @Query("SELECT t FROM Tender t LEFT JOIN FETCH t.customer WHERE t.id = :id")
     Optional<Tender> findByIdWithCustomer(@Param("id") UUID id);
+
+    @Query("SELECT t FROM Tender t LEFT JOIN FETCH t.tenderItems ti LEFT JOIN FETCH ti.unit WHERE t.id = :id")
+    Tender findByIdWithItemsAndUnits(@Param("id") UUID id);
 } 

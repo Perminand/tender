@@ -132,8 +132,8 @@ public class TenderServiceImpl implements TenderService {
     @Override
     @Transactional(readOnly = true)
     public TenderDto getTenderById(UUID id) {
-        Tender tender = tenderRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        Tender tender = tenderRepository.findByIdWithItemsAndUnits(id);
+        if (tender == null) throw new RuntimeException("Тендер не найден");
         TenderDto dto = tenderMapper.toDto(tender);
         
         // Заполняем awardedSupplier если есть awardedSupplierId
@@ -339,7 +339,10 @@ public class TenderServiceImpl implements TenderService {
     @Override
     @Transactional(readOnly = true)
     public List<TenderItemDto> getTenderItems(UUID tenderId) {
-        List<TenderItem> items = tenderItemRepository.findByTenderId(tenderId);
+        // fetch join для unit
+        List<TenderItem> items = tenderRepository.findByIdWithItemsAndUnits(tenderId) != null
+            ? new ArrayList<>(tenderRepository.findByIdWithItemsAndUnits(tenderId).getTenderItems())
+            : new ArrayList<>();
         return items.stream()
                 .map(tenderItemMapper::toDto)
                 .collect(Collectors.toList());
@@ -389,56 +392,17 @@ public class TenderServiceImpl implements TenderService {
 
     @Override
     @Transactional(readOnly = true)
-    public TenderDto getTenderWithBestPricesByItems(UUID tenderId) {
-        Tender tender = tenderRepository.findById(tenderId)
-                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
-        
-        TenderDto tenderDto = tenderMapper.toDto(tender);
-        
-        // Получаем все предложения для тендера
-        List<SupplierProposalDto> proposals = supplierProposalService.getProposalsByTender(tenderId);
-        tenderDto.setSupplierProposals(proposals);
-        
-        // Получаем лучшие цены по позициям
-        Map<UUID, Double> bestPricesByItems = supplierProposalService.getBestPricesByTenderItems(tenderId);
-        
-        // Обновляем позиции тендера с лучшими ценами
-        if (tenderDto.getTenderItems() != null) {
-            for (TenderItemDto item : tenderDto.getTenderItems()) {
-                Double bestPrice = bestPricesByItems.get(item.getId());
-                item.setBestPrice(bestPrice);
-            }
-        }
-        
-        // Находим лучшее предложение по общей цене
-        SupplierProposalDto bestProposal = proposals.stream()
-                .filter(p -> p.getTotalPrice() != null)
-                .min((p1, p2) -> Double.compare(p1.getTotalPrice(), p2.getTotalPrice()))
-                .orElse(null);
-        
-        if (bestProposal != null) {
-            tenderDto.setBestPrice(bestProposal.getTotalPrice());
-            tenderDto.setBestSupplierName(bestProposal.getSupplierName());
-        }
-        
-        tenderDto.setProposalsCount(proposals.size());
-        
-        // Добавляем пометки в title
-        if (tender.getParentTender() != null) {
-            tenderDto.setTitle(tenderDto.getTitle() + " (отделённая часть)");
-        } else if (tenderRepository.existsByParentTenderId(tender.getId())) {
-            tenderDto.setTitle(tenderDto.getTitle() + " (разделён)");
-        }
-        
-        return tenderDto;
+    public TenderDto getTenderWithBestPricesByItems(UUID id) {
+        Tender tender = tenderRepository.findByIdWithItemsAndUnits(id);
+        if (tender == null) throw new RuntimeException("Тендер не найден");
+        return tenderMapper.toDto(tender);
     }
 
     @Override
     @Transactional(readOnly = true)
     public TenderDto getTenderForSupplier(UUID tenderId) {
-        Tender tender = tenderRepository.findById(tenderId)
-                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
-        
+        Tender tender = tenderRepository.findByIdWithItemsAndUnits(tenderId);
+        if (tender == null) throw new RuntimeException("Тендер не найден");
         // Проверяем, что тендер доступен для поставщика
         if (tender.getStatus() != Tender.TenderStatus.PUBLISHED && 
             tender.getStatus() != Tender.TenderStatus.BIDDING &&
@@ -446,25 +410,18 @@ public class TenderServiceImpl implements TenderService {
             tender.getStatus() != Tender.TenderStatus.AWARDED) {
             throw new RuntimeException("Тендер недоступен для просмотра поставщиком");
         }
-        
         TenderDto tenderDto = tenderMapper.toDto(tender);
-        
         // Получаем только предложения текущего поставщика
         // TODO: Получить userId из SecurityContext и найти его предложения
         // Пока возвращаем тендер без предложений
         tenderDto.setSupplierProposals(new ArrayList<>());
-        
-        // Получаем позиции тендера
-        List<TenderItemDto> items = getTenderItems(tenderId);
-        tenderDto.setTenderItems(items);
-        
+        // tenderItems уже загружены fetch join
         // Добавляем пометки в title
         if (tender.getParentTender() != null) {
             tenderDto.setTitle(tenderDto.getTitle() + " (отделённая часть)");
         } else if (tenderRepository.existsByParentTenderId(tender.getId())) {
             tenderDto.setTitle(tenderDto.getTitle() + " (разделён)");
         }
-        
         return tenderDto;
     }
 
@@ -625,8 +582,18 @@ public class TenderServiceImpl implements TenderService {
             tenderItem.setTender(tender);
             tenderItem.setRequestMaterial(requestMaterial);
             tenderItem.setItemNumber(i + 1);
-            tenderItem.setDescription(requestMaterial.getMaterial().getName());
+            // Описание: если material есть, берем его имя, иначе supplierMaterialName или note
+            if (requestMaterial.getMaterial() != null && requestMaterial.getMaterial().getName() != null) {
+                tenderItem.setDescription(requestMaterial.getMaterial().getName());
+            } else if (requestMaterial.getSupplierMaterialName() != null) {
+                tenderItem.setDescription(requestMaterial.getSupplierMaterialName());
+            } else if (requestMaterial.getNote() != null) {
+                tenderItem.setDescription(requestMaterial.getNote());
+            } else {
+                tenderItem.setDescription("");
+            }
             tenderItem.setQuantity(requestMaterial.getQuantity());
+            // Копируем unit всегда
             tenderItem.setUnit(requestMaterial.getUnit());
             tenderItem.setSpecifications(requestMaterial.getNote());
             tenderItem.setEstimatedPrice(requestMaterial.getEstimatePrice());
