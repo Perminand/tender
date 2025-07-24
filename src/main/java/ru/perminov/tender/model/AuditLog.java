@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
-import ru.perminov.tender.model.company.Company;
+import ru.perminov.tender.model.User;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -24,7 +24,7 @@ public class AuditLog {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")
-    private Company user;
+    private User user;
 
     private String action;
 

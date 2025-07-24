@@ -15,6 +15,11 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import ru.perminov.tender.dto.ImportResultDto;
+import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 import java.io.InputStream;
 import java.util.List;
@@ -27,6 +32,15 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final CategoryMapper categoryMapper;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     @Transactional
@@ -35,7 +49,9 @@ public class CategoryServiceImpl implements CategoryService {
             throw new RuntimeException("Категория с именем '" + categoryDtoNew.name() + "' уже существует");
         }
         Category category = categoryMapper.toCategory(categoryDtoNew);
-        return categoryRepository.save(category);
+        Category saved = categoryRepository.save(category);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_CATEGORY", "Category", saved.getId().toString(), "Создана категория");
+        return saved;
     }
 
     @Override
@@ -43,13 +59,16 @@ public class CategoryServiceImpl implements CategoryService {
     public Category update(UUID id, CategoryDtoUpdate categoryDtoUpdate) {
         Category existingCategory = getById(id);
         categoryMapper.updateCategoryFromDto(categoryDtoUpdate, existingCategory);
-        return categoryRepository.save(existingCategory);
+        Category updated = categoryRepository.save(existingCategory);
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_CATEGORY", "Category", updated.getId().toString(), "Обновлена категория");
+        return updated;
     }
 
     @Override
     @Transactional
     public void delete(UUID id) {
         categoryRepository.deleteById(id);
+        auditLogService.logSimple(getCurrentUser(), "DELETE_CATEGORY", "Category", id.toString(), "Удалена категория");
     }
 
     @Override
@@ -88,7 +107,8 @@ public class CategoryServiceImpl implements CategoryService {
                     }
                     Category category = new Category();
                     category.setName(name);
-                    categoryRepository.save(category);
+                    Category saved = categoryRepository.save(category);
+                    auditLogService.logSimple(null, "IMPORT_CATEGORY", "Category", saved.getId().toString(), "Импортирована категория");
                     result.incrementImported();
                 } catch (Exception e) {
                     result.addError(i + 1, "Ошибка в строке: " + e.getMessage());

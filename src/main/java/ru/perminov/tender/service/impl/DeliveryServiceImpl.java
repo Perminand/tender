@@ -25,6 +25,11 @@ import ru.perminov.tender.repository.ContractRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.WarehouseRepository;
 import ru.perminov.tender.service.PaymentService;
+import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 
 import java.math.BigDecimal;
@@ -57,6 +62,15 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final CompanyRepository companyRepository;
     private final WarehouseRepository warehouseRepository;
     private final PaymentService paymentService;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     public DeliveryDto createDelivery(DeliveryDtoNew deliveryDtoNew) {
@@ -139,7 +153,9 @@ public class DeliveryServiceImpl implements DeliveryService {
             }
         }
         
-        return deliveryMapper.toDto(saved);
+        DeliveryDto savedDto = deliveryMapper.toDto(saved);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_DELIVERY", "Delivery", savedDto.getId().toString(), "Создана поставка");
+        return savedDto;
     }
 
     @Override
@@ -300,12 +316,15 @@ public class DeliveryServiceImpl implements DeliveryService {
             }
         }
         
-        return deliveryMapper.toDto(saved);
+        DeliveryDto updated = deliveryMapper.toDto(saved);
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_DELIVERY", "Delivery", updated.getId().toString(), "Обновлена поставка");
+        return updated;
     }
 
     @Override
     public void deleteDelivery(UUID id) {
         deliveryRepository.deleteById(id);
+        auditLogService.logSimple(getCurrentUser(), "DELETE_DELIVERY", "Delivery", id.toString(), "Удалена поставка");
     }
 
     @Override

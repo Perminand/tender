@@ -23,6 +23,11 @@ import ru.perminov.tender.repository.CategoryRepository;
 import ru.perminov.tender.repository.MaterialRepository;
 import ru.perminov.tender.repository.MaterialTypeRepository;
 import ru.perminov.tender.repository.UnitRepository;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
+import ru.perminov.tender.service.AuditLogService;
 import ru.perminov.tender.service.MaterialService;
 
 import java.io.InputStream;
@@ -45,6 +50,15 @@ public class MaterialServiceImpl implements MaterialService {
     private final MaterialTypeRepository materialTypeRepository;
     private final UnitRepository unitRepository;
     private final MaterialMapper materialMapper;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     public MaterialDto create(MaterialDtoNew materialDtoNew) {
@@ -54,6 +68,7 @@ public class MaterialServiceImpl implements MaterialService {
         Material material = materialMapper.toEntity(materialDtoNew);
         updateRelations(material, materialDtoNew.categoryId(), materialDtoNew.materialTypeId(), materialDtoNew.unitIds());
         Material savedMaterial = materialRepository.save(material);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_MATERIAL", "Material", savedMaterial.getId().toString(), "Создан материал");
         return materialMapper.toDto(savedMaterial);
     }
 
@@ -66,6 +81,7 @@ public class MaterialServiceImpl implements MaterialService {
         updateRelations(existingMaterial, materialDtoUpdate.categoryId(), materialDtoUpdate.materialTypeId(), materialDtoUpdate.unitIds());
 
         Material updatedMaterial = materialRepository.save(existingMaterial);
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_MATERIAL", "Material", updatedMaterial.getId().toString(), "Обновлен материал");
         return materialMapper.toDto(updatedMaterial);
     }
 
@@ -103,6 +119,7 @@ public class MaterialServiceImpl implements MaterialService {
             throw new RuntimeException("Material not found with id: " + id);
         }
         materialRepository.deleteById(id);
+        auditLogService.logSimple(getCurrentUser(), "DELETE_MATERIAL", "Material", id.toString(), "Удален материал");
     }
 
     @Override

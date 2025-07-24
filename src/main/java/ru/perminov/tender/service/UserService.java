@@ -10,6 +10,9 @@ import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.UserRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.dto.UserDto;
+import ru.perminov.tender.service.AuditLogService;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -25,6 +28,14 @@ public class UserService {
     private final UserRepository userRepository;
     private final CompanyRepository companyRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuditLogService auditLogService;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     public List<UserDto> getAllUsers() {
         log.info("Получение списка всех пользователей");
@@ -101,6 +112,7 @@ public class UserService {
         
         User savedUser = userRepository.save(user);
         log.info("Пользователь успешно создан: {}", savedUser.getUsername());
+        auditLogService.logSimple(getCurrentUser(), "CREATE_USER", "User", savedUser.getId().toString(), "Создан пользователь");
         
         return savedUser;
     }
@@ -147,6 +159,7 @@ public class UserService {
         
         User updatedUser = userRepository.save(user);
         log.info("Пользователь успешно обновлен: {}", updatedUser.getUsername());
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_USER", "User", updatedUser.getId().toString(), "Обновлен пользователь");
         
         return updatedUser;
     }
@@ -160,6 +173,7 @@ public class UserService {
         
         userRepository.delete(user);
         log.info("Пользователь успешно удален: {}", user.getUsername());
+        auditLogService.logSimple(getCurrentUser(), "DELETE_USER", "User", user.getId().toString(), "Удален пользователь");
     }
 
     @Transactional

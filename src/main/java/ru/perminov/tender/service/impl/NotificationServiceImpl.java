@@ -15,6 +15,11 @@ import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.EmailService;
 import ru.perminov.tender.service.NotificationService;
 import ru.perminov.tender.service.SettingsService;
+import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -32,8 +37,17 @@ public class NotificationServiceImpl implements NotificationService {
     private final EmailService emailService;
     private final SettingsService settingsService;
     private final CompanyRepository companyRepository;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm");
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     @Transactional
@@ -219,6 +233,7 @@ public class NotificationServiceImpl implements NotificationService {
             if (success) {
                 notificationRepository.save(notification);
                 log.info("Уведомление отправлено: {}", notification.getId());
+                auditLogService.logSimple(getCurrentUser(), "SEND_NOTIFICATION", "Notification", notification.getId().toString(), "Отправлено уведомление");
             } else {
                 log.error("Ошибка отправки уведомления: {}", notification.getId());
             }
@@ -266,6 +281,7 @@ public class NotificationServiceImpl implements NotificationService {
             boolean success = emailService.sendNotification(notification);
             if (success) {
                 notificationRepository.save(notification);
+                auditLogService.logSimple(getCurrentUser(), "RETRY_NOTIFICATION", "Notification", notificationId.toString(), "Повторная отправка уведомления");
             }
             return success;
         }
@@ -299,6 +315,7 @@ public class NotificationServiceImpl implements NotificationService {
         if (success) {
             notificationRepository.save(notification);
             log.info("Уведомление создано и отправлено: {}", notification.getId());
+            auditLogService.logSimple(getCurrentUser(), "CREATE_AND_SEND_NOTIFICATION", "Notification", notification.getId().toString(), "Создано и отправлено уведомление");
         } else {
             log.error("Ошибка отправки уведомления: {}", notification.getId());
         }

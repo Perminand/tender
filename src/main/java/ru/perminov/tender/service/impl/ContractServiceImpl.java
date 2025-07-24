@@ -28,6 +28,11 @@ import ru.perminov.tender.service.ContractService;
 import ru.perminov.tender.model.Material;
 import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.mapper.TenderMapper;
+import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -53,6 +58,15 @@ public class ContractServiceImpl implements ContractService {
     private final ContractMapper contractMapper;
     private final CompanyMapper companyMapper;
     private final TenderMapper tenderMapper;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     public ContractDto getContractById(UUID id) {
@@ -213,12 +227,15 @@ public class ContractServiceImpl implements ContractService {
         if (contractOpt.isEmpty()) return null;
         Contract contract = contractOpt.get();
         contractMapper.updateEntity(contract, contractDtoUpdate);
-        return contractMapper.toDto(contractRepository.save(contract));
+        Contract updatedContract = contractRepository.save(contract);
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_CONTRACT", "Contract", updatedContract.getId().toString(), "Обновлен контракт");
+        return contractMapper.toDto(updatedContract);
     }
 
     @Override
     public void deleteContract(UUID id) {
         contractRepository.deleteById(id);
+        auditLogService.logSimple(getCurrentUser(), "DELETE_CONTRACT", "Contract", id.toString(), "Удален контракт");
     }
 
     @Override
@@ -319,6 +336,7 @@ public class ContractServiceImpl implements ContractService {
         contract.setUpdatedAt(LocalDateTime.now());
         
         Contract savedContract = contractRepository.save(contract);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_CONTRACT", "Contract", savedContract.getId().toString(), "Создан контракт");
         log.info("Контракт сохранен с ID: {}", savedContract.getId());
         
         // Создаем позиции контракта на основе позиций предложения

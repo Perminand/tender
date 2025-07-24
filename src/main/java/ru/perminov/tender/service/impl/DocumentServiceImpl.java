@@ -9,6 +9,7 @@ import ru.perminov.tender.dto.document.DocumentDtoNew;
 import ru.perminov.tender.mapper.DocumentMapper;
 import ru.perminov.tender.model.Document;
 import ru.perminov.tender.repository.DocumentRepository;
+import ru.perminov.tender.service.AuditLogService;
 import ru.perminov.tender.service.DocumentService;
 
 import java.io.IOException;
@@ -28,6 +29,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentMapper documentMapper;
     private static final String UPLOAD_DIR = "uploads/documents/";
+    private final AuditLogService auditLogService;
 
     @Override
     public DocumentDto uploadDocument(MultipartFile file, DocumentDtoNew documentDtoNew) {
@@ -56,7 +58,9 @@ public class DocumentServiceImpl implements DocumentService {
             document.setStatus(Document.DocumentStatus.ACTIVE);
 
             Document saved = documentRepository.save(document);
-            return documentMapper.toDto(saved);
+            DocumentDto savedDto = documentMapper.toDto(saved);
+            auditLogService.logSimple(null, "CREATE_DOCUMENT", "Document", savedDto.getId().toString(), "Загружен документ");
+            return savedDto;
         } catch (IOException e) {
             throw new RuntimeException("Ошибка при сохранении файла", e);
         }
@@ -95,7 +99,9 @@ public class DocumentServiceImpl implements DocumentService {
         if (documentOpt.isEmpty()) return null;
         Document document = documentOpt.get();
         documentMapper.updateEntity(document, documentDtoNew);
-        return documentMapper.toDto(documentRepository.save(document));
+        DocumentDto updated = documentMapper.toDto(documentRepository.save(document));
+        auditLogService.logSimple(null, "UPDATE_DOCUMENT", "Document", updated.getId().toString(), "Обновлен документ");
+        return updated;
     }
 
     @Override
@@ -111,6 +117,7 @@ public class DocumentServiceImpl implements DocumentService {
                 // Логируем ошибку, но не прерываем удаление записи из БД
             }
             documentRepository.deleteById(id);
+            auditLogService.logSimple(null, "DELETE_DOCUMENT", "Document", id.toString(), "Удален документ");
         }
     }
 

@@ -18,6 +18,11 @@ import ru.perminov.tender.repository.WorkTypeRepository;
 import ru.perminov.tender.service.OrgSupplierMaterialMappingService;
 import ru.perminov.tender.service.RequestService;
 import ru.perminov.tender.service.TenderService;
+import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 import java.util.List;
 import java.util.UUID;
@@ -34,6 +39,15 @@ public class RequestServiceImpl implements RequestService {
     private final OrgSupplierMaterialMappingService orgSupplierMaterialMappingService;
     private final WorkTypeRepository workTypeRepository;
     private final TenderService tenderService;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -69,6 +83,7 @@ public class RequestServiceImpl implements RequestService {
         updateRequestMaterials(entity, dto);
         Request savedRequest = requestRepository.save(entity);
         updateSupplierMaterialMappings(savedRequest);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_REQUEST", "Request", savedRequest.getId().toString(), "Создана заявка");
         return requestMapper.toDto(savedRequest);
     }
 
@@ -95,6 +110,7 @@ public class RequestServiceImpl implements RequestService {
             RequestDto requestDto = requestMapper.toDto(savedRequest);
             log.info("DTO создан успешно");
             
+            auditLogService.logSimple(getCurrentUser(), "UPDATE_REQUEST", "Request", savedRequest.getId().toString(), "Обновлена заявка");
             return requestDto;
         } catch (Exception e) {
             log.error("Ошибка в методе update: ", e);
@@ -150,6 +166,7 @@ public class RequestServiceImpl implements RequestService {
     @Override
     public void delete(UUID id) {
         requestRepository.deleteById(id);
+        auditLogService.logSimple(getCurrentUser(), "DELETE_REQUEST", "Request", id.toString(), "Удалена заявка");
     }
 
     @Override

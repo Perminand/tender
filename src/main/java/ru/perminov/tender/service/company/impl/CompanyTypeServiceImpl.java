@@ -8,7 +8,12 @@ import ru.perminov.tender.dto.companyType.CompanyTypeDtoUpdate;
 import ru.perminov.tender.mapper.company.CompanyTypeMapper;
 import ru.perminov.tender.model.company.CompanyType;
 import ru.perminov.tender.repository.company.CompanyTypeRepository;
+import ru.perminov.tender.service.AuditLogService;
 import ru.perminov.tender.service.company.CompanyTypeService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 import java.util.List;
 import java.util.UUID;
@@ -20,6 +25,15 @@ public class CompanyTypeServiceImpl implements CompanyTypeService {
 
     private final CompanyTypeRepository companyTypeRepository;
     private final CompanyTypeMapper companyTypeMapper;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     @Transactional
@@ -29,7 +43,9 @@ public class CompanyTypeServiceImpl implements CompanyTypeService {
         }
 
         CompanyType companyType = companyTypeMapper.toCompanyType(companyTypeDtoNew);
-        return companyTypeRepository.save(companyType);
+        CompanyType saved = companyTypeRepository.save(companyType);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_COMPANY_TYPE", "CompanyType", saved.getId().toString(), "Создан тип компании");
+        return saved;
     }
 
     @Override
@@ -45,13 +61,16 @@ public class CompanyTypeServiceImpl implements CompanyTypeService {
 
 
         companyTypeMapper.updateCompanyTypeFromDto(companyTypeDtoUpdate, existingCompanyType);
-        return companyTypeRepository.save(existingCompanyType);
+        CompanyType updated = companyTypeRepository.save(existingCompanyType);
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_COMPANY_TYPE", "CompanyType", updated.getId().toString(), "Обновлен тип компании");
+        return updated;
     }
 
     @Override
     @Transactional
     public void delete(UUID id) {
         companyTypeRepository.deleteById(id);
+        auditLogService.logSimple(getCurrentUser(), "DELETE_COMPANY_TYPE", "CompanyType", id.toString(), "Удален тип компании");
     }
 
     @Override

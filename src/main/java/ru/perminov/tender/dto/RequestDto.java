@@ -1,5 +1,6 @@
 package ru.perminov.tender.dto;
 
+import lombok.NoArgsConstructor;
 import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.project.ProjectDto;
 import java.time.LocalDate;

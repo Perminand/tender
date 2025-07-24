@@ -15,6 +15,9 @@ import ru.perminov.tender.model.User;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.UserRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
+import ru.perminov.tender.service.AuditLogService;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
@@ -35,6 +38,14 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final AuditLogService auditLogService;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
@@ -59,7 +70,7 @@ public class AuthService {
         long expiresIn = 86400000L; // 24 hours
 
         log.info("Успешный вход пользователя: {}", request.username());
-        
+        auditLogService.logSimple(user, "LOGIN", "User", user.getId().toString(), "Пользователь вошел в систему");
         return LoginResponse.fromUser(user, jwtToken, refreshToken, expiresIn);
     }
 
@@ -144,10 +155,30 @@ public class AuthService {
         }
     }
 
-    public void logout(String token) {
+    public void logout(UUID userId) {
         log.info("Выход пользователя");
         // В stateless архитектуре logout обычно обрабатывается на клиенте
         // Здесь можно добавить логику для blacklist токенов если необходимо
+        auditLogService.logSimple(getCurrentUser(), "LOGOUT", "User", userId.toString(), "Пользователь вышел из системы");
+    }
+
+    @Transactional
+    public User changePassword(UUID userId, String oldPassword, String newPassword) {
+        log.info("Попытка изменения пароля для пользователя: {}", userId);
+        
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("Пользователь не найден"));
+
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new RuntimeException("Старый пароль неверный");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        User updatedUser = userRepository.save(user);
+
+        log.info("Пароль успешно изменен для пользователя: {}", updatedUser.getUsername());
+        auditLogService.logSimple(user, "CHANGE_PASSWORD", "User", updatedUser.getId().toString(), "Смена пароля");
+        return updatedUser;
     }
 
     @Transactional

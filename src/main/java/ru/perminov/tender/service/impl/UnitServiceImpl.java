@@ -15,6 +15,11 @@ import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.web.multipart.MultipartFile;
 import ru.perminov.tender.dto.ImportResultDto;
+import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 import java.io.InputStream;
 import java.util.List;
@@ -26,6 +31,15 @@ public class UnitServiceImpl implements UnitService {
 
     private final UnitRepository unitRepository;
     private final UnitMapper unitMapper;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     public Unit create(UnitDtoNew unitDtoNew) {
@@ -33,14 +47,18 @@ public class UnitServiceImpl implements UnitService {
             throw new RuntimeException("Единица измерения с таким названием уже существует");
         }
         Unit unit = unitMapper.toUnit(unitDtoNew);
-        return unitRepository.save(unit);
+        Unit saved = unitRepository.save(unit);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_UNIT", "Unit", saved.getId().toString(), "Создана единица измерения");
+        return saved;
     }
 
     @Override
     public Unit update(UUID id, UnitDtoUpdate unitDtoUpdate) {
         Unit unit = getById(id);
         unitMapper.updateUnitFromDto(unitDtoUpdate, unit);
-        return unitRepository.save(unit);
+        Unit updated = unitRepository.save(unit);
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_UNIT", "Unit", updated.getId().toString(), "Обновлена единица измерения");
+        return updated;
     }
 
     @Override
@@ -49,6 +67,7 @@ public class UnitServiceImpl implements UnitService {
             throw new RuntimeException("Единица измерения не найдена");
         }
         unitRepository.deleteById(id);
+        auditLogService.logSimple(getCurrentUser(), "DELETE_UNIT", "Unit", id.toString(), "Удалена единица измерения");
     }
 
     @Override

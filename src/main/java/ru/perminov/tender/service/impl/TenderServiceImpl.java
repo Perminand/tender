@@ -23,6 +23,11 @@ import ru.perminov.tender.service.TenderService;
 import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
 import ru.perminov.tender.service.PriceAnalysisService;
+import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.repository.UserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.Authentication;
+import ru.perminov.tender.model.User;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -53,6 +58,15 @@ public class TenderServiceImpl implements TenderService {
     private final TenderItemMapper tenderItemMapper;
     private final ProposalItemRepository proposalItemRepository;
     private final CompanyMapper companyMapper;
+    private final AuditLogService auditLogService;
+    private final UserRepository userRepository;
+
+    private User getCurrentUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        String username = auth.getName();
+        return userRepository.findByUsername(username).orElse(null);
+    }
 
     @Override
     public TenderDto createTender(TenderDto tenderDto) {
@@ -88,6 +102,7 @@ public class TenderServiceImpl implements TenderService {
         }
         
         Tender savedTender = tenderRepository.save(tender);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_TENDER", "Tender", savedTender.getId().toString(), "Создан тендер");
         
         // Корректно загружаем заявку с материалами по id
         if (tenderDto.getRequestId() != null) {
@@ -126,6 +141,7 @@ public class TenderServiceImpl implements TenderService {
         existingTender.setTermsAndConditions(tenderDto.getTermsAndConditions());
         
         Tender updatedTender = tenderRepository.save(existingTender);
+        auditLogService.logSimple(getCurrentUser(), "UPDATE_TENDER", "Tender", updatedTender.getId().toString(), "Обновлен тендер");
         return tenderMapper.toDto(updatedTender);
     }
 
@@ -266,6 +282,7 @@ public class TenderServiceImpl implements TenderService {
         tender.setStartDate(LocalDateTime.now());
         
         Tender savedTender = tenderRepository.save(tender);
+        auditLogService.logSimple(getCurrentUser(), "PUBLISH_TENDER", "Tender", savedTender.getId().toString(), "Тендер опубликован");
         
         // Отправляем уведомления поставщикам и заказчикам о публикации тендера
         try {
@@ -301,6 +318,7 @@ public class TenderServiceImpl implements TenderService {
         tender.setEndDate(LocalDateTime.now());
         
         Tender savedTender = tenderRepository.save(tender);
+        auditLogService.logSimple(getCurrentUser(), "CLOSE_TENDER", "Tender", savedTender.getId().toString(), "Тендер закрыт");
         
         // Обновляем статус всех предложений (кроме отклоненных) на ACCEPTED
         try {
@@ -472,6 +490,7 @@ public class TenderServiceImpl implements TenderService {
         }
         tender.setStatus(Tender.TenderStatus.BIDDING);
         Tender savedTender = tenderRepository.save(tender);
+        auditLogService.logSimple(getCurrentUser(), "START_BIDDING", "Tender", savedTender.getId().toString(), "Начат прием предложений");
         
         TenderDto dto = tenderMapper.toDto(savedTender);
         
@@ -495,6 +514,7 @@ public class TenderServiceImpl implements TenderService {
         }
         tender.setStatus(Tender.TenderStatus.AWARDED);
         Tender savedTender = tenderRepository.save(tender);
+        auditLogService.logSimple(getCurrentUser(), "COMPLETE_TENDER", "Tender", savedTender.getId().toString(), "Тендер завершен");
         
         TenderDto dto = tenderMapper.toDto(savedTender);
         
@@ -521,6 +541,7 @@ public class TenderServiceImpl implements TenderService {
         }
         tender.setStatus(Tender.TenderStatus.CANCELLED);
         Tender saved = tenderRepository.save(tender);
+        auditLogService.logSimple(getCurrentUser(), "CANCEL_TENDER", "Tender", saved.getId().toString(), "Тендер отменен");
         
         TenderDto dto = tenderMapper.toDto(saved);
         
@@ -544,6 +565,7 @@ public class TenderServiceImpl implements TenderService {
         }
         item.setAwardedSupplierId(supplierId);
         tenderItemRepository.save(item);
+        auditLogService.logSimple(null, "AWARD_TENDER_ITEM", "Tender", tenderId.toString(), "Назначен победитель позиции тендера");
     }
 
     @Override
@@ -569,6 +591,7 @@ public class TenderServiceImpl implements TenderService {
             }
         }
         
+        auditLogService.logSimple(null, "AWARD_TENDER", "Tender", tenderId.toString(), "Назначен победитель тендера");
         return dto;
     }
 

@@ -105,4 +105,6 @@ databaseChangeLog:
       file: db/changelog/changes/V054_create_users_table.sql
   - include:
       file: db/changelog/data/V003_insert_test_users.sql
+  - include:
+      file: db/changelog/changes/V055_auditlog_user_refactor.sql
 

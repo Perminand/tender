@@ -16,6 +16,7 @@ import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.PageImpl;
+import ru.perminov.tender.dto.AuditLogDto;
 
 @RestController
 @RequestMapping("/api/audit-logs")
@@ -25,7 +26,7 @@ public class AuditLogController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
-    public ResponseEntity<Page<AuditLog>> getAll(
+    public ResponseEntity<Page<AuditLogDto>> getAll(
             @RequestParam(required = false) String user,
             @RequestParam(required = false) String action,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
@@ -34,23 +35,42 @@ public class AuditLogController {
             @RequestParam(defaultValue = "20") int size
     ) {
         PageRequest pageable = PageRequest.of(page, size);
+        Page<AuditLog> logs;
         if (user != null && action != null && from != null && to != null) {
-            return ResponseEntity.ok(auditLogRepository.findByUser_NameContainingIgnoreCaseAndActionContainingIgnoreCaseAndTimestampBetween(user, action, from, to, pageable));
+            logs = auditLogRepository.findByUser_UsernameContainingIgnoreCaseAndActionContainingIgnoreCaseAndTimestampBetween(user, action, from, to, pageable);
         } else if (user != null && action != null) {
-            // Фильтр по пользователю и действию
-            var pageResult = auditLogRepository.findByUser_NameContainingIgnoreCase(user, pageable);
+            var pageResult = auditLogRepository.findByUser_UsernameContainingIgnoreCase(user, pageable);
             var filtered = pageResult.getContent().stream()
                 .filter(log -> log.getAction() != null && log.getAction().toLowerCase().contains(action.toLowerCase()))
                 .toList();
-            return ResponseEntity.ok(new PageImpl<>(filtered, pageable, pageResult.getTotalElements()));
+            logs = new PageImpl<>(filtered, pageable, pageResult.getTotalElements());
         } else if (user != null) {
-            return ResponseEntity.ok(auditLogRepository.findByUser_NameContainingIgnoreCase(user, pageable));
+            logs = auditLogRepository.findByUser_UsernameContainingIgnoreCase(user, pageable);
         } else if (action != null) {
-            return ResponseEntity.ok(auditLogRepository.findByActionContainingIgnoreCase(action, pageable));
+            logs = auditLogRepository.findByActionContainingIgnoreCase(action, pageable);
         } else if (from != null && to != null) {
-            return ResponseEntity.ok(auditLogRepository.findByTimestampBetween(from, to, pageable));
+            logs = auditLogRepository.findByTimestampBetween(from, to, pageable);
         } else {
-            return ResponseEntity.ok(auditLogRepository.findAll(pageable));
+            logs = auditLogRepository.findAll(pageable);
         }
+        // Маппинг AuditLog -> AuditLogDto
+        Page<AuditLogDto> dtoPage = logs.map(log -> {
+            AuditLogDto dto = new AuditLogDto();
+            dto.setId(log.getId());
+            dto.setUserName(log.getUser() != null ? log.getUser().getUsername() : null);
+            dto.setAction(log.getAction());
+            dto.setEntityType(log.getEntityType());
+            dto.setEntityId(log.getEntityId());
+            dto.setOldValue(log.getOldValue());
+            dto.setNewValue(log.getNewValue());
+            dto.setIpAddress(log.getIpAddress());
+            dto.setUserAgent(log.getUserAgent());
+            dto.setTimestamp(log.getTimestamp());
+            dto.setSessionId(log.getSessionId());
+            dto.setDescription(log.getDescription());
+            dto.setLevel(log.getLevel() != null ? log.getLevel().name() : null);
+            return dto;
+        });
+        return ResponseEntity.ok(dtoPage);
     }
 } 

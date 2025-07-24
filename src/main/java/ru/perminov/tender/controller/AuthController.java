@@ -12,6 +12,7 @@ import ru.perminov.tender.dto.auth.RefreshTokenRequest;
 import ru.perminov.tender.service.AuthService;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -64,7 +65,7 @@ public class AuthController {
     public ResponseEntity<Void> logout(@RequestHeader("Authorization") String token) {
         log.info("Получен POST-запрос: выход из системы");
         try {
-            authService.logout(token);
+            authService.logout(UUID.fromString(token));
             log.info("Успешный выход из системы");
             return ResponseEntity.ok().build();
         } catch (Exception e) {

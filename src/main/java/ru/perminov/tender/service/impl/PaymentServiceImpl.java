@@ -13,6 +13,7 @@ import ru.perminov.tender.repository.PaymentRepository;
 import ru.perminov.tender.repository.ContractRepository;
 import ru.perminov.tender.repository.DeliveryRepository;
 import ru.perminov.tender.service.PaymentService;
+import ru.perminov.tender.service.AuditLogService;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -32,6 +33,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentMapper paymentMapper;
     private final ContractRepository contractRepository;
     private final DeliveryRepository deliveryRepository;
+    private final AuditLogService auditLogService;
 
     /**
      * Рассчитать дату через указанное количество рабочих дней
@@ -75,7 +77,9 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setCreatedAt(LocalDateTime.now());
         payment.setUpdatedAt(LocalDateTime.now());
         Payment saved = paymentRepository.save(payment);
-        return paymentMapper.toDto(saved);
+        PaymentDto savedDto = paymentMapper.toDto(saved);
+        auditLogService.logSimple(null, "CREATE_PAYMENT", "Payment", savedDto.getId().toString(), "Создан платеж");
+        return savedDto;
     }
 
     @Override
@@ -127,12 +131,15 @@ public class PaymentServiceImpl implements PaymentService {
         }
         
         payment.setUpdatedAt(LocalDateTime.now());
-        return paymentMapper.toDto(paymentRepository.save(payment));
+        PaymentDto updated = paymentMapper.toDto(paymentRepository.save(payment));
+        auditLogService.logSimple(null, "UPDATE_PAYMENT", "Payment", updated.getId().toString(), "Обновлен платеж");
+        return updated;
     }
 
     @Override
     public void deletePayment(UUID id) {
         paymentRepository.deleteById(id);
+        auditLogService.logSimple(null, "DELETE_PAYMENT", "Payment", id.toString(), "Удален платеж");
     }
 
     @Override

@@ -18,7 +18,7 @@ import { api } from '../utils/api';
 
 interface AuditLog {
   id: string;
-  user?: { id: string; name: string } | null;
+  userName?: string | null;
   action: string;
   entityType: string;
   entityId: string;
@@ -95,7 +95,7 @@ const AuditLogPage: React.FC = () => {
             {logs.map(log => (
               <TableRow key={log.id}>
                 <TableCell>{new Date(log.timestamp).toLocaleString('ru-RU')}</TableCell>
-                <TableCell>{log.user?.name || '-'}</TableCell>
+                <TableCell>{log.userName || '-'}</TableCell>
                 <TableCell>{log.action}</TableCell>
                 <TableCell>{log.entityType}</TableCell>
                 <TableCell>{log.entityId}</TableCell>
