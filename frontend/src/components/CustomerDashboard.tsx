@@ -89,14 +89,19 @@ const CustomerDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
-  const { user } = useAuth();
+  const { user, token, isLoading: authLoading } = useAuth();
   const username = user?.username;
 
   useEffect(() => {
-    if (username) {
+    if (!token || authLoading || !username) return;
+    
+    // Небольшая задержка для обновления Axios interceptor
+    const timer = setTimeout(() => {
       fetchCustomerDashboardData();
-    }
-  }, [username]);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [token, authLoading, username]);
 
   const fetchCustomerDashboardData = async () => {
     if (!username) {
@@ -198,7 +203,7 @@ const CustomerDashboard: React.FC = () => {
     console.log(`Экспорт отчета: ${type}`);
   };
 
-  if (loading) {
+  if (authLoading || !token) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />

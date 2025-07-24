@@ -180,16 +180,21 @@ const DashboardPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
-  const { user } = useAuth();
+  const { user, token, isLoading: authLoading } = useAuth();
   const username = user?.username;
   const [savingsByMonth, setSavingsByMonth] = useState<{month: string, value: number}[]>([]);
 
   useEffect(() => {
-    if (username) {
+    if (!token || authLoading || !username) return;
+    
+    // Небольшая задержка для обновления Axios interceptor
+    const timer = setTimeout(() => {
       fetchDashboardData();
       fetchSavingsByMonth();
-    }
-  }, [username]);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [token, authLoading, username]);
 
   const fetchDashboardData = async () => {
     if (!username) {

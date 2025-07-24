@@ -607,7 +607,7 @@ public class TenderServiceImpl implements TenderService {
             tenderItem.setItemNumber(i + 1);
             // Описание: если material есть, берем его имя, иначе supplierMaterialName или note
             if (requestMaterial.getMaterial() != null && requestMaterial.getMaterial().getName() != null) {
-                tenderItem.setDescription(requestMaterial.getMaterial().getName());
+            tenderItem.setDescription(requestMaterial.getMaterial().getName());
             } else if (requestMaterial.getSupplierMaterialName() != null) {
                 tenderItem.setDescription(requestMaterial.getSupplierMaterialName());
             } else if (requestMaterial.getNote() != null) {

@@ -27,6 +27,7 @@ import {
 } from '@mui/icons-material';
 import { api } from '../utils/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Alert {
   id: string;
@@ -43,23 +44,28 @@ interface Alert {
   proposalId?: string;
 }
 
-interface AlertNotificationProps {
-  username?: string;
-}
+interface AlertNotificationProps {}
 
-const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
+const AlertNotification: React.FC = () => {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { user, token, isLoading: authLoading } = useAuth();
+  const username = user?.username;
 
   useEffect(() => {
-    if (username) {
+    if (!token || authLoading || !username) return;
+    
+    // Небольшая задержка для обновления Axios interceptor
+    const timer = setTimeout(() => {
       fetchAlerts();
       fetchUnreadCount();
-    }
-  }, [username]);
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [token, authLoading, username]);
 
   const fetchAlerts = async () => {
     try {
@@ -196,15 +202,15 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
         }}
       >
         <Box sx={{ p: 2 }}>
-          {unreadCount > 0 && (
-            <Button 
-              size="small" 
-              onClick={markAllAsRead}
+              {unreadCount > 0 && (
+                <Button 
+                  size="small" 
+                  onClick={markAllAsRead}
               sx={{ mb: 2 }}
-            >
-              Отметить все как прочитанные
-            </Button>
-          )}
+                >
+                  Отметить все как прочитанные
+                </Button>
+              )}
 
           <Divider sx={{ mb: 2 }} />
 
