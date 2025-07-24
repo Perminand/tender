@@ -22,6 +22,8 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.time.format.TextStyle;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -615,5 +617,27 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public void sendDashboardDigest(String username) {
         // Заглушка
+    }
+
+    @Override
+    public List<Map<String, Object>> getSavingsByMonth(String username) {
+        // Группируем суммы контрактов по месяцам (по дате начала контракта)
+        List<Contract> allContracts = contractRepository.findAll();
+        Map<String, BigDecimal> savingsByMonth = new java.util.LinkedHashMap<>();
+        for (Contract contract : allContracts) {
+            if (contract.getStartDate() != null && contract.getTotalAmount() != null) {
+                String month = contract.getStartDate().getMonth().getDisplayName(TextStyle.SHORT, new Locale("ru"));
+                savingsByMonth.put(month, savingsByMonth.getOrDefault(month, BigDecimal.ZERO).add(contract.getTotalAmount()));
+            }
+        }
+        // Формируем результат для фронта
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (Map.Entry<String, BigDecimal> entry : savingsByMonth.entrySet()) {
+            Map<String, Object> point = new java.util.HashMap<>();
+            point.put("month", entry.getKey());
+            point.put("value", entry.getValue());
+            result.add(point);
+        }
+        return result;
     }
 } 

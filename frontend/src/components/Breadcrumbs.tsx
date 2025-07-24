@@ -106,8 +106,8 @@ const Breadcrumbs: React.FC = () => {
       return pathToBreadcrumbs[matchingPath];
     }
 
-    // Если не найдено, возвращаем базовые хлебные крошки
-    return [{ label: 'Главная', path: '/dashboard', icon: <HomeIcon /> }];
+    // Если не найдено, не показываем хлебные крошки
+    return [];
   };
 
   const breadcrumbs = getBreadcrumbs();
@@ -122,7 +122,7 @@ const Breadcrumbs: React.FC = () => {
         }
       }}
     >
-      {breadcrumbs.map((item, index) => {
+      {breadcrumbs.length === 0 ? null : breadcrumbs.map((item, index) => {
         const isLast = index === breadcrumbs.length - 1;
         
         return isLast ? (

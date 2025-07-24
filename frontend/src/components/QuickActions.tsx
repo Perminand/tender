@@ -47,22 +47,6 @@ const quickActions: QuickAction[] = [
     color: 'secondary'
   },
   {
-    title: 'Новый контракт',
-    description: 'Создать контракт',
-    icon: <DescriptionIcon />,
-    path: '/contracts/new',
-    roles: ['ROLE_ADMIN', 'ROLE_MANAGER'],
-    color: 'success'
-  },
-  {
-    title: 'Новая поставка',
-    description: 'Создать поставку',
-    icon: <LocalShippingIcon />,
-    path: '/deliveries/new',
-    roles: ['ROLE_ADMIN', 'ROLE_MANAGER'],
-    color: 'warning'
-  },
-  {
     title: 'Новый платеж',
     description: 'Создать платеж',
     icon: <PaymentIcon />,

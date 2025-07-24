@@ -12,6 +12,8 @@ import ru.perminov.tender.service.DashboardService;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @RestController
@@ -90,6 +92,13 @@ public class DashboardController {
     public ResponseEntity<DashboardDto> getManagerDashboard(@RequestParam String username) {
         log.info("Получен GET-запрос: дашборд менеджера для пользователя: {}", username);
         return ResponseEntity.ok(dashboardService.getManagerDashboard(username));
+    }
+    
+    @PreAuthorize("hasAnyRole('ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST', 'ROLE_VIEWER')")
+    @GetMapping("/savings-by-month")
+    public ResponseEntity<List<Map<String, Object>>> getSavingsByMonth(@RequestParam String username) {
+        // Реальная агрегация по месяцам (делегируем в сервис)
+        return ResponseEntity.ok(dashboardService.getSavingsByMonth(username));
     }
     
     // Обновление данных в реальном времени

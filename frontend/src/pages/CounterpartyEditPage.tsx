@@ -213,13 +213,13 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               setCompanyTypes(allTypes);
               foundType = againFound;
             } else {
-              const response = await api.post('/api/company/type-companies', { name: companyData.legalForm });
+            const response = await api.post('/api/company/type-companies', { name: companyData.legalForm });
               if (response.status === 200) {
-                const createdType: CompanyType = response.data;
-                setCompanyTypes(prev => [...prev, createdType]);
-                foundType = createdType;
-              } else {
-                console.error("Failed to auto-create company type");
+              const createdType: CompanyType = response.data;
+              setCompanyTypes(prev => [...prev, createdType]);
+              foundType = createdType;
+            } else {
+              console.error("Failed to auto-create company type");
               }
             }
           } catch (e) {

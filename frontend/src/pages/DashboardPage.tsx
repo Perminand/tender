@@ -182,10 +182,12 @@ const DashboardPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const { user } = useAuth();
   const username = user?.username;
+  const [savingsByMonth, setSavingsByMonth] = useState<{month: string, value: number}[]>([]);
 
   useEffect(() => {
     if (username) {
-    fetchDashboardData();
+      fetchDashboardData();
+      fetchSavingsByMonth();
     }
   }, [username]);
 
@@ -205,6 +207,15 @@ const DashboardPage: React.FC = () => {
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке дашборда');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchSavingsByMonth = async () => {
+    try {
+      const response = await api.get(`/api/dashboard/savings-by-month?username=${username}`);
+      setSavingsByMonth(response.data);
+    } catch (e) {
+      setSavingsByMonth([]);
     }
   };
 
@@ -403,14 +414,7 @@ const DashboardPage: React.FC = () => {
               <Paper sx={{ p: 3, height: 400 }}>
                 <Typography variant="h6" gutterBottom>Экономия по месяцам</Typography>
                 <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={[
-                    { month: 'Янв', savings: 1200000 },
-                    { month: 'Фев', savings: 1500000 },
-                    { month: 'Мар', savings: 1800000 },
-                    { month: 'Апр', savings: 1600000 },
-                    { month: 'Май', savings: 2000000 },
-                    { month: 'Июн', savings: 2200000 }
-                  ]}>
+                  <LineChart data={savingsByMonth.map(item => ({ month: item.month, savings: item.value }))}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="month" />
                     <YAxis />
@@ -723,14 +727,7 @@ const DashboardPage: React.FC = () => {
                   <Paper sx={{ p: 3, height: 400 }}>
                     <Typography variant="h6" gutterBottom>Экономия по месяцам</Typography>
                     <ResponsiveContainer width="100%" height={300}>
-                      <LineChart data={[
-                        { month: 'Янв', savings: 1200000 },
-                        { month: 'Фев', savings: 1500000 },
-                        { month: 'Мар', savings: 1800000 },
-                        { month: 'Апр', savings: 1600000 },
-                        { month: 'Май', savings: 2000000 },
-                        { month: 'Июн', savings: 2200000 }
-                      ]}>
+                      <LineChart data={savingsByMonth.map(item => ({ month: item.month, savings: item.value }))}>
                         <CartesianGrid strokeDasharray="3 3" />
                         <XAxis dataKey="month" />
                         <YAxis />

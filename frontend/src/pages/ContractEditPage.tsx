@@ -140,7 +140,7 @@ const ContractEditPage: React.FC = () => {
 
     console.log('suppliers:', suppliers);
     console.log('supplierId from query:', supplierId);
-    const foundSupplier = suppliers.find(s => s.id === supplierId);
+    const foundSupplier = Array.isArray(suppliers) ? suppliers.find(s => s.id === supplierId) : undefined;
     console.log('foundSupplier:', foundSupplier);
 
     console.log('amount from query:', amount);
@@ -238,7 +238,7 @@ const ContractEditPage: React.FC = () => {
     try {
       const response = await api.get('/companies?type=SUPPLIER');
       const data = response.data;
-      setSuppliers(data);
+      setSuppliers(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Ошибка при загрузке поставщиков:', error);
     }

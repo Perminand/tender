@@ -26,6 +26,7 @@ import {
   VisibilityOff as VisibilityOffIcon
 } from '@mui/icons-material';
 import { api } from '../utils/api';
+import { useNavigate } from 'react-router-dom';
 
 interface Alert {
   id: string;
@@ -36,6 +37,10 @@ interface Alert {
   isRead: boolean;
   createdAt: string;
   actionUrl?: string;
+  companyName?: string;
+  deliveryId?: string;
+  paymentId?: string;
+  proposalId?: string;
 }
 
 interface AlertNotificationProps {
@@ -47,6 +52,7 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (username) {
@@ -126,6 +132,17 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
     }
   };
 
+  // Русские статусы важности
+  const getSeverityLabel = (severity: string) => {
+    switch (severity) {
+      case 'CRITICAL': return 'Критично';
+      case 'HIGH': return 'Высокая';
+      case 'MEDIUM': return 'Средняя';
+      case 'LOW': return 'Низкая';
+      default: return severity;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('ru-RU', {
       day: '2-digit',
@@ -136,11 +153,33 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
     });
   };
 
+  // Универсальный обработчик перехода по уведомлению
+  const handleAlertClick = (alert: Alert) => {
+    markAsRead(alert.id); // Помечаем как прочитанное сразу при клике
+    if (alert.actionUrl) {
+      window.open(alert.actionUrl, '_blank');
+      return;
+    }
+    if (alert.type === 'DELIVERY' && alert.deliveryId) {
+      navigate(`/deliveries/${alert.deliveryId}`);
+      return;
+    }
+    if (alert.type === 'PAYMENT' && alert.paymentId) {
+      navigate(`/payments/${alert.paymentId}`);
+      return;
+    }
+    if (alert.type === 'PROPOSAL' && alert.proposalId) {
+      navigate(`/proposals/${alert.proposalId}`);
+      return;
+    }
+    // Можно добавить другие типы
+  };
+
   return (
     <>
       <IconButton
         color="inherit"
-        onClick={() => setDrawerOpen(true)}
+        onClick={() => setDrawerOpen(open => !open)}
         sx={{ ml: 1 }}
       >
         <Badge badgeContent={unreadCount} color="error">
@@ -157,33 +196,15 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
         }}
       >
         <Box sx={{ p: 2 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-            <Typography variant="h6">
-              Уведомления
-              {unreadCount > 0 && (
-                <Chip 
-                  label={unreadCount} 
-                  size="small" 
-                  color="error" 
-                  sx={{ ml: 1 }}
-                />
-              )}
-            </Typography>
-            <Box>
-              {unreadCount > 0 && (
-                <Button 
-                  size="small" 
-                  onClick={markAllAsRead}
-                  sx={{ mr: 1 }}
-                >
-                  Отметить все как прочитанные
-                </Button>
-              )}
-              <IconButton onClick={() => setDrawerOpen(false)}>
-                <CloseIcon />
-              </IconButton>
-            </Box>
-          </Box>
+          {unreadCount > 0 && (
+            <Button 
+              size="small" 
+              onClick={markAllAsRead}
+              sx={{ mb: 2 }}
+            >
+              Отметить все как прочитанные
+            </Button>
+          )}
 
           <Divider sx={{ mb: 2 }} />
 
@@ -192,8 +213,8 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
               <CircularProgress />
             </Box>
           ) : alerts.length === 0 ? (
-            <Box sx={{ textAlign: 'center', p: 3 }}>
-              <Typography color="textSecondary">
+            <Box sx={{ textAlign: 'center', mt: 8, p: 3 }}>
+              <Typography color="text.secondary" variant="h6">
                 Нет непрочитанных уведомлений
               </Typography>
             </Box>
@@ -207,10 +228,12 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
                     borderColor: 'divider',
                     borderRadius: 1,
                     mb: 1,
+                    cursor: alert.actionUrl || alert.deliveryId || alert.paymentId || alert.proposalId ? 'pointer' : 'default',
                     '&:hover': {
-                      bgcolor: 'action.hover'
+                      bgcolor: (alert.actionUrl || alert.deliveryId || alert.paymentId || alert.proposalId) ? 'action.hover' : undefined
                     }
                   }}
+                  onClick={() => handleAlertClick(alert)}
                 >
                   <ListItemIcon>
                     {getSeverityIcon(alert.severity)}
@@ -222,7 +245,7 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
                           {alert.title}
                         </Typography>
                         <Chip 
-                          label={alert.severity} 
+                          label={getSeverityLabel(alert.severity)}
                           size="small" 
                           color={getSeverityColor(alert.severity) as any}
                         />
@@ -231,7 +254,12 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
                     secondary={
                       <Box>
                         <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>
-                          {alert.message}
+                          {/* Показываем companyName, если есть, иначе message */}
+                          {alert.companyName ? (
+                            <b>{alert.companyName}</b>
+                          ) : (
+                            alert.message
+                          )}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
                           {formatDate(alert.createdAt)}
@@ -242,20 +270,11 @@ const AlertNotification: React.FC<AlertNotificationProps> = ({ username }) => {
                   <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <IconButton
                       size="small"
-                      onClick={() => markAsRead(alert.id)}
+                      onClick={e => { e.stopPropagation(); markAsRead(alert.id); }}
                       title="Отметить как прочитанное"
                     >
                       <VisibilityIcon fontSize="small" />
                     </IconButton>
-                    {alert.actionUrl && (
-                      <IconButton
-                        size="small"
-                        onClick={() => window.open(alert.actionUrl, '_blank')}
-                        title="Перейти к действию"
-                      >
-                        <VisibilityOffIcon fontSize="small" />
-                      </IconButton>
-                    )}
                   </Box>
                 </ListItem>
               ))}

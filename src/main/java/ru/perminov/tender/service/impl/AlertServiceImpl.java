@@ -5,6 +5,8 @@ import org.springframework.stereotype.Service;
 import ru.perminov.tender.dto.AlertDto;
 import ru.perminov.tender.model.Alert;
 import ru.perminov.tender.service.AlertService;
+import ru.perminov.tender.repository.AlertRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -14,6 +16,8 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 public class AlertServiceImpl implements AlertService {
+    @Autowired
+    private final AlertRepository alertRepository;
     
     @Override
     public AlertDto createAlert(AlertDto alertDto) {
@@ -26,11 +30,16 @@ public class AlertServiceImpl implements AlertService {
         AlertDto alert = new AlertDto();
         alert.setId(UUID.randomUUID());
         alert.setTitle("Просроченная поставка");
-        alert.setMessage("Поставка с ID " + deliveryId + " просрочена");
+        alert.setMessage("Поставка просрочена");
         alert.setType(Alert.AlertType.OVERDUE_DELIVERY);
         alert.setSeverity(Alert.AlertSeverity.HIGH);
         alert.setStatus(Alert.AlertStatus.ACTIVE);
         alert.setCreatedAt(LocalDateTime.now());
+        // Новые поля для фронта:
+        alert.setEntityId(deliveryId);
+        alert.setEntityType("DELIVERY");
+        alert.setActionUrl("/deliveries/" + deliveryId);
+        alert.setMetadata("{\"deliveryId\":\"" + deliveryId + "\",\"companyName\":\"Компания 1\"}");
         return alert;
     }
     
@@ -65,11 +74,16 @@ public class AlertServiceImpl implements AlertService {
         AlertDto alert = new AlertDto();
         alert.setId(UUID.randomUUID());
         alert.setTitle("Новое предложение");
-        alert.setMessage("Получено новое предложение " + proposalId);
+        alert.setMessage("Получено новое предложение");
         alert.setType(Alert.AlertType.NEW_PROPOSAL);
         alert.setSeverity(Alert.AlertSeverity.LOW);
         alert.setStatus(Alert.AlertStatus.ACTIVE);
         alert.setCreatedAt(LocalDateTime.now());
+        // Новые поля для фронта:
+        alert.setEntityId(proposalId);
+        alert.setEntityType("PROPOSAL");
+        alert.setActionUrl("/proposals/" + proposalId);
+        alert.setMetadata("{\"proposalId\":\"" + proposalId + "\",\"companyName\":\"Компания 1\"}");
         return alert;
     }
     
@@ -91,11 +105,16 @@ public class AlertServiceImpl implements AlertService {
         AlertDto alert = new AlertDto();
         alert.setId(UUID.randomUUID());
         alert.setTitle("Просроченный платеж");
-        alert.setMessage("Платеж " + paymentId + " просрочен");
+        alert.setMessage("Платеж просрочен");
         alert.setType(Alert.AlertType.PAYMENT_OVERDUE);
         alert.setSeverity(Alert.AlertSeverity.HIGH);
         alert.setStatus(Alert.AlertStatus.ACTIVE);
         alert.setCreatedAt(LocalDateTime.now());
+        // Новые поля для фронта:
+        alert.setEntityId(paymentId);
+        alert.setEntityType("PAYMENT");
+        alert.setActionUrl("/payments/" + paymentId);
+        alert.setMetadata("{\"paymentId\":\"" + paymentId + "\",\"companyName\":\"Компания 1\"}");
         return alert;
     }
     
@@ -157,12 +176,19 @@ public class AlertServiceImpl implements AlertService {
     
     @Override
     public List<AlertDto> getUnreadAlerts(String username) {
-        // Возвращаем тестовые алерты
-        return List.of(
-            createOverdueDeliveryAlert(UUID.randomUUID()),
-            createPaymentOverdueAlert(UUID.randomUUID()),
-            createNewProposalAlert(UUID.randomUUID())
-        );
+        // Возвращаем только алерты с isRead=false для пользователя
+        return alertRepository.findByTargetUserAndIsReadFalse(username)
+            .stream()
+            .map(this::toDto)
+            .toList();
+    }
+    
+    @Override
+    public AlertDto markAsRead(UUID id) {
+        Alert alert = alertRepository.findById(id).orElseThrow();
+        alert.setIsRead(true);
+        alertRepository.save(alert);
+        return toDto(alert);
     }
     
     @Override
@@ -184,13 +210,12 @@ public class AlertServiceImpl implements AlertService {
     }
     
     @Override
-    public AlertDto markAsRead(UUID id) {
-        return null;
-    }
-    
-    @Override
     public void markAllAsRead(String username) {
-        // Заглушка
+        List<Alert> alerts = alertRepository.findByTargetUserAndIsReadFalse(username);
+        for (Alert alert : alerts) {
+            alert.setIsRead(true);
+        }
+        alertRepository.saveAll(alerts);
     }
     
     @Override
@@ -240,7 +265,7 @@ public class AlertServiceImpl implements AlertService {
     
     @Override
     public Integer getUnreadCount(String username) {
-        return 3; // Тестовое значение
+        return alertRepository.findByTargetUserAndIsReadFalse(username).size();
     }
     
     @Override
@@ -261,5 +286,34 @@ public class AlertServiceImpl implements AlertService {
     @Override
     public void deleteExpiredAlerts() {
         // Заглушка
+    }
+
+    // Вспомогательный метод для преобразования Alert -> AlertDto
+    private AlertDto toDto(Alert alert) {
+        AlertDto dto = new AlertDto();
+        dto.setId(alert.getId());
+        dto.setTitle(alert.getTitle());
+        dto.setMessage(alert.getMessage());
+        dto.setDescription(alert.getDescription());
+        dto.setType(alert.getType());
+        dto.setSeverity(alert.getSeverity());
+        dto.setStatus(alert.getStatus());
+        dto.setEntityId(alert.getEntityId());
+        dto.setEntityType(alert.getEntityType());
+        dto.setTargetUser(alert.getTargetUser());
+        dto.setTargetRole(alert.getTargetRole());
+        dto.setTargetDepartment(alert.getTargetDepartment());
+        dto.setCreatedAt(alert.getCreatedAt());
+        dto.setExpiresAt(alert.getExpiresAt());
+        dto.setAcknowledgedAt(alert.getAcknowledgedAt());
+        dto.setResolvedAt(alert.getResolvedAt());
+        dto.setActionUrl(alert.getActionUrl());
+        dto.setActionText(alert.getActionText());
+        dto.setMetadata(alert.getMetadata());
+        dto.setViewCount(alert.getViewCount());
+        dto.setIsRead(alert.getIsRead());
+        dto.setIsAcknowledged(alert.getIsAcknowledged());
+        dto.setIsResolved(alert.getIsResolved());
+        return dto;
     }
 } 

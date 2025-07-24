@@ -3,6 +3,8 @@ package ru.perminov.tender.service;
 import ru.perminov.tender.dto.dashboard.DashboardDto;
 
 import java.time.LocalDate;
+import java.util.List;
+import java.util.Map;
 
 public interface DashboardService {
     
@@ -24,6 +26,7 @@ public interface DashboardService {
     // Обновление данных в реальном времени
     DashboardDto refreshDashboard(String username);
     DashboardDto getLiveMetrics(String username);
+    List<Map<String, Object>> getSavingsByMonth(String username);
     
     // Экспорт дашборда
     byte[] exportDashboardToPDF(String username);
