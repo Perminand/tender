@@ -1,12 +1,15 @@
 package ru.perminov.tender.controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.tender.SupplierProposalDto;
 import ru.perminov.tender.dto.tender.ProposalItemDto;
 import ru.perminov.tender.model.SupplierProposal;
 import ru.perminov.tender.service.SupplierProposalService;
+import ru.perminov.tender.service.ProposalRegistryService;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.validation.Valid;
 
@@ -20,6 +23,7 @@ import java.util.UUID;
 public class SupplierProposalController {
 
     private final SupplierProposalService supplierProposalService;
+    private final ProposalRegistryService proposalRegistryService;
 
     @PostMapping
     public ResponseEntity<SupplierProposalDto> createProposal(@Valid @RequestBody SupplierProposalDto proposalDto) {
@@ -103,5 +107,21 @@ public class SupplierProposalController {
     @GetMapping
     public List<SupplierProposalDto> getAllProposals() {
         return supplierProposalService.getAllProposals();
+    }
+
+    @GetMapping("/export")
+    public ResponseEntity<byte[]> exportProposalsToExcel() {
+        log.info("Получен GET-запрос: экспортировать предложения в Excel");
+        try {
+            var in = proposalRegistryService.exportProposalsToExcel();
+            byte[] bytes = in.readAllBytes();
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=proposals.xlsx")
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(bytes);
+        } catch (Exception e) {
+            log.error("Ошибка при экспорте предложений в Excel", e);
+            return ResponseEntity.internalServerError().body(null);
+        }
     }
 } 

@@ -103,11 +103,52 @@ public class DocumentController {
         DocumentDto document = documentService.getDocumentById(id);
         ByteArrayResource resource = new ByteArrayResource(data);
         
+        // Определяем правильный MIME-тип на основе расширения файла
+        String mimeType = getMimeTypeFromFileName(document.getFileName());
+        if (document.getMimeType() != null && !document.getMimeType().isEmpty()) {
+            mimeType = document.getMimeType();
+        }
+        
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + document.getFileName() + "\"")
-                .contentType(MediaType.parseMediaType(document.getMimeType()))
+                .contentType(MediaType.parseMediaType(mimeType))
                 .contentLength(data.length)
                 .body(resource);
+    }
+    
+    /**
+     * Определяет MIME-тип на основе расширения файла
+     */
+    private String getMimeTypeFromFileName(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "application/octet-stream";
+        }
+        
+        String extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+        
+        return switch (extension) {
+            case "pdf" -> "application/pdf";
+            case "doc" -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xls" -> "application/vnd.ms-excel";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "ppt" -> "application/vnd.ms-powerpoint";
+            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "txt" -> "text/plain";
+            case "rtf" -> "application/rtf";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "gif" -> "image/gif";
+            case "bmp" -> "image/bmp";
+            case "tiff" -> "image/tiff";
+            case "zip" -> "application/zip";
+            case "rar" -> "application/x-rar-compressed";
+            case "7z" -> "application/x-7z-compressed";
+            case "xml" -> "application/xml";
+            case "json" -> "application/json";
+            case "csv" -> "text/csv";
+            default -> "application/octet-stream";
+        };
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")

@@ -8,37 +8,37 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import ru.perminov.tender.dto.tender.SupplierProposalDto;
-import ru.perminov.tender.service.ProposalRegistryService;
+import ru.perminov.tender.dto.delivery.DeliveryDto;
+import ru.perminov.tender.service.DeliveryRegistryService;
 
 import java.io.ByteArrayInputStream;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/proposal-registry")
+@RequestMapping("/api/delivery-registry")
 @RequiredArgsConstructor
 @Slf4j
-public class ProposalRegistryController {
+public class DeliveryRegistryController {
 
-    private final ProposalRegistryService proposalRegistryService;
+    private final DeliveryRegistryService deliveryRegistryService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-    public ResponseEntity<List<SupplierProposalDto>> getAllProposals() {
-        log.info("Получение всех предложений для реестра");
-        List<SupplierProposalDto> proposals = proposalRegistryService.getAllProposals();
-        return ResponseEntity.ok(proposals);
+    public ResponseEntity<List<DeliveryDto>> getAllDeliveries() {
+        log.info("Получение всех поставок для реестра");
+        List<DeliveryDto> deliveries = deliveryRegistryService.getAllDeliveries();
+        return ResponseEntity.ok(deliveries);
     }
 
     @GetMapping("/export")
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-    public ResponseEntity<InputStreamResource> exportProposalsToExcel() {
-        log.info("Экспорт предложений в Excel");
+    public ResponseEntity<InputStreamResource> exportDeliveriesToExcel() {
+        log.info("Экспорт поставок в Excel");
         
-        ByteArrayInputStream bis = proposalRegistryService.exportProposalsToExcel();
+        ByteArrayInputStream bis = deliveryRegistryService.exportDeliveriesToExcel();
         
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Disposition", "attachment; filename=proposals-registry.xlsx");
+        headers.add("Content-Disposition", "attachment; filename=deliveries-registry.xlsx");
         headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.add("Pragma", "no-cache");
         headers.add("Expires", "0");

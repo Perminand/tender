@@ -8,37 +8,37 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import ru.perminov.tender.dto.tender.SupplierProposalDto;
-import ru.perminov.tender.service.ProposalRegistryService;
+import ru.perminov.tender.dto.payment.PaymentDto;
+import ru.perminov.tender.service.PaymentRegistryService;
 
 import java.io.ByteArrayInputStream;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/proposal-registry")
+@RequestMapping("/api/payment-registry")
 @RequiredArgsConstructor
 @Slf4j
-public class ProposalRegistryController {
+public class PaymentRegistryController {
 
-    private final ProposalRegistryService proposalRegistryService;
+    private final PaymentRegistryService paymentRegistryService;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-    public ResponseEntity<List<SupplierProposalDto>> getAllProposals() {
-        log.info("Получение всех предложений для реестра");
-        List<SupplierProposalDto> proposals = proposalRegistryService.getAllProposals();
-        return ResponseEntity.ok(proposals);
+    public ResponseEntity<List<PaymentDto>> getAllPayments() {
+        log.info("Получение всех платежей для реестра");
+        List<PaymentDto> payments = paymentRegistryService.getAllPayments();
+        return ResponseEntity.ok(payments);
     }
 
     @GetMapping("/export")
     @PreAuthorize("hasRole('ADMIN') or hasRole('MANAGER')")
-    public ResponseEntity<InputStreamResource> exportProposalsToExcel() {
-        log.info("Экспорт предложений в Excel");
+    public ResponseEntity<InputStreamResource> exportPaymentsToExcel() {
+        log.info("Экспорт платежей в Excel");
         
-        ByteArrayInputStream bis = proposalRegistryService.exportProposalsToExcel();
+        ByteArrayInputStream bis = paymentRegistryService.exportPaymentsToExcel();
         
         HttpHeaders headers = new HttpHeaders();
-        headers.add("Content-Disposition", "attachment; filename=proposals-registry.xlsx");
+        headers.add("Content-Disposition", "attachment; filename=payments-registry.xlsx");
         headers.add("Cache-Control", "no-cache, no-store, must-revalidate");
         headers.add("Pragma", "no-cache");
         headers.add("Expires", "0");

@@ -33,7 +33,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  FileUpload as FileUploadIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -210,6 +211,26 @@ const ContractListPage: React.FC = () => {
     return colors[status] || 'default';
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await api.get('/api/contract-registry/export', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Реестр_контрактов.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Ошибка при экспорте:', error);
+      showSnackbar('Ошибка при экспорте в Excel', 'error');
+    }
+  };
+
   const stats = {
     total: contracts.length,
     active: contracts.filter(c => c.status === 'ACTIVE').length,
@@ -222,9 +243,18 @@ const ContractListPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Контракты
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Контракты
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<FileUploadIcon />}
+          onClick={handleExportExcel}
+        >
+          Экспорт в Excel
+        </Button>
+      </Box>
 
       {/* Статистика */}
       <Grid container spacing={2} sx={{ mb: 3 }}>

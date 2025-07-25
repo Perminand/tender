@@ -54,7 +54,13 @@ public class DocumentServiceImpl implements DocumentService {
             document.setFileName(originalFilename);
             document.setFilePath(filePath.toString());
             document.setFileSize(file.getSize());
-            document.setMimeType(file.getContentType());
+            
+            // Определяем MIME-тип на основе расширения файла, если Content-Type не определен
+            String mimeType = file.getContentType();
+            if (mimeType == null || mimeType.isEmpty() || "application/octet-stream".equals(mimeType)) {
+                mimeType = getMimeTypeFromFileName(originalFilename);
+            }
+            document.setMimeType(mimeType);
             document.setStatus(Document.DocumentStatus.ACTIVE);
 
             Document saved = documentRepository.save(document);
@@ -163,5 +169,40 @@ public class DocumentServiceImpl implements DocumentService {
             stats.put(status.name(), documentRepository.countByStatus(status));
         }
         return stats;
+    }
+    
+    /**
+     * Определяет MIME-тип на основе расширения файла
+     */
+    private String getMimeTypeFromFileName(String fileName) {
+        if (fileName == null || fileName.isEmpty()) {
+            return "application/octet-stream";
+        }
+        
+        String extension = fileName.substring(fileName.lastIndexOf(".") + 1).toLowerCase();
+        
+        return switch (extension) {
+            case "pdf" -> "application/pdf";
+            case "doc" -> "application/msword";
+            case "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+            case "xls" -> "application/vnd.ms-excel";
+            case "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+            case "ppt" -> "application/vnd.ms-powerpoint";
+            case "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+            case "txt" -> "text/plain";
+            case "rtf" -> "application/rtf";
+            case "jpg", "jpeg" -> "image/jpeg";
+            case "png" -> "image/png";
+            case "gif" -> "image/gif";
+            case "bmp" -> "image/bmp";
+            case "tiff" -> "image/tiff";
+            case "zip" -> "application/zip";
+            case "rar" -> "application/x-rar-compressed";
+            case "7z" -> "application/x-7z-compressed";
+            case "xml" -> "application/xml";
+            case "json" -> "application/json";
+            case "csv" -> "text/csv";
+            default -> "application/octet-stream";
+        };
     }
 } 

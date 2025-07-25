@@ -39,7 +39,8 @@ import {
   Check as CheckIcon,
   Close as CloseIcon,
   Settings as SettingsIcon,
-  Payment as PaymentIcon
+  Payment as PaymentIcon,
+  FileUpload as FileUploadIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -624,11 +625,40 @@ const DeliveryListPage: React.FC = () => {
     fetchStatusStats();
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await api.get('/api/delivery-registry/export', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Реестр_поставок.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Ошибка при экспорте:', error);
+      showSnackbar('Ошибка при экспорте в Excel', 'error');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Поставки
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Поставки
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<FileUploadIcon />}
+          onClick={handleExportExcel}
+        >
+          Экспорт в Excel
+        </Button>
+      </Box>
 
       {/* Статистика */}
       <Grid container spacing={2} sx={{ mb: 3 }}>

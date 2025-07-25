@@ -33,7 +33,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
-  Check as CheckIcon
+  Check as CheckIcon,
+  FileUpload as FileUploadIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -183,14 +184,43 @@ const PaymentListPage: React.FC = () => {
   useEffect(() => { fetchStatusStats(); }, []);
   const reloadAll = () => { fetchPayments(); fetchStatusStats(); };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await api.get('/api/payment-registry/export', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Реестр_платежей.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Ошибка при экспорте:', error);
+      showSnackbar('Ошибка при экспорте в Excel', 'error');
+    }
+  };
+
   // Фильтрация платежей по статусу
   const filteredPayments = statusFilter ? payments.filter(p => p.status === statusFilter) : payments;
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Платежи
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Платежи
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<FileUploadIcon />}
+          onClick={handleExportExcel}
+        >
+          Экспорт в Excel
+        </Button>
+      </Box>
 
       {/* Статистика */}
       <Grid container spacing={2} sx={{ mb: 3 }}>

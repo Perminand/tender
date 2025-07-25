@@ -34,7 +34,8 @@ import {
   Send as SendIcon,
   Check as CheckIcon,
   Close as CloseIcon,
-  TrendingUp as TrendingUpIcon
+  TrendingUp as TrendingUpIcon,
+  FileUpload as FileUploadIcon
 } from '@mui/icons-material';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -152,6 +153,25 @@ const ProposalRegistryPage: React.FC = () => {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await api.get('/api/proposal-registry/export', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Реестр_предложений.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Ошибка при экспорте:', error);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'DRAFT': return 'default';
@@ -195,12 +215,21 @@ const ProposalRegistryPage: React.FC = () => {
         <Typography variant="h4" component="h1">
           Реестр предложений
         </Typography>
-        <Button
-          variant="contained"
-          onClick={() => navigate('/tenders')}
-        >
-          К тендерам
-        </Button>
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          <Button
+            variant="outlined"
+            startIcon={<FileUploadIcon />}
+            onClick={handleExportExcel}
+          >
+            Экспорт в Excel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => navigate('/tenders')}
+          >
+            К тендерам
+          </Button>
+        </Box>
       </Box>
 
       {/* Фильтры */}

@@ -93,12 +93,6 @@ const menuStructure = [
     ]
   },
   {
-    title: 'Аналитика',
-    items: [
-      { label: 'Анализ цен', to: '/price-analysis', icon: <AssessmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST'] }
-    ]
-  },
-  {
     title: 'Администрирование',
     items: [
       { label: 'Управление пользователями', to: '/users', icon: <PeopleIcon />, roles: ['ROLE_ADMIN'] },

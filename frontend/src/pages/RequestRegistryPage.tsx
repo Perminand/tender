@@ -25,7 +25,7 @@ import {
 } from '@mui/material';
 import {
   Edit,
-  Download as DownloadIcon,
+  FileUpload as FileUploadIcon,
   Visibility as VisibilityIcon,
   Add as AddIcon
 } from '@mui/icons-material';
@@ -188,7 +188,7 @@ export default function RequestRegistryPage() {
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
         <Button
             variant="outlined"
-            startIcon={<DownloadIcon />}
+            startIcon={<FileUploadIcon />}
             onClick={handleExport}
             disabled={loading}
           >
@@ -379,7 +379,7 @@ export default function RequestRegistryPage() {
                           setConfirmCreateTender(true);
                         }}
                       >
-                        <DownloadIcon />
+                        <FileUploadIcon />
                       </IconButton>
                     </Tooltip>
                   </Box>

@@ -33,7 +33,8 @@ import {
   Delete as DeleteIcon,
   Visibility as VisibilityIcon,
   Download as DownloadIcon,
-  Description as DescriptionIcon
+  Description as DescriptionIcon,
+  FileUpload as FileUploadIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
@@ -87,6 +88,26 @@ const DocumentListPage: React.FC = () => {
   useEffect(() => { fetchStatusStats(); }, []);
   const reloadAll = () => { fetchDocuments(); fetchStatusStats(); };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await api.get('/api/document-registry/export', {
+        responseType: 'blob'
+      });
+      
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'Реестр_документов.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Ошибка при экспорте:', error);
+      showSnackbar('Ошибка при экспорте в Excel', 'error');
+    }
+  };
+
   const fetchDocuments = async () => {
     setLoading(true);
     try {
@@ -138,11 +159,23 @@ const DocumentListPage: React.FC = () => {
       const response = await api.get(`/api/documents/${id}/download`, {
         responseType: 'blob'
       });
+      
+      // Получаем имя файла из заголовка Content-Disposition
+      const contentDisposition = response.headers['content-disposition'];
+      let fileName = `document_${id}`;
+      
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (filenameMatch) {
+          fileName = filenameMatch[1];
+        }
+      }
+      
       const blob = response.data;
       const url = window.URL.createObjectURL(blob);
       const a = window.document.createElement('a');
       a.href = url;
-      a.download = `document_${id}.pdf`;
+      a.download = fileName;
       window.document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -198,6 +231,7 @@ const DocumentListPage: React.FC = () => {
       UPLOADED: 'info',
       SIGNED: 'success',
       EXPIRED: 'error',
+      ACTIVE: 'success', // Added ACTIVE status
     };
     return colors[status] || 'default';
   };
@@ -207,7 +241,8 @@ const DocumentListPage: React.FC = () => {
       DRAFT: 'Черновик',
       UPLOADED: 'Загружен',
       SIGNED: 'Подписан',
-      EXPIRED: 'Истек',
+      EXPIRED: 'Истёк',
+      ACTIVE: 'Активный', // Added ACTIVE status
     };
     return texts[status] || status;
   };
@@ -215,10 +250,14 @@ const DocumentListPage: React.FC = () => {
   const getDocumentTypeText = (type: string) => {
     const texts: { [key: string]: string } = {
       CONTRACT: 'Контракт',
-      INVOICE: 'Счет',
+      INVOICE: 'Счёт',
       ACT: 'Акт',
       SPECIFICATION: 'Спецификация',
       CERTIFICATE: 'Сертификат',
+      COMMERCIAL_OFFER: 'Коммерческое предложение',
+      TECHNICAL_SPECIFICATION: 'Техническое задание',
+      PROTOCOL: 'Протокол',
+      TENDER_DOCUMENTATION: 'Тендерная документация',
     };
     return texts[type] || type;
   };
@@ -244,9 +283,18 @@ const DocumentListPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        Документы
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h4" component="h1">
+          Документы
+        </Typography>
+        <Button
+          variant="outlined"
+          startIcon={<FileUploadIcon />}
+          onClick={handleExportExcel}
+        >
+          Экспорт в Excel
+        </Button>
+      </Box>
 
       {/* Статистика */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
