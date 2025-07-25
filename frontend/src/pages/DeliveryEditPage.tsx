@@ -70,15 +70,15 @@ const DeliveryEditPage: React.FC = () => {
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   useEffect(() => {
-    api.get('/contracts').then(res => setContracts(res.data));
+    api.get('/api/contracts').then(res => setContracts(res.data));
     api.get('/companies?role=SUPPLIER').then(res => setSuppliers(res.data));
-    api.get('/warehouses').then(res => setWarehouses(res.data));
+    api.get('/warehouses').then(res => setWarehouses(Array.isArray(res.data) ? res.data : []));
   }, []);
 
   // Подгружаем контракт и его позиции
   useEffect(() => {
     if (contractId) {
-      api.get(`/contracts/${contractId}`)
+      api.get(`/api/contracts/${contractId}`)
         .then(res => {
           console.log('Contract data:', res.data); // Отладочная информация
           setContract(res.data);
@@ -88,7 +88,7 @@ const DeliveryEditPage: React.FC = () => {
           }
           if (res.data.warehouseId) setSelectedWarehouseId(res.data.warehouseId);
         });
-      api.get(`/contracts/${contractId}/items`)
+      api.get(`/api/contracts/${contractId}/items`)
         .then(res => {
           setContractItems(res.data);
           setDeliveryItems(res.data.map((item: ContractItem, idx: number) => ({
@@ -136,8 +136,8 @@ const DeliveryEditPage: React.FC = () => {
         deliveryItems: itemsToSubmit
       };
       console.log('Submitting delivery data:', submitData); // Отладочная информация
-      const response = await api.post('/deliveries', submitData);
-      if (response.status === 201) { // 201 Created
+      const response = await api.post('/api/deliveries', submitData);
+      if (response.status === 200 || response.status === 201) {
         setSnackbar({ open: true, message: 'Поставка создана', severity: 'success' });
         setTimeout(() => {
           navigate(`/contracts/${contractId}/manage`);
@@ -145,8 +145,27 @@ const DeliveryEditPage: React.FC = () => {
       } else {
         setSnackbar({ open: true, message: 'Ошибка при создании поставки', severity: 'error' });
       }
-    } catch (error) {
-      setSnackbar({ open: true, message: 'Ошибка при создании поставки', severity: 'error' });
+    } catch (error: any) {
+      let message = 'Ошибка при создании поставки';
+      if (error.response && error.response.data) {
+        const raw =
+          typeof error.response.data === 'string'
+            ? error.response.data
+            : error.response.data.global || error.response.data.message || '';
+        if (
+          raw &&
+          (/duplicate key value.*delivery_number.*already exists/i.test(raw) ||
+           /уникальное ограничение.*delivery_number.*уже существует/i.test(raw))
+        ) {
+          // Ищем номер поставки даже в русских сообщениях и с кавычками
+          const match = raw.match(/delivery_number["']?[\)\s=]*\(?([^)]+)\)?/i);
+          const number = match ? match[1].replace(/[^\d]/g, '') : '';
+          message = `Поставка с номером ${number} уже существует. Пожалуйста, выберите другой номер.`;
+        } else if (raw) {
+          message = raw;
+        }
+      }
+      setSnackbar({ open: true, message, severity: 'error' });
     }
   };
 
@@ -234,8 +253,8 @@ const DeliveryEditPage: React.FC = () => {
                             />
                           </TableCell>
                           <TableCell>{item.unitName}</TableCell>
-                          <TableCell>{item.unitPrice}</TableCell>
-                          <TableCell>{item.totalPrice}</TableCell>
+                          <TableCell>{item.unitPrice} р.</TableCell>
+                          <TableCell>{item.totalPrice} р.</TableCell>
                         </TableRow>
                       ))}
                     </TableBody>

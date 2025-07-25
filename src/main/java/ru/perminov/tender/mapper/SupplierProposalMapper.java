@@ -12,7 +12,7 @@ public interface SupplierProposalMapper {
     SupplierProposalMapper INSTANCE = Mappers.getMapper(SupplierProposalMapper.class);
 
     @Mapping(target = "supplierId", source = "supplier.id")
-    @Mapping(target = "supplierName", source = "supplier.name")
+    @Mapping(target = "supplierName", expression = "java(entity.getSupplier() != null ? (entity.getSupplier().getShortName() != null && !entity.getSupplier().getShortName().isEmpty() ? entity.getSupplier().getShortName() : (entity.getSupplier().getLegalName() != null && !entity.getSupplier().getLegalName().isEmpty() ? entity.getSupplier().getLegalName() : entity.getSupplier().getName())) : null)")
     @Mapping(target = "tenderId", source = "tender.id")
     @Mapping(target = "tenderNumber", source = "tender.tenderNumber")
     @Mapping(target = "tenderTitle", source = "tender.title")

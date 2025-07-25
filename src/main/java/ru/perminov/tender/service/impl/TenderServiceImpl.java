@@ -595,6 +595,16 @@ public class TenderServiceImpl implements TenderService {
         return dto;
     }
 
+    @Override
+    @Transactional
+    public TenderDto setTenderStatus(UUID id, String status) {
+        Tender tender = tenderRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        tender.setStatus(Tender.TenderStatus.valueOf(status));
+        tenderRepository.save(tender);
+        return tenderMapper.toDto(tender);
+    }
+
     private void createTenderItemsFromRequest(Tender tender, Request request) {
         List<RequestMaterial> requestMaterials = request.getRequestMaterials();
         

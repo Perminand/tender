@@ -61,35 +61,30 @@ const PaymentEditPage: React.FC = () => {
 
   const fetchContracts = async () => {
     try {
-      const response = await api.get('/contracts');
-      if (response.ok) {
-        const data = await response.json();
-        setContracts(data);
-      }
+      const response = await api.get('/api/contracts');
+      setContracts(response.data);
     } catch {}
   };
 
   const fetchPayment = async () => {
     try {
-      const response = await api.get(`/payments/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setForm({
-          paymentNumber: data.paymentNumber || '',
-          paymentDate: data.paymentDate ? dayjs(data.paymentDate) : dayjs(),
-          type: data.paymentType || 'PROGRESS',
-          amount: data.amount?.toString() || '',
-          status: data.status || 'PENDING',
-          invoiceNumber: data.invoiceNumber || '',
-          description: data.notes || '',
-          contractId: data.contractId || '',
-        });
-        setCalculatedDueDate(data.dueDate ? dayjs(data.dueDate) : null);
-        setSupplierName(data.supplierName || '');
-        // Если список контрактов пуст, подгружаем
-        if (contracts.length === 0) {
-          fetchContracts();
-        }
+      const response = await api.get(`/api/payments/${id}`);
+      const data = response.data;
+      setForm({
+        paymentNumber: data.paymentNumber || '',
+        paymentDate: data.paymentDate ? dayjs(data.paymentDate) : dayjs(),
+        type: data.paymentType || 'PROGRESS',
+        amount: data.amount?.toString() || '',
+        status: data.status || 'PENDING',
+        invoiceNumber: data.invoiceNumber || '',
+        description: data.notes || '',
+        contractId: data.contractId || '',
+      });
+      setCalculatedDueDate(data.dueDate ? dayjs(data.dueDate) : null);
+      setSupplierName(data.supplierName || '');
+      // Если список контрактов пуст, подгружаем
+      if (contracts.length === 0) {
+        fetchContracts();
       }
     } catch (error) {
       showSnackbar('Ошибка при загрузке платежа', 'error');

@@ -93,11 +93,19 @@ const DocumentListPage: React.FC = () => {
       const response = await api.get('/api/document-registry/export', {
         responseType: 'blob'
       });
-      
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // Получаем имя файла из заголовка Content-Disposition
+      let fileName = 'Реестр_документов.xlsx';
+      const contentDisposition = response.headers['content-disposition'];
+      if (contentDisposition) {
+        const filenameMatch = contentDisposition.match(/filename=\"(.+?)\"/);
+        if (filenameMatch) {
+          fileName = filenameMatch[1];
+        }
+      }
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: response.data.type || 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', 'Реестр_документов.xlsx');
+      link.setAttribute('download', fileName);
       document.body.appendChild(link);
       link.click();
       link.remove();

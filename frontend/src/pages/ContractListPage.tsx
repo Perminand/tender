@@ -211,6 +211,17 @@ const ContractListPage: React.FC = () => {
     return colors[status] || 'default';
   };
 
+  // Добавить функцию для перевода статусов
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'Черновик';
+      case 'ACTIVE': return 'Активный';
+      case 'COMPLETED': return 'Завершён';
+      case 'CANCELLED': return 'Отменён';
+      default: return status;
+    }
+  };
+
   const handleExportExcel = async () => {
     try {
       const response = await api.get('/api/contract-registry/export', {
@@ -430,7 +441,7 @@ const ContractListPage: React.FC = () => {
                 <TableCell>{contract.title}</TableCell>
                 <TableCell>
                   <Chip
-                    label={contract.status}
+                    label={getStatusLabel(contract.status)}
                     color={getStatusColor(contract.status)}
                     size="small"
                   />

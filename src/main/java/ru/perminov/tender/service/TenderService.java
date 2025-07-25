@@ -73,4 +73,6 @@ public interface TenderService {
      * Разделить тендер на части
      */
     ru.perminov.tender.dto.tender.TenderSplitResponseDto splitTender(ru.perminov.tender.dto.tender.TenderSplitRequestDto splitRequest);
+
+    TenderDto setTenderStatus(UUID id, String status);
 } 

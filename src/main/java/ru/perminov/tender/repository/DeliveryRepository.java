@@ -73,5 +73,16 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, JpaSp
     @Query("SELECT d FROM Delivery d LEFT JOIN FETCH d.contract LEFT JOIN FETCH d.supplier LEFT JOIN FETCH d.warehouse LEFT JOIN FETCH d.deliveryItems di LEFT JOIN FETCH di.material LEFT JOIN FETCH di.unit WHERE d.contract.id = :contractId")
     List<Delivery> findByContractIdWithItems(@Param("contractId") UUID contractId);
 
+    /**
+     * Найти поставку по id с загрузкой позиций и связанных сущностей
+     */
+    @Query("SELECT d FROM Delivery d " +
+           "LEFT JOIN FETCH d.deliveryItems " +
+           "LEFT JOIN FETCH d.contract " +
+           "LEFT JOIN FETCH d.supplier " +
+           "LEFT JOIN FETCH d.warehouse " +
+           "WHERE d.id = :id")
+    Delivery findByIdWithItems(@Param("id") UUID id);
+
     long countByStatus(Delivery.DeliveryStatus status);
 } 

@@ -45,6 +45,7 @@ import DialogActions from '@mui/material/DialogActions';
 import PriceAnalysisSummary from '../components/PriceAnalysisSummary';
 import TenderSplitDialog from '../components/TenderSplitDialog';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import GavelIcon from '@mui/icons-material/Gavel';
 
 interface TenderItemDto {
   id: string;
@@ -160,7 +161,7 @@ const TenderDetailPage: React.FC = () => {
       // Для поставщика используем специальный эндпоинт
       const endpoint = userRole === 'SUPPLIER' 
         ? `/api/tenders/${id}/supplier-view`
-        : `/api/tenders/${id}/with-best-prices-by-items`;
+        : `/api/tenders/${id}/with-best-offers`;
       
       const response = await api.get(endpoint);
       setTender(response.data);
@@ -185,12 +186,19 @@ const TenderDetailPage: React.FC = () => {
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      // Статусы тендера
       case 'DRAFT': return 'Черновик';
       case 'PUBLISHED': return 'Опубликован';
       case 'BIDDING': return 'Прием предложений';
       case 'EVALUATION': return 'Оценка';
       case 'AWARDED': return 'Присужден';
       case 'CANCELLED': return 'Отменен';
+      // Статусы предложений поставщиков
+      case 'SUBMITTED': return 'Подано';
+      case 'UNDER_REVIEW': return 'На рассмотрении';
+      case 'ACCEPTED': return 'Принято';
+      case 'REJECTED': return 'Отклонено';
+      case 'WITHDRAWN': return 'Отозвано';
       default: return status;
     }
   };
@@ -442,15 +450,31 @@ const TenderDetailPage: React.FC = () => {
               )}
               {/* Кнопка создания контракта */}
               {tender.status === 'AWARDED' && tender.awardedSupplierId && (
-                <Button
-                  variant="contained"
-                  color="success"
-                  onClick={() => {
-                    navigate(`/contracts/new?tenderId=${tender.id}&supplierId=${tender.awardedSupplierId}&amount=${tender.bestPrice}&supplierName=${encodeURIComponent(tender.bestSupplierName)}`);
-                  }}
-                >
-                  Заключить контракт
-                </Button>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    onClick={() => {
+                      navigate(`/contracts/new?tenderId=${tender.id}&supplierId=${tender.awardedSupplierId}&amount=${tender.bestPrice}&supplierName=${encodeURIComponent(tender.bestSupplierName)}`);
+                    }}
+                  >
+                    Заключить контракт
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    color="warning"
+                    onClick={async () => {
+                      try {
+                        await api.post(`/api/tenders/${tender.id}/set-status`, { status: 'EVALUATION' });
+                        await loadTender();
+                      } catch (e) {
+                        setError('Ошибка возврата на оценку');
+                      }
+                    }}
+                  >
+                    Вернуть на оценку
+                  </Button>
+                </Box>
               )}
               {/* Кнопка разделения тендера */}
               {tender.status === 'BIDDING' && (
@@ -580,36 +604,38 @@ const TenderDetailPage: React.FC = () => {
                 <Box sx={{ mt: 2, mb: 2 }}>
                   <Typography variant="h6" sx={{ mb: 2 }}>Победитель тендера</Typography>
                   {tender.supplierProposals.length > 0 ? (
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-                      <FormControl size="small" sx={{ minWidth: 300 }} disabled={awarding.tender}>
-                        <Select
-                          value={selectedWinner || ''}
-                          onChange={e => {
-                            if (e.target.value === '') {
-                              handleResetAwardClick();
-                            } else {
-                              handleManualAwardClick(e.target.value);
-                            }
-                          }}
-                          displayEmpty
+                    tender.status !== 'AWARDED' && (
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+                        <FormControl size="small" sx={{ minWidth: 300 }} disabled={awarding.tender}>
+                          <Select
+                            value={selectedWinner || ''}
+                            onChange={e => {
+                              if (e.target.value === '') {
+                                handleResetAwardClick();
+                              } else {
+                                handleManualAwardClick(e.target.value);
+                              }
+                            }}
+                            displayEmpty
+                          >
+                            <MenuItem value=""><em>Не выбран</em></MenuItem>
+                            {tender.supplierProposals.map(p => (
+                              <MenuItem key={p.supplierId} value={p.supplierId}>
+                                {p.supplierName}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                        <Button
+                          variant="outlined"
+                          color="primary"
+                          disabled={awarding.tender || !tender.supplierProposals.length}
+                          onClick={handleAutoAwardClick}
                         >
-                          <MenuItem value=""><em>Не выбран</em></MenuItem>
-                          {tender.supplierProposals.map(p => (
-                            <MenuItem key={p.supplierId} value={p.supplierId}>
-                              {p.supplierName}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                      <Button
-                        variant="outlined"
-                        color="primary"
-                        disabled={awarding.tender || !tender.supplierProposals.length}
-                        onClick={handleAutoAwardClick}
-                      >
-                        Назначить автоматически (лучшая цена)
-                      </Button>
-                    </Box>
+                          Назначить автоматически (лучшая цена)
+                        </Button>
+                      </Box>
+                    )
                   ) : (
                     <Typography color="text.secondary">Нет предложений</Typography>
                   )}
@@ -759,6 +785,7 @@ const TenderDetailPage: React.FC = () => {
                       return (
                         <TableRow 
                           key={item.id}
+                          sx={item.isBestPrice ? { backgroundColor: 'rgba(76, 175, 80, 0.10)' } : {}}
                         >
                           <TableCell>{item.itemNumber}</TableCell>
                           <TableCell>{item.description}</TableCell>
@@ -864,6 +891,8 @@ const TenderDetailPage: React.FC = () => {
                                 <TableRow>
                                   <TableCell>№</TableCell>
                                   <TableCell>Описание</TableCell>
+                                  <TableCell>Бренд/Модель</TableCell>
+                                  <TableCell>Производитель</TableCell>
                                   <TableCell>Цена</TableCell>
                                   <TableCell>Лучшая</TableCell>
                                   {tender.status === 'EVALUATION' && <TableCell>Действия</TableCell>}
@@ -874,6 +903,11 @@ const TenderDetailPage: React.FC = () => {
                                   <TableRow key={item.id}>
                                     <TableCell>{item.itemNumber}</TableCell>
                                     <TableCell>{item.description}</TableCell>
+                                    <TableCell>
+                                      {item.brand && item.model ? `${item.brand} ${item.model}` : 
+                                       item.brand || item.model || '-'}
+                                    </TableCell>
+                                    <TableCell>{item.manufacturer || '-'}</TableCell>
                                     <TableCell>{formatPrice(item.totalPrice)}</TableCell>
                                     <TableCell>
                                       {item.isBestPrice && (
@@ -882,22 +916,24 @@ const TenderDetailPage: React.FC = () => {
                                     </TableCell>
                                     {tender.status === 'EVALUATION' && (
                                       <TableCell>
-                                        <Button
-                                          size="small"
-                                          variant="outlined"
-                                          sx={{ mr: 1 }}
-                                          onClick={() => navigate(`/proposals/${proposal.id}`)}
-                                        >
-                                          Посмотреть предложение
-                                        </Button>
-                                        <Button
-                                          variant="contained"
-                                          color="primary"
-                                          size="small"
-                                          onClick={() => navigate(`/tenders/${tender.id}/contract/new/${proposal.supplierId}`)}
-                                        >
-                                          ЗАКЛЮЧИТЬ КОНТРАКТ
-                                        </Button>
+                                        <Tooltip title="Посмотреть предложение">
+                                          <IconButton
+                                            size="small"
+                                            color="primary"
+                                            onClick={() => navigate(`/proposals/${proposal.id}`)}
+                                          >
+                                            <VisibilityIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Заключить контракт">
+                                          <IconButton
+                                            size="small"
+                                            color="secondary"
+                                            onClick={() => navigate(`/tenders/${tender.id}/contract/new/${proposal.supplierId}`)}
+                                          >
+                                            <GavelIcon fontSize="small" />
+                                          </IconButton>
+                                        </Tooltip>
                                       </TableCell>
                                     )}
                                   </TableRow>

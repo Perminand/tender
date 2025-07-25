@@ -118,12 +118,15 @@ public class PaymentController {
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
     @PostMapping("/from-delivery/{deliveryId}")
-    public ResponseEntity<PaymentDto> createPaymentFromDelivery(@PathVariable UUID deliveryId) {
-        Delivery delivery = deliveryRepository.findById(deliveryId)
-            .orElseThrow(() -> new EntityNotFoundException("Поставка не найдена"));
+    public ResponseEntity<?> createPaymentFromDelivery(@PathVariable UUID deliveryId) {
+        Delivery delivery = deliveryRepository.findByIdWithItems(deliveryId);
+        if (delivery == null) throw new EntityNotFoundException("Поставка не найдена");
         PaymentDto payment = paymentService.createPaymentFromDelivery(delivery);
         if (payment == null) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(java.util.Map.of(
+                "message",
+                "Платёж не создан: возможно, он уже существует, сумма = 0 или поставка не завершена."
+            ));
         }
         return ResponseEntity.ok(payment);
     }

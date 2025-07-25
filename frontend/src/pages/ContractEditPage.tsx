@@ -68,6 +68,8 @@ interface SupplierProposal {
   totalPrice: number;
   currency: string;
   proposalItems: any[]; // Assuming proposalItems is an array of objects
+  tenderNumber?: string;
+  tenderTitle?: string;
 }
 
 interface Company {
@@ -187,13 +189,13 @@ const ContractEditPage: React.FC = () => {
   const fetchTenderData = async () => {
     setLoading(true);
     try {
-      // Получаем данные тендера
-      const tenderResponse = await api.get(`/tenders/${tenderId}`);
+      // Получаем данные тендера (именно по id)
+      const tenderResponse = await api.get(`/api/tenders/${tenderId}`);
       const tenderData = tenderResponse.data;
       setTenderData(tenderData);
       
       // Получаем предложения поставщика
-      const proposalsResponse = await api.get(`/proposals/tender/${tenderId}`);
+      const proposalsResponse = await api.get(`/api/proposals/tender/${tenderId}`);
       const proposalsData = proposalsResponse.data;
       
       setProposals(proposalsData);
@@ -228,7 +230,8 @@ const ContractEditPage: React.FC = () => {
     try {
       const response = await api.get('/tenders');
       const data = response.data;
-      setTenders(data.filter((tender: Tender) => tender.status === 'AWARDED'));
+      const tendersArray = Array.isArray(data) ? data : (data.content || data.items || []);
+      setTenders(tendersArray.filter((tender: Tender) => tender.status === 'AWARDED'));
     } catch (error) {
       console.error('Ошибка при загрузке тендеров:', error);
     }
@@ -282,7 +285,7 @@ const ContractEditPage: React.FC = () => {
         showSnackbar('Контракт обновлен', 'success');
       } else if (isCreatingFromTender) {
         // Создание контракта из тендера (теперь через тело запроса)
-        await api.post('/contracts/from-tender', submitData);
+        await api.post('/api/contracts/from-tender', submitData);
         showSnackbar('Контракт создан из тендера', 'success');
       } else {
         // Создание нового контракта
@@ -320,6 +323,8 @@ const ContractEditPage: React.FC = () => {
     );
   }
 
+  const winnerProposal = proposals.find(p => p.supplierId === supplierId);
+
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>
@@ -332,7 +337,7 @@ const ContractEditPage: React.FC = () => {
         </Alert>
       )}
 
-      {isCreatingFromTender && tenderData && (
+      {isCreatingFromTender && (tenderData || winnerProposal) && (
         <Card sx={{ mb: 2 }}>
           <CardContent>
             <Typography variant="h6" gutterBottom>
@@ -341,22 +346,22 @@ const ContractEditPage: React.FC = () => {
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Номер тендера: <strong>{tenderData.tenderNumber}</strong>
+                  Номер тендера: <strong>{tenderData?.tenderNumber || winnerProposal?.tenderNumber || ''}</strong>
                 </Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Название: <strong>{tenderData.title}</strong>
+                  Название: <strong>{tenderData?.title || winnerProposal?.tenderTitle || ''}</strong>
                 </Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Статус: <strong>{getStatusLabel(tenderData.status)}</strong>
+                  Статус: <strong>{getStatusLabel(tenderData?.status || '') || winnerProposal?.status || ''}</strong>
                 </Typography>
               </Grid>
               <Grid item xs={12} md={6}>
                 <Typography variant="body2" color="text.secondary">
-                  Заказчик: <strong>{tenderData.customerName}</strong>
+                  Заказчик: <strong>{tenderData?.customerName || ''}</strong>
                 </Typography>
               </Grid>
             </Grid>
@@ -585,7 +590,8 @@ const ContractEditPage: React.FC = () => {
                 })()
               )}
 
-              {isCreatingFromTender && proposals.length > 0 && (
+              {/* НЕ НУЖНО на странице создания контракта */}
+              {/* {proposals.length > 0 && (
                 <Grid item xs={12}>
                   <Divider sx={{ my: 2 }} />
                   <Typography variant="h6" gutterBottom>
@@ -641,7 +647,7 @@ const ContractEditPage: React.FC = () => {
                     </Table>
                   </TableContainer>
                 </Grid>
-              )}
+              )} */}
 
               <Grid item xs={12}>
                 <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>

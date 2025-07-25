@@ -194,9 +194,9 @@ const DeliveryListPage: React.FC = () => {
   // Подгружаем списки при открытии диалога
   useEffect(() => {
     if (dialogOpen) {
-      api.get('/companies?role=SUPPLIER').then(res => setSuppliers(res.data));
-      api.get('/contracts').then(res => setContracts(res.data));
-      api.get('/warehouses').then(res => setWarehouses(res.data));
+      api.get('/companies?role=SUPPLIER').then(res => setSuppliers(Array.isArray(res.data) ? res.data : []));
+      api.get('/api/contracts').then(res => setContracts(res.data));
+      api.get('/api/warehouses').then(res => setWarehouses(res.data));
     }
   }, [dialogOpen]);
 
@@ -432,14 +432,22 @@ const DeliveryListPage: React.FC = () => {
   const handleConfirmCreatePayment = async () => {
     if (selectedDeliveryForPayment) {
       try {
-        const response = await api.post(`/payments/from-delivery/${selectedDeliveryForPayment.id}`);
-        if (response.status === 201) {
+        const response = await api.post(`/api/payments/from-delivery/${selectedDeliveryForPayment.id}`);
+        if (response.status === 200 || response.status === 201) {
           showSnackbar('Платеж по поставке создан', 'success');
         } else {
-          showSnackbar('Ошибка при создании платежа', 'error');
+          let message = 'Ошибка при создании платежа';
+          if (response.data && response.data.message) {
+            message = response.data.message;
+          }
+          showSnackbar(message, 'error');
         }
-      } catch (error) {
-        showSnackbar('Ошибка при создании платежа', 'error');
+      } catch (error: any) {
+        let message = 'Ошибка при создании платежа';
+        if (error.response && error.response.data && error.response.data.message) {
+          message = error.response.data.message;
+        }
+        showSnackbar(message, 'error');
       } finally {
         setCreatePaymentDialogOpen(false);
         setSelectedDeliveryForPayment(null);

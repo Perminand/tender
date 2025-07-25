@@ -98,7 +98,7 @@ const ContractDetailPage: React.FC = () => {
   useEffect(() => {
     const fetchContract = async () => {
       try {
-        const response = await api.get(`/contracts/${id}`);
+        const response = await api.get(`/api/contracts/${id}`);
         setContract(response.data);
         setError(null);
       } catch (e) {

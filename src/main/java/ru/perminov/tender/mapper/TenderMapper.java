@@ -7,8 +7,9 @@ import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.model.Tender;
 import ru.perminov.tender.mapper.company.CompanyMapper;
 import ru.perminov.tender.mapper.TenderItemMapper;
+import ru.perminov.tender.mapper.SupplierProposalMapper;
 
-@Mapper(componentModel = "spring", uses = {CompanyMapper.class, TenderItemMapper.class})
+@Mapper(componentModel = "spring", uses = {CompanyMapper.class, TenderItemMapper.class, SupplierProposalMapper.class})
 public interface TenderMapper {
     TenderMapper INSTANCE = Mappers.getMapper(TenderMapper.class);
 
@@ -22,6 +23,7 @@ public interface TenderMapper {
     @Mapping(target = "warehouseId", source = "warehouse.id")
     @Mapping(target = "warehouseName", source = "warehouse.name")
     @Mapping(target = "tenderItems", source = "tenderItems")
+    @Mapping(target = "supplierProposals", source = "supplierProposals")
     TenderDto toDto(Tender entity);
     
     Tender toEntity(TenderDto dto);

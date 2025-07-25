@@ -33,14 +33,8 @@ const PaymentDetailPage: React.FC = () => {
 
   const fetchPayment = async () => {
     try {
-      const response = await api.get(`/payments/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPayment(data);
-      } else {
-        showSnackbar('Платеж не найден', 'error');
-        navigate('/payments');
-      }
+      const response = await api.get(`/api/payments/${id}`);
+      setPayment(response.data);
     } catch (error) {
       showSnackbar('Ошибка при загрузке платежа', 'error');
     } finally {

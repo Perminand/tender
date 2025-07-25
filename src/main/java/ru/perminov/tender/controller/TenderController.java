@@ -189,6 +189,17 @@ public class TenderController {
         }
     }
 
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PostMapping("/{id}/set-status")
+    public ResponseEntity<TenderDto> setTenderStatus(@PathVariable UUID id, @RequestBody Map<String, String> body) {
+        String status = body.get("status");
+        if (status == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        TenderDto dto = tenderService.setTenderStatus(id, status);
+        return ResponseEntity.ok(dto);
+    }
+
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
     @GetMapping("/{id}/price-analysis")
     public ResponseEntity<ru.perminov.tender.dto.tender.PriceAnalysisDto> getTenderPriceAnalysis(@PathVariable UUID id) {
