@@ -14,7 +14,7 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Assessment as AssessmentIcon,
-  AttachMoney as MoneyIcon
+  CurrencyRuble as CurrencyRubleIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -67,7 +67,8 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
-      currency: 'RUB'
+      currency: 'RUB',
+      currencyDisplay: 'symbol'
     }).format(price);
   };
 
@@ -123,7 +124,6 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
           <Grid item xs={12} sm={6} md={3}>
             <Box sx={{ textAlign: 'center' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
-                <MoneyIcon color={summary.totalSavings < 0 ? 'error' : 'success'} sx={{ mr: 1 }} />
                 <Typography variant="h6" color={summary.totalSavings < 0 ? 'error.main' : 'success.main'}>
                   {formatPrice(summary.totalSavings)}
                 </Typography>

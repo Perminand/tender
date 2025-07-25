@@ -15,9 +15,15 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Paper
+  Paper,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AddIcon from '@mui/icons-material/Add';
 import dayjs from 'dayjs';
 import { api } from '../utils/api';
 
@@ -53,14 +59,18 @@ interface RequestDto {
 
 // Функция для перевода статуса на русский
 const getStatusLabel = (status?: string) => {
-  switch (status) {
+  if (!status) return '-';
+  
+  const upperStatus = status.toUpperCase();
+  switch (upperStatus) {
     case 'DRAFT': return 'Черновик';
     case 'PUBLISHED': return 'Опубликован';
     case 'BIDDING': return 'Прием предложений';
     case 'EVALUATION': return 'Оценка';
     case 'AWARDED': return 'Присужден';
     case 'CANCELLED': return 'Отменен';
-    default: return status || '-';
+    case 'TENDER': return 'Тендер';
+    default: return status;
   }
 };
 
@@ -69,6 +79,8 @@ const RequestDetailPage: React.FC = () => {
   const [request, setRequest] = useState<RequestDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [createTenderLoading, setCreateTenderLoading] = useState(false);
+  const [confirmCreateTender, setConfirmCreateTender] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -89,6 +101,51 @@ const RequestDetailPage: React.FC = () => {
     fetchRequest();
   }, [id]);
 
+  const handleCreateTender = async () => {
+    if (!id) return;
+    
+    setCreateTenderLoading(true);
+    try {
+      const response = await api.post(`/api/requests/${id}/create-tender`);
+      const tender = response.data;
+      
+      // Обновляем статус заявки на 'TENDER'
+      setRequest(prev => prev ? { ...prev, status: 'TENDER' } : null);
+      
+      // Закрываем диалог
+      setConfirmCreateTender(false);
+      
+      // Показываем сообщение об успехе
+      setError(null);
+      
+      // Открываем тендер в новом окне
+      window.open(`/tenders/${tender.id}`, '_blank');
+    } catch (error: any) {
+      console.error('Ошибка при создании тендера:', error);
+      setError('Ошибка при создании тендера: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setCreateTenderLoading(false);
+    }
+  };
+
+  // Проверяем, можно ли создать тендер
+  const canCreateTender = request && 
+    request.materials && 
+    request.materials.length > 0;
+
+  // Определяем текст кнопки в зависимости от статуса
+  const getButtonText = () => {
+    if (!request) return 'Создать тендер';
+    const upperStatus = request.status?.toUpperCase();
+    if (upperStatus === 'DRAFT') return 'Создать тендер';
+    return 'Создать тендер повторно';
+  };
+
+  // Отладочная информация
+  console.log('Request status:', request?.status);
+  console.log('Can create tender:', canCreateTender);
+  console.log('Materials count:', request?.materials?.length);
+
   if (loading) {
     return <Box display="flex" justifyContent="center" alignItems="center" minHeight="300px"><CircularProgress /></Box>;
   }
@@ -103,9 +160,23 @@ const RequestDetailPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)} sx={{ mb: 2 }}>
-        Назад
-      </Button>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
+          Назад
+        </Button>
+        {canCreateTender && (
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => setConfirmCreateTender(true)}
+            disabled={createTenderLoading}
+          >
+            {getButtonText()}
+          </Button>
+        )}
+      </Box>
+      
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom>
@@ -122,6 +193,14 @@ const RequestDetailPage: React.FC = () => {
           </Grid>
         </CardContent>
       </Card>
+      
+      {/* Предупреждение, если нет материалов */}
+      {(!request.materials || request.materials.length === 0) && (
+        <Alert severity="warning" sx={{ mb: 3 }}>
+          Заявка не содержит материалов. Для создания тендера необходимо добавить материалы в заявку.
+        </Alert>
+      )}
+      
       <Typography variant="h6" gutterBottom>Материалы заявки</Typography>
       <TableContainer component={Paper} sx={{ mb: 3 }}>
         <Table size="small">
@@ -173,6 +252,35 @@ const RequestDetailPage: React.FC = () => {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Диалог подтверждения создания тендера */}
+      <Dialog open={confirmCreateTender} onClose={() => setConfirmCreateTender(false)}>
+        <DialogTitle>
+          {request.status?.toUpperCase() === 'DRAFT' ? 'Создать тендер?' : 'Создать тендер повторно?'}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {request.status?.toUpperCase() === 'DRAFT' 
+              ? `Вы уверены, что хотите создать тендер по заявке №${request.requestNumber}? После создания статус заявки изменится на "Тендер".`
+              : `Вы уверены, что хотите создать тендер повторно по заявке №${request.requestNumber}? Это создаст новый тендер, а статус заявки изменится на "Тендер".`
+            }
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmCreateTender(false)} disabled={createTenderLoading}>
+            Отмена
+          </Button>
+          <Button 
+            onClick={handleCreateTender} 
+            color="primary" 
+            variant="contained"
+            disabled={createTenderLoading}
+            startIcon={createTenderLoading ? <CircularProgress size={16} /> : null}
+          >
+            {createTenderLoading ? 'Создание...' : (request.status?.toUpperCase() === 'DRAFT' ? 'Создать' : 'Создать повторно')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

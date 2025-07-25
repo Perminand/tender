@@ -16,13 +16,6 @@ import {
   Chip,
   Alert,
   CircularProgress,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
   Button
 } from '@mui/material';
 import {
@@ -30,8 +23,7 @@ import {
   TrendingDown as TrendingDownIcon,
   Warning as WarningIcon,
   CheckCircle as CheckCircleIcon,
-  ExpandMore as ExpandMoreIcon,
-  AttachMoney as MoneyIcon,
+  CurrencyRuble as CurrencyRubleIcon,
   Assessment as AssessmentIcon,
   SaveAlt as SaveAltIcon,
   ArrowBack as ArrowBackIcon
@@ -91,42 +83,35 @@ const PriceAnalysisPage: React.FC = () => {
   const [analysis, setAnalysis] = useState<PriceAnalysisDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [recommendations, setRecommendations] = useState<string[]>([]);
 
   useEffect(() => {
     if (tenderId) {
       loadPriceAnalysis();
-      loadRecommendations();
     }
   }, [tenderId]);
 
   const loadPriceAnalysis = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/tenders/${tenderId}/price-analysis`);
+      console.log('Loading price analysis for tender:', tenderId);
+      const response = await api.get(`/api/price-analysis/tender/${tenderId}`);
+      console.log('Price analysis response:', response.data);
       setAnalysis(response.data);
       setError(null);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading price analysis:', error);
-      setError('Ошибка загрузки анализа цен');
+      console.error('Error details:', error.response?.data);
+      setError(`Ошибка загрузки анализа цен: ${error.response?.data?.message || error.message}`);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const loadRecommendations = async () => {
-    try {
-      const response = await api.get(`/api/tenders/${tenderId}/recommendations`);
-      setRecommendations(response.data);
-    } catch (error) {
-      console.error('Error loading recommendations:', error);
     }
   };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('ru-RU', {
       style: 'currency',
-      currency: 'RUB'
+      currency: 'RUB',
+      currencyDisplay: 'symbol'
     }).format(price);
   };
 
@@ -174,17 +159,35 @@ const PriceAnalysisPage: React.FC = () => {
 
   if (error) {
     return (
-      <Alert severity="error" sx={{ m: 2 }}>
-        {error}
-      </Alert>
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error" sx={{ mb: 2 }}>
+          {error}
+        </Alert>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate(`/tenders/${tenderId}`)}
+          variant="outlined"
+        >
+          Вернуться к тендеру
+        </Button>
+      </Box>
     );
   }
 
   if (!analysis) {
     return (
-      <Alert severity="info" sx={{ m: 2 }}>
-        Анализ цен недоступен
-      </Alert>
+      <Box sx={{ p: 2 }}>
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Анализ цен недоступен для данного тендера. Возможно, по тендеру нет предложений поставщиков.
+        </Alert>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate(`/tenders/${tenderId}`)}
+          variant="outlined"
+        >
+          Вернуться к тендеру
+        </Button>
+      </Box>
     );
   }
 
@@ -218,7 +221,6 @@ const PriceAnalysisPage: React.FC = () => {
           <Card>
             <CardContent>
               <Box display="flex" alignItems="center">
-                <MoneyIcon color="primary" sx={{ mr: 1 }} />
                 <Typography variant="h6">Экономия</Typography>
               </Box>
               <Typography variant="h4" color="success.main">
@@ -282,24 +284,6 @@ const PriceAnalysisPage: React.FC = () => {
           </Card>
         </Grid>
       </Grid>
-
-      {/* Рекомендации */}
-      {recommendations.length > 0 && (
-        <Accordion sx={{ mb: 3 }}>
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="h6">Рекомендации</Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            <List>
-              {recommendations.map((recommendation, index) => (
-                <ListItem key={index}>
-                  <ListItemText primary={recommendation} />
-                </ListItem>
-              ))}
-            </List>
-          </AccordionDetails>
-        </Accordion>
-      )}
 
       {/* Детальный анализ по позициям */}
       <Paper sx={{ p: 2 }}>
