@@ -84,34 +84,23 @@ export const emailProviders: EmailProvider[] = [
       'Используйте пароль приложения'
     ]
   },
-  {
-    name: 'MailHog (Development)',
-    smtpHost: 'localhost',
-    smtpPort: '1025',
-    useSsl: false,
-    useTls: false,
-    requiresAuth: false,
-    description: 'MailHog для разработки и тестирования',
-    instructions: [
-      'Убедитесь, что MailHog запущен в Docker',
-      'Оставьте поля username и password пустыми',
-      'Используйте любой email в поле отправителя'
-    ]
-  },
-  {
-    name: 'Custom SMTP',
-    smtpHost: '',
-    smtpPort: '',
-    useSsl: false,
-    useTls: false,
-    requiresAuth: false,
-    description: 'Настройка произвольного SMTP сервера',
-    instructions: [
-      'Введите настройки вашего SMTP сервера',
-      'Уточните настройки у вашего провайдера',
-      'Проверьте правильность портов и протоколов'
-    ]
-  }
+  // MailHog только для разработки
+  ...(import.meta.env.DEV ? [
+    {
+      name: 'MailHog (Development)',
+      smtpHost: 'localhost',
+      smtpPort: '1025',
+      useSsl: false,
+      useTls: false,
+      requiresAuth: false,
+      description: 'MailHog для разработки и тестирования',
+      instructions: [
+        'Убедитесь, что MailHog запущен в Docker',
+        'Оставьте поля username и password пустыми',
+        'Используйте любой email в поле отправителя'
+      ]
+    }
+  ] : [])
 ];
 
 export function detectEmailProvider(email: string): EmailProvider | null {

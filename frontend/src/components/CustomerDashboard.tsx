@@ -113,62 +113,70 @@ const CustomerDashboard: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      // Пока используем моковые данные, так как бэкенд может не иметь специального эндпоинта для заказчика
-      const mockData: CustomerDashboardData = {
-        totalContracts: 5,
-        activeContracts: 3,
-        completedContracts: 2,
-        totalValue: 2500000,
-        pendingDeliveries: 2,
-        overdueDeliveries: 0,
-        totalPayments: 8,
-        overduePayments: 1,
-        recentContracts: [
-          {
-            id: '1',
-            contractNumber: 'CTR-2025-001',
-            supplierName: 'ООО "СтройМаркет"',
-            status: 'ACTIVE',
-            totalValue: 500000,
-            startDate: '2025-01-15',
-            endDate: '2025-12-31'
-          },
-          {
-            id: '2',
-            contractNumber: 'CTR-2025-002',
-            supplierName: 'ИП Иванов А.А.',
-            status: 'ACTIVE',
-            totalValue: 300000,
-            startDate: '2025-02-01',
-            endDate: '2025-08-31'
-          }
-        ],
-        pendingDeliveriesList: [
-          {
-            id: '1',
-            deliveryNumber: 'DEL-2025-001',
-            supplierName: 'ООО "СтройМаркет"',
-            contractNumber: 'CTR-2025-001',
-            dueDate: '2025-07-25',
-            daysOverdue: 0,
-            status: 'PENDING',
-            totalValue: 150000
-          }
-        ],
-        overduePaymentsList: [
-          {
-            id: '1',
-            paymentNumber: 'PAY-2025-001',
-            supplierName: 'ИП Иванов А.А.',
-            contractNumber: 'CTR-2025-002',
-            dueDate: '2025-07-15',
-            daysOverdue: 3,
-            amount: 75000,
-            status: 'OVERDUE'
-          }
-        ]
-      };
-      setDashboardData(mockData);
+      // В production не используем mockData, только в development
+      if (import.meta.env.DEV) {
+        // Пока используем моковые данные, так как бэкенд может не иметь специального эндпоинта для заказчика
+        const mockData: CustomerDashboardData = {
+          totalContracts: 5,
+          activeContracts: 3,
+          completedContracts: 2,
+          totalValue: 2500000,
+          pendingDeliveries: 2,
+          overdueDeliveries: 0,
+          totalPayments: 8,
+          overduePayments: 1,
+          recentContracts: [
+            {
+              id: '1',
+              contractNumber: 'CTR-2025-001',
+              supplierName: 'ООО "СтройМаркет"',
+              status: 'ACTIVE',
+              totalValue: 500000,
+              startDate: '2025-01-15',
+              endDate: '2025-12-31'
+            },
+            {
+              id: '2',
+              contractNumber: 'CTR-2025-002',
+              supplierName: 'ИП Иванов А.А.',
+              status: 'ACTIVE',
+              totalValue: 300000,
+              startDate: '2025-02-01',
+              endDate: '2025-08-31'
+            }
+          ],
+          pendingDeliveriesList: [
+            {
+              id: '1',
+              deliveryNumber: 'DEL-2025-001',
+              supplierName: 'ООО "СтройМаркет"',
+              contractNumber: 'CTR-2025-001',
+              dueDate: '2025-07-25',
+              daysOverdue: 0,
+              status: 'PENDING',
+              totalValue: 150000
+            }
+          ],
+          overduePaymentsList: [
+            {
+              id: '1',
+              paymentNumber: 'PAY-2025-001',
+              supplierName: 'ИП Иванов А.А.',
+              contractNumber: 'CTR-2025-002',
+              dueDate: '2025-07-15',
+              daysOverdue: 3,
+              amount: 75000,
+              status: 'OVERDUE'
+            }
+          ]
+        };
+        setDashboardData(mockData);
+      } else {
+        // В production — попытка получить реальные данные с бэкенда
+        // TODO: заменить на реальный запрос, когда появится эндпоинт
+        setDashboardData(null);
+        setError('Данные для дашборда заказчика недоступны');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка при загрузке дашборда');
     } finally {
