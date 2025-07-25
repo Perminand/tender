@@ -628,13 +628,19 @@ public class DashboardServiceImpl implements DashboardService {
 
     @Override
     public List<Map<String, Object>> getSavingsByMonth(String username) {
-        // Группируем суммы контрактов по месяцам (по дате начала контракта)
-        List<Contract> allContracts = contractRepository.findAll();
+        // Группируем экономию по тендерам по месяцам (по дате начала тендера)
+        List<Tender> allTenders = tenderRepository.findAll();
         Map<String, BigDecimal> savingsByMonth = new java.util.LinkedHashMap<>();
-        for (Contract contract : allContracts) {
-            if (contract.getStartDate() != null && contract.getTotalAmount() != null) {
-                String month = contract.getStartDate().getMonth().getDisplayName(TextStyle.SHORT, new Locale("ru"));
-                savingsByMonth.put(month, savingsByMonth.getOrDefault(month, BigDecimal.ZERO).add(contract.getTotalAmount()));
+        for (Tender tender : allTenders) {
+            if (tender.getStartDate() != null) {
+                String month = tender.getStartDate().getMonth().getDisplayName(TextStyle.SHORT, new Locale("ru"));
+                BigDecimal savings = BigDecimal.ZERO;
+                try {
+                    savings = BigDecimal.valueOf(priceAnalysisService.calculateSavings(tender.getId()));
+                } catch (Exception e) {
+                    // ignore
+                }
+                savingsByMonth.put(month, savingsByMonth.getOrDefault(month, BigDecimal.ZERO).add(savings));
             }
         }
         // Формируем результат для фронта
