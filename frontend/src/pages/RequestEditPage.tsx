@@ -411,8 +411,10 @@ export default function RequestEditPage() {
           }))
         };
       
-      console.log('Отправляем данные:', JSON.stringify(requestToSend, null, 2));
-      console.log('requestMaterials:', JSON.stringify(requestToSend.requestMaterials, null, 2));
+      if (import.meta.env.DEV) {
+        console.log('Отправляем данные:', JSON.stringify(requestToSend, null, 2));
+        console.log('requestMaterials:', JSON.stringify(requestToSend.requestMaterials, null, 2));
+      }
     
     if (isEdit) {
       await api.put(`/api/requests/${id}`, requestToSend);
@@ -799,7 +801,9 @@ export default function RequestEditPage() {
     function handleMaterialCreated(event: MessageEvent) {
       if (event.data?.type === 'materialCreated') {
         const { name, id } = event.data.payload;
-        console.log('Material created:', { name, id });
+        if (import.meta.env.DEV) {
+          console.log('Material created:', { name, id });
+        }
         
         // Обновляем список материалов
         fetchMaterials();
@@ -810,7 +814,9 @@ export default function RequestEditPage() {
             
             // Случай 1: Материал был создан через импорт (есть supplierMaterialName, но нет material)
             if (!mat.material && mat.supplierMaterialName && normalize(mat.supplierMaterialName) === normalize(name)) {
-              console.log('Updating material from import:', mat);
+              if (import.meta.env.DEV) {
+                console.log('Updating material from import:', mat);
+              }
               return {
                 ...mat,
                 material: { id, name },
@@ -820,7 +826,9 @@ export default function RequestEditPage() {
             // Случай 2: Материал был создан через Autocomplete (material.id === 'CREATE_NEW' или material.name содержит "Создать")
             if ((mat.material?.id === 'CREATE_NEW' || mat.material?.name?.startsWith('Создать "')) && 
                 normalize(mat.material.name.replace(/^Создать "/, '').replace(/"$/, '')) === normalize(name)) {
-              console.log('Updating material from Autocomplete:', mat);
+              if (import.meta.env.DEV) {
+                console.log('Updating material from Autocomplete:', mat);
+              }
               return {
                 ...mat,
                 material: { id, name },
@@ -1365,7 +1373,9 @@ export default function RequestEditPage() {
               const unitsRes = await api.get('/api/units');
               setUnits(unitsRes.data);
               setOpenUnitDialog(false);
-              console.log('[IMPORT][UNIT] Единица измерения создана:', newUnitName);
+              if (import.meta.env.DEV) {
+                console.log('[IMPORT][UNIT] Единица измерения создана:', newUnitName);
+              }
               }
             }
           }} variant="contained">Создать</Button>

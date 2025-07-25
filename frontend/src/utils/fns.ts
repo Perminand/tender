@@ -20,7 +20,9 @@ export const searchCompanyByInn = async (inn: string): Promise<CompanyData> => {
     const response = await api.get(`/api/fns/search?inn=${inn}`);
 
     const data = response.data;
-    console.log('Ответ от бэкенда:', data);
+    if (import.meta.env.DEV) {
+      console.log('Ответ от бэкенда:', data);
+    }
 
     return {
       name: data.name || '',

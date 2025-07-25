@@ -8,7 +8,7 @@ const getBaseURL = () => {
   // В продакшене используем тот же хост, но порт 8080
   // Проверяем, что мы не на localhost в продакшене
   const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+  if (import.meta.env.DEV) {
     console.warn('Frontend running on localhost in production mode');
   }
   return `${window.location.protocol}//${hostname}:8080`;
@@ -26,7 +26,9 @@ export const api = axios.create({
 // Добавляем перехватчик для логирования ошибок
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    if (import.meta.env.DEV) {
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
     return config;
   },
   (error) => {
@@ -37,7 +39,9 @@ api.interceptors.request.use(
 
 api.interceptors.response.use(
   (response) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`);
+    if (import.meta.env.DEV) {
+      console.log(`API Response: ${response.status} ${response.config.url}`);
+    }
     return response;
   },
   (error) => {

@@ -69,14 +69,6 @@ const quickActions: QuickAction[] = [
     path: '/materials/new',
     roles: ['ROLE_ADMIN', 'ROLE_MANAGER'],
     color: 'secondary'
-  },
-  {
-    title: 'Анализ цен',
-    description: 'Провести анализ цен',
-    icon: <AssessmentIcon />,
-    path: '/price-analysis',
-    roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST'],
-    color: 'success'
   }
 ];
 
