@@ -14,6 +14,7 @@ import ru.perminov.tender.repository.PaymentRepository;
 import ru.perminov.tender.repository.TenderRepository;
 import ru.perminov.tender.service.DashboardService;
 import org.springframework.transaction.annotation.Transactional;
+import ru.perminov.tender.service.PriceAnalysisService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -35,6 +36,7 @@ public class DashboardServiceImpl implements DashboardService {
     private final PaymentRepository paymentRepository;
     private final CompanyRepository companyRepository;
     private final AlertRepository alertRepository;
+    private final PriceAnalysisService priceAnalysisService;
 
     @Override
     @Transactional(readOnly = true)
@@ -99,11 +101,16 @@ public class DashboardServiceImpl implements DashboardService {
         List<ru.perminov.tender.model.company.Company> suppliers = companyRepository.findByRole(ru.perminov.tender.model.company.CompanyRole.SUPPLIER);
         metrics.setActiveSuppliers(suppliers.size());
 
-        // Расчет экономии
-        BigDecimal totalSavings = allContracts.stream()
-                .map(Contract::getTotalAmount)
-                .filter(Objects::nonNull)
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        // Расчет экономии по всем тендерам
+        BigDecimal totalSavings = allTenders.stream()
+            .map(t -> {
+                try {
+                    return BigDecimal.valueOf(priceAnalysisService.calculateSavings(t.getId()));
+                } catch (Exception e) {
+                    return BigDecimal.ZERO;
+                }
+            })
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
         metrics.setTotalSavings(totalSavings);
 
         // Расчет процента экономии

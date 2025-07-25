@@ -71,8 +71,8 @@ const DeliveryEditPage: React.FC = () => {
 
   useEffect(() => {
     api.get('/api/contracts').then(res => setContracts(res.data));
-    api.get('/companies?role=SUPPLIER').then(res => setSuppliers(res.data));
-    api.get('/warehouses').then(res => setWarehouses(Array.isArray(res.data) ? res.data : []));
+    api.get('/api/companies?role=SUPPLIER').then(res => setSuppliers(res.data));
+    api.get('/api/warehouses').then(res => setWarehouses(Array.isArray(res.data) ? res.data : []));
   }, []);
 
   // Подгружаем контракт и его позиции
@@ -107,6 +107,13 @@ const DeliveryEditPage: React.FC = () => {
         });
     }
   }, [contractId]);
+
+  // Синхронизируем selectedWarehouseId с contract?.warehouseId после загрузки складов и контракта
+  useEffect(() => {
+    if (contract?.warehouseId && warehouses.length > 0) {
+      setSelectedWarehouseId(String(contract.warehouseId));
+    }
+  }, [contract, warehouses]);
 
   const handleQuantityChange = (index: number, quantity: number) => {
     setDeliveryItems(prev => prev.map((item, idx) => idx === index ? {

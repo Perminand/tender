@@ -194,7 +194,7 @@ const DeliveryListPage: React.FC = () => {
   // Подгружаем списки при открытии диалога
   useEffect(() => {
     if (dialogOpen) {
-      api.get('/companies?role=SUPPLIER').then(res => setSuppliers(Array.isArray(res.data) ? res.data : []));
+      api.get('/api/companies?role=SUPPLIER').then(res => setSuppliers(Array.isArray(res.data) ? res.data : []));
       api.get('/api/contracts').then(res => setContracts(res.data));
       api.get('/api/warehouses').then(res => setWarehouses(res.data));
     }
@@ -241,7 +241,7 @@ const DeliveryListPage: React.FC = () => {
   // Загружаем позиции контракта при выборе контракта
   useEffect(() => {
     if (selectedContractId && selectedContractId !== '') {
-      api.get(`/contracts/${selectedContractId}/items`)
+      api.get(`/api/contracts/${selectedContractId}/items`)
         .then(res => {
           setContractItems(res.data);
           // Инициализируем позиции поставки на основе позиций контракта
@@ -279,7 +279,7 @@ const DeliveryListPage: React.FC = () => {
       setSelectedWarehouseId(editingDelivery.warehouseId?.toString() || '');
       // Загружаем позиции поставки для редактирования
       if (editingDelivery.id) {
-        api.get(`/deliveries/${editingDelivery.id}/items`)
+        api.get(`/api/deliveries/${editingDelivery.id}/items`)
           .then(res => setDeliveryItems(res.data))
           .catch(error => {
             console.error('Ошибка при загрузке позиций поставки:', error);
