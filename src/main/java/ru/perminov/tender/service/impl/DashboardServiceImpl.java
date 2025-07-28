@@ -5,7 +5,6 @@ import org.springframework.stereotype.Service;
 import ru.perminov.tender.dto.dashboard.DashboardDto;
 import ru.perminov.tender.dto.dashboard.DashboardDto.*;
 import ru.perminov.tender.model.*;
-import ru.perminov.tender.model.company.CompanyRole;
 import ru.perminov.tender.repository.AlertRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.ContractRepository;

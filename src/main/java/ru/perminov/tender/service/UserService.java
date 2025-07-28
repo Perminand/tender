@@ -37,6 +37,7 @@ public class UserService {
         return userRepository.findByUsername(username).orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public List<UserDto> getAllUsers() {
         log.info("Получение списка всех пользователей");
         return userRepository.findAll().stream()
@@ -44,7 +45,7 @@ public class UserService {
             .toList();
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public UserDto toDto(User user) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());
@@ -80,11 +81,13 @@ public class UserService {
         return userRepository.findByEmail(email);
     }
 
+    @Transactional(readOnly = true)
     public List<User> getUsersByCompany(UUID companyId) {
         log.info("Получение пользователей компании: {}", companyId);
         return userRepository.findByCompanyId(companyId);
     }
 
+    @Transactional(readOnly = true)
     public List<User> getUsersByRole(User.UserRole role) {
         log.info("Получение пользователей с ролью: {}", role);
         return userRepository.findByRole(role);
