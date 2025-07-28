@@ -29,7 +29,9 @@ import {
   DialogContentText,
   TablePagination,
   Collapse,
-  Divider
+  Divider,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,6 +50,7 @@ import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
 import DeliveryStatusManager from '../components/DeliveryStatusManager';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface Delivery {
   id: number;
@@ -148,6 +151,8 @@ interface Contract {
 }
 
 const DeliveryListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -654,29 +659,41 @@ const DeliveryListPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1">
           Поставки
         </Typography>
         <Button
           variant="outlined"
           startIcon={<FileUploadIcon />}
           onClick={handleExportExcel}
+          size={isMobile ? 'small' : 'medium'}
         >
           Экспорт в Excel
         </Button>
       </Box>
 
       {/* Статистика */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={1.5}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: filters.status === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => clearFilters()}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+      <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={1.5}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: filters.status === '' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => clearFilters()}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Всего
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {stats.total}
               </Typography>
             </CardContent>

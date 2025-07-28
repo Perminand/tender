@@ -25,7 +25,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Alert
+  Alert,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Visibility as ViewIcon,
@@ -40,6 +42,7 @@ import {
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../utils/api';
 import Pagination from '@mui/material/Pagination';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface ProposalDto {
   id: string;
@@ -76,6 +79,8 @@ const getStatusLabel = (status: string) => {
 };
 
 const ProposalRegistryPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [proposals, setProposals] = useState<ProposalDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -205,27 +210,164 @@ const ProposalRegistryPage: React.FC = () => {
   const sortedProposals = [...filteredProposals].sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
   const paginatedProposals = sortedProposals.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'proposalNumber',
+      label: '№',
+      render: (value: any, row: ProposalDto) => row.proposalNumber
+    },
+    {
+      id: 'tenderTitle',
+      label: 'Тендер',
+      render: (value: any, row: ProposalDto) => (
+        <Box>
+          <Typography variant="body2" fontWeight="bold">
+            {row.tenderNumber}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {row.tenderTitle}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      id: 'supplierName',
+      label: 'Поставщик',
+      render: (value: any, row: ProposalDto) => row.supplierName
+    },
+    {
+      id: 'submissionDate',
+      label: 'Дата подачи',
+      render: (value: any, row: ProposalDto) => formatDate(row.submissionDate)
+    },
+    {
+      id: 'status',
+      label: 'Статус',
+      render: (value: any, row: ProposalDto) => (
+        <Chip
+          label={getStatusLabel(row.status)}
+          color={getStatusColor(row.status) as any}
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'totalPrice',
+      label: 'Сумма',
+      render: (value: any, row: ProposalDto) => formatPrice(row.totalPrice)
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: ProposalDto) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/proposals/${row.id}`);
+            }}
+          >
+            <ViewIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/proposals/${row.id}/edit`);
+            }}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+          {row.status === 'DRAFT' && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleSubmit(row.id);
+              }}
+              color="success"
+            >
+              <SendIcon />
+            </IconButton>
+          )}
+          {row.status === 'UNDER_REVIEW' && (
+            <>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleAccept(row.id);
+                }}
+                color="success"
+              >
+                <CheckIcon />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleReject(row.id);
+                }}
+                color="error"
+              >
+                <CloseIcon />
+              </IconButton>
+            </>
+          )}
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedProposalId(row.id);
+              setDeleteDialogOpen(true);
+            }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   if (loading) {
     return <Typography>Загрузка...</Typography>;
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1">
           Реестр предложений
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 2 },
+          flexWrap: 'wrap'
+        }}>
           <Button
             variant="outlined"
             startIcon={<FileUploadIcon />}
             onClick={handleExportExcel}
+            size={isMobile ? 'small' : 'medium'}
           >
-            Экспорт в Excel
+            Экспорт
           </Button>
           <Button
             variant="contained"
             onClick={() => navigate('/tenders')}
+            size={isMobile ? 'small' : 'medium'}
           >
             К тендерам
           </Button>
@@ -281,86 +423,14 @@ const ProposalRegistryPage: React.FC = () => {
       </Card>
 
       {/* Список предложений */}
-      <TableContainer component={Paper} sx={{ mb: 3 }}>
-        <Table size="small">
-          <TableHead>
-            <TableRow>
-              <TableCell>№</TableCell>
-              <TableCell>Тендер</TableCell>
-              <TableCell>Поставщик</TableCell>
-              <TableCell>Дата подачи</TableCell>
-              <TableCell>Статус</TableCell>
-              <TableCell>Сумма</TableCell>
-              <TableCell>Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedProposals.map((proposal, idx) => (
-              <TableRow key={proposal.id} hover>
-                <TableCell>{(page - 1) * rowsPerPage + idx + 1}</TableCell>
-                <TableCell>
-                  <Link to={`/tenders/${proposal.tenderId}`} style={{ textDecoration: 'none', color: '#1976d2' }}>
-                    {proposal.tenderTitle || proposal.tenderNumber}
-                  </Link>
-                </TableCell>
-                <TableCell>{proposal.supplierName}</TableCell>
-                <TableCell>{formatDate(proposal.submissionDate)}</TableCell>
-                <TableCell>
-                  <Chip label={getStatusLabel(proposal.status)} color={getStatusColor(proposal.status)} size="small" />
-                </TableCell>
-                <TableCell>{formatPrice(proposal.totalPrice)}</TableCell>
-                <TableCell>
-                  <Tooltip title="Просмотр">
-                    <IconButton size="small" onClick={() => navigate(`/proposals/${proposal.id}`)}>
-                      <ViewIcon />
-                    </IconButton>
-                  </Tooltip>
-                  {proposal.status === 'DRAFT' && (
-                    <Tooltip title="Редактировать">
-                      <IconButton size="small" onClick={() => navigate(`/proposals/${proposal.id}/edit`)}>
-                        <EditIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  {proposal.status === 'DRAFT' && (
-                    <Tooltip title="Удалить">
-                      <IconButton size="small" color="error" onClick={() => { setSelectedProposalId(proposal.id); setDeleteDialogOpen(true); }}>
-                        <DeleteIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  {proposal.status === 'DRAFT' && (
-                    <Tooltip title="Подать">
-                      <IconButton size="small" color="primary" onClick={() => handleSubmit(proposal.id)}>
-                        <SendIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  {proposal.status === 'SUBMITTED' && (
-                    <Tooltip title="Принять">
-                      <IconButton size="small" color="success" onClick={() => handleAccept(proposal.id)}>
-                        <CheckIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  {proposal.status === 'SUBMITTED' && (
-                    <Tooltip title="Отклонить">
-                      <IconButton size="small" color="error" onClick={() => handleReject(proposal.id)}>
-                        <CloseIcon />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-            {paginatedProposals.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={7} align="center">Нет предложений</TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <ResponsiveTable
+        columns={columns}
+        data={paginatedProposals}
+        getRowKey={(row) => row.id}
+        onRowClick={(row) => navigate(`/proposals/${row.id}`)}
+        title="Реестр предложений"
+        loading={loading}
+      />
 
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
         <Pagination

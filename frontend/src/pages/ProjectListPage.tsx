@@ -19,11 +19,14 @@ import {
   TextField,
   Typography,
   Paper,
-  Pagination
+  Pagination,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface ProjectDto {
   id: string;
@@ -32,6 +35,8 @@ interface ProjectDto {
 }
 
 const ProjectListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [projects, setProjects] = useState<ProjectDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -153,6 +158,49 @@ const ProjectListPage: React.FC = () => {
 
   const paginatedProjects = filteredProjects.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'name',
+      label: 'Название',
+      render: (value: any, row: ProjectDto) => row.name
+    },
+    {
+      id: 'description',
+      label: 'Описание',
+      render: (value: any, row: ProjectDto) => row.description
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: ProjectDto) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDialog(row);
+            }}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   if (loading) {
     return <div>Загрузка...</div>;
   }
@@ -164,29 +212,42 @@ const ProjectListPage: React.FC = () => {
           <IconButton onClick={() => navigate('/reference')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1">
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1">
             Объекты
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Typography variant="body1" color="text.secondary">
             Управление объектами/проектами
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
+          }}>
             <Button
               variant="outlined"
               startIcon={<FileUploadIcon />}
               onClick={handleExport}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Экспорт в Excel
+              Экспорт
             </Button>
             <Button
               variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={handleImportClick}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Импорт из Excel
+              Импорт
             </Button>
             <input
               type="file"
@@ -199,6 +260,7 @@ const ProjectListPage: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
+              size={isMobile ? 'small' : 'medium'}
             >
               Добавить объект/проект
             </Button>
@@ -216,39 +278,14 @@ const ProjectListPage: React.FC = () => {
               sx={{ mb: 2 }}
             />
 
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Название</TableCell>
-                    <TableCell>Описание</TableCell>
-                    <TableCell align="right">Действия</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedProjects.map((project) => (
-                    <TableRow key={project.id}>
-                      <TableCell>{project.name}</TableCell>
-                      <TableCell>{project.description}</TableCell>
-                      <TableCell align="right">
-                        <IconButton
-                          onClick={() => handleOpenDialog(project)}
-                          color="primary"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDelete(project.id)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <ResponsiveTable
+              columns={columns}
+              data={paginatedProjects}
+              getRowKey={(row) => row.id}
+              onRowClick={(row) => handleOpenDialog(row)}
+              title="Список объектов/проектов"
+              loading={loading}
+            />
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
               <Pagination

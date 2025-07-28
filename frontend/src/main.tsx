@@ -6,6 +6,7 @@ import App from './App';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ThemeProvider } from '@mui/material/styles';
 import { createTheme } from '@mui/material';
+import './styles/mobile.css';
 
 const theme = createTheme({
   palette: {

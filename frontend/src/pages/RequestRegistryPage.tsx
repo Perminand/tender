@@ -21,7 +21,9 @@ import {
   DialogActions,
   CircularProgress,
   DialogContentText,
-  TablePagination
+  TablePagination,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Edit,
@@ -31,6 +33,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface RequestRegistryRowDto {
   requestId: string;
@@ -57,6 +60,8 @@ const columns = [
 ];
 
 export default function RequestRegistryPage() {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [data, setData] = useState<RequestRegistryRowDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
@@ -181,24 +186,115 @@ export default function RequestRegistryPage() {
   // Пагинация: slice данных для текущей страницы
   const paginatedData = data.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const responsiveColumns = [
+    {
+      id: 'requestNumber',
+      label: 'Номер заявки',
+      render: (value: any, row: RequestRegistryRowDto) => row.requestNumber
+    },
+    {
+      id: 'requestDate',
+      label: 'Дата заявки',
+      render: (value: any, row: RequestRegistryRowDto) => formatDate(row.requestDate)
+    },
+    {
+      id: 'organization',
+      label: 'Организация',
+      render: (value: any, row: RequestRegistryRowDto) => row.organization
+    },
+    {
+      id: 'project',
+      label: 'Проект',
+      render: (value: any, row: RequestRegistryRowDto) => row.project
+    },
+    {
+      id: 'status',
+      label: 'Статус',
+      render: (value: any, row: RequestRegistryRowDto) => (
+        <Chip
+          label={getStatusLabel(row.status)}
+          color={getStatusColor(row.status)}
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'materialsCount',
+      label: 'Кол-во материалов',
+      render: (value: any, row: RequestRegistryRowDto) => row.materialsCount
+    },
+    {
+      id: 'totalQuantity',
+      label: 'Общее кол-во',
+      render: (value: any, row: RequestRegistryRowDto) => row.totalQuantity
+    },
+    {
+      id: 'note',
+      label: 'Примечание',
+      render: (value: any, row: RequestRegistryRowDto) => row.note
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: RequestRegistryRowDto) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/requests/${row.requestId}`);
+            }}
+          >
+            <VisibilityIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/requests/${row.requestId}/edit`);
+            }}
+          >
+            <Edit />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   return (
-    <Paper sx={{ p: 2 }}>
-      <Toolbar sx={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 2, mb: 2 }}>
-        <Typography variant="h6" component="div">Реестр заявок</Typography>
-        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+    <Paper sx={{ p: { xs: 1, sm: 2 } }}>
+      <Toolbar sx={{ 
+        justifyContent: 'space-between', 
+        flexWrap: 'wrap', 
+        gap: { xs: 1, sm: 2 }, 
+        mb: 2,
+        flexDirection: { xs: 'column', sm: 'row' },
+        alignItems: { xs: 'stretch', sm: 'center' }
+      }}>
+        <Typography variant={isMobile ? "h6" : "h6"} component="div">Реестр заявок</Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 2 }, 
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}>
         <Button
             variant="outlined"
             startIcon={<FileUploadIcon />}
             onClick={handleExport}
             disabled={loading}
+            size={isMobile ? 'small' : 'medium'}
           >
-            Экспорт в Excel
+            Экспорт
           </Button>
           <Button
             variant="contained"
             color="primary"
             onClick={() => navigate('/requests/new')}
             startIcon={<Edit />}
+            size={isMobile ? 'small' : 'medium'}
           >
             Создать заявку
           </Button>
@@ -206,16 +302,21 @@ export default function RequestRegistryPage() {
       </Toolbar>
 
       {/* Фильтры */}
-      <Paper sx={{ p: 2, mb: 2, backgroundColor: '#f5f5f5' }}>
+      <Paper sx={{ p: { xs: 1, sm: 2 }, mb: 2, backgroundColor: '#f5f5f5' }}>
         <Box component="form" onSubmit={handleFilterSubmit}>
-          <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', alignItems: 'center' }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 }, 
+            flexWrap: 'wrap', 
+            alignItems: 'center' 
+          }}>
             <TextField
               name="organization"
               label="Организация"
               size="small"
               value={filters.organization}
               onChange={handleFilterChange}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 } }}
             />
             <TextField
               name="project"
@@ -223,7 +324,7 @@ export default function RequestRegistryPage() {
               size="small"
               value={filters.project}
               onChange={handleFilterChange}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 } }}
             />
             <TextField
               name="materialName"
@@ -231,7 +332,7 @@ export default function RequestRegistryPage() {
               size="small"
               value={filters.materialName}
               onChange={handleFilterChange}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 } }}
             />
             <TextField
               name="fromDate"
@@ -242,6 +343,7 @@ export default function RequestRegistryPage() {
               onChange={handleFilterChange}
               InputLabelProps={{ shrink: true }}
               inputProps={{ placeholder: 'ДД.ММ.ГГГГ' }}
+              sx={{ minWidth: { xs: '100%', sm: 150 } }}
             />
             <TextField
               name="toDate"
@@ -252,11 +354,12 @@ export default function RequestRegistryPage() {
               onChange={handleFilterChange}
               InputLabelProps={{ shrink: true }}
               inputProps={{ placeholder: 'ДД.ММ.ГГГГ' }}
+              sx={{ minWidth: { xs: '100%', sm: 150 } }}
             />
-            <Button type="submit" variant="contained" color="primary">
+            <Button type="submit" variant="contained" color="primary" size={isMobile ? 'small' : 'medium'}>
               Фильтровать
             </Button>
-            <Button type="button" variant="outlined" onClick={handleClearFilters}>
+            <Button type="button" variant="outlined" onClick={handleClearFilters} size={isMobile ? 'small' : 'medium'}>
               Сбросить
             </Button>
           </Box>
@@ -264,131 +367,14 @@ export default function RequestRegistryPage() {
       </Paper>
 
       {/* Таблица */}
-      <TableContainer>
-        <Table size="small">
-          <TableHead>
-            <TableRow sx={{ backgroundColor: '#f5f5f5' }}>
-              {columns.map(col => (
-                <TableCell 
-                  key={col.key}
-                  sx={{ 
-                    fontWeight: 'bold',
-                    width: col.width,
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {col.label}
-                </TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
-                  <CircularProgress size={24} />
-                </TableCell>
-              </TableRow>
-            ) : paginatedData.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    Нет данных для отображения
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            ) : paginatedData.map((row, idx) => (
-              <TableRow 
-                key={row.requestId + '-' + idx}
-                hover
-                sx={{ '&:hover': { backgroundColor: '#f8f9fa' } }}
-              >
-                <TableCell>
-                  <Typography variant="body2" fontWeight="medium">
-                    {row.requestNumber}
-                  </Typography>
-                </TableCell>
-                <TableCell>{formatDate(row.requestDate)}</TableCell>
-                <TableCell>{row.organization}</TableCell>
-                <TableCell>{row.project}</TableCell>
-                <TableCell align="center">
-                  <Chip 
-                    label={getStatusLabel(row.status)} 
-                    size="small" 
-                    color={getStatusColor(row.status) as any}
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <Chip 
-                    label={row.materialsCount} 
-                    size="small" 
-                    color="secondary"
-                  />
-                </TableCell>
-                <TableCell align="center">
-                  <Typography variant="body2" fontWeight="medium">
-                    {row.totalQuantity.toFixed(2)}
-                  </Typography>
-                </TableCell>
-                <TableCell>
-                  {row.note ? (
-                    <Typography 
-                      variant="body2" 
-                      sx={{ 
-                        maxWidth: 200,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}
-                      title={row.note}
-                    >
-                      {row.note}
-                    </Typography>
-                  ) : (
-                    <Typography variant="body2" color="text.secondary">
-                      -
-                    </Typography>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Tooltip title="Просмотреть">
-                      <IconButton
-                        size="small"
-                        color="primary"
-                        onClick={() => navigate(`/requests/${row.requestId}`)}
-                      >
-                        <VisibilityIcon />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Редактировать">
-                      <IconButton
-                        size="small"
-                        color="secondary"
-                        onClick={() => navigate(`/requests/${row.requestId}/edit`)}
-                      >
-                        <Edit />
-                      </IconButton>
-                    </Tooltip>
-                    <Tooltip title="Создать тендер">
-                      <IconButton
-                        size="small"
-                        color="success"
-                        onClick={() => {
-                          setSelectedRequestId(row.requestId);
-                          setConfirmCreateTender(true);
-                        }}
-                      >
-                        <FileUploadIcon />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <ResponsiveTable
+        columns={responsiveColumns}
+        data={paginatedData}
+        getRowKey={(row) => row.requestId}
+        onRowClick={(row) => navigate(`/requests/${row.requestId}`)}
+        title="Реестр заявок"
+        loading={loading}
+      />
       <TablePagination
         component="div"
         count={data.length}

@@ -24,7 +24,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Pagination
+  Pagination,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Refresh as RefreshIcon,
@@ -35,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface NotificationDto {
   id: string;
@@ -53,6 +56,8 @@ interface NotificationDto {
 }
 
 const NotificationListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [notifications, setNotifications] = useState<NotificationDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL');
@@ -149,18 +154,125 @@ const NotificationListPage: React.FC = () => {
 
   const filteredNotifications = notifications.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'type',
+      label: 'Тип',
+      render: (value: any, row: NotificationDto) => (
+        <Chip 
+          label={getTypeLabel(row.type)} 
+          size="small" 
+          color="primary" 
+          variant="outlined"
+        />
+      )
+    },
+    {
+      id: 'recipientEmail',
+      label: 'Получатель',
+      render: (value: any, row: NotificationDto) => row.recipientEmail
+    },
+    {
+      id: 'title',
+      label: 'Тема',
+      render: (value: any, row: NotificationDto) => (
+        <Typography variant="body2" sx={{ maxWidth: 300 }}>
+          {row.title}
+        </Typography>
+      )
+    },
+    {
+      id: 'status',
+      label: 'Статус',
+      render: (value: any, row: NotificationDto) => (
+        <Chip 
+          label={getStatusLabel(row.status)} 
+          size="small" 
+          color={getStatusColor(row.status) as any}
+        />
+      )
+    },
+    {
+      id: 'createdAt',
+      label: 'Создано',
+      render: (value: any, row: NotificationDto) => formatDate(row.createdAt)
+    },
+    {
+      id: 'sentAt',
+      label: 'Отправлено',
+      render: (value: any, row: NotificationDto) => 
+        row.sentAt ? formatDate(row.sentAt) : '-'
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: NotificationDto) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedNotification(row);
+              setDialogOpen(true);
+            }}
+          >
+            <ViewIcon />
+          </IconButton>
+          {row.status === 'FAILED' && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRetry(row.id);
+              }}
+              color="primary"
+            >
+              <RetryIcon />
+            </IconButton>
+          )}
+          {row.status === 'PENDING' && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleCancel(row.id);
+              }}
+              color="error"
+            >
+              <CancelIcon />
+            </IconButton>
+          )}
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   if (loading) {
     return <div>Загрузка...</div>;
   }
 
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1">
           Уведомления
         </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 2 },
+          flexWrap: 'wrap',
+          flexDirection: { xs: 'column', sm: 'row' }
+        }}>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
             <InputLabel>Статус</InputLabel>
             <Select
               value={selectedStatus}
@@ -178,6 +290,7 @@ const NotificationListPage: React.FC = () => {
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={fetchNotifications}
+            size={isMobile ? 'small' : 'medium'}
           >
             Обновить
           </Button>
@@ -185,6 +298,7 @@ const NotificationListPage: React.FC = () => {
             variant="contained"
             startIcon={<EmailIcon />}
             onClick={handleSendPending}
+            size={isMobile ? 'small' : 'medium'}
           >
             Отправить ожидающие
           </Button>
@@ -193,89 +307,17 @@ const NotificationListPage: React.FC = () => {
 
       <Card>
         <CardContent>
-          <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>Тип</TableCell>
-                  <TableCell>Получатель</TableCell>
-                  <TableCell>Тема</TableCell>
-                  <TableCell>Статус</TableCell>
-                  <TableCell>Создано</TableCell>
-                  <TableCell>Отправлено</TableCell>
-                  <TableCell>Действия</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredNotifications.map((notification) => (
-                  <TableRow key={notification.id}>
-                    <TableCell>
-                      <Chip 
-                        label={getTypeLabel(notification.type)} 
-                        size="small" 
-                        color="primary" 
-                        variant="outlined"
-                      />
-                    </TableCell>
-                    <TableCell>{notification.recipientEmail}</TableCell>
-                    <TableCell>
-                      <Typography variant="body2" sx={{ maxWidth: 300 }}>
-                        {notification.title}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip 
-                        label={getStatusLabel(notification.status)} 
-                        size="small" 
-                        color={getStatusColor(notification.status) as any}
-                      />
-                    </TableCell>
-                    <TableCell>{formatDate(notification.createdAt)}</TableCell>
-                    <TableCell>
-                      {notification.sentAt ? formatDate(notification.sentAt) : '-'}
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title="Просмотреть детали">
-                          <IconButton
-                            size="small"
-                            onClick={() => {
-                              setSelectedNotification(notification);
-                              setDialogOpen(true);
-                            }}
-                          >
-                            <ViewIcon />
-                          </IconButton>
-                        </Tooltip>
-                        {notification.status === 'FAILED' && (
-                          <Tooltip title="Повторить отправку">
-                            <IconButton
-                              size="small"
-                              color="primary"
-                              onClick={() => handleRetry(notification.id)}
-                            >
-                              <RetryIcon />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                        {notification.status === 'PENDING' && (
-                          <Tooltip title="Отменить">
-                            <IconButton
-                              size="small"
-                              color="error"
-                              onClick={() => handleCancel(notification.id)}
-                            >
-                              <CancelIcon />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <ResponsiveTable
+            columns={columns}
+            data={filteredNotifications}
+            getRowKey={(row) => row.id}
+            onRowClick={(row) => {
+              setSelectedNotification(row);
+              setDialogOpen(true);
+            }}
+            title="Список уведомлений"
+            loading={loading}
+          />
 
           <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
             <Pagination

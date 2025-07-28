@@ -26,7 +26,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  DialogContentText
+  DialogContentText,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,6 +43,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface DeliveryRef {
   id: string;
@@ -67,6 +70,8 @@ interface Payment {
 }
 
 const PaymentListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -207,78 +212,230 @@ const PaymentListPage: React.FC = () => {
   // Фильтрация платежей по статусу
   const filteredPayments = statusFilter ? payments.filter(p => p.status === statusFilter) : payments;
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'paymentNumber',
+      label: 'Номер',
+      render: (value: any, row: Payment) => row.paymentNumber
+    },
+    {
+      id: 'contract',
+      label: 'Контракт',
+      render: (value: any, row: Payment) => row.contractNumber || row.contractId
+    },
+    {
+      id: 'supplier',
+      label: 'Поставщик',
+      render: (value: any, row: Payment) => row.supplierName || row.supplierId
+    },
+    {
+      id: 'delivery',
+      label: 'Поставка',
+      render: (value: any, row: Payment) => (
+        row.deliveryNumber ? (
+          <Button
+            size="small"
+            variant="text"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/deliveries/${row.delivery?.id}`);
+            }}
+          >
+            {row.deliveryNumber}
+          </Button>
+        ) : (
+          <span style={{ color: '#aaa' }}>-</span>
+        )
+      )
+    },
+    {
+      id: 'paymentType',
+      label: 'Тип',
+      render: (value: any, row: Payment) => getPaymentTypeText(row.paymentType)
+    },
+    {
+      id: 'status',
+      label: 'Статус',
+      render: (value: any, row: Payment) => (
+        <Chip
+          label={getStatusText(row.status)}
+          color={getStatusColor(row.status)}
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'amount',
+      label: 'Сумма',
+      render: (value: any, row: Payment) => `${row.amount?.toLocaleString()} ₽`
+    },
+    {
+      id: 'dueDate',
+      label: 'Срок оплаты',
+      render: (value: any, row: Payment) => row.dueDate ? dayjs(row.dueDate).format('DD.MM.YYYY') : '-'
+    },
+    {
+      id: 'paidDate',
+      label: 'Дата оплаты',
+      render: (value: any, row: Payment) => row.paidDate ? dayjs(row.paidDate).format('DD.MM.YYYY') : '-'
+    },
+    {
+      id: 'invoiceNumber',
+      label: 'Счет',
+      render: (value: any, row: Payment) => row.invoiceNumber
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: Payment) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/payments/${row.id}`);
+            }}
+          >
+            <VisibilityIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/payments/${row.id}/edit`);
+            }}
+          >
+            <EditIcon />
+          </IconButton>
+          {row.status === 'PENDING' && (
+            <IconButton
+              size="small"
+              color="success"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleConfirm(row.id);
+              }}
+            >
+              <CheckIcon />
+            </IconButton>
+          )}
+          <IconButton
+            size="small"
+            color="error"
+            onClick={(e) => {
+              e.stopPropagation();
+              openDeleteDialog(row.id);
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1">
           Платежи
         </Typography>
         <Button
           variant="outlined"
           startIcon={<FileUploadIcon />}
           onClick={handleExportExcel}
+          size={isMobile ? 'small' : 'medium'}
         >
           Экспорт в Excel
         </Button>
       </Box>
 
       {/* Статистика */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={2}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+      <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={2}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === '' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Всего платежей
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {Object.values(statusStats).reduce((a, b) => a + b, 0)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'PENDING' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('PENDING')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'PENDING' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('PENDING')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Ожидают оплаты
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.PENDING || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'PAID' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('PAID')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'PAID' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('PAID')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Оплачены
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.PAID || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'OVERDUE' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('OVERDUE')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'OVERDUE' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('OVERDUE')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Просрочены
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.OVERDUE || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'CANCELLED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('CANCELLED')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'CANCELLED' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('CANCELLED')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Отменены
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.CANCELLED || 0}
               </Typography>
             </CardContent>
@@ -385,93 +542,14 @@ const PaymentListPage: React.FC = () => {
       </Box>
 
       {/* Таблица */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Номер</TableCell>
-              <TableCell>Контракт</TableCell>
-              <TableCell>Поставщик</TableCell>
-              <TableCell>Поставка</TableCell>
-              <TableCell>Тип</TableCell>
-              <TableCell>Статус</TableCell>
-              <TableCell>Сумма</TableCell>
-              <TableCell>Срок оплаты</TableCell>
-              <TableCell>Дата оплаты</TableCell>
-              <TableCell>Счет</TableCell>
-              <TableCell>Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredPayments.map((payment) => (
-              <TableRow key={payment.id}>
-                <TableCell>{payment.paymentNumber}</TableCell>
-                <TableCell>{payment.contractNumber || payment.contractId}</TableCell>
-                <TableCell>{payment.supplierName || payment.supplierId}</TableCell>
-                <TableCell>
-                  {payment.deliveryNumber ? (
-                    <Button
-                      size="small"
-                      variant="text"
-                      onClick={() => navigate(`/deliveries/${payment.delivery?.id}`)}
-                    >
-                      {payment.deliveryNumber}
-                    </Button>
-                  ) : (
-                    <span style={{ color: '#aaa' }}>-</span>
-                  )}
-                </TableCell>
-                <TableCell>{getPaymentTypeText(payment.paymentType)}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={getStatusText(payment.status)}
-                    color={getStatusColor(payment.status)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{payment.amount?.toLocaleString()} ₽</TableCell>
-                <TableCell>
-                  {payment.dueDate ? dayjs(payment.dueDate).format('DD.MM.YYYY') : '-'}
-                </TableCell>
-                <TableCell>
-                  {payment.paidDate ? dayjs(payment.paidDate).format('DD.MM.YYYY') : '-'}
-                </TableCell>
-                <TableCell>{payment.invoiceNumber}</TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => navigate(`/payments/${payment.id}`)}
-                  >
-                    <VisibilityIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => navigate(`/payments/${payment.id}/edit`)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  {payment.status === 'PENDING' && (
-                    <IconButton
-                      size="small"
-                      color="success"
-                      onClick={() => handleConfirm(payment.id)}
-                    >
-                      <CheckIcon />
-                    </IconButton>
-                  )}
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => openDeleteDialog(payment.id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <ResponsiveTable
+        columns={columns}
+        data={filteredPayments}
+        getRowKey={(row) => row.id.toString()}
+        onRowClick={(row) => navigate(`/payments/${row.id}`)}
+        title="Список платежей"
+        loading={loading}
+      />
 
       {/* Снэкбар для уведомлений */}
       <Snackbar

@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   Container, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Box, Autocomplete, Snackbar, Alert
+  Dialog, DialogTitle, DialogContent, DialogActions, TextField, IconButton, Box, Autocomplete, Snackbar, Alert,
+  useTheme, useMediaQuery
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -12,6 +13,7 @@ import FileUploadIcon from '@mui/icons-material/FileUpload';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import Pagination from '@mui/material/Pagination';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface Warehouse {
   id: string;
@@ -29,6 +31,8 @@ interface Project {
 }
 
 const WarehouseListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -155,10 +159,54 @@ const WarehouseListPage: React.FC = () => {
 
   // --- Поиск ---
   const filteredWarehouses = warehouses.filter(warehouse =>
-    warehouse.name.toLowerCase().includes(searchTerm.toLowerCase())
+    warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (warehouse.project?.name && warehouse.project.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const paginatedWarehouses = filteredWarehouses.slice((page - 1) * rowsPerPage, page * rowsPerPage);
+
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'name',
+      label: 'Название склада',
+      render: (value: any, row: Warehouse) => row.name
+    },
+    {
+      id: 'project',
+      label: 'Проект',
+      render: (value: any, row: Warehouse) => row.project?.name || 'Не указан'
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: Warehouse) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDialog(row);
+            }}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
 
   if (loading) {
     return (
@@ -177,30 +225,43 @@ const WarehouseListPage: React.FC = () => {
           <IconButton onClick={() => navigate('/reference')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1">
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1">
             Склады
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 2,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Typography variant="body1" color="text.secondary">
             Управление складами по проектам
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
+          }}>
             <Button
               variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={handleExport}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Экспорт в Excel
+              Экспорт
             </Button>
             <Button
               variant="outlined"
               startIcon={<FileUploadIcon />}
               onClick={handleImportClick}
               component="label"
+              size={isMobile ? 'small' : 'medium'}
             >
-              Импорт из Excel
+              Импорт
               <input
                 type="file"
                 accept=".xlsx,.xls"
@@ -213,6 +274,7 @@ const WarehouseListPage: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
+              size={isMobile ? 'small' : 'medium'}
             >
               Добавить склад
             </Button>
@@ -228,39 +290,14 @@ const WarehouseListPage: React.FC = () => {
           sx={{ mb: 2 }}
         />
 
-        <TableContainer component={Paper} sx={{ mb: 2 }}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Название склада</TableCell>
-                <TableCell>Проект</TableCell>
-                <TableCell align="right">Действия</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedWarehouses.map((warehouse) => (
-                <TableRow key={warehouse.id}>
-                  <TableCell>{warehouse.name}</TableCell>
-                  <TableCell>{warehouse.project?.name || 'Не указан'}</TableCell>
-                  <TableCell align="right">
-                    <IconButton
-                      onClick={() => handleOpenDialog(warehouse)}
-                      color="primary"
-                    >
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton
-                      onClick={() => handleDelete(warehouse.id)}
-                      color="error"
-                    >
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <ResponsiveTable
+          columns={columns}
+          data={paginatedWarehouses}
+          getRowKey={(row) => row.id}
+          onRowClick={(row) => handleOpenDialog(row)}
+          title="Список складов"
+          loading={loading}
+        />
         <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
           <Pagination
             count={Math.ceil(filteredWarehouses.length / rowsPerPage)}

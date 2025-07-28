@@ -25,7 +25,9 @@ import {
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -43,6 +45,7 @@ import dayjs from 'dayjs';
 import DocumentEditDialog from '../components/DocumentEditDialog';
 import ConfirmationDialog from '../components/ConfirmationDialog';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface Document {
   id: number;
@@ -63,6 +66,8 @@ interface Document {
 }
 
 const DocumentListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [documents, setDocuments] = useState<Document[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -289,78 +294,206 @@ const DocumentListPage: React.FC = () => {
   // Фильтрация документов по статусу
   const filteredDocuments = statusFilter ? documents.filter(d => d.status === statusFilter) : documents;
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'documentNumber',
+      label: 'Номер',
+      render: (value: any, row: Document) => row.documentNumber
+    },
+    {
+      id: 'title',
+      label: 'Название',
+      render: (value: any, row: Document) => row.title
+    },
+    {
+      id: 'documentType',
+      label: 'Тип',
+      render: (value: any, row: Document) => getDocumentTypeText(row.documentType)
+    },
+    {
+      id: 'status',
+      label: 'Статус',
+      render: (value: any, row: Document) => (
+        <Chip
+          label={getStatusText(row.status)}
+          color={getStatusColor(row.status)}
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'contractId',
+      label: 'Контракт',
+      render: (value: any, row: Document) => row.contractId
+    },
+    {
+      id: 'fileSize',
+      label: 'Размер',
+      render: (value: any, row: Document) => formatFileSize(row.fileSize)
+    },
+    {
+      id: 'uploadedAt',
+      label: 'Дата загрузки',
+      render: (value: any, row: Document) => 
+        row.uploadedAt ? dayjs(row.uploadedAt).format('DD.MM.YYYY') : '-'
+    },
+    {
+      id: 'signedAt',
+      label: 'Дата подписания',
+      render: (value: any, row: Document) => 
+        row.signedAt ? dayjs(row.signedAt).format('DD.MM.YYYY') : '-'
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: Document) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/documents/${row.id}`);
+            }}
+          >
+            <VisibilityIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleEdit(row);
+            }}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDownload(row.id);
+            }}
+            color="secondary"
+          >
+            <DownloadIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row);
+            }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   return (
     <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1">
           Документы
         </Typography>
         <Button
           variant="outlined"
           startIcon={<FileUploadIcon />}
           onClick={handleExportExcel}
+          size={isMobile ? 'small' : 'medium'}
         >
           Экспорт в Excel
         </Button>
       </Box>
 
       {/* Статистика */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+      <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === '' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Всего документов
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {Object.values(statusStats).reduce((a, b) => a + b, 0)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'DRAFT' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('DRAFT')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'DRAFT' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('DRAFT')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Черновики
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.DRAFT || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'UPLOADED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('UPLOADED')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'UPLOADED' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('UPLOADED')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Загружены
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.UPLOADED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'SIGNED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('SIGNED')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'SIGNED' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('SIGNED')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Подписаны
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.SIGNED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'EXPIRED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('EXPIRED')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'EXPIRED' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('EXPIRED')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Истёкшие
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.EXPIRED || 0}
               </Typography>
             </CardContent>
@@ -467,85 +600,14 @@ const DocumentListPage: React.FC = () => {
       </Box>
 
       {/* Таблица */}
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Номер</TableCell>
-              <TableCell>Название</TableCell>
-              <TableCell>Тип</TableCell>
-              <TableCell>Статус</TableCell>
-              <TableCell>Контракт</TableCell>
-              <TableCell>Размер</TableCell>
-              <TableCell>Дата загрузки</TableCell>
-              <TableCell>Дата подписания</TableCell>
-              <TableCell>Действия</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {filteredDocuments.map((document) => (
-              <TableRow key={document.id}>
-                <TableCell>{document.documentNumber}</TableCell>
-                <TableCell>{document.title}</TableCell>
-                <TableCell>{getDocumentTypeText(document.documentType)}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={getStatusText(document.status)}
-                    color={getStatusColor(document.status)}
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>{document.contractId}</TableCell>
-                <TableCell>{formatFileSize(document.fileSize)}</TableCell>
-                <TableCell>
-                  {document.uploadedAt ? dayjs(document.uploadedAt).format('DD.MM.YYYY') : '-'}
-                </TableCell>
-                <TableCell>
-                  {document.signedAt ? dayjs(document.signedAt).format('DD.MM.YYYY') : '-'}
-                </TableCell>
-                <TableCell>
-                  <IconButton
-                    size="small"
-                    onClick={() => navigate(`/documents/${document.id}`)}
-                  >
-                    <VisibilityIcon />
-                  </IconButton>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleEdit(document)}
-                  >
-                    <EditIcon />
-                  </IconButton>
-                  {document.filePath && (
-                    <IconButton
-                      size="small"
-                      onClick={() => handleDownload(document.id)}
-                    >
-                      <DownloadIcon />
-                    </IconButton>
-                  )}
-                  {document.status === 'UPLOADED' && (
-                    <IconButton
-                      size="small"
-                      color="success"
-                      onClick={() => handleSign(document.id)}
-                    >
-                      <DescriptionIcon />
-                    </IconButton>
-                  )}
-                  <IconButton
-                    size="small"
-                    color="error"
-                    onClick={() => handleDelete(document)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+      <ResponsiveTable
+        columns={columns}
+        data={filteredDocuments}
+        getRowKey={(row) => row.id.toString()}
+        onRowClick={(row) => navigate(`/documents/${row.id}`)}
+        title="Список документов"
+        loading={loading}
+      />
 
       {/* Диалог создания/редактирования документа */}
       <DocumentEditDialog

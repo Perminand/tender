@@ -21,11 +21,14 @@ import {
   Paper,
   Snackbar,
   Alert,
-  Pagination
+  Pagination,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface Category {
   id: string;
@@ -33,6 +36,8 @@ interface Category {
 }
 
 const CategoryListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -153,6 +158,44 @@ const CategoryListPage: React.FC = () => {
 
   const paginatedCategories = filteredCategories.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'name',
+      label: 'Название',
+      render: (value: any, row: Category) => row.name
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: Category) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDialog(row);
+            }}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   if (loading) {
     return <div>Загрузка...</div>;
   }
@@ -164,29 +207,42 @@ const CategoryListPage: React.FC = () => {
           <IconButton onClick={() => navigate('/reference')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1">
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1">
             Категории
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Typography variant="body1" color="text.secondary">
             Управление категориями материалов
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
+          }}>
             <Button
               variant="outlined"
               startIcon={<FileUploadIcon />}
               onClick={handleExport}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Экспорт в Excel
+              Экспорт
             </Button>
             <Button
               variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={handleImportClick}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Импорт из Excel
+              Импорт
             </Button>
             <input
               type="file"
@@ -199,6 +255,7 @@ const CategoryListPage: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
+              size={isMobile ? 'small' : 'medium'}
             >
               Добавить категорию
             </Button>
@@ -216,37 +273,14 @@ const CategoryListPage: React.FC = () => {
               sx={{ mb: 2 }}
             />
 
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Название</TableCell>
-                    <TableCell align="right">Действия</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedCategories.map((category) => (
-                    <TableRow key={category.id}>
-                      <TableCell>{category.name}</TableCell>
-                      <TableCell align="right">
-                        <IconButton
-                          onClick={() => handleOpenDialog(category)}
-                          color="primary"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDelete(category.id)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <ResponsiveTable
+              columns={columns}
+              data={paginatedCategories}
+              getRowKey={(row) => row.id}
+              onRowClick={(row) => handleOpenDialog(row)}
+              title="Список категорий"
+              loading={loading}
+            />
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
               <Pagination

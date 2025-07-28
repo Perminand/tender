@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container, Snackbar, Alert, Dialog, DialogTitle, DialogContent, DialogActions, Chip, FormControl, InputLabel, Select, MenuItem, useTheme, useMediaQuery } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
@@ -9,6 +9,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import Pagination from '@mui/material/Pagination';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface Counterparty {
   id: number;
@@ -23,6 +24,8 @@ interface Counterparty {
 }
 
 const CounterpartyListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const [counterparties, setCounterparties] = useState<Counterparty[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -131,6 +134,80 @@ const CounterpartyListPage: React.FC = () => {
 
   const paginatedCounterparties = filteredCounterparties.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'name',
+      label: 'Название',
+      render: (value: any, row: Counterparty) => row.shortName || row.name
+    },
+    {
+      id: 'legalName',
+      label: 'Фирменное наименование',
+      render: (value: any, row: Counterparty) => row.legalName
+    },
+    {
+      id: 'inn',
+      label: 'ИНН',
+      render: (value: any, row: Counterparty) => row.inn
+    },
+    {
+      id: 'kpp',
+      label: 'КПП',
+      render: (value: any, row: Counterparty) => row.kpp
+    },
+    {
+      id: 'ogrn',
+      label: 'ОГРН',
+      render: (value: any, row: Counterparty) => row.ogrn
+    },
+    {
+      id: 'address',
+      label: 'Адрес',
+      render: (value: any, row: Counterparty) => row.address
+    },
+    {
+      id: 'role',
+      label: 'Роль',
+      render: (value: any, row: Counterparty) => (
+        <Chip
+          label={getRoleLabel(row.role)}
+          color={getRoleColor(row.role) as any}
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: Counterparty) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/reference/counterparties/${row.id}/edit`);
+            }}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   const getRoleLabel = (role: string | undefined) => {
     switch (role) {
       case 'SUPPLIER':
@@ -173,29 +250,42 @@ const CounterpartyListPage: React.FC = () => {
           <IconButton onClick={() => navigate('/reference')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1">
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1">
             Контрагенты
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Typography variant="body1" color="text.secondary">
             Управление контрагентами
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
+          }}>
             <Button
               variant="outlined"
               startIcon={<FileUploadIcon />}
               onClick={handleExport}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Экспорт в Excel
+              Экспорт
             </Button>
             <Button
               variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={handleImportClick}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Импорт из Excel
+              Импорт
             </Button>
             <input
               type="file"
@@ -204,13 +294,23 @@ const CounterpartyListPage: React.FC = () => {
               style={{ display: 'none' }}
               onChange={handleImport}
             />
-            <Button variant="contained" onClick={() => navigate('/reference/counterparties/new')}>
+            <Button 
+              variant="contained" 
+              onClick={() => navigate('/reference/counterparties/new')}
+              size={isMobile ? 'small' : 'medium'}
+            >
               + Добавить контрагента
             </Button>
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap', mb: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          gap: { xs: 1, sm: 2 }, 
+          flexWrap: 'wrap', 
+          mb: 2,
+          flexDirection: { xs: 'column', sm: 'row' }
+        }}>
           <TextField
             fullWidth
             variant="outlined"
@@ -224,9 +324,9 @@ const CounterpartyListPage: React.FC = () => {
                 </InputAdornment>
               ),
             }}
-            sx={{ maxWidth: 400 }}
+            sx={{ minWidth: { xs: '100%', sm: 400 } }}
           />
-          <FormControl sx={{ minWidth: 200 }}>
+          <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }}>
             <InputLabel>Фильтр по роли</InputLabel>
             <Select
               value={roleFilter}
@@ -240,49 +340,14 @@ const CounterpartyListPage: React.FC = () => {
           </FormControl>
         </Box>
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Название</TableCell>
-                <TableCell>Фирменное наименование</TableCell>
-                <TableCell>ИНН</TableCell>
-                <TableCell>КПП</TableCell>
-                <TableCell>ОГРН</TableCell>
-                <TableCell>Адрес</TableCell>
-                <TableCell>Роль</TableCell>
-                <TableCell>Действия</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedCounterparties.map((counterparty) => (
-                <TableRow key={counterparty.id}>
-                  <TableCell>{counterparty.shortName || counterparty.name}</TableCell>
-                  <TableCell>{counterparty.legalName}</TableCell>
-                  <TableCell>{counterparty.inn}</TableCell>
-                  <TableCell>{counterparty.kpp}</TableCell>
-                  <TableCell>{counterparty.ogrn}</TableCell>
-                  <TableCell>{counterparty.address}</TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getRoleLabel(counterparty.role)}
-                      color={getRoleColor(counterparty.role) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <IconButton color="primary" onClick={() => navigate(`/reference/counterparties/${counterparty.id}/edit`)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton color="error" onClick={() => handleDelete(counterparty.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <ResponsiveTable
+          columns={columns}
+          data={paginatedCounterparties}
+          getRowKey={(row) => row.id.toString()}
+          onRowClick={(row) => navigate(`/reference/counterparties/${row.id}/edit`)}
+          title="Список контрагентов"
+          loading={false}
+        />
         
         {filteredCounterparties.length === 0 && searchTerm && (
           <Box sx={{ textAlign: 'center', mt: 2 }}>

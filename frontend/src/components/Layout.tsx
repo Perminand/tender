@@ -45,6 +45,7 @@ import useMediaQuery from '@mui/material/useMediaQuery';
 import { useTheme } from '@mui/material/styles';
 import AlertNotification from './AlertNotification';
 import Breadcrumbs from './Breadcrumbs';
+import MobileNavigation from './MobileNavigation';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 
@@ -108,6 +109,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
@@ -177,14 +179,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       bgcolor: 'primary.100',
                     },
                     transition: 'background 0.2s',
-                    pl: 3,
-                    pr: 2,
+                    pl: { xs: 2, md: 3 },
+                    pr: { xs: 1, md: 2 },
                   }}
                 >
                   <ListItemText 
                     primary={section.title} 
                     primaryTypographyProps={{
-                      fontSize: '0.875rem',
+                      fontSize: { xs: '0.8rem', md: '0.875rem' },
                       fontWeight: 600
                     }}
                   />
@@ -213,17 +215,21 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                               bgcolor: 'primary.100',
                             },
                             transition: 'background 0.2s',
-                            pl: 5,
+                            pl: { xs: 3, md: 5 },
                           }}
                           onClick={() => isMobile && setMobileOpen(false)}
                         >
-                          <ListItemIcon sx={{ color: selected ? 'primary.main' : 'text.secondary', minWidth: 36 }}>
+                          <ListItemIcon sx={{ 
+                            color: selected ? 'primary.main' : 'text.secondary', 
+                            minWidth: { xs: 32, md: 36 },
+                            fontSize: { xs: '1.2rem', md: '1.5rem' }
+                          }}>
                             {item.icon}
                           </ListItemIcon>
                           <ListItemText 
                             primary={item.label} 
                             primaryTypographyProps={{
-                              fontSize: '0.875rem',
+                              fontSize: { xs: '0.75rem', md: '0.875rem' },
                               fontWeight: selected ? 600 : 400
                             }}
                           />
@@ -240,7 +246,13 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           );
         })}
       </List>
-      <Box sx={{ flexShrink: 0, p: 2, textAlign: 'center', color: 'text.secondary', fontSize: 13 }}>
+      <Box sx={{ 
+        flexShrink: 0, 
+        p: { xs: 1, md: 2 }, 
+        textAlign: 'center', 
+        color: 'text.secondary', 
+        fontSize: { xs: 11, md: 13 } 
+      }}>
         &copy; {new Date().getFullYear()} Тендерная система
       </Box>
     </Box>
@@ -249,39 +261,58 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <Box sx={{ display: 'flex' }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: 'primary.main' }}>
-        <Toolbar>
+        <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }}>
           {isMobile && (
             <IconButton
               color="inherit"
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
-              sx={{ mr: 2 }}
+              sx={{ mr: 1 }}
             >
               <MenuIcon />
             </IconButton>
           )}
-          <Typography variant="h6" noWrap component={RouterLink} to="/" sx={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}>
-            Тендерная система
+          <Typography 
+            variant={isSmallMobile ? "subtitle1" : "h6"} 
+            noWrap 
+            component={RouterLink} 
+            to="/" 
+            sx={{ 
+              color: 'inherit', 
+              textDecoration: 'none', 
+              fontWeight: 700,
+              fontSize: { xs: '1rem', sm: '1.25rem' }
+            }}
+          >
+            {isSmallMobile ? 'Тендер' : 'Тендерная система'}
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
           <AlertNotification username={user?.username} />
           
           {/* Пользовательское меню */}
           {user && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              <Chip
-                label={user.roles.join(', ')}
-                size="small"
-                color="secondary"
-                variant="outlined"
-              />
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+              {!isSmallMobile && (
+                <Chip
+                  label={user.roles.join(', ')}
+                  size="small"
+                  color="secondary"
+                  variant="outlined"
+                  sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                />
+              )}
               <IconButton
                 color="inherit"
                 onClick={handleUserMenuOpen}
-                sx={{ ml: 1 }}
+                sx={{ ml: { xs: 0.5, sm: 1 } }}
               >
-                <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
+                <Avatar sx={{ 
+                  width: { xs: 28, sm: 32 }, 
+                  height: { xs: 28, sm: 32 }, 
+                  bgcolor: 'secondary.main',
+                  fontSize: { xs: '0.8rem', sm: '1rem' }
+                }}>
                   {user.firstName.charAt(0).toUpperCase()}
                 </Avatar>
               </IconButton>
@@ -296,6 +327,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 transformOrigin={{
                   vertical: 'top',
                   horizontal: 'right',
+                }}
+                PaperProps={{
+                  sx: { minWidth: { xs: 200, sm: 250 } }
                 }}
               >
                 <MenuItem disabled>
@@ -327,7 +361,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           sx={{
             display: { xs: 'block', md: 'block' },
             '& .MuiDrawer-paper': {
-              width: drawerWidth,
+              width: { xs: '85vw', sm: drawerWidth },
               boxSizing: 'border-box',
               borderRight: 0,
               bgcolor: 'background.paper',
@@ -338,10 +372,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {drawer}
         </Drawer>
       </Box>
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 1, sm: 2, md: 3 }, mt: 8, width: 0, minWidth: 0, maxWidth: '100vw', overflowX: 'auto', bgcolor: 'background.default', minHeight: '100vh' }}>
+      <Box component="main" sx={{ 
+        flexGrow: 1, 
+        p: { xs: 1, sm: 2, md: 3 }, 
+        mt: { xs: 7, md: 8 }, 
+        pb: { xs: 8, md: 3 }, // Добавляем отступ снизу для мобильной навигации
+        width: 0, 
+        minWidth: 0, 
+        maxWidth: '100vw', 
+        overflowX: 'auto', 
+        bgcolor: 'background.default', 
+        minHeight: '100vh' 
+      }}>
         <Breadcrumbs />
         {children}
       </Box>
+      <MobileNavigation />
     </Box>
   );
 };

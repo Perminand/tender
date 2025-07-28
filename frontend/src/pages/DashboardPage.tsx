@@ -28,7 +28,9 @@ import {
   List,
   ListItem,
   ListItemText,
-  ListItemIcon
+  ListItemIcon,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import UserInfo from '../components/UserInfo';
 import QuickActions from '../components/QuickActions';
@@ -176,6 +178,8 @@ interface DashboardData {
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
 const DashboardPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -293,30 +297,37 @@ const DashboardPage: React.FC = () => {
   const { metrics, activeTenders, urgentDeliveries, overduePayments, topSuppliers, problematicSuppliers, alerts } = dashboardData;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
       <UserInfo />
       
       {/* Быстрые действия */}
       <QuickActions />
       
       {/* Заголовок */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" gutterBottom>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} gutterBottom>
           Дашборд отдела снабжения
         </Typography>
-        <Box>
+        <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Обновить данные">
-            <IconButton onClick={fetchDashboardData}>
+            <IconButton onClick={fetchDashboardData} size={isMobile ? 'small' : 'medium'}>
               <RefreshIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title="Экспорт в Excel">
-            <IconButton onClick={() => handleExportReport('dashboard')}>
+            <IconButton onClick={() => handleExportReport('dashboard')} size={isMobile ? 'small' : 'medium'}>
               <DownloadIcon />
             </IconButton>
           </Tooltip>
           <Tooltip title="Настройки">
-            <IconButton>
+            <IconButton size={isMobile ? 'small' : 'medium'}>
               <SettingsIcon />
             </IconButton>
           </Tooltip>
@@ -325,7 +336,18 @@ const DashboardPage: React.FC = () => {
 
       {/* Вкладки */}
       <Paper sx={{ mb: 3 }}>
-        <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+        <Tabs 
+          value={activeTab} 
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          variant={isMobile ? "scrollable" : "fullWidth"}
+          scrollButtons={isMobile ? "auto" : false}
+          sx={{
+            '& .MuiTab-root': {
+              minHeight: { xs: 48, md: 64 },
+              fontSize: { xs: '0.75rem', md: '0.875rem' }
+            }
+          }}
+        >
           <Tab label="Обзор" icon={<AssessmentIcon />} />
           <Tab label="Тендеры" icon={<AssignmentIcon />} />
           <Tab label="Поставки" icon={<LocalShippingIcon />} />
@@ -337,23 +359,23 @@ const DashboardPage: React.FC = () => {
 
       {/* Вкладка: Обзор */}
       {activeTab === 0 && (
-        <Grid container spacing={3}>
+        <Grid container spacing={isMobile ? 2 : 3}>
           {/* Ключевые метрики */}
           <Grid item xs={12}>
-            <Paper sx={{ p: 3, mb: 3 }}>
+            <Paper sx={{ p: { xs: 2, md: 3 }, mb: 3 }}>
               <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <AssessmentIcon />
                 Ключевые показатели
               </Typography>
-              <Grid container spacing={3}>
+              <Grid container spacing={isMobile ? 2 : 3}>
             <Grid item xs={12} sm={6} md={3}>
               <Card>
-                <CardContent>
+                <CardContent sx={{ p: { xs: 2, md: 3 } }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <AssignmentIcon sx={{ mr: 1, color: 'primary.main' }} />
-                    <Typography color="textSecondary">Активные тендеры</Typography>
+                    <Typography color="textSecondary" variant={isMobile ? "body2" : "body1"}>Активные тендеры</Typography>
                   </Box>
-                  <Typography variant="h4">{metrics.activeTenders}</Typography>
+                  <Typography variant={isMobile ? "h5" : "h4"}>{metrics.activeTenders}</Typography>
                   <Typography variant="body2" color="textSecondary">
                     Всего: {metrics.totalTenders}
                   </Typography>

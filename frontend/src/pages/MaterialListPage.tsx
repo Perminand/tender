@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
-import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container } from '@mui/material';
+import { Box, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, IconButton, Typography, TextField, InputAdornment, Container, useTheme, useMediaQuery } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
@@ -15,6 +15,7 @@ import DialogActions from '@mui/material/DialogActions';
 import Snackbar from '@mui/material/Snackbar';
 import Alert from '@mui/material/Alert';
 import Pagination from '@mui/material/Pagination';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface CategoryDto {
   id: string;
@@ -46,6 +47,8 @@ interface MaterialDto {
 }
 
 const MaterialListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const navigate = useNavigate();
   const [materials, setMaterials] = useState<MaterialDto[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -143,38 +146,129 @@ const MaterialListPage: React.FC = () => {
 
   const paginatedMaterials = filteredMaterials.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'name',
+      label: 'Название',
+      render: (value: any, row: MaterialDto) => (
+        <Box>
+          <Typography variant="body2" fontWeight={600}>
+            {row.name}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            {row.code}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      id: 'category',
+      label: 'Категория',
+      render: (value: any, row: MaterialDto) => row.category?.name || '-'
+    },
+    {
+      id: 'materialType',
+      label: 'Тип',
+      render: (value: any, row: MaterialDto) => row.materialType?.name || '-'
+    },
+    {
+      id: 'units',
+      label: 'Ед. измерения',
+      render: (value: any, row: MaterialDto) => row.units?.map(u => u.shortName).join(', ') || '-'
+    },
+    {
+      id: 'description',
+      label: 'Описание',
+      render: (value: any, row: MaterialDto) => row.description
+    },
+    {
+      id: 'link',
+      label: 'Ссылка',
+      render: (value: any, row: MaterialDto) => (
+        row.link ? (
+          <a href={row.link} target="_blank" rel="noopener noreferrer">
+            {row.link}
+          </a>
+        ) : '-'
+      )
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: MaterialDto) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton 
+            color="primary" 
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/reference/materials/${row.id}/edit`);
+            }}
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton 
+            color="error" 
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   return (
     <Container maxWidth="lg">
-      <Box sx={{ mt: 4, mb: 4 }}>
+      <Box sx={{ mt: { xs: 2, md: 4 }, mb: { xs: 2, md: 4 } }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
           <IconButton onClick={() => navigate('/reference')} sx={{ mr: 2 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="h4" component="h1">
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1">
             Номенклатура
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Typography variant="body1" color="text.secondary">
             Управление номенклатурой материалов
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
+          }}>
             <Button 
               variant="outlined" 
               color="primary" 
               startIcon={<FileUploadIcon />}
               onClick={handleExport}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Экспорт в Excel
+              Экспорт
             </Button>
             <Button
               variant="outlined"
               color="primary"
               startIcon={<FileDownloadIcon />}
               onClick={handleImportClick}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Импорт из Excel
+              Импорт
             </Button>
             <input
               type="file"
@@ -183,8 +277,13 @@ const MaterialListPage: React.FC = () => {
               style={{ display: 'none' }}
               onChange={handleImport}
             />
-            <Button variant="contained" color="primary" onClick={() => navigate('/reference/materials/new')}>
-              + Добавить материал
+            <Button 
+              variant="contained" 
+              color="primary" 
+              onClick={() => navigate('/reference/materials/new')}
+              size={isMobile ? 'small' : 'medium'}
+            >
+              + Добавить
             </Button>
           </Box>
         </Box>
@@ -205,49 +304,14 @@ const MaterialListPage: React.FC = () => {
           />
         </Box>
 
-        <TableContainer component={Paper}>
-          <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Название</TableCell>
-                <TableCell>Код</TableCell>
-                <TableCell>Категория</TableCell>
-                <TableCell>Тип</TableCell>
-                <TableCell>Ед. измерения</TableCell>
-                <TableCell>Описание</TableCell>
-                <TableCell>Ссылка</TableCell>
-                <TableCell>Действия</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedMaterials.map((material) => (
-                <TableRow key={material.id}>
-                  <TableCell>{material.name}</TableCell>
-                  <TableCell>{material.code}</TableCell>
-                  <TableCell>{material.category?.name || '-'}</TableCell>
-                  <TableCell>{material.materialType?.name || '-'}</TableCell>
-                  <TableCell>{material.units?.map(u => u.shortName).join(', ') || '-'}</TableCell>
-                  <TableCell>{material.description}</TableCell>
-                  <TableCell>
-                    {material.link && (
-                      <a href={material.link} target="_blank" rel="noopener noreferrer">
-                        {material.link}
-                      </a>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <IconButton color="primary" onClick={() => navigate(`/reference/materials/${material.id}/edit`)}>
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton color="error" onClick={() => handleDelete(material.id)}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <ResponsiveTable
+          columns={columns}
+          data={paginatedMaterials}
+          getRowKey={(row) => row.id}
+          onRowClick={(row) => navigate(`/reference/materials/${row.id}/edit`)}
+          title="Список материалов"
+          loading={false}
+        />
         
         {filteredMaterials.length === 0 && searchTerm && (
           <Box sx={{ textAlign: 'center', mt: 2 }}>

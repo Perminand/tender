@@ -26,7 +26,9 @@ import {
   Box,
   Alert,
   Snackbar,
-  DialogContentText
+  DialogContentText,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -41,6 +43,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface ContractItem {
   id: string;
@@ -78,6 +81,8 @@ interface Contract {
 }
 
 const ContractListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -253,77 +258,105 @@ const ContractListPage: React.FC = () => {
   const filteredContracts = statusFilter ? contracts.filter(c => c.status === statusFilter) : contracts;
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
+        <Typography variant={isMobile ? "h5" : "h4"} component="h1">
           Контракты
         </Typography>
         <Button
           variant="outlined"
           startIcon={<FileUploadIcon />}
           onClick={handleExportExcel}
+          size={isMobile ? 'small' : 'medium'}
         >
           Экспорт в Excel
         </Button>
       </Box>
 
       {/* Статистика */}
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === '' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+      <Grid container spacing={isMobile ? 1 : 2} sx={{ mb: 3 }}>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === '' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Всего контрактов
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {Object.values(statusStats).reduce((a, b) => a + b, 0)}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'DRAFT' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('DRAFT')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'DRAFT' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('DRAFT')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Черновики
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.DRAFT || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'ACTIVE' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('ACTIVE')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'ACTIVE' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('ACTIVE')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Активные
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.ACTIVE || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'COMPLETED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('COMPLETED')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'COMPLETED' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('COMPLETED')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Завершённые
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.COMPLETED || 0}
               </Typography>
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={2.4}>
-          <Card sx={{ cursor: 'pointer', backgroundColor: statusFilter === 'CANCELLED' ? 'action.selected' : undefined, '&:hover': { backgroundColor: 'action.hover' } }} onClick={() => setStatusFilter('CANCELLED')}>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
+        <Grid item xs={6} sm={2.4}>
+          <Card sx={{ 
+            cursor: 'pointer', 
+            backgroundColor: statusFilter === 'CANCELLED' ? 'action.selected' : undefined, 
+            '&:hover': { backgroundColor: 'action.hover' } 
+          }} onClick={() => setStatusFilter('CANCELLED')}>
+            <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+              <Typography color="textSecondary" gutterBottom variant={isMobile ? "body2" : "body1"}>
                 Отменённые
               </Typography>
-              <Typography variant="h4">
+              <Typography variant={isMobile ? "h6" : "h4"}>
                 {statusStats.CANCELLED || 0}
               </Typography>
             </CardContent>

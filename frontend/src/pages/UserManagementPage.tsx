@@ -3,33 +3,21 @@ import {
   Box,
   Typography,
   Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
   Button,
   IconButton,
   Chip,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   Alert,
   Snackbar,
   Tooltip,
-  Card,
-  CardContent,
-  Grid,
   Avatar,
   Switch,
-  FormControlLabel
+  FormControlLabel,
+  useTheme,
+  useMediaQuery,
+  Fab,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -38,10 +26,14 @@ import {
   Visibility as ViewIcon,
   Lock as LockIcon,
   LockOpen as UnlockIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  Person as PersonIcon,
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import { useAuth } from '../contexts/AuthContext';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
+import MobileForm from '../components/MobileForm';
 
 interface User {
   id: string;
@@ -72,6 +64,8 @@ interface Company {
 
 const UserManagementPage: React.FC = () => {
   const { user: currentUser } = useAuth();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [users, setUsers] = useState<User[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
@@ -189,21 +183,21 @@ const UserManagementPage: React.FC = () => {
     setEditingUser(null);
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (values: any) => {
     try {
-      const rolesForBackend = formData.roles.map(r => r.replace('ROLE_', ''));
+      const rolesForBackend = values.roles.map((r: string) => r.replace('ROLE_', ''));
       if (editingUser) {
         // Обновление пользователя
         await api.put(`/api/users/${editingUser.id}`, {
-          ...formData,
+          ...values,
           roles: rolesForBackend,
-          password: formData.password || undefined // Не отправляем пароль если он пустой
+          password: values.password || undefined
         });
         showSnackbar('Пользователь успешно обновлен', 'success');
       } else {
         // Создание нового пользователя
         await api.post('/api/users', {
-          ...formData,
+          ...values,
           roles: rolesForBackend
         });
         showSnackbar('Пользователь успешно создан', 'success');
@@ -267,6 +261,176 @@ const UserManagementPage: React.FC = () => {
     return new Date(dateString).toLocaleString('ru-RU');
   };
 
+  // Конфигурация колонок для адаптивной таблицы
+  const columns = [
+    {
+      id: 'avatar',
+      label: '',
+      render: (value: any, row: User) => (
+        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main' }}>
+          {row.firstName.charAt(0).toUpperCase()}
+        </Avatar>
+      ),
+      mobile: false
+    },
+    {
+      id: 'name',
+      label: 'Имя',
+      render: (value: any, row: User) => (
+        <Box>
+          <Typography variant="body2" fontWeight={600}>
+            {row.firstName} {row.lastName}
+          </Typography>
+          <Typography variant="caption" color="text.secondary">
+            @{row.username}
+          </Typography>
+        </Box>
+      )
+    },
+    {
+      id: 'email',
+      label: 'Email',
+      render: (value: any, row: User) => row.email
+    },
+    {
+      id: 'company',
+      label: 'Компания',
+      render: (value: any, row: User) => row.company?.name || '-'
+    },
+    {
+      id: 'roles',
+      label: 'Роли',
+      render: (value: any, row: User) => (
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+          {row.roles.map((role) => (
+            <Chip 
+              key={role} 
+              label={role.replace('ROLE_', '')} 
+              size="small" 
+              variant="outlined"
+            />
+          ))}
+        </Box>
+      )
+    },
+    {
+      id: 'status',
+      label: 'Статус',
+      render: (value: any, row: User) => (
+        <Chip 
+          label={getStatusLabel(row.status)} 
+          color={getStatusColor(row.status) as any}
+          size="small"
+        />
+      )
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: User) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Tooltip title="Редактировать">
+            <IconButton 
+              size="small" 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenDialog(row);
+              }}
+            >
+              <EditIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          <Tooltip title="Удалить">
+            <IconButton 
+              size="small" 
+              color="error"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeleteUser(row.id);
+              }}
+            >
+              <DeleteIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
+  // Конфигурация полей для формы
+  const formFields = [
+    {
+      name: 'username',
+      label: 'Имя пользователя',
+      type: 'text' as const,
+      required: true
+    },
+    {
+      name: 'email',
+      label: 'Email',
+      type: 'email' as const,
+      required: true
+    },
+    {
+      name: 'password',
+      label: 'Пароль',
+      type: 'password' as const,
+      required: !editingUser
+    },
+    {
+      name: 'firstName',
+      label: 'Имя',
+      type: 'text' as const,
+      required: true
+    },
+    {
+      name: 'lastName',
+      label: 'Фамилия',
+      type: 'text' as const,
+      required: true
+    },
+    {
+      name: 'middleName',
+      label: 'Отчество',
+      type: 'text' as const
+    },
+    {
+      name: 'phone',
+      label: 'Телефон',
+      type: 'text' as const
+    },
+    {
+      name: 'roles',
+      label: 'Роли',
+      type: 'multiselect' as const,
+      options: roles,
+      required: true
+    },
+    {
+      name: 'companyId',
+      label: 'Компания',
+      type: 'select' as const,
+      options: companies.map(c => ({ value: c.id, label: c.name }))
+    },
+    {
+      name: 'status',
+      label: 'Статус',
+      type: 'select' as const,
+      options: statusOptions
+    },
+    {
+      name: 'isEnabled',
+      label: 'Активен',
+      type: 'switch' as const
+    },
+    {
+      name: 'isAccountNonLocked',
+      label: 'Не заблокирован',
+      type: 'switch' as const
+    }
+  ];
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -279,8 +443,15 @@ const UserManagementPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+    <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        mb: 3,
+        flexDirection: { xs: 'column', sm: 'row' },
+        gap: { xs: 2, sm: 0 }
+      }}>
         <Typography variant="h4" gutterBottom>
           Управление пользователями
         </Typography>
@@ -289,6 +460,7 @@ const UserManagementPage: React.FC = () => {
             variant="outlined"
             startIcon={<RefreshIcon />}
             onClick={loadUsers}
+            size={isMobile ? 'small' : 'medium'}
           >
             Обновить
           </Button>
@@ -296,318 +468,53 @@ const UserManagementPage: React.FC = () => {
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => handleOpenDialog()}
+            size={isMobile ? 'small' : 'medium'}
           >
             Добавить пользователя
           </Button>
         </Box>
       </Box>
 
-      {/* Статистика */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Всего пользователей
-              </Typography>
-              <Typography variant="h4">
-                {users.length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Активных
-              </Typography>
-              <Typography variant="h4" color="success.main">
-                {users.filter(u => u.status === 'ACTIVE').length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Администраторов
-              </Typography>
-              <Typography variant="h4" color="primary.main">
-                {users.filter(u => u.roles.includes('ROLE_ADMIN')).length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <Card>
-            <CardContent>
-              <Typography color="textSecondary" gutterBottom>
-                Заблокированных
-              </Typography>
-              <Typography variant="h4" color="error.main">
-                {users.filter(u => u.status === 'BLOCKED').length}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      <ResponsiveTable
+        columns={columns}
+        data={users}
+        getRowKey={(row) => row.id}
+        title="Список пользователей"
+        loading={loading}
+        onRowClick={(row) => handleOpenDialog(row)}
+      />
 
-      {/* Таблица пользователей */}
-      <Paper sx={{ width: '100%', overflow: 'hidden' }}>
-        <TableContainer>
-          <Table stickyHeader>
-            <TableHead>
-              <TableRow>
-                <TableCell>Пользователь</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Роли</TableCell>
-                <TableCell>Компания</TableCell>
-                <TableCell>Статус</TableCell>
-                <TableCell>Последний вход</TableCell>
-                <TableCell>Действия</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id} hover>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                      <Avatar sx={{ bgcolor: 'primary.main' }}>
-                        {user.firstName?.charAt(0)?.toUpperCase() || user.username.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Box>
-                        <Typography variant="subtitle2">
-                          {user.firstName} {user.lastName}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          @{user.username}
-                        </Typography>
-                      </Box>
-                    </Box>
-                  </TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                      {user.roles.map((role) => (
-                        <Chip
-                          key={role}
-                          label={roles.find(r => r.value === role)?.label || role}
-                          size="small"
-                          color="primary"
-                          variant="outlined"
-                        />
-                      ))}
-                    </Box>
-                  </TableCell>
-                  <TableCell>
-                    {user.company?.name || '-'}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={getStatusLabel(user.status)}
-                      color={getStatusColor(user.status) as any}
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    {user.lastLoginAt ? formatDate(user.lastLoginAt) : 'Никогда'}
-                  </TableCell>
-                  <TableCell>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Tooltip title="Просмотр">
-                        <IconButton size="small" onClick={() => handleOpenDialog(user)}>
-                          <ViewIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title="Редактировать">
-                        <IconButton size="small" onClick={() => handleOpenDialog(user)}>
-                          <EditIcon />
-                        </IconButton>
-                      </Tooltip>
-                      <Tooltip title={user.status === 'ACTIVE' ? 'Деактивировать' : 'Активировать'}>
-                        <IconButton 
-                          size="small" 
-                          onClick={() => handleToggleUserStatus(user.id, user.status)}
-                          color={user.status === 'ACTIVE' ? 'warning' : 'success'}
-                        >
-                          {user.status === 'ACTIVE' ? <LockIcon /> : <UnlockIcon />}
-                        </IconButton>
-                      </Tooltip>
-                      {user.id !== currentUser?.id && (
-                        <Tooltip title="Удалить">
-                          <IconButton 
-                            size="small" 
-                            color="error"
-                            onClick={() => handleDeleteUser(user.id)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      </Paper>
+      {/* Мобильная кнопка добавления */}
+      {isMobile && (
+        <Fab
+          color="primary"
+          aria-label="add"
+          sx={{
+            position: 'fixed',
+            bottom: 80,
+            right: 16,
+            zIndex: 1000
+          }}
+          onClick={() => handleOpenDialog()}
+        >
+          <AddIcon />
+        </Fab>
+      )}
 
-      {/* Диалог создания/редактирования пользователя */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingUser ? 'Редактировать пользователя' : 'Создать пользователя'}
-        </DialogTitle>
-        <DialogContent>
-          <Grid container spacing={2} sx={{ mt: 1 }}>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Имя пользователя"
-                value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                disabled={!!editingUser}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Имя"
-                value={formData.firstName}
-                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Фамилия"
-                value={formData.lastName}
-                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Отчество"
-                value={formData.middleName}
-                onChange={(e) => setFormData({ ...formData, middleName: e.target.value })}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Телефон"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-              />
-            </Grid>
-            {!editingUser && (
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Пароль"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                />
-              </Grid>
-            )}
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Роли</InputLabel>
-                <Select
-                  multiple
-                  value={formData.roles}
-                  onChange={(e) => setFormData({ ...formData, roles: e.target.value as string[] })}
-                  label="Роли"
-                >
-                  {roles.map((role) => (
-                    <MenuItem key={role.value} value={role.value}>
-                      {role.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Компания</InputLabel>
-                <Select
-                  value={formData.companyId}
-                  onChange={(e) => setFormData({ ...formData, companyId: e.target.value })}
-                  label="Компания"
-                >
-                  <MenuItem value="">
-                    <em>Не выбрана</em>
-                  </MenuItem>
-                  {companies.map((company) => (
-                    <MenuItem key={company.id} value={company.id}>
-                      {company.name}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth>
-                <InputLabel>Статус</InputLabel>
-                <Select
-                  value={formData.status}
-                  onChange={(e) => setFormData({ ...formData, status: e.target.value as User['status'] })}
-                  label="Статус"
-                >
-                  {statusOptions.map((status) => (
-                    <MenuItem key={status.value} value={status.value}>
-                      {status.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.isEnabled}
-                    onChange={(e) => setFormData({ ...formData, isEnabled: e.target.checked })}
-                  />
-                }
-                label="Аккаунт включен"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={formData.isAccountNonLocked}
-                    onChange={(e) => setFormData({ ...formData, isAccountNonLocked: e.target.checked })}
-                  />
-                }
-                label="Аккаунт не заблокирован"
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Отмена</Button>
-          <Button onClick={handleSubmit} variant="contained">
-            {editingUser ? 'Сохранить' : 'Создать'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      {/* Адаптивная форма */}
+      {dialogOpen && (
+        <MobileForm
+          title={editingUser ? 'Редактирование пользователя' : 'Создание пользователя'}
+          fields={formFields}
+          initialValues={formData}
+          onSubmit={handleSubmit}
+          onCancel={handleCloseDialog}
+          submitText={editingUser ? 'Обновить' : 'Создать'}
+          loading={loading}
+          isEdit={!!editingUser}
+        />
+      )}
 
-      {/* Уведомления */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
@@ -616,6 +523,7 @@ const UserManagementPage: React.FC = () => {
         <Alert 
           onClose={() => setSnackbar({ ...snackbar, open: false })} 
           severity={snackbar.severity}
+          sx={{ width: '100%' }}
         >
           {snackbar.message}
         </Alert>

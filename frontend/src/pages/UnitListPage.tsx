@@ -21,11 +21,14 @@ import {
   Paper,
   Snackbar,
   Alert,
-  Pagination
+  Pagination,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, ArrowBack as ArrowBackIcon, FileDownload as FileDownloadIcon, FileUpload as FileUploadIcon } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
+import ResponsiveTable from '../components/ResponsiveTable';
 
 interface Unit {
   id: string;
@@ -34,6 +37,8 @@ interface Unit {
 }
 
 const UnitListPage: React.FC = () => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [units, setUnits] = useState<Unit[]>([]);
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
@@ -150,6 +155,49 @@ const UnitListPage: React.FC = () => {
 
   const paginatedUnits = filteredUnits.slice((page - 1) * rowsPerPage, page * rowsPerPage);
 
+  // Конфигурация колонок для ResponsiveTable
+  const columns = [
+    {
+      id: 'name',
+      label: 'Название',
+      render: (value: any, row: Unit) => row.name
+    },
+    {
+      id: 'shortName',
+      label: 'Сокращение',
+      render: (value: any, row: Unit) => row.shortName
+    },
+    {
+      id: 'actions',
+      label: 'Действия',
+      render: (value: any, row: Unit) => (
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleOpenDialog(row);
+            }}
+            color="primary"
+          >
+            <EditIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDelete(row.id);
+            }}
+            color="error"
+          >
+            <DeleteIcon />
+          </IconButton>
+        </Box>
+      ),
+      mobile: false
+    }
+  ];
+
   if (loading) {
     return <div>Загрузка...</div>;
   }
@@ -166,24 +214,37 @@ const UnitListPage: React.FC = () => {
           </Typography>
         </Box>
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          mb: 3,
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 2, sm: 0 }
+        }}>
           <Typography variant="body1" color="text.secondary">
             Управление единицами измерения
           </Typography>
-          <Box sx={{ display: 'flex', gap: 2 }}>
+          <Box sx={{ 
+            display: 'flex', 
+            gap: { xs: 1, sm: 2 },
+            flexWrap: 'wrap'
+          }}>
             <Button
               variant="outlined"
               startIcon={<FileUploadIcon />}
               onClick={handleExport}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Экспорт в Excel
+              Экспорт
             </Button>
             <Button
               variant="outlined"
               startIcon={<FileDownloadIcon />}
               onClick={handleImportClick}
+              size={isMobile ? 'small' : 'medium'}
             >
-              Импорт из Excel
+              Импорт
             </Button>
             <input
               type="file"
@@ -196,6 +257,7 @@ const UnitListPage: React.FC = () => {
               variant="contained"
               startIcon={<AddIcon />}
               onClick={() => handleOpenDialog()}
+              size={isMobile ? 'small' : 'medium'}
             >
               Добавить единицу
             </Button>
@@ -213,39 +275,14 @@ const UnitListPage: React.FC = () => {
               sx={{ mb: 2 }}
             />
 
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Название</TableCell>
-                    <TableCell>Сокращение</TableCell>
-                    <TableCell align="right">Действия</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {paginatedUnits.map((unit) => (
-                    <TableRow key={unit.id}>
-                      <TableCell>{unit.name}</TableCell>
-                      <TableCell>{unit.shortName}</TableCell>
-                      <TableCell align="right">
-                        <IconButton
-                          onClick={() => handleOpenDialog(unit)}
-                          color="primary"
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDelete(unit.id)}
-                          color="error"
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
+            <ResponsiveTable
+              columns={columns}
+              data={paginatedUnits}
+              getRowKey={(row) => row.id}
+              onRowClick={(row) => handleOpenDialog(row)}
+              title="Список единиц измерения"
+              loading={loading}
+            />
 
             <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
               <Pagination
