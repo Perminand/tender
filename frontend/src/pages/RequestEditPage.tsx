@@ -2,9 +2,9 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
   Paper, Typography, Box, Button, CircularProgress, TextField, MenuItem, Toolbar, Dialog, DialogTitle, DialogActions,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, DialogContent, DialogContentText, Container, InputAdornment, IconButton
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, DialogContent, DialogContentText, Container, InputAdornment, IconButton, InputLabel, Select, FormControl
 } from '@mui/material';
-import { api } from '../utils/api';
+import { api, getImportColumnMapping, saveImportColumnMapping, ImportColumnMapping } from '../utils/api';
 import { Autocomplete } from '@mui/material';
 import * as XLSX from 'xlsx';
 import EditIcon from '@mui/icons-material/Edit';
@@ -28,6 +28,7 @@ interface RequestMaterial {
   id?: string;
   material?: Material | null;
   characteristics?: string;
+  size?: string; // Характеристики (смета)
   quantity?: string;
   unit?: Unit | null;
   note?: string;
@@ -36,6 +37,8 @@ interface RequestMaterial {
   supplierMaterialName?: string;
   estimatePrice?: string;
   materialLink?: string;
+  estimateUnit?: Unit | null;
+  estimateQuantity?: string;
   isImported?: boolean; // Флаг для отслеживания импортированных материалов
 }
 interface RequestDto {
@@ -110,6 +113,123 @@ export default function RequestEditPage() {
 
   const defaultWidths = [40, 120, 120, 400, 400, 100, 100, 100, 180, 180, 100, 100];
   const [colWidths, setColWidths] = useState<number[]>(defaultWidths);
+
+  // Функция для расчета оптимальной ширины столбцов на основе содержимого
+  const calculateOptimalColumnWidths = useCallback(() => {
+    if (!request.materials || request.materials.length === 0) {
+      return defaultWidths;
+    }
+
+    const columnHeaders = [
+      '#', 'Вид работ', 'Наименование в заявке', 'Кол-во', 'Ед. изм.',
+      'Наименование материала (смета)', 'Характеристики (смета)', 'Кол-во (смета)', 
+      'Ед. изм.(смета)', 'Цена (смета)', 'Стоимость (смета)', 'Ссылка', 'Примечание', 'Поставить к дате', 'Действия'
+    ];
+
+    const calculateTextWidth = (text: string, isHeader: boolean = false, isCompact: boolean = false) => {
+      // Для компактных столбцов (числовые, короткие тексты и цены) используем меньшую ширину
+      if (isCompact) {
+        const charWidth = 5; // Еще меньшая ширина для цифр, коротких текстов и цен
+        const padding = isHeader ? 12 : 8; // Меньший отступ для компактных столбцов
+        return Math.max(text.length * charWidth + padding, 40); // Минимальная ширина 40px для компактных
+      }
+      
+      // Для текстовых столбцов обычная ширина
+      const charWidth = 8;
+      const padding = isHeader ? 20 : 16;
+      return Math.max(text.length * charWidth + padding, 60);
+    };
+
+    const widths = columnHeaders.map((header, colIndex) => {
+      // Определяем, является ли столбец числовым или коротким текстом
+      const isNumericColumn = colIndex === 0 || colIndex === 3 || colIndex === 7 || colIndex === 9 || colIndex === 10;
+      const isShortTextColumn = colIndex === 4 || colIndex === 8; // Ед. изм. и Ед. изм.(смета)
+      const isPriceColumn = colIndex === 9 || colIndex === 10; // Цена (смета) и Стоимость (смета)
+      const isCompactColumn = isNumericColumn || isPriceColumn; // Убрали isShortTextColumn из компактных
+      let maxWidth = calculateTextWidth(header, true, isCompactColumn);
+
+      // Проходим по всем строкам данных
+      request.materials.forEach((mat, rowIndex) => {
+        let cellText = '';
+        
+        switch (colIndex) {
+          case 0: // #
+            cellText = (rowIndex + 1).toString();
+            break;
+          case 1: // Вид работ
+            const workType = workTypes.find(w => w.id === mat.workType);
+            cellText = workType ? workType.name : (mat.workType || '');
+            break;
+          case 2: // Наименование в заявке
+            cellText = mat.supplierMaterialName || '';
+            break;
+          case 3: // Кол-во
+            cellText = mat.quantity || '';
+            break;
+          case 4: // Ед. изм.
+            const unit = units.find(u => u.id === mat.unit?.id);
+            cellText = unit ? unit.shortName : (mat.unit?.shortName || '');
+            break;
+          case 5: // Наименование материала (смета)
+            const material = materials.find(m => m.id === mat.material?.id);
+            cellText = material ? material.name : (mat.material?.name || '');
+            break;
+          case 6: // Характеристики (смета)
+            cellText = mat.characteristics || '';
+            break;
+          case 7: // Кол-во (смета)
+            cellText = mat.estimateQuantity || '';
+            break;
+          case 8: // Ед. изм.(смета)
+            const estimateUnit = units.find(u => u.id === mat.estimateUnit?.id);
+            cellText = estimateUnit ? estimateUnit.shortName : (mat.estimateUnit?.shortName || '');
+            break;
+          case 9: // Цена (смета)
+            cellText = mat.estimatePrice || '';
+            break;
+          case 10: // Стоимость (смета)
+            const estimateTotal = (parseFloat(mat.estimatePrice || '0') * parseFloat(mat.estimateQuantity || mat.quantity || '0')).toFixed(2);
+            cellText = estimateTotal;
+            break;
+          case 11: // Ссылка
+            cellText = mat.materialLink || '';
+            break;
+          case 12: // Примечание
+            cellText = mat.note || '';
+            break;
+          case 13: // Поставить к дате
+            cellText = mat.deliveryDate ? new Date(mat.deliveryDate).toLocaleDateString('ru-RU') : '';
+            break;
+          case 14: // Действия
+            cellText = 'Удалить';
+            break;
+        }
+
+        let cellWidth;
+        // Специальная логика для столбцов "Ед. изм." и "Ед. изм.(смета)"
+        if (colIndex === 4 || colIndex === 8) {
+          // Для единиц измерения: ширина по самой длинной записи + 5 пикселей
+          const charWidth = 8; // Обычная ширина символа
+          const padding = 16; // Отступ
+          cellWidth = Math.max(cellText.length * charWidth + padding + 5, 60); // Минимум 60px
+        } else {
+          cellWidth = calculateTextWidth(cellText, false, isCompactColumn);
+        }
+        maxWidth = Math.max(maxWidth, cellWidth);
+      });
+
+      // Ограничиваем максимальную ширину
+      return Math.min(maxWidth, 500);
+    });
+
+    return widths;
+  }, [request.materials, workTypes, units, materials]);
+
+  // Автоматически пересчитываем ширину столбцов при изменении данных
+  useEffect(() => {
+    const optimalWidths = calculateOptimalColumnWidths();
+    setColWidths(optimalWidths);
+  }, [calculateOptimalColumnWidths]);
   const resizingCol = useRef<number | null>(null);
   const startX = useRef<number>(0);
   const startWidth = useRef<number>(0);
@@ -142,10 +262,16 @@ export default function RequestEditPage() {
   const [importMissing, setImportMissing] = useState<any>(null);
   const [importLoading, setImportLoading] = useState(false);
 
-  const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[]}>({workTypes:[], characteristics:[], units:[]});
+  const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[], estimateUnits: string[]}>({workTypes:[], characteristics:[], units:[], estimateUnits:[]});
 
-  const [missingMaterialIdx, setMissingMaterialIdx] = useState<number | null>(null);
+
   const [missingCompanyName, setMissingCompanyName] = useState<string | null>(null);
+
+  // 1. Новое состояние для пользовательских соответствий
+  const [customHeaderMapping, setCustomHeaderMapping] = useState<{ [key: string]: number | string }>({});
+  const [showHeaderMappingDialog, setShowHeaderMappingDialog] = useState(false);
+  const [importHeaders, setImportHeaders] = useState<string[]>([]);
+  const [hasSavedMapping, setHasSavedMapping] = useState(false);
 
   const handleMouseDown = (idx: number, e: React.MouseEvent) => {
     resizingCol.current = idx;
@@ -198,13 +324,19 @@ export default function RequestEditPage() {
         .then(res => {
           // Преобразуем requestMaterials в materials для совместимости с фронтендом
           const requestData = res.data;
+          if (import.meta.env.DEV) {
+            console.log('Получены данные с сервера:', JSON.stringify(requestData, null, 2));
+                                console.log('Проверяем поле size в материалах:', requestData.requestMaterials?.map((m: any) => ({ id: m.id, size: m.size })));
+          }
           setRequest({
             ...requestData,
             materials: (requestData.requestMaterials || []).map((mat: any) => ({
               ...mat,
               workType: typeof mat.workType === 'object' && mat.workType !== null ? mat.workType.id : (mat.workType || ''),
-              characteristics: mat.size || mat.characteristics || '',
-              materialLink: mat.materialLink || ''
+              size: mat.size || '',
+              materialLink: mat.materialLink || '',
+              estimateUnit: mat.estimateUnit || null,
+              estimateQuantity: mat.estimateQuantity ? mat.estimateQuantity.toString() : ''
             }))
           });
         })
@@ -293,6 +425,9 @@ export default function RequestEditPage() {
   };
 
   const handleMaterialChange = (idx: number, field: string, value: any) => {
+    if (import.meta.env.DEV) {
+      console.log(`handleMaterialChange вызвана: idx=${idx}, field=${field}, value=`, value);
+    }
     const newMaterials = [...(request.materials || [])];
     if (field === 'workType') {
       // Сохраняем только id workType
@@ -329,6 +464,15 @@ export default function RequestEditPage() {
       }
     } else if (field === 'unit') {
       newMaterials[idx].unit = units.find(u => u.id === value) || null;
+    } else if (field === 'characteristics') {
+      // Для характеристик сохраняем строку (название характеристики)
+      newMaterials[idx].characteristics = typeof value === 'object' && value?.name ? value.name : value;
+    } else if (field === 'size') {
+      // Для характеристик (смета) сохраняем строку
+      newMaterials[idx].size = typeof value === 'object' && value?.name ? value.name : value;
+      if (import.meta.env.DEV) {
+        console.log(`handleMaterialChange: поле size изменено для материала ${idx}, новое значение:`, value);
+      }
     } else {
       (newMaterials[idx] as any)[field] = value;
     }
@@ -340,7 +484,7 @@ export default function RequestEditPage() {
       ...request,
       materials: [
         ...(request.materials || []),
-        { material: null, characteristics: '', quantity: '', unit: null, note: '', deliveryDate: '', workType: '', supplierMaterialName: '', estimatePrice: '', materialLink: '', isImported: false }
+        { material: null, characteristics: '', size: '', quantity: '', unit: null, note: '', deliveryDate: '', workType: '', supplierMaterialName: '', estimatePrice: '', materialLink: '', isImported: false }
       ]
     });
   };
@@ -362,14 +506,7 @@ export default function RequestEditPage() {
   };
 
   const handleSave = async () => {
-    // Валидация: все материалы должны иметь заполненное наименование
-    const missingIdx = (request.materials || []).findIndex(
-      mat => (!mat.material || !mat.material.id) && mat.supplierMaterialName && mat.unit?.shortName
-    );
-    if (missingIdx !== -1) {
-      setMissingMaterialIdx(missingIdx);
-      return;
-    }
+    // Валидация убрана: поле "Наименование материала (смета)" не является обязательным
     
     // Валидация: сметные цены должны быть больше 0
     const invalidPriceIdx = (request.materials || []).findIndex(
@@ -382,10 +519,13 @@ export default function RequestEditPage() {
     setLoading(true);
     
     try {
-    // Определяем статус для сохранения: если статус "Черновик", то меняем на "Сохранен"
-    const statusToSave = request.status === 'DRAFT' ? 'SAVED' : (request.status || 'DRAFT');
+    // Сохраняем текущий статус без изменений
+    const statusToSave = request.status || 'DRAFT';
     
     // Преобразуем materials обратно в requestMaterials для отправки на сервер
+    if (import.meta.env.DEV) {
+      console.log('request.materials перед отправкой:', JSON.stringify(request.materials, null, 2));
+    }
     const requestToSend = {
           id: request.id,
           organization: request.organization,
@@ -400,20 +540,23 @@ export default function RequestEditPage() {
             number: index + 1,
             workType: mat.workType ? { id: mat.workType } : null,
             material: mat.material ? { id: mat.material.id } : null,
-            size: mat.characteristics || '',
+            size: mat.size || '',
             quantity: mat.quantity ? parseFloat(mat.quantity) : null,
             unit: mat.unit ? { id: mat.unit.id } : null,
             note: mat.note || '',
             deliveryDate: mat.deliveryDate || '',
             supplierMaterialName: mat.supplierMaterialName || '',
             estimatePrice: mat.estimatePrice ? parseFloat(mat.estimatePrice) : null,
-            materialLink: mat.materialLink || ''
+            materialLink: mat.materialLink || '',
+            estimateUnit: mat.estimateUnit ? { id: mat.estimateUnit.id } : null,
+            estimateQuantity: mat.estimateQuantity ? parseFloat(mat.estimateQuantity) : null
           }))
         };
       
       if (import.meta.env.DEV) {
         console.log('Отправляем данные:', JSON.stringify(requestToSend, null, 2));
         console.log('requestMaterials:', JSON.stringify(requestToSend.requestMaterials, null, 2));
+                            console.log('Проверяем поле size (характеристики смета):', requestToSend.requestMaterials.map((m: any) => ({ id: m.id, size: m.size })));
       }
     
     if (isEdit) {
@@ -588,25 +731,57 @@ export default function RequestEditPage() {
 
         // ШАГ 4: Импортировать материалы начиная со следующей строки
         const dataRows = jsonData.slice(headerRowIndex + 1);
-        // Индексы нужных колонок
-        const idxMaterialName = headers.findIndex(h => (h || '').toString().trim().toLowerCase() === 'наименование материала, услуги по заявке');
-        const idxCharacteristics = headers.findIndex(h => (h || '').toString().toLowerCase().includes('характерист'));
-        const idxQuantity = headers.findIndex(h => (h || '').toString().toLowerCase().includes('кол-во'));
-        const idxUnit = headers.findIndex(h => (h || '').toString().toLowerCase().includes('ед. изм'));
-        const idxNote = headers.findIndex(h => (h || '').toString().toLowerCase().includes('примеч'));
-        let idxDeliveryDate = headers.findIndex(h => (h || '').toString().toLowerCase().includes('поставить к дате'));
-        if (idxDeliveryDate === -1) {
-          idxDeliveryDate = headers.findIndex(h => (h || '').toString().toLowerCase().includes('поставк') || (h || '').toString().toLowerCase().includes('дата'));
-        }
-        const idxWorkType = headers.findIndex(h => (h || '').toString().toLowerCase().includes('вид работ'));
-        const idxEstimatePrice = headers.findIndex(h => (h || '').toString().toLowerCase().includes('сметн'));
-        const idxMaterialLink = headers.findIndex(h => (h || '').toString().toLowerCase().includes('ссылка'));
+        
+        // Функция для получения индекса из пользовательского mapping или автоматического поиска
+        const getColumnIndex = (fieldKey: string, fallbackSearch: (headers: string[]) => number): number => {
+          const userIndex = customHeaderMapping[fieldKey];
+          if (userIndex !== undefined && userIndex !== '' && typeof userIndex === 'number') {
+            return userIndex;
+          }
+          return fallbackSearch(headers);
+        };
+        
+        // Индексы нужных колонок с поддержкой пользовательского mapping
+        const idxMaterialName = getColumnIndex('materialName', 
+          (h) => h.findIndex(header => (header || '').toString().trim().toLowerCase() === 'наименование материала, услуги по смете'));
+        const idxSupplierMaterialName = getColumnIndex('supplierMaterialName',
+          (h) => h.findIndex(header => (header || '').toString().trim().toLowerCase() === 'наименование материала, услуги по заявке'));
+        const idxSize = getColumnIndex('size',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('характеристики материала по смете')));
+        const idxQuantity = getColumnIndex('quantity',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('кол-во') && !(header || '').toString().toLowerCase().includes('смета')));
+        const idxEstimateQuantity = getColumnIndex('estimateQuantity',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('кол-во (смета)')));
+        const idxUnit = getColumnIndex('unit',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('ед. изм') && !(header || '').toString().toLowerCase().includes('смета')));
+        const idxEstimateUnit = getColumnIndex('estimateUnit',
+          (h) => h.findIndex(header => {
+            const val = (header || '').toString().toLowerCase();
+            return val.includes('ед. изм.') && val.includes('смета');
+          }));
+        const idxNote = getColumnIndex('note',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('примеч')));
+        const idxDeliveryDate = getColumnIndex('deliveryDate',
+          (h) => {
+            let idx = h.findIndex(header => (header || '').toString().toLowerCase().includes('поставить к дате'));
+            if (idx === -1) {
+              idx = h.findIndex(header => (header || '').toString().toLowerCase().includes('поставк') || (header || '').toString().toLowerCase().includes('дата'));
+            }
+            return idx;
+          });
+        const idxWorkType = getColumnIndex('workType',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('вид работ')));
+        const idxEstimatePrice = getColumnIndex('estimatePrice',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('сметная цена')));
+        const idxMaterialLink = getColumnIndex('materialLink',
+          (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('ссылка')));
 
         const importedMaterials = [];
         for (let i = 0; i < dataRows.length; i++) {
           const row = dataRows[i] as any[];
           if (!row[idxMaterialName]) continue;
           const materialName = row[idxMaterialName] || '';
+          const supplierMaterialName = idxSupplierMaterialName !== -1 ? row[idxSupplierMaterialName] || '' : '';
           const foundMaterial = materials.find(
             m => m.name.trim().toLowerCase() === materialName.trim().toLowerCase()
           );
@@ -619,10 +794,12 @@ export default function RequestEditPage() {
           }
           importedMaterials.push({
             material: foundMaterial ? foundMaterial : null,
-            supplierMaterialName: materialName,
-            characteristics: idxCharacteristics !== -1 ? row[idxCharacteristics] || '' : '',
+            supplierMaterialName: supplierMaterialName,
+            size: idxSize !== -1 ? row[idxSize] || '' : '',
             quantity: idxQuantity !== -1 ? row[idxQuantity] || '' : '',
+            estimateQuantity: idxEstimateQuantity !== -1 ? row[idxEstimateQuantity] || '' : '',
             unit: idxUnit !== -1 ? row[idxUnit] || '' : '',
+            estimateUnit: idxEstimateUnit !== -1 ? row[idxEstimateUnit] || '' : '',
             note: idxNote !== -1 ? row[idxNote] || '' : '',
             deliveryDate: deliveryDateValue,
             workType: idxWorkType !== -1 ? row[idxWorkType] || '' : '',
@@ -679,6 +856,33 @@ export default function RequestEditPage() {
           materials: importedMaterials
         });
         setOpenImportDialog(true);
+
+        // 2. После определения headers (в handleExcelImport) сохраняем их и показываем диалог выбора
+        setImportHeaders(headers);
+        
+        // Загружаем сохраненный mapping для пользователя
+        try {
+          const token = localStorage.getItem('token');
+          if (token) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const userId = payload.userId;
+            const companyId = payload.companyId;
+            
+            if (userId && companyId) {
+              const savedMapping = await getImportColumnMapping(userId, companyId);
+              if (savedMapping && savedMapping.mappingJson) {
+                const parsedMapping = JSON.parse(savedMapping.mappingJson);
+                setCustomHeaderMapping(parsedMapping);
+                setHasSavedMapping(true);
+              } else {
+                setHasSavedMapping(false);
+              }
+            }
+          }
+        } catch (error) {
+          console.warn('Ошибка при загрузке сохраненного mapping:', error);
+          setHasSavedMapping(false);
+        }
       } catch (error) {
         console.error('Ошибка при обработке файла:', error);
         alert('Ошибка при обработке файла');
@@ -707,12 +911,16 @@ export default function RequestEditPage() {
     // Ед. изм.
     const allUnits = ((pendingImportData.materials || []).map((m:any) => m.unit).filter(Boolean) as string[]);
     const missingUnits = Array.from(new Set(allUnits.filter((u:string) => u && !units.find(unit => unit.shortName.trim().toLowerCase() === u.trim().toLowerCase()))));
+    // Ед. изм.(смета)
+    const allEstimateUnits = ((pendingImportData.materials || []).map((m:any) => m.estimateUnit).filter(Boolean) as string[]);
+    const missingEstimateUnits = Array.from(new Set(allEstimateUnits.filter((u:string) => u && !units.find(unit => unit.shortName.trim().toLowerCase() === u.trim().toLowerCase()))));
     setImportWillCreate({
       project: missingProject,
       warehouse: missingWarehouse,
       workTypes: missingWorkTypes,
       characteristics: missingChars,
-      units: missingUnits
+      units: missingUnits,
+      estimateUnits: missingEstimateUnits
     });
   }, [pendingImportData, projects, warehouses, workTypes, characteristics, units]);
 
@@ -753,6 +961,13 @@ export default function RequestEditPage() {
       setUnits(unitsRes.data);
       unitMap[u] = res.data;
     }
+    // Ед. изм.(смета)
+    for (const u of importWillCreate.estimateUnits) {
+      const res = await api.post('/api/units', { name: u, shortName: u });
+      const unitsRes = await api.get('/api/units');
+      setUnits(unitsRes.data);
+      unitMap[u] = res.data;
+    }
     // Интеграция данных
     setRequest(prev => ({
       ...prev,
@@ -763,15 +978,17 @@ export default function RequestEditPage() {
       project: projectObj || prev.project,
       warehouse: warehouseObj || prev.warehouse,
       materials: (pendingImportData.materials || []).map((mat: any) => {
-        // workType, characteristics, unit — ищем среди новых и старых
+        // workType, characteristics, unit, estimateUnit — ищем среди новых и старых
         let workTypeObj = workTypes.find(w => w.name.trim().toLowerCase() === (mat.workType || '').trim().toLowerCase()) || workTypeMap[mat.workType];
         let charObj = characteristics.find(c => c.name.trim().toLowerCase() === (mat.characteristics || '').trim().toLowerCase()) || charMap[mat.characteristics];
         let unitObj = units.find(u => u.shortName.trim().toLowerCase() === (mat.unit || '').trim().toLowerCase()) || unitMap[mat.unit];
+        let estimateUnitObj = units.find(u => u.shortName.trim().toLowerCase() === (mat.estimateUnit || '').trim().toLowerCase()) || unitMap[mat.estimateUnit];
         return {
           ...mat,
           workType: workTypeObj ? workTypeObj.id : '',
           characteristics: charObj ? charObj.name : '',
           unit: unitObj ? unitObj : null,
+          estimateUnit: estimateUnitObj ? estimateUnitObj : null,
         };
       })
     }));
@@ -854,6 +1071,17 @@ export default function RequestEditPage() {
       <Box sx={{ mt: 4, mb: 4 }}>
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography variant="h6">{isEdit ? 'Редактирование заявки' : 'Создание заявки'}</Typography>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button 
+            variant="outlined" 
+            onClick={() => {
+              const optimalWidths = calculateOptimalColumnWidths();
+              setColWidths(optimalWidths);
+            }}
+            title="Автоматически подогнать ширину столбцов под содержимое"
+          >
+            Подогнать столбцы
+          </Button>
         <Button variant="outlined" component="label" disabled={importLoading}>
           {importLoading ? (
             <>
@@ -867,6 +1095,7 @@ export default function RequestEditPage() {
           )}
           <input type="file" accept=".xlsx,.xls" hidden onChange={handleExcelImport} />
         </Button>
+        </Box>
       </Toolbar>
       <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
         <Grid container spacing={2} sx={{ mb: 2, maxWidth: 1200, alignItems: 'center' }}>
@@ -981,17 +1210,29 @@ export default function RequestEditPage() {
           disabled={!request.project?.id}
         />
         <Typography variant="subtitle1" sx={{ mt: 2 }}>Материалы заявки</Typography>
-        <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto', width: '100%' }}>
-          <Table size="small" sx={{ minWidth: 1200, width: 'max-content' }}>
+        <TableContainer component={Paper} sx={{ mb: 2, overflowX: 'auto', width: '100%', maxWidth: '100%', maxHeight: '600px', overflowY: 'auto' }}>
+          <Table size="small" sx={{ minWidth: 2000, width: 'max-content' }}>
             <TableHead>
               <TableRow>
-                  {['#','Вид работ','Наименование материала','Характеристики','Наименование в заявке','Кол-во','Ед. изм.','Сметная цена','Сметная стоимость','Ссылка','Примечание','Поставить к дате','Действия'].map((label, idx) => (
+                  {['#','Вид работ','Наименование в заявке','Кол-во','Ед. изм.','Наименование материала (смета)','Характеристики (смета)','Кол-во (смета)','Ед. изм.(смета)','Цена (смета)','Стоимость (смета)','Ссылка','Примечание','Поставить к дате','Действия'].map((label, idx) => (
                   <TableCell
                     key={label}
-                    sx={{ position: 'relative', width: colWidths[idx], minWidth: 40, maxWidth: 800, userSelect: 'none', whiteSpace: 'nowrap' }}
+                    sx={{ 
+                      position: 'relative', 
+                      width: colWidths[idx], 
+                      minWidth: 40, 
+                      maxWidth: 800, 
+                      userSelect: 'none', 
+                      whiteSpace: 'nowrap',
+                      // Выделяем сметные столбцы (индексы 5-10)
+                      backgroundColor: idx >= 5 && idx <= 10 ? '#f0f8ff' : 'inherit',
+                      borderLeft: idx === 5 ? '2px solid #1976d2' : 'inherit',
+                      borderRight: idx === 10 ? '2px solid #1976d2' : 'inherit',
+                      fontWeight: idx >= 5 && idx <= 10 ? 'bold' : 'normal'
+                    }}
                   >
                     {label}
-                    {idx !== 0 && idx !== 12 && (
+                    {idx !== 0 && idx !== 13 && (
                       <span
                         style={{
                           position: 'absolute',
@@ -1013,11 +1254,11 @@ export default function RequestEditPage() {
             </TableHead>
             <TableBody>
           {request.materials.map((mat, idx) => {
-            const estimateTotal = (parseFloat(mat.estimatePrice || '0') * parseFloat(mat.quantity || '0')).toFixed(2);
+            const estimateTotal = (parseFloat(mat.estimatePrice || '0') * parseFloat(mat.estimateQuantity || mat.quantity || '0')).toFixed(2);
             return (
                 <TableRow key={idx}>
-                  <TableCell>{idx + 1}</TableCell>
-                  <TableCell sx={{ width: 'auto', whiteSpace: 'nowrap' }}>
+                  <TableCell sx={{ width: colWidths[0] }} title={`${idx + 1}`}>{idx + 1}</TableCell>
+                  <TableCell sx={{ width: colWidths[1], whiteSpace: 'nowrap' }} title={workTypes.find(w => w.id === mat.workType)?.name || ''}>
                   <Autocomplete
                     value={workTypes.find(w => w.id === mat.workType) || null}
                     onChange={(_, value) => handleMaterialChange(idx, 'workType', value ? value.id : '')}
@@ -1029,7 +1270,53 @@ export default function RequestEditPage() {
                     )}
                   />
                   </TableCell>
-                  <TableCell sx={{ minWidth: 180, maxWidth: 300 }}>
+                  <TableCell sx={{ width: colWidths[2], minWidth: 180, maxWidth: 300 }} title={mat.supplierMaterialName || ''}>
+                    <Autocomplete
+                      freeSolo
+                      value={mat.supplierMaterialName || ''}
+                    onChange={async (_, value) => handleSupplierMaterialNameChange(idx, value || '')}
+                    onInputChange={(_, value) => handleSupplierMaterialNameChange(idx, value || '')}
+                    options={supplierNamesOptions[idx] || []}
+                      renderInput={params => (
+                        <TextField {...params} size="small" label="Наименование в заявке" InputLabelProps={{ shrink: true }} />
+                      )}
+                      filterOptions={(options, state) => {
+                        if (!state.inputValue) return options;
+                        return options.filter(opt => opt === state.inputValue);
+                      }}
+                  />
+                  </TableCell>
+                                   <TableCell sx={{ width: colWidths[3], maxWidth: colWidths[3] }} title={mat.quantity || ''}>
+                   <TextField
+                     size="small"
+                     label="Кол-во"
+                     value={mat.quantity || ''}
+                     onChange={e => handleMaterialChange(idx, 'quantity', e.target.value)}
+                     type="number"
+                     sx={{ width: '100%', maxWidth: colWidths[3] }}
+                   />
+                 </TableCell>
+                                     <TableCell sx={{ width: colWidths[4], maxWidth: colWidths[4] }} title={mat.unit?.shortName || ''}>
+                     <TextField
+                       select
+                       size="small"
+                       label="Ед. изм."
+                       value={mat.unit?.id || ''}
+                       onChange={e => handleMaterialChange(idx, 'unit', e.target.value)}
+                       sx={{ width: '100%', maxWidth: colWidths[4] }}
+                     >
+                       {units.map(u => (
+                         <MenuItem key={u.id} value={u.id}>{u.shortName}</MenuItem>
+                       ))}
+                     </TextField>
+                   </TableCell>
+                  <TableCell sx={{ 
+                    width: colWidths[5],
+                    minWidth: 180, 
+                    maxWidth: 300,
+                    backgroundColor: '#f0f8ff',
+                    borderLeft: '2px solid #1976d2'
+                  }} title={mat.material?.name || ''}>
                   <Autocomplete<MaterialOption>
                     value={materials.find(m => m.id === mat.material?.id) || null}
                     onChange={(_, value) => {
@@ -1069,84 +1356,49 @@ export default function RequestEditPage() {
                       return option.name;
                     }}
                     renderInput={params => (
-                      <TextField {...params} size="small" label="Наименование материала" InputLabelProps={{ shrink: true }} />
+                      <TextField {...params} size="small" label="Наименование материала (смета)" InputLabelProps={{ shrink: true }} />
                     )}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                   />
                 </TableCell>
-                <TableCell>
-                  <Autocomplete
-                    value={characteristics.find(c => c.name === mat.characteristics) || null}
-                    onChange={(_, value) => {
-                      if (value && value.id === 'CREATE_NEW') {
-                        setNewCharacteristic(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
-                        setCharacteristicMaterialIdx(idx);
-                        setOpenCharacteristicDialog(true);
-                      } else {
-                        handleMaterialChange(idx, 'characteristics', value ? value.name : '');
-                      }
-                    }}
-                    options={characteristics}
-                    filterOptions={(options, state) => {
-                      const filtered = options.filter(option =>
-                        option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-                      );
-                      if (state.inputValue && filtered.length === 0) {
-                        return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` }];
-                      }
-                      return filtered;
-                    }}
-                    getOptionLabel={(option: Characteristic) => option ? option.name : ''}
-                    isOptionEqualToValue={(option: Characteristic, value: Characteristic) => option.id === value.id}
-                    renderInput={params => (
-                      <TextField {...params} size="small" label="Характеристики" />
-                    )}
-                  />
-                  </TableCell>
-                  <TableCell sx={{ minWidth: 180, maxWidth: 300 }}>
-                    <Autocomplete
-                      freeSolo
-                      value={mat.supplierMaterialName || ''}
-                    onChange={async (_, value) => handleSupplierMaterialNameChange(idx, value || '')}
-                    onInputChange={(_, value) => handleSupplierMaterialNameChange(idx, value || '')}
-                    options={supplierNamesOptions[idx] || []}
-                      renderInput={params => (
-                        <TextField {...params} size="small" label="Наименование в заявке" InputLabelProps={{ shrink: true }} />
-                      )}
-                      filterOptions={(options, state) => {
-                        if (!state.inputValue) return options;
-                        return options.filter(opt => opt === state.inputValue);
-                      }}
-                  />
-                  </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: colWidths[6], backgroundColor: '#f0f8ff' }} title={mat.size || ''}>
                   <TextField
                     size="small"
-                    label="Кол-во"
-                    value={mat.quantity || ''}
-                    onChange={e => handleMaterialChange(idx, 'quantity', e.target.value)}
-                    type="number"
-                    fullWidth
+                    label="Характеристики (смета)"
+                    value={mat.size || ''}
+                    onChange={e => handleMaterialChange(idx, 'size', e.target.value)}
+                    sx={{ width: '100%', maxWidth: colWidths[6] }}
                   />
                   </TableCell>
-                <TableCell>
+                  <TableCell sx={{ width: colWidths[7], maxWidth: colWidths[7], backgroundColor: '#f0f8ff' }} title={mat.estimateQuantity || ''}>
+                  <TextField
+                    size="small"
+                      label="Кол-во (смета)"
+                      value={mat.estimateQuantity || ''}
+                      onChange={e => handleMaterialChange(idx, 'estimateQuantity', e.target.value)}
+                    type="number"
+                      inputProps={{ min: 0.01, step: 0.01 }}
+                      sx={{ width: '100%', maxWidth: colWidths[7] }}
+                  />
+                  </TableCell>
+                  <TableCell sx={{ width: colWidths[8], maxWidth: colWidths[8], backgroundColor: '#f0f8ff' }} title={mat.estimateUnit?.shortName || ''}>
                   <TextField
                     select
                     size="small"
-                    label="Ед. изм."
-                    value={mat.unit?.id || ''}
-                    onChange={e => handleMaterialChange(idx, 'unit', e.target.value)}
-                    fullWidth
+                      label="Ед. изм.(смета)"
+                      value={mat.estimateUnit?.id || ''}
+                      onChange={e => handleMaterialChange(idx, 'estimateUnit', e.target.value)}
+                      sx={{ width: '100%', maxWidth: colWidths[8] }}
                   >
                     {units.map(u => (
                       <MenuItem key={u.id} value={u.id}>{u.shortName}</MenuItem>
                     ))}
                   </TextField>
                   </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: colWidths[9], maxWidth: colWidths[9], backgroundColor: '#f0f8ff' }} title={mat.estimatePrice || ''}>
                   <TextField
                     size="small"
-                    label="Сметная цена"
+                    label="Цена (смета)"
                     value={mat.estimatePrice || ''}
                     onChange={e => {
                       const value = e.target.value;
@@ -1159,21 +1411,26 @@ export default function RequestEditPage() {
                     }}
                     type="number"
                     inputProps={{ min: 0.01, step: 0.01 }}
-                    fullWidth
                     error={mat.estimatePrice !== undefined && mat.estimatePrice !== '' && parseFloat(mat.estimatePrice) <= 0}
                     helperText={mat.estimatePrice !== undefined && mat.estimatePrice !== '' && parseFloat(mat.estimatePrice) <= 0 ? 'Цена должна быть больше 0' : ''}
+                    sx={{ width: '100%', maxWidth: colWidths[9] }}
                   />
                 </TableCell>
-                <TableCell>
+                                  <TableCell sx={{ 
+                    width: colWidths[10],
+                    maxWidth: colWidths[10],
+                    backgroundColor: '#f0f8ff',
+                    borderRight: '2px solid #1976d2'
+                  }} title={estimateTotal || ''}>
                   <TextField
                     size="small"
-                    label="Сметная стоимость"
+                    label="Стоимость (смета)"
                     value={estimateTotal}
                     InputProps={{ readOnly: true }}
-                    fullWidth
+                    sx={{ width: '100%', maxWidth: colWidths[10] }}
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: colWidths[11] }} title={mat.materialLink || ''}>
                   <TextField
                     size="small"
                     label="Ссылка"
@@ -1182,7 +1439,7 @@ export default function RequestEditPage() {
                     fullWidth
                   />
                 </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: colWidths[12] }} title={mat.note || ''}>
                   <TextField
                     size="small"
                       label="Примечание"
@@ -1192,7 +1449,7 @@ export default function RequestEditPage() {
                       InputLabelProps={{ shrink: true }}
                   />
                   </TableCell>
-                <TableCell>
+                <TableCell sx={{ width: colWidths[13] }} title={mat.deliveryDate || ''}>
                   <TextField
                     size="small"
                     label="Поставить к дате"
@@ -1203,10 +1460,15 @@ export default function RequestEditPage() {
                     fullWidth
                   />
                   </TableCell>
-                  <TableCell>
-                    <Button color="error" size="small" onClick={() => handleRemoveMaterial(idx)}>
-                    Удалить
-                  </Button>
+                  <TableCell sx={{ width: colWidths[14] }} title="Удалить материал">
+                    <IconButton 
+                      color="error" 
+                      size="small" 
+                      onClick={() => handleRemoveMaterial(idx)}
+                      title="Удалить материал"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
                   </TableCell>
                 </TableRow>
             );
@@ -1228,9 +1490,14 @@ export default function RequestEditPage() {
             <Button variant="outlined" color="success" onClick={() => setConfirmCreateTender(true)} sx={{ ml: 1 }}>
               Создать тендер
             </Button>
-            <Button variant="outlined" color="error" onClick={() => setConfirmDelete(true)} sx={{ ml: 1 }}>
-            Удалить
-          </Button>
+            <IconButton 
+              color="error" 
+              onClick={() => setConfirmDelete(true)} 
+              sx={{ ml: 1 }}
+              title="Удалить заявку"
+            >
+              <DeleteIcon />
+            </IconButton>
           </>
         )}
       </Box>
@@ -1238,7 +1505,7 @@ export default function RequestEditPage() {
         <DialogTitle>Удалить заявку?</DialogTitle>
         <DialogActions>
           <Button onClick={() => setConfirmDelete(false)}>Отмена</Button>
-          <Button color="error" onClick={handleDelete}>Удалить</Button>
+          <Button color="error" onClick={handleDelete} startIcon={<DeleteIcon />}>Удалить</Button>
         </DialogActions>
       </Dialog>
 
@@ -1389,7 +1656,7 @@ export default function RequestEditPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenRemoveMaterialDialog(false)}>Отмена</Button>
-          <Button color="error" onClick={confirmRemoveMaterial}>Удалить</Button>
+          <Button color="error" onClick={confirmRemoveMaterial} startIcon={<DeleteIcon />}>Удалить</Button>
         </DialogActions>
       </Dialog>
 
@@ -1493,7 +1760,12 @@ export default function RequestEditPage() {
               <Typography variant="subtitle2">Дата: {pendingImportData.date ? (new Date(pendingImportData.date).toLocaleDateString('ru-RU')) : 'Не указана'}</Typography>
               <Typography variant="subtitle2">Номер заявки: {pendingImportData.requestNumber || 'Не указан'}</Typography>
               <Typography variant="subtitle2">Материалов: {pendingImportData.materials?.length || 0}</Typography>
-              {(importWillCreate.project || importWillCreate.warehouse || importWillCreate.workTypes.length > 0 || importWillCreate.characteristics.length > 0 || importWillCreate.units.length > 0) && (
+              {hasSavedMapping && (
+                <Typography variant="subtitle2" color="success.main" sx={{ mt: 1 }}>
+                  ✓ Найдены сохраненные соответствия столбцов
+                </Typography>
+              )}
+              {(importWillCreate.project || importWillCreate.warehouse || importWillCreate.workTypes.length > 0 || importWillCreate.characteristics.length > 0 || importWillCreate.units.length > 0 || importWillCreate.estimateUnits.length > 0) && (
                 <Box mt={2}>
                   <Typography variant="subtitle2" color="primary">Будут созданы новые справочники:</Typography>
                   <ul style={{marginTop: 4, marginBottom: 0, paddingLeft: 20}}>
@@ -1502,6 +1774,7 @@ export default function RequestEditPage() {
                     {importWillCreate.workTypes.map(w => <li key={w}>Вид работ: <b>{w}</b></li>)}
                     {importWillCreate.characteristics.map(c => <li key={c}>Характеристика: <b>{c}</b></li>)}
                     {importWillCreate.units.map(u => <li key={u}>Ед. изм.: <b>{u}</b></li>)}
+                    {importWillCreate.estimateUnits.map(u => <li key={u}>Ед. изм.(смета): <b>{u}</b></li>)}
                   </ul>
                 </Box>
               )}
@@ -1510,33 +1783,18 @@ export default function RequestEditPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenImportDialog(false)}>Отмена</Button>
+          <Button
+            onClick={() => setShowHeaderMappingDialog(true)} 
+            variant="outlined"
+            sx={{ mr: 1 }}
+          >
+            Соответствия
+          </Button>
           <Button onClick={handleImportConfirm} variant="contained">Импортировать</Button>
         </DialogActions>
       </Dialog>
 
-      <Dialog open={missingMaterialIdx !== null} onClose={() => setMissingMaterialIdx(null)}>
-        <DialogTitle>Создать новый материал?</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            Для строки №{missingMaterialIdx !== null ? missingMaterialIdx + 1 : ''} не выбран материал, но заполнено "Наименование в заявке" и "Ед. изм.".<br/>
-            Создать новый материал с этими данными?
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setMissingMaterialIdx(null)}>Отмена</Button>
-          <Button
-            onClick={() => {
-              if (missingMaterialIdx === null) return;
-              const mat = request.materials[missingMaterialIdx];
-              window.open(`/reference/materials/new?name=${encodeURIComponent(mat.supplierMaterialName || '')}&unit=${encodeURIComponent(mat.unit?.shortName || '')}`, '_blank');
-              setMissingMaterialIdx(null);
-            }}
-            variant="contained"
-          >
-            Создать
-          </Button>
-        </DialogActions>
-      </Dialog>
+
 
       <Dialog open={confirmCreateTender} onClose={() => setConfirmCreateTender(false)}>
         <DialogTitle>Создать тендер?</DialogTitle>
@@ -1570,6 +1828,66 @@ export default function RequestEditPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {showHeaderMappingDialog && (
+        <Dialog open={showHeaderMappingDialog} onClose={() => setShowHeaderMappingDialog(false)}>
+          <DialogTitle>Настройка соответствия столбцов Excel</DialogTitle>
+          <DialogContent>
+            {[
+              { key: 'materialName', label: 'Наименование материала (смета)' },
+              { key: 'supplierMaterialName', label: 'Наименование в заявке' },
+              { key: 'characteristics', label: 'Характеристики (смета)' },
+              { key: 'quantity', label: 'Кол-во' },
+              { key: 'estimateQuantity', label: 'Кол-во (смета)' },
+              { key: 'unit', label: 'Ед. изм.' },
+              { key: 'estimateUnit', label: 'Ед. изм. (смета)' },
+              { key: 'note', label: 'Примечание' },
+              { key: 'deliveryDate', label: 'Поставить к дате' },
+              { key: 'workType', label: 'Вид работ' },
+              { key: 'estimatePrice', label: 'Цена (смета)' },
+              { key: 'materialLink', label: 'Ссылка' },
+            ].map(field => (
+              <FormControl fullWidth sx={{ mt: 2 }} key={field.key}>
+                <InputLabel>{field.label}</InputLabel>
+                <Select
+                  value={customHeaderMapping[field.key] ?? ''}
+                  label={field.label}
+                  onChange={e => setCustomHeaderMapping(prev => ({ ...prev, [field.key]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                >
+                  <MenuItem value={''}>Не импортировать</MenuItem>
+                  {importHeaders.map((h, idx) => (
+                    <MenuItem value={idx} key={idx}>{h}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            ))}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setShowHeaderMappingDialog(false)}>Отмена</Button>
+            <Button onClick={async () => {
+              try {
+                const token = localStorage.getItem('token');
+                if (token) {
+                  const payload = JSON.parse(atob(token.split('.')[1]));
+                  const userId = payload.userId;
+                  const companyId = payload.companyId;
+                  
+                  if (userId && companyId) {
+                    await saveImportColumnMapping({
+                      userId,
+                      companyId,
+                      mappingJson: JSON.stringify(customHeaderMapping)
+                    });
+                  }
+                }
+              } catch (error) {
+                console.error('Ошибка при сохранении mapping:', error);
+              }
+              setShowHeaderMappingDialog(false);
+            }} variant="contained">Сохранить</Button>
+          </DialogActions>
+        </Dialog>
+      )}
       </Box>
     </Container>
   );

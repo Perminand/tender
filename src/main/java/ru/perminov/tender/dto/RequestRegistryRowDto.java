@@ -10,7 +10,6 @@ public record RequestRegistryRowDto(
     String organization,
     String project,
     Integer materialsCount,
-    Double totalQuantity,
     String note,
     String status
 ) {} 

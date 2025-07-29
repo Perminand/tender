@@ -62,7 +62,8 @@ const menuStructure = [
     items: [
       { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
       { label: 'Тендеры', to: '/tenders', icon: <GavelIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_SUPPLIER', 'ROLE_VIEWER'] },
-      { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon />, roles: ['ROLE_SUPPLIER', 'ROLE_MANAGER', 'ROLE_ADMIN'] }
+      { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon />, roles: ['ROLE_SUPPLIER', 'ROLE_MANAGER', 'ROLE_ADMIN'] },
+      { label: 'Информация о заказчиках', to: '/customer-summary', icon: <BusinessIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] }
     ]
   },
   {
@@ -113,12 +114,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, logout } = useAuth();
   const { canAccess } = usePermissions();
   const navigate = useNavigate();
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
+  };
+
+  const handleSidebarToggle = () => {
+    setSidebarCollapsed(!sidebarCollapsed);
   };
 
   const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -262,12 +268,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     <Box sx={{ display: 'flex' }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: 'primary.main' }}>
         <Toolbar sx={{ minHeight: { xs: 56, md: 64 } }}>
-          {isMobile && (
+          {isMobile ? (
             <IconButton
               color="inherit"
               aria-label="open drawer"
               edge="start"
               onClick={handleDrawerToggle}
+              sx={{ mr: 1 }}
+            >
+              <MenuIcon />
+            </IconButton>
+          ) : (
+            <IconButton
+              color="inherit"
+              aria-label="toggle sidebar"
+              edge="start"
+              onClick={handleSidebarToggle}
               sx={{ mr: 1 }}
             >
               <MenuIcon />
@@ -352,20 +368,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         </Toolbar>
       </AppBar>
       {/* Permanent drawer for desktop, temporary for mobile */}
-      <Box component="nav" sx={{ width: { md: drawerWidth }, flexShrink: { md: 0 } }} aria-label="menu">
+      <Box component="nav" sx={{ width: { md: sidebarCollapsed ? 0 : drawerWidth }, flexShrink: { md: 0 } }} aria-label="menu">
         <Drawer
           variant={isMobile ? 'temporary' : 'permanent'}
-          open={isMobile ? mobileOpen : true}
+          open={isMobile ? mobileOpen : !sidebarCollapsed}
           onClose={handleDrawerToggle}
           ModalProps={{ keepMounted: true }}
           sx={{
             display: { xs: 'block', md: 'block' },
             '& .MuiDrawer-paper': {
-              width: { xs: '85vw', sm: drawerWidth },
+              width: { xs: '85vw', sm: sidebarCollapsed ? 0 : drawerWidth },
               boxSizing: 'border-box',
               borderRight: 0,
               bgcolor: 'background.paper',
               boxShadow: isMobile ? 3 : 1,
+              overflow: 'hidden',
+              transition: 'width 0.3s ease-in-out',
             },
           }}
         >
@@ -382,7 +400,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         maxWidth: '100vw', 
         overflowX: 'auto', 
         bgcolor: 'background.default', 
-        minHeight: '100vh' 
+        minHeight: '100vh',
+        transition: 'margin-left 0.3s ease-in-out',
+        ml: { md: sidebarCollapsed ? 0 : 0 }
       }}>
         <Breadcrumbs />
         {children}

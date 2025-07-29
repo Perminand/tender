@@ -17,6 +17,8 @@ public interface RequestMaterialMapper {
     @Mapping(source = "supplierMaterialName", target = "supplierMaterialName")
     @Mapping(source = "estimatePrice", target = "estimatePrice")
     @Mapping(source = "materialLink", target = "materialLink")
+    @Mapping(source = "estimateUnit", target = "estimateUnit", qualifiedByName = "toUnitDto")
+    @Mapping(source = "estimateQuantity", target = "estimateQuantity")
     RequestMaterialDto toDto(RequestMaterial entity);
     
     @Mapping(source = "material", target = "material")
@@ -28,5 +30,7 @@ public interface RequestMaterialMapper {
     @Mapping(source = "supplierMaterialName", target = "supplierMaterialName")
     @Mapping(source = "estimatePrice", target = "estimatePrice")
     @Mapping(source = "materialLink", target = "materialLink")
+    @Mapping(source = "estimateUnit", target = "estimateUnit")
+    @Mapping(source = "estimateQuantity", target = "estimateQuantity")
     RequestMaterial toEntity(RequestMaterialDto dto);
 } 

@@ -107,4 +107,10 @@ databaseChangeLog:
       file: db/changelog/data/V003_insert_test_users.sql
   - include:
       file: db/changelog/changes/V055_auditlog_user_refactor.sql
+  - include:
+      file: db/changelog/changes/V056_add_estimate_unit_to_request_materials.sql
+  - include:
+      file: db/changelog/changes/V057_create_import_column_mapping.sql
+  - include:
+      file: db/changelog/changes/V058_add_estimate_quantity_to_request_materials.sql
 

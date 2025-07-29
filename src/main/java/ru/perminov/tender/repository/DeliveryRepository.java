@@ -85,4 +85,15 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, JpaSp
     Delivery findByIdWithItems(@Param("id") UUID id);
 
     long countByStatus(Delivery.DeliveryStatus status);
+    
+    /**
+     * Найти поставки по заявке через контракт и тендер
+     */
+    @Query("SELECT d FROM Delivery d " +
+           "LEFT JOIN FETCH d.contract c " +
+           "LEFT JOIN FETCH c.tender t " +
+           "LEFT JOIN FETCH t.request r " +
+           "LEFT JOIN FETCH d.supplier " +
+           "WHERE r.id = :requestId")
+    List<Delivery> findByContractTenderRequestId(@Param("requestId") UUID requestId);
 } 

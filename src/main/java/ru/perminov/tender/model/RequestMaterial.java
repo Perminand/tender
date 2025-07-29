@@ -54,6 +54,12 @@ public class RequestMaterial {
     private String materialLink;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "estimate_unit_id")
+    private Unit estimateUnit;
+
+    private Double estimateQuantity;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "request_id")
     private Request request;
     

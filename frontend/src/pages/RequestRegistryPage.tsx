@@ -29,7 +29,8 @@ import {
   Edit,
   FileUpload as FileUploadIcon,
   Visibility as VisibilityIcon,
-  Add as AddIcon
+  Add as AddIcon,
+  Business as BusinessIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -42,7 +43,6 @@ interface RequestRegistryRowDto {
   organization: string;
   project: string;
   materialsCount: number;
-  totalQuantity: number;
   note: string;
   status: string;
 }
@@ -54,7 +54,6 @@ const columns = [
   { key: 'project', label: 'Проект', width: '200px' },
   { key: 'status', label: 'Статус', width: '120px' },
   { key: 'materialsCount', label: 'Кол-во материалов', width: '120px' },
-  { key: 'totalQuantity', label: 'Общее кол-во', width: '120px' },
   { key: 'note', label: 'Примечание', width: '200px' },
   { key: 'actions', label: 'Действия', width: '120px' },
 ];
@@ -225,11 +224,6 @@ export default function RequestRegistryPage() {
       render: (value: any, row: RequestRegistryRowDto) => row.materialsCount
     },
     {
-      id: 'totalQuantity',
-      label: 'Общее кол-во',
-      render: (value: any, row: RequestRegistryRowDto) => row.totalQuantity
-    },
-    {
       id: 'note',
       label: 'Примечание',
       render: (value: any, row: RequestRegistryRowDto) => row.note
@@ -247,6 +241,16 @@ export default function RequestRegistryPage() {
             }}
           >
             <VisibilityIcon />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate(`/requests/${row.requestId}/customer-info`);
+            }}
+            title="Информация о заказчике"
+          >
+            <BusinessIcon />
           </IconButton>
           <IconButton
             size="small"
@@ -394,8 +398,7 @@ export default function RequestRegistryPage() {
       {!loading && data.length > 0 && (
         <Box sx={{ mt: 2, p: 2, backgroundColor: '#f8f9fa', borderRadius: 1 }}>
           <Typography variant="body2" color="text.secondary">
-            Всего заявок: {data.length} | 
-            Общее количество материалов: {data.reduce((sum, row) => sum + row.materialsCount, 0)}
+            Всего заявок: {data.length}
           </Typography>
         </Box>
       )}

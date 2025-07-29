@@ -42,6 +42,8 @@ import DashboardWrapper from './components/DashboardWrapper';
 import PaymentEditPage from './pages/PaymentEditPage';
 import PaymentDetailPage from './pages/PaymentDetailPage';
 import UserManagementPage from './pages/UserManagementPage';
+import CustomerInfoPage from './pages/CustomerInfoPage';
+import CustomerSummaryPage from './pages/CustomerSummaryPage';
 import PermissionSync from './components/PermissionSync';
 import { AuditLogPage } from './pages';
 
@@ -268,6 +270,20 @@ const App: React.FC = () => (
         <ProtectedRoute>
           <Layout>
             <RequestDetailPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/requests/:requestId/customer-info" element={
+        <ProtectedRoute>
+          <Layout>
+            <CustomerInfoPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/customer-summary" element={
+        <ProtectedRoute>
+          <Layout>
+            <CustomerSummaryPage />
           </Layout>
         </ProtectedRoute>
       } />

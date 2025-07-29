@@ -30,5 +30,9 @@ public record RequestMaterialDto(
     @Positive(message = "Сметная цена должна быть больше 0")
     Double estimatePrice,
 
-    String materialLink
+    String materialLink,
+
+    UnitDto estimateUnit,
+
+    String estimateQuantity
 ) {} 

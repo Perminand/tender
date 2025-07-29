@@ -68,6 +68,10 @@ const pathToBreadcrumbs: Record<string, BreadcrumbItem[]> = {
     { label: 'Справочники', path: '/reference/contact-types' },
     { label: 'Типы контактов', path: '/reference/contact-types' }
   ],
+  '/customer-summary': [
+    { label: 'Тендерные процедуры', path: '/customer-summary' },
+    { label: 'Информация о заказчиках', path: '/customer-summary' }
+  ],
   '/documents': [
     { label: 'Документооборот', path: '/documents' },
     { label: 'Документы', path: '/documents' }

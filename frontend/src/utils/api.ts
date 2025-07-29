@@ -91,3 +91,32 @@ export const getAnalyticsStats = async (): Promise<AnalyticsStats> => {
     throw error;
   }
 }; 
+
+// Import Column Mapping API
+export interface ImportColumnMapping {
+  userId: string;
+  companyId: string;
+  mappingJson: string;
+}
+
+export const getImportColumnMapping = async (userId: string, companyId: string): Promise<ImportColumnMapping | null> => {
+  try {
+    const response = await api.get(`/api/import-mapping?userId=${userId}&companyId=${companyId}`);
+    return response.data;
+  } catch (error: any) {
+    if (error.response?.status === 404) {
+      return null; // Mapping не найден
+    }
+    console.error('Ошибка при получении mapping для импорта:', error);
+    throw error;
+  }
+};
+
+export const saveImportColumnMapping = async (mapping: ImportColumnMapping): Promise<void> => {
+  try {
+    await api.post('/api/import-mapping', mapping);
+  } catch (error: any) {
+    console.error('Ошибка при сохранении mapping для импорта:', error);
+    throw error;
+  }
+}; 

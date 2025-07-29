@@ -1,5 +1,30 @@
 /* Мобильная адаптация */
 
+/* Глобальные стили для горизонтального скроллинга таблиц */
+.MuiTableContainer-root {
+  scrollbar-width: thin !important;
+  scrollbar-color: #1976d2 #f5f5f5 !important;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar {
+  height: 8px !important;
+  width: 8px !important;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar-track {
+  background: #f5f5f5 !important;
+  border-radius: 4px !important;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar-thumb {
+  background: #1976d2 !important;
+  border-radius: 4px !important;
+}
+
+.MuiTableContainer-root::-webkit-scrollbar-thumb:hover {
+  background: #1565c0 !important;
+}
+
 /* Улучшения для touch-устройств */
 @media (max-width: 768px) {
   /* Увеличиваем размеры кнопок для удобства нажатия */
@@ -22,6 +47,31 @@
   .MuiTableContainer-root {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
+  }
+  
+  /* Улучшаем горизонтальный скроллинг для таблиц */
+  .MuiTableContainer-root {
+    scrollbar-width: thin !important;
+    scrollbar-color: #1976d2 #f5f5f5 !important;
+  }
+  
+  .MuiTableContainer-root::-webkit-scrollbar {
+    height: 8px !important;
+    width: 8px !important;
+  }
+  
+  .MuiTableContainer-root::-webkit-scrollbar-track {
+    background: #f5f5f5 !important;
+    border-radius: 4px !important;
+  }
+  
+  .MuiTableContainer-root::-webkit-scrollbar-thumb {
+    background: #1976d2 !important;
+    border-radius: 4px !important;
+  }
+  
+  .MuiTableContainer-root::-webkit-scrollbar-thumb:hover {
+    background: #1565c0 !important;
   }
   
   /* Улучшаем формы */
