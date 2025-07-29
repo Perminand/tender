@@ -30,7 +30,9 @@ import {
   FileUpload as FileUploadIcon,
   Visibility as VisibilityIcon,
   Add as AddIcon,
-  Business as BusinessIcon
+  Business as BusinessIcon,
+  Delete as DeleteIcon,
+  Send as SendIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -64,6 +66,7 @@ export default function RequestRegistryPage() {
   const [data, setData] = useState<RequestRegistryRowDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
   const [filters, setFilters] = useState({
     organization: '',
@@ -157,6 +160,24 @@ export default function RequestRegistryPage() {
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedRequestId) return;
+    
+    try {
+      await api.delete(`/api/requests/${selectedRequestId}`);
+      fetchData();
+      setConfirmDelete(false);
+      setSelectedRequestId(null);
+    } catch (error: any) {
+      console.error('Ошибка при удалении заявки:', error);
+      alert('Ошибка при удалении заявки: ' + (error.response?.data?.message || error.message));
+      setConfirmDelete(false);
+      setSelectedRequestId(null);
+    }
+  };
+
+
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('ru-RU');
@@ -239,6 +260,7 @@ export default function RequestRegistryPage() {
               e.stopPropagation();
               navigate(`/requests/${row.requestId}`);
             }}
+            title="Просмотр"
           >
             <VisibilityIcon />
           </IconButton>
@@ -258,8 +280,36 @@ export default function RequestRegistryPage() {
               e.stopPropagation();
               navigate(`/requests/${row.requestId}/edit`);
             }}
+            title="Редактировать"
           >
             <Edit />
+          </IconButton>
+
+          {row.status === 'SAVED' && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedRequestId(row.requestId);
+                setConfirmCreateTender(true);
+              }}
+              title="Создать тендер"
+              color="success"
+            >
+              <SendIcon />
+            </IconButton>
+          )}
+          <IconButton
+            size="small"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedRequestId(row.requestId);
+              setConfirmDelete(true);
+            }}
+            title="Удалить"
+            color="error"
+          >
+            <DeleteIcon />
           </IconButton>
         </Box>
       ),
@@ -420,6 +470,26 @@ export default function RequestRegistryPage() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Диалог подтверждения удаления */}
+      <Dialog open={confirmDelete} onClose={() => { setConfirmDelete(false); setSelectedRequestId(null); }}>
+        <DialogTitle>Удалить заявку?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Вы уверены, что хотите удалить эту заявку? Это действие нельзя будет отменить.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => { setConfirmDelete(false); setSelectedRequestId(null); }}>
+            Отмена
+          </Button>
+          <Button color="error" onClick={handleDelete}>
+            Удалить
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
     </Paper>
   );
 } 
