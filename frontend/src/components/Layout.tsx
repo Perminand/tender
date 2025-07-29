@@ -61,6 +61,7 @@ const menuStructure = [
     title: 'Тендерные процедуры',
     items: [
       { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
+      { label: 'Процесс заявок', to: '/requests/process', icon: <AssessmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
       { label: 'Тендеры', to: '/tenders', icon: <GavelIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_SUPPLIER', 'ROLE_VIEWER'] },
       { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon />, roles: ['ROLE_SUPPLIER', 'ROLE_MANAGER', 'ROLE_ADMIN'] },
       { label: 'Информация о заказчиках', to: '/customer-summary', icon: <BusinessIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] }
@@ -164,7 +165,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
       <Toolbar />
-      <List sx={{ flexGrow: 1, py: 0 }}>
+      <List sx={{ flexGrow: 1, py: 0, overflow: 'auto' }}>
         {filteredMenuStructure.map((section, sectionIndex) => {
           const isExpanded = expandedSections.has(section.title);
           // Теперь все секции могут сворачиваться, даже если один пункт
@@ -304,7 +305,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             {isSmallMobile ? 'Тендер' : 'Тендерная система'}
           </Typography>
           <Box sx={{ flexGrow: 1 }} />
-          <AlertNotification username={user?.username} />
+          <AlertNotification />
           
           {/* Пользовательское меню */}
           {user && (
@@ -382,7 +383,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               borderRight: 0,
               bgcolor: 'background.paper',
               boxShadow: isMobile ? 3 : 1,
-              overflow: 'hidden',
+              overflow: 'auto',
               transition: 'width 0.3s ease-in-out',
             },
           }}

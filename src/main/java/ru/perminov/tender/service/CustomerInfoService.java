@@ -173,7 +173,7 @@ public class CustomerInfoService {
             request.getDate(),
             request.getProject() != null ? request.getProject().getName() : "",
             calculateRequestAmount(request),
-            request.getStatus()
+            request.getStatus().name()
         );
     }
 
@@ -252,7 +252,7 @@ public class CustomerInfoService {
             request.getDate(),
             request.getProject() != null ? request.getProject().getName() : "",
             calculateRequestAmount(request),
-            request.getStatus(),
+            request.getStatus().name(),
             tenderHierarchies
         );
     }

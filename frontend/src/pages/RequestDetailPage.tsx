@@ -44,6 +44,7 @@ interface RequestMaterial {
   note?: string;
   deliveryDate?: string;
   supplierMaterialName?: string;
+  estimateMaterialName?: string; // Наименование материала (смета)
   estimatePrice?: string;
   materialLink?: string;
   estimateUnit?: Unit | null;
@@ -143,7 +144,7 @@ const RequestDetailPage: React.FC = () => {
             cellText = mat.unit && typeof mat.unit === 'object' ? mat.unit.shortName : (mat.unit || '');
             break;
           case 5: // Наименование материала (смета)
-            cellText = mat.material && typeof mat.material === 'object' ? mat.material.name : (mat.material || '');
+            cellText = mat.estimateMaterialName || '';
             break;
           case 6: // Характеристики (смета)
             cellText = mat.characteristics || '';
@@ -415,7 +416,7 @@ const RequestDetailPage: React.FC = () => {
                       width: colWidths[5],
                       backgroundColor: '#f0f8ff',
                       borderLeft: '2px solid #1976d2'
-                    }} title={mat.material && typeof mat.material === 'object' ? mat.material.name : mat.material || '-'}>{mat.material && typeof mat.material === 'object' ? mat.material.name : mat.material || '-'}</TableCell>
+                    }} title={mat.estimateMaterialName || '-'}>{mat.estimateMaterialName || '-'}</TableCell>
                     <TableCell sx={{ width: colWidths[6], backgroundColor: '#f0f8ff' }} title={mat.size || '-'}>{mat.size || '-'}</TableCell>
                     <TableCell sx={{ width: colWidths[7], backgroundColor: '#f0f8ff' }} title={mat.estimateQuantity || '-'}>{mat.estimateQuantity || '-'}</TableCell>
                     <TableCell sx={{ width: colWidths[8], backgroundColor: '#f0f8ff' }} title={mat.estimateUnit && typeof mat.estimateUnit === 'object' ? mat.estimateUnit.shortName : mat.estimateUnit || '-'}>{mat.estimateUnit && typeof mat.estimateUnit === 'object' ? mat.estimateUnit.shortName : mat.estimateUnit || '-'}</TableCell>

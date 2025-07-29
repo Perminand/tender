@@ -13,6 +13,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
     menuItems: [
       'dashboard',
       'requests/registry',
+      'requests/process',
       'tenders',
       'proposals',
       'customer-summary',
@@ -38,6 +39,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       '/api/dashboard',
       '/api/alerts/*',
       '/api/requests/*',
+      '/api/requests/process/*',
       '/api/tenders/*',
       '/api/proposals/*',
       '/api/customer-info/*',
@@ -77,6 +79,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
     menuItems: [
       'dashboard',
       'requests/registry',
+      'requests/process',
       'tenders',
       'proposals',
       'customer-summary',
@@ -136,7 +139,8 @@ export const ROLE_PERMISSIONS: RolePermissions = {
   'ROLE_CUSTOMER': {
     menuItems: [
       'dashboard',
-      'requests/registry'
+      'requests/registry',
+      'requests/process'
     ],
     apiEndpoints: [
       '/api/dashboard',
@@ -186,6 +190,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
     menuItems: [
       'dashboard',
       'requests/registry',
+      'requests/process',
       'tenders',
       'customer-summary',
       'contracts',

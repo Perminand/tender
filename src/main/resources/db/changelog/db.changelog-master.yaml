@@ -113,4 +113,10 @@ databaseChangeLog:
       file: db/changelog/changes/V057_create_import_column_mapping.sql
   - include:
       file: db/changelog/changes/V058_add_estimate_quantity_to_request_materials.sql
+  - include:
+      file: db/changelog/changes/V059_create_process_tables.sql
+  - include:
+      file: db/changelog/changes/V061_fix_request_status_values.sql
+  - include:
+      file: db/changelog/changes/V062_add_estimate_material_name.sql
 

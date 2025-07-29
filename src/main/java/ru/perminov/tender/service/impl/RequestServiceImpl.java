@@ -201,7 +201,7 @@ public class RequestServiceImpl implements RequestService {
         
         // Обновляем статус заявки на 'TENDER'
         log.info("Текущий статус заявки {}: {}", requestId, request.getStatus());
-        request.setStatus("TENDER");
+        request.setStatus(Request.RequestStatus.IN_PROGRESS);
         log.info("Установлен новый статус заявки {}: {}", requestId, request.getStatus());
         requestRepository.save(request);
         requestRepository.flush(); // Явно сохраняем изменения

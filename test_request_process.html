@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест API процесса заявок</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        h2 {
+            color: #666;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .loading {
+            color: #007bff;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тест API процесса заявок</h1>
+    
+    <div class="container">
+        <h2>Краткий обзор процесса</h2>
+        <button onclick="testBriefProcess()">Получить краткий обзор всех процессов</button>
+        <button onclick="testBriefProcessById()">Получить краткий обзор по ID заявки</button>
+        <div id="briefResult" class="result"></div>
+    </div>
+
+    <div class="container">
+        <h2>Подробный обзор процесса</h2>
+        <button onclick="testDetailedProcess()">Получить подробный обзор всех процессов</button>
+        <button onclick="testDetailedProcessById()">Получить подробный обзор по ID заявки</button>
+        <div id="detailedResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+
+        async function makeRequest(url, resultId) {
+            const resultDiv = document.getElementById(resultId);
+            resultDiv.innerHTML = '<span class="loading">Загрузка...</span>';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = JSON.stringify(data, null, 2);
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Ошибка ${response.status}: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Ошибка сети: ${error.message}`;
+            }
+        }
+
+        function testBriefProcess() {
+            makeRequest(`${API_BASE}/requests/process/brief/list`, 'briefResult');
+        }
+
+        function testBriefProcessById() {
+            const requestId = prompt('Введите ID заявки (UUID):');
+            if (requestId) {
+                makeRequest(`${API_BASE}/requests/process/brief/${requestId}`, 'briefResult');
+            }
+        }
+
+        function testDetailedProcess() {
+            makeRequest(`${API_BASE}/requests/process/list`, 'detailedResult');
+        }
+
+        function testDetailedProcessById() {
+            const requestId = prompt('Введите ID заявки (UUID):');
+            if (requestId) {
+                makeRequest(`${API_BASE}/requests/process/${requestId}`, 'detailedResult');
+            }
+        }
+
+        // Автоматически тестируем краткий обзор при загрузке страницы
+        window.onload = function() {
+            setTimeout(() => {
+                testBriefProcess();
+            }, 1000);
+        };
+    </script>
+</body>
+</html> 

@@ -85,7 +85,7 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
                     request.getProject().getName(),
                     materialsCount,
                     note,
-                    request.getStatus() != null ? request.getStatus() : "DRAFT"
+                    request.getStatus() != null ? request.getStatus().name() : "DRAFT"
             ));
 
             // Логируем статус для отладки

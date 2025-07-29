@@ -37,6 +37,12 @@ public class Request {
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<RequestMaterial> requestMaterials = new ArrayList<>();
 
+    @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Tender> tenders = new ArrayList<>();
+
+    @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Invoice> invoices = new ArrayList<>();
+
     private String requestNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -45,5 +51,26 @@ public class Request {
 
     private String applicant;
     
-    private String status;
+    private String approver;
+    
+    private String performer;
+    
+    private LocalDate deliveryDeadline;
+    
+    @Enumerated(EnumType.STRING)
+    private RequestStatus status = RequestStatus.DRAFT;
+
+    private String location;
+
+    private String notes;
+
+    public enum RequestStatus {
+        DRAFT,           // Черновик
+        SAVED,           // Сохранено
+        SUBMITTED,       // Подана
+        APPROVED,        // Одобрена
+        IN_PROGRESS,     // В работе
+        COMPLETED,       // Завершена
+        CANCELLED        // Отменена
+    }
 }

@@ -34,7 +34,8 @@ interface RequestMaterial {
   note?: string;
   deliveryDate?: string;
   workType?: string;
-  supplierMaterialName?: string;
+  supplierMaterialName?: string; // Наименование в заявке
+  estimateMaterialName?: string; // Наименование материала (смета)
   estimatePrice?: string;
   materialLink?: string;
   estimateUnit?: Unit | null;
@@ -109,7 +110,7 @@ export default function RequestEditPage() {
   const [openMaterialDialog, setOpenMaterialDialog] = useState(false);
   const [materialDialogIdx, setMaterialDialogIdx] = useState<number | null>(null);
 
-  const [supplierNamesOptions, setSupplierNamesOptions] = useState<string[][]>([]);
+
 
   const defaultWidths = [40, 120, 120, 400, 400, 100, 100, 100, 180, 180, 100, 100];
   const [colWidths, setColWidths] = useState<number[]>(defaultWidths);
@@ -327,17 +328,28 @@ export default function RequestEditPage() {
           if (import.meta.env.DEV) {
             console.log('Получены данные с сервера:', JSON.stringify(requestData, null, 2));
                                 console.log('Проверяем поле size в материалах:', requestData.requestMaterials?.map((m: any) => ({ id: m.id, size: m.size })));
+            console.log('Проверяем поле estimateMaterialName в материалах:', requestData.requestMaterials?.map((m: any) => ({ id: m.id, estimateMaterialName: m.estimateMaterialName })));
           }
-          setRequest({
-            ...requestData,
-            materials: (requestData.requestMaterials || []).map((mat: any) => ({
+          const transformedMaterials = (requestData.requestMaterials || []).map((mat: any) => ({
               ...mat,
               workType: typeof mat.workType === 'object' && mat.workType !== null ? mat.workType.id : (mat.workType || ''),
               size: mat.size || '',
               materialLink: mat.materialLink || '',
               estimateUnit: mat.estimateUnit || null,
               estimateQuantity: mat.estimateQuantity ? mat.estimateQuantity.toString() : ''
-            }))
+          }));
+          
+          if (import.meta.env.DEV) {
+            console.log('Преобразованные материалы:', transformedMaterials.map((m: any) => ({ 
+              id: m.id, 
+              estimateMaterialName: m.estimateMaterialName,
+              supplierMaterialName: m.supplierMaterialName 
+            })));
+          }
+          
+          setRequest({
+            ...requestData,
+            materials: transformedMaterials
           });
         })
         .finally(() => setLoading(false));
@@ -345,65 +357,14 @@ export default function RequestEditPage() {
   }, [id, isEdit]);
 
   useEffect(() => {
-    // Загружать supplierNames для каждого материала последовательно сверху вниз
-    const loadSupplierNamesSequentially = async () => {
-      const newSupplierNamesOptions: string[][] = [];
-      
-      for (let idx = 0; idx < (request.materials || []).length; idx++) {
-        const mat = request.materials[idx];
-        if (mat.material?.id && request.organization?.id) {
-          try {
-            const res = await api.get('/api/supplier-material-names/by-material-and-supplier', {
-              params: { materialId: mat.material.id, supplierId: request.organization.id }
-            });
-            const supplierNames = res.data.map((n: any) => n.name);
-            
-            // Если есть названия поставщиков и поле supplierMaterialName пустое, заполняем первым значением
-            // НО только если это не импортированные данные
-            if (supplierNames.length > 0 && !mat.supplierMaterialName && mat.material && !mat.isImported) {
-              setRequest(prevRequest => {
-                const newMaterials = [...(prevRequest.materials || [])];
-                newMaterials[idx].supplierMaterialName = supplierNames[0];
-                return { ...prevRequest, materials: newMaterials };
-              });
-            }
-            
-            newSupplierNamesOptions[idx] = supplierNames;
-          } catch (error: any) {
-            console.error('Ошибка при загрузке названий поставщиков:', error);
-            newSupplierNamesOptions[idx] = [];
-          }
-        } else {
-          newSupplierNamesOptions[idx] = [];
-        }
-        
-        // Добавляем небольшую задержку между запросами для предотвращения перегрузки
-        if (idx < (request.materials || []).length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 100));
-        }
-      }
-      
-      setSupplierNamesOptions(newSupplierNamesOptions);
-    };
-    
-    loadSupplierNamesSequentially();
+    // Убираем логику загрузки названий поставщиков, так как поле "Наименование материала (смета)" теперь просто текстовое
   }, [(request.materials || []).map(m => m.material?.id).join(), request.organization?.id]);
 
   // Перезагружаем названия поставщиков при изменении организации
   useEffect(() => {
     if (request.organization?.id) {
-      // Очищаем названия поставщиков при смене организации только для материалов без выбранного материала
-      // НО сохраняем импортированные значения
-      setRequest(prevRequest => {
-        const newMaterials = (prevRequest.materials || []).map(mat => ({
-          ...mat,
-          // Сохраняем supplierMaterialName если он был установлен (например, при импорте)
-          // Очищаем только если материал не выбран, поле было пустым и это не импортированный материал
-          supplierMaterialName: mat.material ? (mat.supplierMaterialName || '') : 
-            (mat.isImported ? (mat.supplierMaterialName || '') : '')
-        }));
-        return { ...prevRequest, materials: newMaterials };
-      });
+      // НЕ очищаем названия поставщиков при смене организации, чтобы не терять данные
+      // Пользователь может вручную изменить организацию, но данные должны сохраниться
     }
   }, [request.organization?.id]);
 
@@ -436,32 +397,7 @@ export default function RequestEditPage() {
       const selectedMaterial = materials.find(m => m.id === value) || null;
       newMaterials[idx].material = selectedMaterial;
       
-      if (value && request.organization?.id) {
-        api.get('/api/supplier-material-names/by-material-and-supplier', {
-          params: { materialId: value, supplierId: request.organization.id }
-        })
-          .then(res => {
-            const supplierNames = res.data.map((n: any) => n.name);
-            if (supplierNames.length > 0) {
-              setRequest(prevRequest => {
-                const updatedMaterials = [...(prevRequest.materials || [])];
-                // Заполняем только если поле пустое и материал был выбран пользователем (не импортирован)
-                if (!updatedMaterials[idx].supplierMaterialName && updatedMaterials[idx].material && !updatedMaterials[idx].isImported) {
-                  updatedMaterials[idx].supplierMaterialName = supplierNames[0];
-                }
-                return { ...prevRequest, materials: updatedMaterials };
-              });
-            }
-          })
-          .catch(error => {
-            console.error('Ошибка при загрузке названий поставщиков:', error);
-          });
-      } else if (!value) {
-        // Очищаем только если материал не выбран, но сохраняем импортированные значения
-        if (!newMaterials[idx].isImported) {
-          newMaterials[idx].supplierMaterialName = '';
-        }
-      }
+      // Убираем логику загрузки названий поставщиков, так как поле "Наименование материала (смета)" теперь просто текстовое
     } else if (field === 'unit') {
       newMaterials[idx].unit = units.find(u => u.id === value) || null;
     } else if (field === 'characteristics') {
@@ -484,7 +420,7 @@ export default function RequestEditPage() {
       ...request,
       materials: [
         ...(request.materials || []),
-        { material: null, characteristics: '', size: '', quantity: '', unit: null, note: '', deliveryDate: '', workType: '', supplierMaterialName: '', estimatePrice: '', materialLink: '', isImported: false }
+          { material: null, characteristics: '', size: '', quantity: '', unit: null, note: '', deliveryDate: '', workType: '', supplierMaterialName: '', estimateMaterialName: '', estimatePrice: '', materialLink: '', isImported: false }
       ]
     });
   };
@@ -546,6 +482,7 @@ export default function RequestEditPage() {
             note: mat.note || '',
             deliveryDate: mat.deliveryDate || '',
             supplierMaterialName: mat.supplierMaterialName || '',
+            estimateMaterialName: mat.estimateMaterialName || '',
             estimatePrice: mat.estimatePrice ? parseFloat(mat.estimatePrice) : null,
             materialLink: mat.materialLink || '',
             estimateUnit: mat.estimateUnit ? { id: mat.estimateUnit.id } : null,
@@ -743,9 +680,19 @@ export default function RequestEditPage() {
         
         // Индексы нужных колонок с поддержкой пользовательского mapping
         const idxMaterialName = getColumnIndex('materialName', 
-          (h) => h.findIndex(header => (header || '').toString().trim().toLowerCase() === 'наименование материала, услуги по смете'));
+          (h) => {
+            return h.findIndex(header => {
+              const val = (header || '').toString().trim().toLowerCase();
+              return val.includes('наименование') && val.includes('материал') && val.includes('смет');
+            });
+          });
         const idxSupplierMaterialName = getColumnIndex('supplierMaterialName',
-          (h) => h.findIndex(header => (header || '').toString().trim().toLowerCase() === 'наименование материала, услуги по заявке'));
+          (h) => {
+            return h.findIndex(header => {
+              const val = (header || '').toString().trim().toLowerCase();
+              return val.includes('наименование') && val.includes('материал') && val.includes('заявк');
+            });
+          });
         const idxSize = getColumnIndex('size',
           (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('характеристики материала по смете')));
         const idxQuantity = getColumnIndex('quantity',
@@ -776,15 +723,53 @@ export default function RequestEditPage() {
         const idxMaterialLink = getColumnIndex('materialLink',
           (h) => h.findIndex(header => (header || '').toString().toLowerCase().includes('ссылка')));
 
+        // Отладочная информация
+        if (import.meta.env.DEV) {
+          console.log('Найденные индексы колонок:', {
+            materialName: idxMaterialName,
+            supplierMaterialName: idxSupplierMaterialName,
+            size: idxSize,
+            quantity: idxQuantity,
+            estimateQuantity: idxEstimateQuantity,
+            unit: idxUnit,
+            estimateUnit: idxEstimateUnit,
+            note: idxNote,
+            deliveryDate: idxDeliveryDate,
+            workType: idxWorkType,
+            estimatePrice: idxEstimatePrice,
+            materialLink: idxMaterialLink
+          });
+          console.log('Детали найденных индексов:', {
+            materialName: idxMaterialName !== -1 ? `${idxMaterialName}: "${headers[idxMaterialName]}"` : 'не найдено',
+            supplierMaterialName: idxSupplierMaterialName !== -1 ? `${idxSupplierMaterialName}: "${headers[idxSupplierMaterialName]}"` : 'не найдено',
+            size: idxSize !== -1 ? `${idxSize}: "${headers[idxSize]}"` : 'не найдено'
+          });
+          console.log('Заголовки:', headers);
+          console.log('Значения заголовков:', headers.map((h, i) => `${i}: "${h}"`));
+          
+          // Поиск колонок с "смет" в названии
+          const smetColumns = headers.map((h, i) => ({ index: i, value: h })).filter(item => 
+            item.value && item.value.toString().toLowerCase().includes('смет')
+          );
+          console.log('Колонки со словом "смет":', smetColumns);
+          console.log('Детали колонок со словом "смет":', smetColumns.map(col => `${col.index}: "${col.value}"`));
+          
+          // Поиск колонок с "наименование" в названии
+          const nameColumns = headers.map((h, i) => ({ index: i, value: h })).filter(item => 
+            item.value && item.value.toString().toLowerCase().includes('наименование')
+          );
+          console.log('Колонки со словом "наименование":', nameColumns);
+          console.log('Детали колонок со словом "наименование":', nameColumns.map(col => `${col.index}: "${col.value}"`));
+        }
+
         const importedMaterials = [];
         for (let i = 0; i < dataRows.length; i++) {
           const row = dataRows[i] as any[];
           if (!row[idxMaterialName]) continue;
           const materialName = row[idxMaterialName] || '';
           const supplierMaterialName = idxSupplierMaterialName !== -1 ? row[idxSupplierMaterialName] || '' : '';
-          const foundMaterial = materials.find(
-            m => m.name.trim().toLowerCase() === materialName.trim().toLowerCase()
-          );
+          // Убираем поиск материала в справочнике, так как поле теперь просто текстовое
+          const foundMaterial = null;
           // Преобразовать дату поставки (deliveryDate)
           let deliveryDateValue = idxDeliveryDate !== -1 ? row[idxDeliveryDate] || '' : '';
           if (typeof deliveryDateValue === 'number' || /^\d+$/.test(deliveryDateValue)) {
@@ -792,9 +777,10 @@ export default function RequestEditPage() {
           } else if (typeof deliveryDateValue === 'string') {
             deliveryDateValue = parseDateString(deliveryDateValue);
           }
-          importedMaterials.push({
+          const importedMaterial = {
             material: foundMaterial ? foundMaterial : null,
-            supplierMaterialName: supplierMaterialName,
+            supplierMaterialName: supplierMaterialName, // Наименование в заявке (из колонки "Наименование материала, услуги по Заявке")
+            estimateMaterialName: materialName, // Наименование материала (смета) (из колонки "Наименование материала, услуги по Смете")
             size: idxSize !== -1 ? row[idxSize] || '' : '',
             quantity: idxQuantity !== -1 ? row[idxQuantity] || '' : '',
             estimateQuantity: idxEstimateQuantity !== -1 ? row[idxEstimateQuantity] || '' : '',
@@ -806,35 +792,39 @@ export default function RequestEditPage() {
             estimatePrice: idxEstimatePrice !== -1 ? row[idxEstimatePrice] || '' : '',
             materialLink: idxMaterialLink !== -1 ? row[idxMaterialLink] || '' : '',
             isImported: true, // Помечаем как импортированный материал
-          });
+          };
+
+          // Отладочная информация для первого материала
+          if (import.meta.env.DEV && i === 0) {
+            console.log('Первый импортированный материал:', {
+              materialName,
+              supplierMaterialName,
+              foundMaterial: foundMaterial?.name,
+              materialField: importedMaterial.material,
+              size: importedMaterial.size,
+              quantity: importedMaterial.quantity,
+              estimateQuantity: importedMaterial.estimateQuantity,
+              supplierMaterialNameField: importedMaterial.supplierMaterialName,
+              estimateMaterialNameField: importedMaterial.estimateMaterialName
+            });
+            console.log('Строка данных:', row);
+            console.log('Индексы колонок:', {
+              idxMaterialName,
+              idxSupplierMaterialName,
+              idxSize
+            });
+            console.log('Значения из строки по найденным индексам:', {
+              materialNameValue: idxMaterialName !== -1 ? row[idxMaterialName] : 'не найдено',
+              supplierMaterialNameValue: idxSupplierMaterialName !== -1 ? row[idxSupplierMaterialName] : 'не найдено',
+              sizeValue: idxSize !== -1 ? row[idxSize] : 'не найдено'
+            });
+          }
+
+          importedMaterials.push(importedMaterial);
         }
 
-        // ШАГ 5: Если организация выбрана, ищем соответствия через org_supplier_material_mapping для не найденных материалов
+        // ШАГ 5: Убираем логику маппинга материалов, так как поле "Наименование материала (смета)" теперь просто текстовое
         setImportStep('mapping');
-        if (orgObj) {
-          for (const mat of importedMaterials) {
-            if (!mat.material && mat.supplierMaterialName) {
-              try {
-                const res = await api.get('/api/org-supplier-material-mapping', {
-                  params: { organizationId: orgObj.id, supplierName: mat.supplierMaterialName }
-                });
-                if (res.data && res.data.materialId) {
-                  const foundMaterial = materials.find(m => m.id === res.data.materialId);
-                  if (foundMaterial) {
-                    mat.material = foundMaterial;
-                  }
-                }
-                // Добавляем небольшую задержку между запросами для больших файлов
-                await new Promise(resolve => setTimeout(resolve, 50));
-              } catch (e: any) {
-                // Игнорируем ошибки 404 и другие ошибки API
-                if (e.response && e.response.status !== 404) {
-                  console.warn('Ошибка при поиске маппинга материала:', e.message);
-                }
-              }
-            }
-          }
-        }
 
         // ШАГ 6: Парсинг даты заявки
         let parsedDate = '';
@@ -845,6 +835,18 @@ export default function RequestEditPage() {
         }
 
         setImportStep('done');
+        
+        // Отладочная информация для проверки импортированных данных
+        if (import.meta.env.DEV) {
+          console.log('=== ИМПОРТИРОВАННЫЕ ДАННЫЕ ===');
+          console.log('Всего материалов:', importedMaterials.length);
+          console.log('Первый материал:', importedMaterials[0]);
+                  console.log('Поле supplierMaterialName в первом материале:', importedMaterials[0]?.supplierMaterialName);
+        console.log('Поле estimateMaterialName в первом материале:', importedMaterials[0]?.estimateMaterialName);
+        console.log('Все supplierMaterialName:', importedMaterials.map(m => m.supplierMaterialName));
+        console.log('Все estimateMaterialName:', importedMaterials.map(m => m.estimateMaterialName));
+        }
+        
         setPendingImportData({
           organizationName: orgObj ? (orgObj.legalName || orgObj.shortName || orgObj.name) : org,
           organizationObj: orgObj,
@@ -969,15 +971,7 @@ export default function RequestEditPage() {
       unitMap[u] = res.data;
     }
     // Интеграция данных
-    setRequest(prev => ({
-      ...prev,
-      organization: pendingImportData.organizationObj || prev.organization,
-      requestNumber: pendingImportData.requestNumber || prev.requestNumber,
-      date: pendingImportData.date || prev.date,
-      applicant: pendingImportData.applicant || prev.applicant,
-      project: projectObj || prev.project,
-      warehouse: warehouseObj || prev.warehouse,
-      materials: (pendingImportData.materials || []).map((mat: any) => {
+    const processedMaterials = (pendingImportData.materials || []).map((mat: any) => {
         // workType, characteristics, unit, estimateUnit — ищем среди новых и старых
         let workTypeObj = workTypes.find(w => w.name.trim().toLowerCase() === (mat.workType || '').trim().toLowerCase()) || workTypeMap[mat.workType];
         let charObj = characteristics.find(c => c.name.trim().toLowerCase() === (mat.characteristics || '').trim().toLowerCase()) || charMap[mat.characteristics];
@@ -990,8 +984,45 @@ export default function RequestEditPage() {
           unit: unitObj ? unitObj : null,
           estimateUnit: estimateUnitObj ? estimateUnitObj : null,
         };
-      })
-    }));
+    });
+
+    // Отладочная информация для проверки обработанных данных
+    if (import.meta.env.DEV) {
+      console.log('=== ОБРАБОТАННЫЕ ДАННЫЕ ===');
+      console.log('Всего материалов после обработки:', processedMaterials.length);
+      console.log('Первый материал после обработки:', processedMaterials[0]);
+              console.log('Поле supplierMaterialName в первом материале после обработки:', processedMaterials[0]?.supplierMaterialName);
+        console.log('Поле estimateMaterialName в первом материале после обработки:', processedMaterials[0]?.estimateMaterialName);
+        console.log('Все supplierMaterialName после обработки:', processedMaterials.map(m => m.supplierMaterialName));
+        console.log('Все estimateMaterialName после обработки:', processedMaterials.map(m => m.estimateMaterialName));
+    }
+
+    setRequest(prev => {
+      const newRequest = {
+        ...prev,
+        organization: pendingImportData.organizationObj || prev.organization,
+        requestNumber: pendingImportData.requestNumber || prev.requestNumber,
+        date: pendingImportData.date || prev.date,
+        applicant: pendingImportData.applicant || prev.applicant,
+        project: projectObj || prev.project,
+        warehouse: warehouseObj || prev.warehouse,
+        materials: processedMaterials
+      };
+
+        // Отладочная информация для проверки состояния формы
+  if (import.meta.env.DEV) {
+    console.log('=== СОСТОЯНИЕ ФОРМЫ ПОСЛЕ ИМПОРТА ===');
+    console.log('Новое состояние request:', newRequest);
+    console.log('Количество материалов в форме:', newRequest.materials?.length);
+    console.log('Первый материал в форме:', newRequest.materials?.[0]);
+    console.log('material в первом материале формы:', newRequest.materials?.[0]?.material);
+    console.log('supplierMaterialName в первом материале формы:', newRequest.materials?.[0]?.supplierMaterialName);
+    console.log('estimateMaterialName в первом материале формы:', newRequest.materials?.[0]?.estimateMaterialName);
+    console.log('Все estimateMaterialName в форме:', newRequest.materials?.map(m => m.estimateMaterialName));
+  }
+
+      return newRequest;
+    });
     setOpenImportDialog(false);
     setPendingImportData(null);
 
@@ -1276,7 +1307,7 @@ export default function RequestEditPage() {
                       value={mat.supplierMaterialName || ''}
                     onChange={async (_, value) => handleSupplierMaterialNameChange(idx, value || '')}
                     onInputChange={(_, value) => handleSupplierMaterialNameChange(idx, value || '')}
-                    options={supplierNamesOptions[idx] || []}
+                    options={[]}
                       renderInput={params => (
                         <TextField {...params} size="small" label="Наименование в заявке" InputLabelProps={{ shrink: true }} />
                       )}
@@ -1316,49 +1347,15 @@ export default function RequestEditPage() {
                     maxWidth: 300,
                     backgroundColor: '#f0f8ff',
                     borderLeft: '2px solid #1976d2'
-                  }} title={mat.material?.name || ''}>
-                  <Autocomplete<MaterialOption>
-                    value={materials.find(m => m.id === mat.material?.id) || null}
-                    onChange={(_, value) => {
-                      if (value && (value.inputValue || value.name?.startsWith('Создать "'))) {
-                        // Открыть MaterialEditPage с передачей наименования
-                        const nameToCreate = value.inputValue || (typeof value.name === 'string' && value.name.replace(/^Создать "/, '').replace(/"$/, ''));
-                        if (nameToCreate) {
-                          window.open(`/reference/materials/new?name=${encodeURIComponent(nameToCreate)}`, '_blank');
-                        }
-                        return;
-                      }
-                      handleMaterialChange(idx, 'material', value ? value.id : '');
-                    }}
-                    filterOptions={(options, params) => {
-                      const filtered = options.filter(option =>
-                        option.name.toLowerCase().includes(params.inputValue.toLowerCase())
-                      );
-                      if (
-                        params.inputValue !== '' &&
-                        !options.some(option => option.name.toLowerCase() === params.inputValue.toLowerCase())
-                      ) {
-                        filtered.push({
-                          id: 'CREATE_NEW',
-                          inputValue: params.inputValue,
-                          name: `Создать "${params.inputValue}"`
-                        });
-                      }
-                      return filtered;
-                    }}
-                    selectOnFocus
-                    clearOnBlur
-                    handleHomeEndKeys
-                    options={materials as MaterialOption[]}
-                    getOptionLabel={option => {
-                      if (typeof option === 'string') return option;
-                      if (option.inputValue) return option.name; // Возвращаем name, а не inputValue
-                      return option.name;
-                    }}
-                    renderInput={params => (
-                      <TextField {...params} size="small" label="Наименование материала (смета)" InputLabelProps={{ shrink: true }} />
-                    )}
-                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                              }} title={mat.estimateMaterialName || ''}>
+            <TextField
+              size="small"
+              label="Наименование материала (смета)"
+              value={mat.estimateMaterialName || ''}
+              onChange={e => handleMaterialChange(idx, 'estimateMaterialName', e.target.value)}
+              sx={{ width: '100%', maxWidth: colWidths[5] }}
+              InputLabelProps={{ shrink: true }}
+
                   />
                 </TableCell>
                 <TableCell sx={{ width: colWidths[6], backgroundColor: '#f0f8ff' }} title={mat.size || ''}>

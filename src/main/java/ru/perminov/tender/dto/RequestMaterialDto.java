@@ -27,6 +27,8 @@ public record RequestMaterialDto(
 
     String supplierMaterialName,
 
+    String estimateMaterialName,
+
     @Positive(message = "Сметная цена должна быть больше 0")
     Double estimatePrice,
 

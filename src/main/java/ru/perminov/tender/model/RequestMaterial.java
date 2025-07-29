@@ -37,6 +37,8 @@ public class RequestMaterial {
 
     private String supplierMaterialName;
 
+    private String estimateMaterialName;
+
     private String size;
 
     private Double quantity;

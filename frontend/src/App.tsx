@@ -18,6 +18,7 @@ import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
 import RequestRegistryPage from './pages/RequestRegistryPage';
 import RequestEditPage from './pages/RequestEditPage';
+import RequestProcessPage from './pages/RequestProcessPage';
 import WarehouseListPage from './pages/WarehouseListPage';
 import TenderListPage from './pages/TenderListPage';
 import TenderDetailPage from './pages/TenderDetailPage';
@@ -242,6 +243,13 @@ const App: React.FC = () => (
         <ProtectedRoute>
           <Layout>
             <RequestRegistryPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/requests/process" element={
+        <ProtectedRoute>
+          <Layout>
+            <RequestProcessPage />
           </Layout>
         </ProtectedRoute>
       } />
