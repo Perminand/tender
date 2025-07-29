@@ -205,9 +205,14 @@ const DocumentDetailPage: React.FC = () => {
           Документ: {document.documentNumber}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <IconButton onClick={handleEdit} color="primary">
-            <EditIcon />
-          </IconButton>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={handleEdit}
+          >
+            Редактировать
+          </Button>
           {document.filePath && (
             <IconButton onClick={handleDownload} color="primary">
               <DownloadIcon />

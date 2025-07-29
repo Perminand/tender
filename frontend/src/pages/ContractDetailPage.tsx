@@ -19,6 +19,7 @@ import {
   Divider
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import Edit from '@mui/icons-material/Edit';
 import dayjs from 'dayjs';
 import { api } from '../utils/api';
 
@@ -148,15 +149,24 @@ const ContractDetailPage: React.FC = () => {
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Button startIcon={<ArrowBackIcon />} onClick={() => navigate(-1)}>
-        Назад
-      </Button>
-        <Button 
-          variant="contained" 
-          onClick={() => navigate(`/contracts/${id}/manage`)}
-          sx={{ ml: 2 }}
-        >
-          Управление контрактом
+          Назад
         </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<Edit />}
+            onClick={() => navigate(`/contracts/${id}/edit`)}
+          >
+            Редактировать
+          </Button>
+          <Button 
+            variant="contained" 
+            onClick={() => navigate(`/contracts/${id}/manage`)}
+          >
+            Управление контрактом
+          </Button>
+        </Box>
       </Box>
       
       {/* Основная информация о контракте */}

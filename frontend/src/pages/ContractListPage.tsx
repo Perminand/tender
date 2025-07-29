@@ -39,8 +39,6 @@ import {
   FileUpload as FileUploadIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
 import { api } from '../utils/api';
 import ResponsiveTable from '../components/ResponsiveTable';
@@ -85,10 +83,7 @@ const ContractListPage: React.FC = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
-  const [status, setStatus] = useState<string>('DRAFT');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedContractId, setSelectedContractId] = useState<string | null>(null);
   const [statusStats, setStatusStats] = useState<{ [key: string]: number }>({});
@@ -135,9 +130,7 @@ const ContractListPage: React.FC = () => {
   };
 
   const handleEdit = (contract: Contract) => {
-    setEditingContract(contract);
-    setStatus(contract.status);
-    setDialogOpen(true);
+    navigate(`/contracts/${contract.id}/edit`);
   };
 
   const handleDelete = async () => {
@@ -176,35 +169,7 @@ const ContractListPage: React.FC = () => {
     }
   };
 
-  const handleSubmit = async () => {
-    if (!formData.contractNumber || !formData.supplierId || !formData.tenderId) {
-      showSnackbar('Заполните все обязательные поля', 'error');
-      return;
-    }
 
-    try {
-      const submitData = {
-        ...formData,
-        startDate: formData.startDate?.toISOString(),
-        endDate: formData.endDate?.toISOString(),
-      };
-
-      if (editingContract) {
-        await api.put(`/api/contracts/${editingContract.id}`, submitData);
-        showSnackbar('Контракт обновлен', 'success');
-      } else {
-        await api.post('/api/contracts', submitData);
-        showSnackbar('Контракт создан', 'success');
-      }
-      
-      handleCloseDialog();
-      reloadAll();
-    } catch (error: any) {
-      console.error('Ошибка при сохранении контракта:', error);
-      const errorMessage = error.response?.data?.message || 'Ошибка при сохранении контракта';
-      showSnackbar(errorMessage, 'error');
-    }
-  };
 
   const getStatusColor = (status: string) => {
     const colors: { [key: string]: 'default' | 'primary' | 'secondary' | 'error' | 'info' | 'success' | 'warning' } = {
@@ -405,38 +370,20 @@ const ContractListPage: React.FC = () => {
               />
             </Grid>
             <Grid item xs={2}>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Дата от"
-                  value={null}
-                  onChange={() => {}}
-                  format="DD.MM.YYYY"
-                  slotProps={{
-                    textField: {
-                      size: 'small',
-                      fullWidth: true,
-                    },
-                  }}
-                  disabled
-                />
-              </LocalizationProvider>
+              <TextField
+                label="Дата от"
+                size="small"
+                fullWidth
+                disabled
+              />
             </Grid>
             <Grid item xs={2}>
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
-                <DatePicker
-                  label="Дата до"
-                  value={null}
-                  onChange={() => {}}
-                  format="DD.MM.YYYY"
-                  slotProps={{
-                    textField: {
-                      size: 'small',
-                      fullWidth: true,
-                    },
-                  }}
-                  disabled
-                />
-              </LocalizationProvider>
+              <TextField
+                label="Дата до"
+                size="small"
+                fullWidth
+                disabled
+              />
             </Grid>
             <Grid item xs={2}>
               <Button
@@ -524,116 +471,7 @@ const ContractListPage: React.FC = () => {
         </Table>
       </TableContainer>
 
-      {/* Диалог создания/редактирования */}
-      <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {editingContract ? 'Редактировать контракт' : 'Создать контракт'}
-        </DialogTitle>
-        <form onSubmit={handleSubmit}>
-          <DialogContent>
-            <Grid container spacing={2}>
-              <Grid item xs={6}>
-                <TextField
-                  name="contractNumber"
-                  label="Номер контракта"
-                  fullWidth
-                  required
-                  defaultValue={editingContract?.contractNumber}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <FormControl fullWidth required>
-                  <InputLabel>Статус</InputLabel>
-                  <Select
-                    name="status"
-                    value={status}
-                    onChange={e => setStatus(e.target.value)}
-                  >
-                    <MenuItem value="DRAFT">Черновик</MenuItem>
-                    <MenuItem value="ACTIVE">Активный</MenuItem>
-                    <MenuItem value="COMPLETED">Завершен</MenuItem>
-                    <MenuItem value="CANCELLED">Отменен</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="title"
-                  label="Название"
-                  fullWidth
-                  required
-                  defaultValue={editingContract?.title}
-                />
-              </Grid>
-              <Grid item xs={6}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Дата начала"
-                    slotProps={{
-                      textField: {
-                        name: 'startDate',
-                        fullWidth: true,
-                      },
-                    }}
-                    defaultValue={editingContract?.startDate ? dayjs(editingContract.startDate) : null}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              <Grid item xs={6}>
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <DatePicker
-                    label="Дата окончания"
-                    slotProps={{
-                      textField: {
-                        name: 'endDate',
-                        fullWidth: true,
-                      },
-                    }}
-                    defaultValue={editingContract?.endDate ? dayjs(editingContract.endDate) : null}
-                  />
-                </LocalizationProvider>
-              </Grid>
-              <Grid item xs={6}>
-                <TextField
-                  name="totalAmount"
-                  label="Общая сумма"
-                  type="number"
-                  fullWidth
-                  defaultValue={editingContract?.totalAmount}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="terms"
-                  label="Условия"
-                  multiline
-                  rows={3}
-                  fullWidth
-                  defaultValue={editingContract?.terms}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  name="description"
-                  label="Описание"
-                  multiline
-                  rows={3}
-                  fullWidth
-                  defaultValue={editingContract?.description}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={() => setDialogOpen(false)}>
-              Отмена
-            </Button>
-            <Button type="submit" variant="contained">
-              {editingContract ? 'Обновить' : 'Создать'}
-            </Button>
-          </DialogActions>
-        </form>
-      </Dialog>
+
 
       {/* Снэкбар для уведомлений */}
       <Snackbar

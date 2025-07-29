@@ -258,13 +258,23 @@ const DeliveryDetailPage: React.FC = () => {
         <Typography variant="h4">
           Поставка {delivery.deliveryNumber}
         </Typography>
-        <Button
-          variant="outlined"
-          startIcon={<SettingsIcon />}
-          onClick={() => setStatusManagerOpen(true)}
-        >
-          Управление статусом
-        </Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={() => navigate(`/deliveries/${id}/edit`)}
+          >
+            Редактировать
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<SettingsIcon />}
+            onClick={() => setStatusManagerOpen(true)}
+          >
+            Управление статусом
+          </Button>
+        </Box>
       </Box>
 
       {/* Основная информация */}

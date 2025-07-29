@@ -28,6 +28,7 @@ import { useParams, useNavigate, useLocation, useSearchParams } from 'react-rout
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs from 'dayjs';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { api } from '../utils/api';
 
 interface Contract {
@@ -164,7 +165,7 @@ const ContractEditPage: React.FC = () => {
   const fetchContract = async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/contracts/${id}`);
+      const response = await api.get(`/api/contracts/${id}`);
       const data = response.data;
       setContract(data);
       setFormData({
@@ -228,7 +229,7 @@ const ContractEditPage: React.FC = () => {
 
   const fetchTenders = async () => {
     try {
-      const response = await api.get('/tenders');
+      const response = await api.get('/api/tenders');
       const data = response.data;
       const tendersArray = Array.isArray(data) ? data : (data.content || data.items || []);
       setTenders(tendersArray.filter((tender: Tender) => tender.status === 'AWARDED'));
@@ -239,7 +240,7 @@ const ContractEditPage: React.FC = () => {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await api.get('/companies?type=SUPPLIER');
+      const response = await api.get('/api/companies?type=SUPPLIER');
       const data = response.data;
       setSuppliers(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -263,13 +264,15 @@ const ContractEditPage: React.FC = () => {
       return;
     }
 
-    // Проверка и логирование UUID
-    console.log('tenderId:', tenderId, 'supplierId:', supplierId);
-    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
-    if (!tenderId || !supplierId || !uuidRegex.test(tenderId) || !uuidRegex.test(supplierId)) {
-      showSnackbar('Ошибка: tenderId или supplierId отсутствует или невалиден!', 'error');
-      setLoading(false);
-      return;
+    // Проверка и логирование UUID только при создании из тендера
+    if (isCreatingFromTender) {
+      console.log('tenderId:', tenderId, 'supplierId:', supplierId);
+      const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+      if (!tenderId || !supplierId || !uuidRegex.test(tenderId) || !uuidRegex.test(supplierId)) {
+        showSnackbar('Ошибка: tenderId или supplierId отсутствует или невалиден!', 'error');
+        setLoading(false);
+        return;
+      }
     }
 
     try {
@@ -281,7 +284,7 @@ const ContractEditPage: React.FC = () => {
 
       if (id) {
         // Обновление существующего контракта
-        await api.put(`/contracts/${id}`, submitData);
+        await api.put(`/api/contracts/${id}`, submitData);
         showSnackbar('Контракт обновлен', 'success');
       } else if (isCreatingFromTender) {
         // Создание контракта из тендера (теперь через тело запроса)
@@ -289,7 +292,7 @@ const ContractEditPage: React.FC = () => {
         showSnackbar('Контракт создан из тендера', 'success');
       } else {
         // Создание нового контракта
-        await api.post('/contracts', submitData);
+        await api.post('/api/contracts', submitData);
         showSnackbar('Контракт создан', 'success');
       }
 
@@ -327,9 +330,16 @@ const ContractEditPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        {id ? 'Редактирование контракта' : 'Создание контракта'}
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'center', mb: 3, gap: 1 }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate(id ? `/contracts/${id}` : '/contracts')}
+          sx={{ minWidth: 0, p: 1 }}
+        />
+        <Typography variant="h4" component="h1" sx={{ flexGrow: 1 }}>
+          {id ? 'Редактирование контракта' : 'Создание контракта'}
+        </Typography>
+      </Box>
 
       {isCreatingFromTender && (
         <Alert severity="info" sx={{ mb: 2 }}>

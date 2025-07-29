@@ -1487,9 +1487,11 @@ export default function RequestEditPage() {
         </Button>
         {isEdit && (
           <>
+            {request.status && request.status.toUpperCase() !== 'DRAFT' && (
             <Button variant="outlined" color="success" onClick={() => setConfirmCreateTender(true)} sx={{ ml: 1 }}>
               Создать тендер
             </Button>
+            )}
             <IconButton 
               color="error" 
               onClick={() => setConfirmDelete(true)} 

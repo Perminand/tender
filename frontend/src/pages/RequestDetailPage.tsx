@@ -25,6 +25,7 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AddIcon from '@mui/icons-material/Add';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import Edit from '@mui/icons-material/Edit';
 import dayjs from 'dayjs';
 import { api } from '../utils/api';
 
@@ -245,7 +246,9 @@ const RequestDetailPage: React.FC = () => {
   // Проверяем, можно ли создать тендер
   const canCreateTender = request && 
     request.materials && 
-    request.materials.length > 0;
+    request.materials.length > 0 &&
+    request.status && 
+    request.status.toUpperCase() !== 'DRAFT';
 
   // Определяем текст кнопки в зависимости от статуса
   const getButtonText = () => {
@@ -279,6 +282,15 @@ const RequestDetailPage: React.FC = () => {
           Назад
         </Button>
         <Box>
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<Edit />}
+            onClick={() => navigate(`/requests/${id}/edit`)}
+            sx={{ mr: 1 }}
+          >
+            Редактировать
+          </Button>
           <Button
             variant="outlined"
             color="primary"

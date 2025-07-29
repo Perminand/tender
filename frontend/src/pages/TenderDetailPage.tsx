@@ -33,7 +33,8 @@ import {
   Star as StarIcon,
   ArrowBack as ArrowBackIcon,
   Assessment as AssessmentIcon,
-  Clear as ClearIcon
+  Clear as ClearIcon,
+  Edit as EditIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -373,9 +374,17 @@ const TenderDetailPage: React.FC = () => {
           onClick={() => navigate('/tenders')}
           sx={{ minWidth: 0, p: 1 }}
         />
-        <Typography variant="h4" component="h1">
+        <Typography variant="h4" component="h1" sx={{ flexGrow: 1 }}>
           Тендер №{tender.tenderNumber}
         </Typography>
+        <Button
+          variant="outlined"
+          color="primary"
+          startIcon={<EditIcon />}
+          onClick={() => navigate(`/tenders/${id}/edit`)}
+        >
+          Редактировать
+        </Button>
       </Box>
 
       {/* Управление статусом тендера - скрыто для поставщика */}
