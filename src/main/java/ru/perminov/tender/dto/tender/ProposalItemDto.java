@@ -3,6 +3,10 @@ package ru.perminov.tender.dto.tender;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
+import ru.perminov.tender.dto.dictionary.BrandDto;
+import ru.perminov.tender.dto.dictionary.CountryDto;
+import ru.perminov.tender.dto.dictionary.ManufacturerDto;
+import ru.perminov.tender.dto.dictionary.WarrantyDto;
 
 import java.util.UUID;
 
@@ -19,13 +23,13 @@ public class ProposalItemDto {
 
     private String description;
 
-    private String brand;
+    private BrandDto brand;
 
     private String model;
 
-    private String manufacturer;
+    private ManufacturerDto manufacturer;
 
-    private String countryOfOrigin;
+    private CountryDto countryOfOrigin;
 
         @NotNull(message = "Количество обязательно для заполнения")
     @Positive(message = "Количество должно быть больше 0")
@@ -46,11 +50,17 @@ public class ProposalItemDto {
 
     private String deliveryPeriod;
 
-    private String warranty;
+    private WarrantyDto warranty;
 
     private String additionalInfo;
     
     private Boolean isBestPrice;
     private Double priceDifference;
+    
+    private Double unitPriceWithVat;
+    
+    private Double weight;
+    
+    private Double deliveryCost;
     
 } 

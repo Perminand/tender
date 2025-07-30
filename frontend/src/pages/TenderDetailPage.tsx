@@ -81,6 +81,9 @@ interface ProposalItemDto {
   additionalInfo: string;
   isBestPrice: boolean;
   priceDifference: number;
+  unitPriceWithVat?: number;
+  weight?: number;
+  deliveryCost?: number;
 }
 
 interface SupplierProposalDto {
@@ -902,7 +905,11 @@ const TenderDetailPage: React.FC = () => {
                                   <TableCell>Описание</TableCell>
                                   <TableCell>Бренд/Модель</TableCell>
                                   <TableCell>Производитель</TableCell>
-                                  <TableCell>Цена</TableCell>
+                                  <TableCell>Цена за ед.</TableCell>
+                                  <TableCell>Цена с НДС</TableCell>
+                                  <TableCell>Вес</TableCell>
+                                  <TableCell>Доставка</TableCell>
+                                  <TableCell>Сумма</TableCell>
                                   <TableCell>Лучшая</TableCell>
                                   {tender.status === 'EVALUATION' && <TableCell>Действия</TableCell>}
                                 </TableRow>
@@ -917,6 +924,10 @@ const TenderDetailPage: React.FC = () => {
                                        item.brand || item.model || '-'}
                                     </TableCell>
                                     <TableCell>{item.manufacturer || '-'}</TableCell>
+                                    <TableCell>{formatPrice(item.unitPrice)}</TableCell>
+                                    <TableCell>{item.unitPriceWithVat ? formatPrice(item.unitPriceWithVat) : '-'}</TableCell>
+                                    <TableCell>{item.weight ? `${item.weight} кг` : '-'}</TableCell>
+                                    <TableCell>{item.deliveryCost ? formatPrice(item.deliveryCost) : '-'}</TableCell>
                                     <TableCell>{formatPrice(item.totalPrice)}</TableCell>
                                     <TableCell>
                                       {item.isBestPrice && (

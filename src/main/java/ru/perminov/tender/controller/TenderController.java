@@ -108,7 +108,9 @@ public class TenderController {
     @GetMapping("/{id}/items")
     public ResponseEntity<List<TenderItemDto>> getTenderItems(@PathVariable UUID id) {
         log.info("Получен GET-запрос: получить позиции тендера id={}", id);
-        return ResponseEntity.ok(tenderService.getTenderItems(id));
+        List<TenderItemDto> items = tenderService.getTenderItems(id);
+        log.info("Найдено позиций тендера: {}", items.size());
+        return ResponseEntity.ok(items);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")

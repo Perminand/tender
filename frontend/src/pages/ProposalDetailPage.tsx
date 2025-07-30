@@ -48,6 +48,9 @@ interface ProposalItemDto {
   additionalInfo: string;
   isBestPrice: boolean;
   priceDifference: number;
+  unitPriceWithVat?: number;
+  weight?: number;
+  deliveryCost?: number;
 }
 
 interface ProposalDto {
@@ -385,6 +388,9 @@ const ProposalDetailPage: React.FC = () => {
                       <TableCell>Производитель</TableCell>
                       <TableCell>Количество</TableCell>
                       <TableCell>Цена за ед.</TableCell>
+                      <TableCell>Цена с НДС</TableCell>
+                      <TableCell>Вес</TableCell>
+                      <TableCell>Доставка</TableCell>
                       <TableCell>Сумма</TableCell>
                       <TableCell>Лучшая цена</TableCell>
                     </TableRow>
@@ -402,6 +408,9 @@ const ProposalDetailPage: React.FC = () => {
                           {item.quantity} {item.unitName}
                         </TableCell>
                         <TableCell>{formatPrice(item.unitPrice)}</TableCell>
+                        <TableCell>{item.unitPriceWithVat ? formatPrice(item.unitPriceWithVat) : '-'}</TableCell>
+                        <TableCell>{item.weight ? `${item.weight} кг` : '-'}</TableCell>
+                        <TableCell>{item.deliveryCost ? formatPrice(item.deliveryCost) : '-'}</TableCell>
                         <TableCell>{formatPrice(item.totalPrice)}</TableCell>
                         <TableCell>
                           {item.isBestPrice && (
@@ -413,7 +422,7 @@ const ProposalDetailPage: React.FC = () => {
                       </TableRow>
                     ))}
                     <TableRow>
-                      <TableCell colSpan={6} align="right">
+                      <TableCell colSpan={9} align="right">
                         <Typography variant="h6">
                           Итого:
                         </Typography>

@@ -357,13 +357,21 @@ public class TenderServiceImpl implements TenderService {
     @Override
     @Transactional(readOnly = true)
     public List<TenderItemDto> getTenderItems(UUID tenderId) {
+        log.info("Получение элементов тендера для tenderId: {}", tenderId);
         // fetch join для unit
-        List<TenderItem> items = tenderRepository.findByIdWithItemsAndUnits(tenderId) != null
-            ? new ArrayList<>(tenderRepository.findByIdWithItemsAndUnits(tenderId).getTenderItems())
+        Tender tender = tenderRepository.findByIdWithItemsAndUnits(tenderId);
+        log.info("Найден тендер: {}", tender != null ? tender.getId() : "null");
+        
+        List<TenderItem> items = tender != null
+            ? new ArrayList<>(tender.getTenderItems())
             : new ArrayList<>();
-        return items.stream()
+        log.info("Найдено элементов тендера: {}", items.size());
+        
+        List<TenderItemDto> result = items.stream()
                 .map(tenderItemMapper::toDto)
                 .collect(Collectors.toList());
+        log.info("Преобразовано в DTO: {}", result.size());
+        return result;
     }
 
     @Override

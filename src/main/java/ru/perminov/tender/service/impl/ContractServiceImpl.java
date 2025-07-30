@@ -365,7 +365,7 @@ public class ContractServiceImpl implements ContractService {
             contractItem.setTotalPrice(BigDecimal.valueOf(proposalItem.getTotalPrice()));
             contractItem.setSpecifications(proposalItem.getSpecifications());
             contractItem.setDeliveryPeriod(proposalItem.getDeliveryPeriod());
-            contractItem.setWarranty(proposalItem.getWarranty());
+            contractItem.setWarranty(proposalItem.getWarranty() != null ? proposalItem.getWarranty().getName() : null);
             contractItem.setAdditionalInfo(proposalItem.getAdditionalInfo());
             
             contractItemRepository.save(contractItem);

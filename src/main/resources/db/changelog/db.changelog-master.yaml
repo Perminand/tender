@@ -119,4 +119,12 @@ databaseChangeLog:
       file: db/changelog/changes/V061_fix_request_status_values.sql
   - include:
       file: db/changelog/changes/V062_add_estimate_material_name.sql
+  - include:
+      file: db/changelog/changes/V063_add_fields_to_proposal_items.sql
+  - include:
+      file: db/changelog/changes/V064_add_dictionaries.sql
+  - include:
+      file: db/changelog/changes/V065_update_proposal_items_with_dictionaries.sql
+  - include:
+      file: db/changelog/data/V004_insert_test_tenders.sql
 

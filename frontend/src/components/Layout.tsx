@@ -84,16 +84,7 @@ const menuStructure = [
   },
   {
     title: 'Справочники',
-    items: [
-      { label: 'Контрагенты', to: '/counterparties', icon: <PeopleIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-      { label: 'Материалы', to: '/materials', icon: <InventoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-      { label: 'Категории', to: '/reference/categories', icon: <CategoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-      { label: 'Типы материалов', to: '/reference/material-types', icon: <InventoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-      { label: 'Единицы измерения', to: '/reference/units', icon: <CategoryIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-      { label: 'Склады', to: '/warehouses', icon: <WarehouseIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-      { label: 'Проекты', to: '/reference/projects', icon: <BusinessIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
-      { label: 'Типы контактов', to: '/reference/contact-types', icon: <PeopleIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] }
-    ]
+    items: []
   },
   {
     title: 'Администрирование',
@@ -143,6 +134,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   const handleSectionToggle = (sectionTitle: string) => {
+    // Для раздела "Справочники" - переход на страницу справочников
+    if (sectionTitle === 'Справочники') {
+      navigate('/reference');
+      if (isMobile) {
+        setMobileOpen(false);
+      }
+      return;
+    }
+    
+    // Для остальных разделов - стандартное поведение раскрытия
     const newExpandedSections = new Set(expandedSections);
     if (newExpandedSections.has(sectionTitle)) {
       newExpandedSections.delete(sectionTitle);
@@ -160,7 +161,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       const menuPath = item.to.replace('/', '').replace('/', '/');
       return canAccess(menuPath);
     })
-  })).filter(section => section.items.length > 0);
+  })).filter(section => {
+    // Раздел "Справочники" всегда отображается, даже без подпунктов
+    if (section.title === 'Справочники') {
+      return true;
+    }
+    // Остальные разделы отображаются только если есть доступные подпункты
+    return section.items.length > 0;
+  });
 
   const drawer = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', bgcolor: 'background.paper' }}>
@@ -168,8 +176,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <List sx={{ flexGrow: 1, py: 0, overflow: 'auto' }}>
         {filteredMenuStructure.map((section, sectionIndex) => {
           const isExpanded = expandedSections.has(section.title);
-          // Теперь все секции могут сворачиваться, даже если один пункт
-          const hasMultipleItems = true;
+          const isReferenceSection = section.title === 'Справочники';
           
           return (
             <React.Fragment key={section.title}>
@@ -197,55 +204,59 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       fontWeight: 600
                     }}
                   />
-                  <ListItemIcon sx={{ minWidth: 'auto', color: 'text.secondary' }}>
-                    {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                  </ListItemIcon>
+                  {!isReferenceSection && (
+                    <ListItemIcon sx={{ minWidth: 'auto', color: 'text.secondary' }}>
+                      {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </ListItemIcon>
+                  )}
                 </ListItemButton>
               </ListItem>
-              <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                  {section.items.map((item) => {
-                    const selected = location.pathname.startsWith(item.to);
-                    return (
-                      <ListItem key={item.to} disablePadding>
-                        <ListItemButton
-                          component={RouterLink}
-                          to={item.to}
-                          selected={selected}
-                          sx={{
-                            borderRadius: 2,
-                            mx: 1,
-                            my: 0.5,
-                            color: selected ? 'primary.main' : 'text.primary',
-                            bgcolor: selected ? 'primary.50' : 'transparent',
-                            '&:hover': {
-                              bgcolor: 'primary.100',
-                            },
-                            transition: 'background 0.2s',
-                            pl: { xs: 3, md: 5 },
-                          }}
-                          onClick={() => isMobile && setMobileOpen(false)}
-                        >
-                          <ListItemIcon sx={{ 
-                            color: selected ? 'primary.main' : 'text.secondary', 
-                            minWidth: { xs: 32, md: 36 },
-                            fontSize: { xs: '1.2rem', md: '1.5rem' }
-                          }}>
-                            {item.icon}
-                          </ListItemIcon>
-                          <ListItemText 
-                            primary={item.label} 
-                            primaryTypographyProps={{
-                              fontSize: { xs: '0.75rem', md: '0.875rem' },
-                              fontWeight: selected ? 600 : 400
+              {!isReferenceSection && (
+                <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding>
+                    {section.items.map((item) => {
+                      const selected = location.pathname.startsWith(item.to);
+                      return (
+                        <ListItem key={item.to} disablePadding>
+                          <ListItemButton
+                            component={RouterLink}
+                            to={item.to}
+                            selected={selected}
+                            sx={{
+                              borderRadius: 2,
+                              mx: 1,
+                              my: 0.5,
+                              color: selected ? 'primary.main' : 'text.primary',
+                              bgcolor: selected ? 'primary.50' : 'transparent',
+                              '&:hover': {
+                                bgcolor: 'primary.100',
+                              },
+                              transition: 'background 0.2s',
+                              pl: { xs: 3, md: 5 },
                             }}
-                          />
-                        </ListItemButton>
-                      </ListItem>
-                    );
-                  })}
-                </List>
-              </Collapse>
+                            onClick={() => isMobile && setMobileOpen(false)}
+                          >
+                            <ListItemIcon sx={{ 
+                              color: selected ? 'primary.main' : 'text.secondary', 
+                              minWidth: { xs: 32, md: 36 },
+                              fontSize: { xs: '1.2rem', md: '1.5rem' }
+                            }}>
+                              {item.icon}
+                            </ListItemIcon>
+                            <ListItemText 
+                              primary={item.label} 
+                              primaryTypographyProps={{
+                                fontSize: { xs: '0.75rem', md: '0.875rem' },
+                                fontWeight: selected ? 600 : 400
+                              }}
+                            />
+                          </ListItemButton>
+                        </ListItem>
+                      );
+                    })}
+                  </List>
+                </Collapse>
+              )}
               {sectionIndex < filteredMenuStructure.length - 1 && (
                 <Divider sx={{ my: 1, mx: 2 }} />
               )}

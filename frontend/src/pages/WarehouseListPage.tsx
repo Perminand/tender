@@ -50,9 +50,15 @@ const WarehouseListPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await api.get('/warehouses');
-      setWarehouses(response.data);
+      console.log('Warehouses API response:', response.data);
+      // Убеждаемся, что response.data является массивом
+      const warehousesData = Array.isArray(response.data) ? response.data : [];
+      console.log('Processed warehouses data:', warehousesData);
+      setWarehouses(warehousesData);
     } catch (error) {
+      console.error('Error fetching warehouses:', error);
       setSnackbar({open: true, message: 'Ошибка при загрузке складов', severity: 'error'});
+      setWarehouses([]); // Устанавливаем пустой массив в случае ошибки
     } finally {
       setLoading(false);
     }
@@ -61,9 +67,15 @@ const WarehouseListPage: React.FC = () => {
   const fetchProjects = async () => {
     try {
       const response = await api.get('/projects');
-      setProjects(response.data);
+      console.log('Projects API response:', response.data);
+      // Убеждаемся, что response.data является массивом
+      const projectsData = Array.isArray(response.data) ? response.data : [];
+      console.log('Processed projects data:', projectsData);
+      setProjects(projectsData);
     } catch (error) {
+      console.error('Error fetching projects:', error);
       setSnackbar({open: true, message: 'Ошибка при загрузке проектов', severity: 'error'});
+      setProjects([]); // Устанавливаем пустой массив в случае ошибки
     }
   };
 
@@ -158,7 +170,7 @@ const WarehouseListPage: React.FC = () => {
   };
 
   // --- Поиск ---
-  const filteredWarehouses = warehouses.filter(warehouse =>
+  const filteredWarehouses = (Array.isArray(warehouses) ? warehouses : []).filter(warehouse =>
     warehouse.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (warehouse.project?.name && warehouse.project.name.toLowerCase().includes(searchTerm.toLowerCase()))
   );

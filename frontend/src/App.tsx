@@ -45,6 +45,10 @@ import PaymentDetailPage from './pages/PaymentDetailPage';
 import UserManagementPage from './pages/UserManagementPage';
 import CustomerInfoPage from './pages/CustomerInfoPage';
 import CustomerSummaryPage from './pages/CustomerSummaryPage';
+import BrandListPage from './pages/BrandListPage';
+import ManufacturerListPage from './pages/ManufacturerListPage';
+import WarrantyListPage from './pages/WarrantyListPage';
+import TestPage from './pages/TestPage';
 import PermissionSync from './components/PermissionSync';
 import { AuditLogPage } from './pages';
 
@@ -142,6 +146,38 @@ const App: React.FC = () => (
         <ProtectedRoute>
           <Layout>
             <ReferenceBooksPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Справочники */}
+      <Route path="/reference/brands" element={
+        <ProtectedRoute>
+          <Layout>
+            <BrandListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/manufacturers" element={
+        <ProtectedRoute>
+          <Layout>
+            <ManufacturerListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/warranties" element={
+        <ProtectedRoute>
+          <Layout>
+            <WarrantyListPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
+      {/* Тестовая страница */}
+      <Route path="/test" element={
+        <ProtectedRoute>
+          <Layout>
+            <TestPage />
           </Layout>
         </ProtectedRoute>
       } />

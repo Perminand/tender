@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   Typography,
@@ -48,19 +48,30 @@ interface TenderItem {
   estimatedPrice: number;
 }
 
+interface DictionaryItem {
+  id: string;
+  name: string;
+  description?: string;
+  country?: string;
+  code?: string;
+}
+
 interface ProposalItemForm {
   tenderItemId: string;
   description: string;
-  brand: string;
+  brand: DictionaryItem | null;
   model: string;
-  manufacturer: string;
-  countryOfOrigin: string;
+  manufacturer: DictionaryItem | null;
+  countryOfOrigin: DictionaryItem | null;
   quantity: number;
   unitPrice: number;
   specifications: string;
   deliveryPeriod: string;
-  warranty: string;
+  warranty: DictionaryItem | null;
   additionalInfo: string;
+  unitPriceWithVat: number;
+  weight: number;
+  deliveryCost: number;
 }
 
 interface ProposalFormData {
@@ -92,6 +103,17 @@ const ProposalEditPage: React.FC = () => {
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [duplicateItems, setDuplicateItems] = useState<Set<number>>(new Set());
   
+  // Состояния для справочников
+  const [brands, setBrands] = useState<DictionaryItem[]>([]);
+  const [manufacturers, setManufacturers] = useState<DictionaryItem[]>([]);
+  const [countries, setCountries] = useState<DictionaryItem[]>([]);
+  const [warranties, setWarranties] = useState<DictionaryItem[]>([]);
+  
+  // Состояния для модального окна позиции
+  const [positionModalOpen, setPositionModalOpen] = useState(false);
+  const [currentPositionIndex, setCurrentPositionIndex] = useState(0);
+  const [currentPositionData, setCurrentPositionData] = useState<ProposalItemForm | null>(null);
+  
   const [formData, setFormData] = useState<ProposalFormData>({
     tenderId: tenderId || '',
     supplierId: '',
@@ -104,9 +126,164 @@ const ProposalEditPage: React.FC = () => {
     validUntil: '',
     proposalItems: []
   });
+  
+  // Ширина столбцов
+  const defaultWidths = [40, 200, 120, 120, 150, 120, 80, 100, 100, 80, 100, 120, 120, 100, 60];
+  const [colWidths, setColWidths] = useState<number[]>(defaultWidths);
+
+  // Функция для расчета оптимальной ширины столбцов
+  const calculateOptimalColumnWidths = useCallback(() => {
+    if (!formData.proposalItems || formData.proposalItems.length === 0) {
+      return defaultWidths;
+    }
+
+    const columnHeaders = [
+      '№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 
+      'Цена за ед.', 'Цена с НДС', 'Вес', 'Доставка', 'Срок поставки', 'Гарантия', 'Сумма', 'Действия'
+    ];
+
+    const calculateTextWidth = (text: string, isHeader: boolean = false, isCompact: boolean = false) => {
+      if (isCompact) {
+        const charWidth = 5;
+        const padding = isHeader ? 12 : 8;
+        return Math.max(text.length * charWidth + padding, 40);
+      }
+      
+      const charWidth = 8;
+      const padding = isHeader ? 20 : 16;
+      return Math.max(text.length * charWidth + padding, 60);
+    };
+
+    const widths = columnHeaders.map((header, colIndex) => {
+      const isNumericColumn = colIndex === 0 || colIndex === 6 || colIndex === 7 || colIndex === 8 || colIndex === 9 || colIndex === 10 || colIndex === 13;
+      const isCompactColumn = isNumericColumn;
+      let maxWidth = calculateTextWidth(header, true, isCompactColumn);
+
+      formData.proposalItems.forEach((item, rowIndex) => {
+        let cellText = '';
+        
+        switch (colIndex) {
+          case 0: // №
+            cellText = (rowIndex + 1).toString();
+            break;
+          case 1: // Описание
+            cellText = item.description || '';
+            break;
+          case 2: // Бренд
+            cellText = item.brand?.name || '';
+            break;
+          case 3: // Модель
+            cellText = item.model || '';
+            break;
+          case 4: // Производитель
+            cellText = item.manufacturer?.name || '';
+            break;
+          case 5: // Страна
+            cellText = item.countryOfOrigin?.name || '';
+            break;
+          case 6: // Количество
+            cellText = item.quantity?.toString() || '';
+            break;
+          case 7: // Цена за ед.
+            cellText = item.unitPrice?.toString() || '';
+            break;
+          case 8: // Цена с НДС
+            cellText = item.unitPriceWithVat?.toString() || '';
+            break;
+          case 9: // Вес
+            cellText = item.weight?.toString() || '';
+            break;
+          case 10: // Доставка
+            cellText = item.deliveryCost?.toString() || '';
+            break;
+          case 11: // Срок поставки
+            cellText = item.deliveryPeriod || '';
+            break;
+          case 12: // Гарантия
+            cellText = item.warranty?.name || '';
+            break;
+          case 13: // Сумма
+            cellText = ((item.quantity || 0) * (item.unitPrice || 0)).toString();
+            break;
+          case 14: // Действия
+            cellText = '';
+            break;
+        }
+        
+        const cellWidth = calculateTextWidth(cellText, false, isCompactColumn);
+        maxWidth = Math.max(maxWidth, cellWidth);
+      });
+      
+      return Math.min(maxWidth, 800); // Максимальная ширина столбца
+    });
+
+    return widths;
+  }, [formData.proposalItems]);
+
+  // Обновляем ширину столбцов при изменении данных
+  useEffect(() => {
+    const newWidths = calculateOptimalColumnWidths();
+    setColWidths(newWidths);
+    console.log('Ширина столбцов обновлена:', newWidths);
+  }, [calculateOptimalColumnWidths]);
+
+  // Отладочный эффект для отслеживания изменений colWidths
+  useEffect(() => {
+    console.log('colWidths изменился:', colWidths);
+  }, [colWidths]);
+
+  // Функция для генерации стилей ячейки
+  const getCellStyles = (colIndex: number) => ({
+    sx: { 
+      width: colWidths[colIndex],
+      flex: 'none',
+      flexShrink: 0,
+      flexGrow: 0
+    },
+    style: {
+      width: colWidths[colIndex],
+      minWidth: colWidths[colIndex],
+      maxWidth: colWidths[colIndex],
+      '--cell-width': `${colWidths[colIndex]}px`
+    } as React.CSSProperties
+  });
+
+  // Функция для изменения ширины столбцов
+  const handleMouseDown = (idx: number, e: React.MouseEvent) => {
+    console.log('handleMouseDown вызван для столбца:', idx);
+    e.preventDefault();
+    const startX = e.clientX;
+    const startWidth = colWidths[idx];
+    console.log('Начальная ширина столбца:', startWidth);
+
+    const handleMouseMove = (e: MouseEvent) => {
+      console.log('handleMouseMove вызван');
+      const deltaX = e.clientX - startX;
+      const newWidth = Math.max(40, Math.min(800, startWidth + deltaX));
+      console.log('Новая ширина столбца:', newWidth);
+      
+      setColWidths(prev => {
+        const newWidths = [...prev];
+        newWidths[idx] = newWidth;
+        console.log('Обновленные ширины столбцов:', newWidths);
+        return newWidths;
+      });
+    };
+
+    const handleMouseUp = () => {
+      console.log('handleMouseUp вызван');
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   useEffect(() => {
+    console.log('ProposalEditPage загружается, tenderId:', tenderId);
     loadCompanies();
+    loadDictionaries();
     loadTenderItems();
   }, [tenderId]);
 
@@ -119,6 +296,24 @@ const ProposalEditPage: React.FC = () => {
     }
   };
 
+  const loadDictionaries = async () => {
+    try {
+      const [brandsResponse, manufacturersResponse, countriesResponse, warrantiesResponse] = await Promise.all([
+        api.get('/api/dictionaries/brands'),
+        api.get('/api/dictionaries/manufacturers'),
+        api.get('/api/dictionaries/countries'),
+        api.get('/api/dictionaries/warranties')
+      ]);
+      
+      setBrands(brandsResponse.data);
+      setManufacturers(manufacturersResponse.data);
+      setCountries(countriesResponse.data);
+      setWarranties(warrantiesResponse.data);
+    } catch (error) {
+      console.error('Error loading dictionaries:', error);
+    }
+  };
+
   const loadTenderItems = async () => {
     if (!tenderId) return;
     
@@ -126,26 +321,106 @@ const ProposalEditPage: React.FC = () => {
       const response = await api.get(`/api/tenders/${tenderId}/items`);
       setTenderItems(response.data);
       
-      // Создаем формы для каждой позиции тендера
-      const items = response.data.map((item: TenderItem) => ({
-        tenderItemId: item.id,
-        description: item.description,
-        brand: '',
-        model: '',
-        manufacturer: '',
-        countryOfOrigin: '',
-        quantity: item.quantity,
-        unitPrice: 0,
-        specifications: item.specifications || '',
-        deliveryPeriod: '',
-        warranty: '',
-        additionalInfo: ''
-      }));
-      
-      setFormData(prev => ({ ...prev, proposalItems: items }));
+      // Начинаем процесс заполнения позиций
+      if (response.data.length > 0) {
+        startPositionFilling();
+      }
     } catch (error) {
       console.error('Error loading tender items:', error);
     }
+  };
+
+  // Функция для начала заполнения позиций
+  const startPositionFilling = () => {
+    setCurrentPositionIndex(0);
+    showNextPosition();
+  };
+
+  // Функция для показа следующей позиции
+  const showNextPosition = () => {
+    console.log('showNextPosition вызван, currentPositionIndex:', currentPositionIndex, 'tenderItems.length:', tenderItems.length);
+    if (currentPositionIndex < tenderItems.length) {
+      const tenderItem = tenderItems[currentPositionIndex];
+      console.log('Показываем позицию:', tenderItem);
+      setCurrentPositionData({
+        tenderItemId: tenderItem.id,
+        description: tenderItem.description,
+        brand: null,
+        model: '',
+        manufacturer: null,
+        countryOfOrigin: null,
+        quantity: tenderItem.quantity,
+        unitPrice: 0,
+        specifications: tenderItem.specifications || '',
+        deliveryPeriod: '',
+        warranty: null,
+        additionalInfo: '',
+        unitPriceWithVat: 0,
+        weight: 0,
+        deliveryCost: 0
+      });
+      setPositionModalOpen(true);
+    }
+  };
+
+  // Функция для сохранения позиции и перехода к следующей
+  const handleSavePosition = () => {
+    if (currentPositionData) {
+      setFormData(prev => ({
+        ...prev,
+        proposalItems: [...prev.proposalItems, currentPositionData]
+      }));
+      
+      setCurrentPositionIndex(prev => prev + 1);
+      setPositionModalOpen(false);
+      
+      // Показываем следующую позицию или завершаем
+      setTimeout(() => {
+        if (currentPositionIndex + 1 < tenderItems.length) {
+          showNextPosition();
+        }
+      }, 100);
+    }
+  };
+
+  // Функция для пропуска позиции
+  const handleSkipPosition = () => {
+    setCurrentPositionIndex(prev => prev + 1);
+    setPositionModalOpen(false);
+    
+    setTimeout(() => {
+      if (currentPositionIndex + 1 < tenderItems.length) {
+        showNextPosition();
+      }
+    }, 100);
+  };
+
+  // Функция для завершения заполнения и перехода к обычному режиму
+  const handleFinishFilling = () => {
+    setPositionModalOpen(false);
+    // Создаем пустые формы для оставшихся позиций
+    const remainingItems = tenderItems.slice(currentPositionIndex).map((item: TenderItem) => ({
+      tenderItemId: item.id,
+      description: item.description,
+      brand: null,
+      model: '',
+      manufacturer: null,
+      countryOfOrigin: null,
+      quantity: item.quantity,
+      unitPrice: 0,
+      specifications: item.specifications || '',
+      deliveryPeriod: '',
+      warranty: null,
+      additionalInfo: '',
+      unitPriceWithVat: 0,
+      weight: 0,
+      deliveryCost: 0
+    }));
+    
+    setFormData(prev => ({
+      ...prev,
+      proposalItems: [...prev.proposalItems, ...remainingItems]
+    }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -278,6 +553,16 @@ const ProposalEditPage: React.FC = () => {
     }));
   };
 
+  // Функция для обновления данных в модальном окне
+  const handleModalItemChange = (field: keyof ProposalItemForm, value: any) => {
+    if (currentPositionData) {
+      setCurrentPositionData({
+        ...currentPositionData,
+        [field]: value
+      });
+    }
+  };
+
   const calculateTotalPrice = () => {
     return formData.proposalItems.reduce((total, item) => total + (item.quantity * item.unitPrice), 0);
   };
@@ -290,16 +575,19 @@ const ProposalEditPage: React.FC = () => {
         {
           tenderItemId: '',
           description: '',
-          brand: '',
+          brand: null,
           model: '',
-          manufacturer: '',
-          countryOfOrigin: '',
+          manufacturer: null,
+          countryOfOrigin: null,
           quantity: 1,
           unitPrice: 0,
           specifications: '',
           deliveryPeriod: '',
-          warranty: '',
-          additionalInfo: ''
+          warranty: null,
+          additionalInfo: '',
+          unitPriceWithVat: 0,
+          weight: 0,
+          deliveryCost: 0
         }
       ]
     }));
@@ -347,6 +635,19 @@ const ProposalEditPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3 }}>
+      <style>
+        {`
+          .resizable-table .MuiTableCell-root {
+            box-sizing: border-box !important;
+            width: var(--cell-width) !important;
+            min-width: var(--cell-width) !important;
+            max-width: var(--cell-width) !important;
+            flex: none !important;
+            flex-shrink: 0 !important;
+            flex-grow: 0 !important;
+          }
+        `}
+      </style>
       <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
         Подача предложения
       </Typography>
@@ -488,19 +789,51 @@ const ProposalEditPage: React.FC = () => {
           <Typography variant="h6" sx={{ mb: 2 }}>
             Позиции предложения
           </Typography>
-          <TableContainer component={Paper} variant="outlined">
-            <Table>
+          <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, overflowX: 'auto', width: '100%', maxWidth: '100%', maxHeight: '600px', overflowY: 'auto' }}>
+            <Table sx={{ minWidth: 2500, width: 'max-content', tableLayout: 'fixed' }} className="resizable-table">
               <TableHead>
                 <TableRow>
-                  <TableCell>№</TableCell>
-                  <TableCell>Описание</TableCell>
-                  <TableCell>Бренд</TableCell>
-                  <TableCell>Модель</TableCell>
-                  <TableCell>Производитель</TableCell>
-                  <TableCell>Количество</TableCell>
-                  <TableCell>Цена за ед.</TableCell>
-                  <TableCell>Сумма</TableCell>
-                  <TableCell>Действия</TableCell>
+                  {['№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 'Цена за ед.', 'Цена с НДС', 'Вес', 'Доставка', 'Срок поставки', 'Гарантия', 'Сумма', 'Действия'].map((label, idx) => (
+                    <TableCell
+                      key={label}
+                      sx={{ 
+                        position: 'relative', 
+                        width: colWidths[idx], 
+                        minWidth: 40, 
+                        maxWidth: 800, 
+                        userSelect: 'none', 
+                        whiteSpace: 'nowrap',
+                        flex: 'none',
+                        flexShrink: 0,
+                        flexGrow: 0
+                      }}
+                      style={{
+                        width: colWidths[idx],
+                        minWidth: colWidths[idx],
+                        maxWidth: colWidths[idx],
+                        '--cell-width': `${colWidths[idx]}px`
+                      } as React.CSSProperties}
+                    >
+                      {label}
+                      {idx !== 0 && idx !== 11 && (
+                        <span
+                          style={{
+                            position: 'absolute',
+                            right: -3,
+                            top: 0,
+                            height: '100%',
+                            width: 12,
+                            cursor: 'col-resize',
+                            zIndex: 10,
+                            userSelect: 'none',
+                            background: 'transparent',
+                          }}
+                          onMouseDown={e => handleMouseDown(idx, e)}
+                          title="Перетащите для изменения ширины столбца"
+                        />
+                      )}
+                    </TableCell>
+                  ))}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -513,8 +846,10 @@ const ProposalEditPage: React.FC = () => {
                   const isDuplicate = duplicateItems.has(index);
                   return (
                     <TableRow key={index} sx={{ backgroundColor: isDuplicate ? 'rgba(255, 0, 0, 0.1)' : 'transparent' }}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(0)}>
+                        {index + 1}
+                      </TableCell>
+                      <TableCell {...getCellStyles(1)}>
                         <FormControl fullWidth size="small">
                           <Select
                             value={item.tenderItemId}
@@ -543,7 +878,7 @@ const ProposalEditPage: React.FC = () => {
                           </Select>
                         </FormControl>
                       </TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(2)}>
                         <TextField
                           size="small"
                           value={item.brand}
@@ -551,7 +886,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(3)}>
                         <TextField
                           size="small"
                           value={item.model}
@@ -559,7 +894,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(4)}>
                         <TextField
                           size="small"
                           value={item.manufacturer}
@@ -567,7 +902,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(5)}>
                         <TextField
                           size="small"
                           type="number"
@@ -577,7 +912,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(6)}>
                         <TextField
                           size="small"
                           type="number"
@@ -590,10 +925,49 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(7)}>
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={item.unitPriceWithVat || ''}
+                          onChange={e => {
+                            const value = Number(e.target.value);
+                            handleItemChange(index, 'unitPriceWithVat', value);
+                          }}
+                          inputProps={{ min: 0.01, step: 0.01 }}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell {...getCellStyles(8)}>
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={item.weight || ''}
+                          onChange={e => {
+                            const value = Number(e.target.value);
+                            handleItemChange(index, 'weight', value);
+                          }}
+                          inputProps={{ min: 0, step: 0.001 }}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell {...getCellStyles(9)}>
+                        <TextField
+                          size="small"
+                          type="number"
+                          value={item.deliveryCost || ''}
+                          onChange={e => {
+                            const value = Number(e.target.value);
+                            handleItemChange(index, 'deliveryCost', value);
+                          }}
+                          inputProps={{ min: 0, step: 0.01 }}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell {...getCellStyles(10)}>
                         {(item.quantity * item.unitPrice).toLocaleString('ru-RU')} ₽
                       </TableCell>
-                      <TableCell>
+                      <TableCell {...getCellStyles(11)}>
                         <IconButton color="error" onClick={() => handleRemoveItem(index)} size="small">
                           <DeleteIcon />
                         </IconButton>
@@ -602,7 +976,7 @@ const ProposalEditPage: React.FC = () => {
                   );
                 })}
                 <TableRow>
-                  <TableCell colSpan={7} align="right">
+                  <TableCell colSpan={14} align="right">
                     <Typography variant="h6">
                       Итого:
                     </Typography>
@@ -651,6 +1025,213 @@ const ProposalEditPage: React.FC = () => {
           {loading ? <CircularProgress size={20} /> : 'Подать предложение'}
         </Button>
       </Box>
+
+      {/* Модальное окно для заполнения позиции */}
+      <Dialog 
+        open={positionModalOpen} 
+        onClose={() => setPositionModalOpen(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>
+          Позиция {currentPositionIndex + 1} из {tenderItems.length}
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="h6" sx={{ mb: 2 }}>
+              {currentPositionData?.description}
+            </Typography>
+            
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete<DictionaryItem, false, true, true>
+                  options={brands}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
+                  value={currentPositionData?.brand}
+                  onChange={(event, newValue) => handleModalItemChange('brand', newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Бренд"
+                      size="small"
+                      fullWidth
+                    />
+                  )}
+                  freeSolo
+                  autoComplete
+                  includeInputInList
+                  filterSelectedOptions
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Модель"
+                  value={currentPositionData?.model || ''}
+                  onChange={e => handleModalItemChange('model', e.target.value)}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete<DictionaryItem, false, true, true>
+                  options={manufacturers}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
+                  value={currentPositionData?.manufacturer}
+                  onChange={(event, newValue) => handleModalItemChange('manufacturer', newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Производитель"
+                      size="small"
+                      fullWidth
+                    />
+                  )}
+                  freeSolo
+                  autoComplete
+                  includeInputInList
+                  filterSelectedOptions
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete<DictionaryItem, false, true, true>
+                  options={countries}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
+                  value={currentPositionData?.countryOfOrigin}
+                  onChange={(event, newValue) => handleModalItemChange('countryOfOrigin', newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Страна происхождения"
+                      size="small"
+                      fullWidth
+                    />
+                  )}
+                  freeSolo
+                  autoComplete
+                  includeInputInList
+                  filterSelectedOptions
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Количество"
+                  type="number"
+                  value={currentPositionData?.quantity || ''}
+                  disabled
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Цена за единицу"
+                  type="number"
+                  value={currentPositionData?.unitPrice || ''}
+                  onChange={e => handleModalItemChange('unitPrice', Number(e.target.value))}
+                  inputProps={{ min: 0.01, step: 0.01 }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Цена с НДС"
+                  type="number"
+                  value={currentPositionData?.unitPriceWithVat || ''}
+                  onChange={e => handleModalItemChange('unitPriceWithVat', Number(e.target.value))}
+                  inputProps={{ min: 0.01, step: 0.01 }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Вес (кг)"
+                  type="number"
+                  value={currentPositionData?.weight || ''}
+                  onChange={e => handleModalItemChange('weight', Number(e.target.value))}
+                  inputProps={{ min: 0, step: 0.001 }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Стоимость доставки"
+                  type="number"
+                  value={currentPositionData?.deliveryCost || ''}
+                  onChange={e => handleModalItemChange('deliveryCost', Number(e.target.value))}
+                  inputProps={{ min: 0, step: 0.01 }}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Срок поставки"
+                  value={currentPositionData?.deliveryPeriod || ''}
+                  onChange={e => handleModalItemChange('deliveryPeriod', e.target.value)}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Autocomplete<DictionaryItem, false, true, true>
+                  options={warranties}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
+                  value={currentPositionData?.warranty}
+                  onChange={(event, newValue) => handleModalItemChange('warranty', newValue)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      label="Гарантия"
+                      size="small"
+                      fullWidth
+                    />
+                  )}
+                  freeSolo
+                  autoComplete
+                  includeInputInList
+                  filterSelectedOptions
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Характеристики"
+                  value={currentPositionData?.specifications || ''}
+                  onChange={e => handleModalItemChange('specifications', e.target.value)}
+                  multiline
+                  rows={2}
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12}>
+                <TextField
+                  fullWidth
+                  label="Дополнительная информация"
+                  value={currentPositionData?.additionalInfo || ''}
+                  onChange={e => handleModalItemChange('additionalInfo', e.target.value)}
+                  multiline
+                  rows={2}
+                  size="small"
+                />
+              </Grid>
+            </Grid>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleFinishFilling} color="secondary">
+            Завершить заполнение
+          </Button>
+          <Button onClick={handleSkipPosition} color="secondary">
+            Пропустить
+          </Button>
+          <Button onClick={handleSavePosition} variant="contained">
+            {currentPositionIndex + 1 < tenderItems.length ? 'Сохранить и продолжить' : 'Завершить'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

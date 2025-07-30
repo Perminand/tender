@@ -32,13 +32,19 @@ public class ProposalItem {
 
     private String description;
 
-    private String brand;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "brand_id")
+    private Brand brand;
 
     private String model;
 
-    private String manufacturer;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "manufacturer_id")
+    private Manufacturer manufacturer;
 
-    private String countryOfOrigin;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "country_of_origin_id")
+    private Country countryOfOrigin;
 
     private Double quantity;
 
@@ -54,9 +60,17 @@ public class ProposalItem {
 
     private String deliveryPeriod;
 
-    private String warranty;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "warranty_id")
+    private Warranty warranty;
 
     private String additionalInfo;
+
+    private Double unitPriceWithVat;
+
+    private Double weight;
+
+    private Double deliveryCost;
 
     @Override
     public boolean equals(Object o) {

@@ -310,7 +310,7 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
                 item.getTotalPrice(),
                 proposal.getCurrency(),
                 item.getDeliveryPeriod(),
-                item.getWarranty(),
+                item.getWarranty() != null ? item.getWarranty().getName() : null,
                 item.getAdditionalInfo(),
                 isBestPrice
         );

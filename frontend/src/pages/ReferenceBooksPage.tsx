@@ -24,7 +24,9 @@ import {
   Person as PersonIcon,
   Settings as SettingsIcon,
   Store as StoreIcon,
-  Assignment as AssignmentIcon
+  Assignment as AssignmentIcon,
+  Factory as FactoryIcon,
+  Security as SecurityIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -58,16 +60,26 @@ const referenceGroups: ReferenceGroup[] = [
     title: 'Номенклатура',
     description: 'Управление материалами и их классификацией',
     books: [
-  { id: 'materials', title: 'Номенклатура', description: 'Управление номенклатурой', icon: <ShoppingCartIcon sx={{ fontSize: 40 }} />, color: '#ff9800', path: '/reference/materials' },
-  { id: 'categories', title: 'Категории', description: 'Управление категориями', icon: <CategoryIcon sx={{ fontSize: 40 }} />, color: '#1976d2', path: '/reference/categories' },
-  { id: 'material-types', title: 'Типы материалов', description: 'Управление типами', icon: <InventoryIcon sx={{ fontSize: 40 }} />, color: '#388e3c', path: '/reference/material-types' },
+      { id: 'materials', title: 'Номенклатура', description: 'Управление номенклатурой', icon: <ShoppingCartIcon sx={{ fontSize: 40 }} />, color: '#ff9800', path: '/reference/materials' },
+      { id: 'categories', title: 'Категории', description: 'Управление категориями', icon: <CategoryIcon sx={{ fontSize: 40 }} />, color: '#1976d2', path: '/reference/categories' },
+      { id: 'material-types', title: 'Типы материалов', description: 'Управление типами', icon: <InventoryIcon sx={{ fontSize: 40 }} />, color: '#388e3c', path: '/reference/material-types' },
       { id: 'units', title: 'Ед. измерения', description: 'Управление ед. изм.', icon: <StraightenIcon sx={{ fontSize: 40 }} />, color: '#f57c00', path: '/reference/units' }
+    ]
+  },
+  {
+    id: 'product-info',
+    title: 'Характеристики товаров',
+    description: 'Справочники для описания товаров и материалов',
+    books: [
+      { id: 'brands', title: 'Бренды', description: 'Управление брендами', icon: <LabelIcon sx={{ fontSize: 40 }} />, color: '#e91e63', path: '/reference/brands' },
+      { id: 'manufacturers', title: 'Производители', description: 'Управление производителями', icon: <FactoryIcon sx={{ fontSize: 40 }} />, color: '#9c27b0', path: '/reference/manufacturers' },
+      { id: 'warranties', title: 'Гарантии', description: 'Управление гарантиями', icon: <SecurityIcon sx={{ fontSize: 40 }} />, color: '#ff5722', path: '/reference/warranties' }
     ]
   },
   {
     id: 'infrastructure',
     title: 'Инфраструктура',
-    description: 'Управление объектами',
+    description: 'Управление объектами и складами',
     books: [
       { id: 'projects', title: 'Объекты', description: 'Управление объектами и проектами', icon: <ArchitectureIcon sx={{ fontSize: 40 }} />, color: '#9c27b0', path: '/reference/projects' },
       { id: 'warehouses', title: 'Склады', description: 'Управление складами по проектам', icon: <WarehouseIcon sx={{ fontSize: 40 }} />, color: '#607d8b', path: '/reference/warehouses' }
