@@ -129,4 +129,6 @@ databaseChangeLog:
       file: db/changelog/data/V004_insert_test_tenders.sql
   - include:
       file: db/changelog/data/V005_insert_test_company_grod.sql
+  - include:
+      file: db/changelog/data/V006_cleanup_and_migrate_to_sp_grod.sql
 
