@@ -127,4 +127,6 @@ databaseChangeLog:
       file: db/changelog/changes/V065_update_proposal_items_with_dictionaries.sql
   - include:
       file: db/changelog/data/V004_insert_test_tenders.sql
+  - include:
+      file: db/changelog/data/V005_insert_test_company_grod.sql
 

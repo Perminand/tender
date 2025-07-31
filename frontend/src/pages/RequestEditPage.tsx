@@ -17,7 +17,7 @@ import AddIcon from '@mui/icons-material/Add';
 
 interface Company { id: string; name: string; shortName?: string; legalName?: string; }
 interface Project { id: string; name: string; }
-interface Material { id: string; name: string; characteristics?: string; }
+interface Material { id: string; name: string; characteristics?: string; link?: string; }
 interface MaterialOption extends Material {
   inputValue?: string;
 }
@@ -262,6 +262,7 @@ export default function RequestEditPage() {
   const [importStep, setImportStep] = useState<'idle'|'parsing'|'mapping'|'done'>('idle');
   const [importMissing, setImportMissing] = useState<any>(null);
   const [importLoading, setImportLoading] = useState(false);
+  const [importConfirmLoading, setImportConfirmLoading] = useState(false);
 
   const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[], estimateUnits: string[], materials: string[], materialCharacteristics: Array<{materialName: string, characteristics: string}>}>({workTypes:[], characteristics:[], units:[], estimateUnits:[], materials:[], materialCharacteristics:[]});
 
@@ -415,6 +416,27 @@ export default function RequestEditPage() {
     setRequest({ ...request, materials: newMaterials });
   };
 
+  // Отдельная функция для обновления ссылки в материале
+  const handleMaterialLinkChange = async (idx: number, value: string) => {
+    // Сначала обновляем в локальном состоянии
+    handleMaterialChange(idx, 'materialLink', value);
+    
+    // Если материал уже существует, обновляем ссылку в самом материале
+    const material = request.materials?.[idx];
+    if (material?.material?.id) {
+      try {
+        await api.put(`/api/materials/${material.material.id}`, {
+          link: value
+        });
+        if (import.meta.env.DEV) {
+          console.log(`Обновлена ссылка в материале ${material.material.id}:`, value);
+        }
+      } catch (error) {
+        console.error('Ошибка при обновлении ссылки в материале:', error);
+      }
+    }
+  };
+
   const handleAddMaterial = () => {
     setRequest({
       ...request,
@@ -493,7 +515,8 @@ export default function RequestEditPage() {
       if (import.meta.env.DEV) {
         console.log('Отправляем данные:', JSON.stringify(requestToSend, null, 2));
         console.log('requestMaterials:', JSON.stringify(requestToSend.requestMaterials, null, 2));
-                            console.log('Проверяем поле size (характеристики смета):', requestToSend.requestMaterials.map((m: any) => ({ id: m.id, size: m.size })));
+        console.log('Проверяем поле size (характеристики смета):', requestToSend.requestMaterials.map((m: any) => ({ id: m.id, size: m.size })));
+        console.log('Проверяем поле materialLink:', requestToSend.requestMaterials.map((m: any) => ({ id: m.id, materialLink: m.materialLink })));
       }
     
     if (isEdit) {
@@ -972,7 +995,10 @@ export default function RequestEditPage() {
   // --- Импорт: создание недостающих справочников и интеграция данных ---
   const handleImportConfirm = async () => {
     if (!pendingImportData) return;
-    let projectObj = projects.find(p => p.name.trim().toLowerCase() === (pendingImportData.projectName || '').trim().toLowerCase());
+    setImportConfirmLoading(true);
+    
+    try {
+      let projectObj = projects.find(p => p.name.trim().toLowerCase() === (pendingImportData.projectName || '').trim().toLowerCase());
     if (!projectObj && pendingImportData.projectName) {
       const res = await api.post('/api/projects', { name: pendingImportData.projectName });
       projectObj = res.data;
@@ -1025,8 +1051,14 @@ export default function RequestEditPage() {
         
         const materialData = { 
           name: materialName,
-          characteristics: characteristics
+          characteristics: characteristics,
+          link: importedMaterial ? importedMaterial.materialLink || '' : ''
         };
+        
+        if (import.meta.env.DEV) {
+          console.log(`Создание материала "${materialName}" с данными:`, materialData);
+          console.log(`Ссылка для материала "${materialName}":`, importedMaterial ? importedMaterial.materialLink : 'не найдена');
+        }
         const res = await api.post('/api/materials', materialData);
         console.log(`Создан материал "${materialName}":`, res.data);
         setMaterials(prev => [...prev, res.data]);
@@ -1107,6 +1139,7 @@ export default function RequestEditPage() {
         console.log('Поле estimateMaterialName в первом материале после обработки:', processedMaterials[0]?.estimateMaterialName);
         console.log('Все supplierMaterialName после обработки:', processedMaterials.map(m => m.supplierMaterialName));
         console.log('Все estimateMaterialName после обработки:', processedMaterials.map(m => m.estimateMaterialName));
+        console.log('Все materialLink после обработки:', processedMaterials.map(m => m.materialLink));
     }
 
     setRequest(prev => {
@@ -1130,13 +1163,16 @@ export default function RequestEditPage() {
     console.log('material в первом материале формы:', newRequest.materials?.[0]?.material);
     console.log('supplierMaterialName в первом материале формы:', newRequest.materials?.[0]?.supplierMaterialName);
     console.log('estimateMaterialName в первом материале формы:', newRequest.materials?.[0]?.estimateMaterialName);
+    console.log('materialLink в первом материале формы:', newRequest.materials?.[0]?.materialLink);
     console.log('Все estimateMaterialName в форме:', newRequest.materials?.map(m => m.estimateMaterialName));
+    console.log('Все materialLink в форме:', newRequest.materials?.map(m => m.materialLink));
   }
 
       return newRequest;
     });
     setOpenImportDialog(false);
     setPendingImportData(null);
+    setImportConfirmLoading(false);
 
     if (!isEdit) {
       if (window.opener) {
@@ -1155,7 +1191,11 @@ export default function RequestEditPage() {
         return;
       }
     }
-  };
+  } catch (error) {
+    console.error('Ошибка при импорте:', error);
+    setImportConfirmLoading(false);
+  }
+};
 
   useEffect(() => {
     function handleMaterialCreated(event: MessageEvent) {
@@ -1469,7 +1509,8 @@ export default function RequestEditPage() {
                           try {
                             const materialData = { 
                               name: value,
-                              characteristics: mat.size || '' // Добавляем характеристики из поля size
+                              characteristics: mat.size || '', // Добавляем характеристики из поля size
+                              link: mat.materialLink || '' // Добавляем ссылку из заявки
                             };
                             const res = await api.post('/api/materials', materialData);
                             setMaterials(prev => [...prev, res.data]);
@@ -1485,7 +1526,8 @@ export default function RequestEditPage() {
                           try {
                             const materialData = { 
                               name: materialName,
-                              characteristics: mat.size || '' // Добавляем характеристики из поля size
+                              characteristics: mat.size || '', // Добавляем характеристики из поля size
+                              link: mat.materialLink || '' // Добавляем ссылку из заявки
                             };
                             const res = await api.post('/api/materials', materialData);
                             setMaterials(prev => [...prev, res.data]);
@@ -1682,7 +1724,7 @@ export default function RequestEditPage() {
                     size="small"
                     label="Ссылка"
                     value={mat.materialLink || ''}
-                    onChange={e => handleMaterialChange(idx, 'materialLink', e.target.value)}
+                    onChange={e => handleMaterialLinkChange(idx, e.target.value)}
                     fullWidth
                   />
                 </TableCell>
@@ -2035,15 +2077,22 @@ export default function RequestEditPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenImportDialog(false)}>Отмена</Button>
+          <Button onClick={() => setOpenImportDialog(false)} disabled={importConfirmLoading}>Отмена</Button>
           <Button
             onClick={() => setShowHeaderMappingDialog(true)} 
             variant="outlined"
             sx={{ mr: 1 }}
+            disabled={importConfirmLoading}
           >
             Соответствия
           </Button>
-          <Button onClick={handleImportConfirm} variant="contained">Импортировать</Button>
+          <Button 
+            onClick={handleImportConfirm} 
+            variant="contained"
+            disabled={importConfirmLoading}
+          >
+            {importConfirmLoading ? 'Импортирование...' : 'Импортировать'}
+          </Button>
         </DialogActions>
       </Dialog>
 

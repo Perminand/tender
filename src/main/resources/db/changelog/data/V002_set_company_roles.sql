@@ -27,4 +27,7 @@ UPDATE companies SET role = 'CUSTOMER' WHERE inn = '7700000008';
 UPDATE companies SET role = 'CUSTOMER' WHERE inn = '7700000009';
 
 -- Компания 10 - Заказчик
-UPDATE companies SET role = 'CUSTOMER' WHERE inn = '7700000010'; 
+UPDATE companies SET role = 'CUSTOMER' WHERE inn = '7700000010';
+
+-- Компания ООО "СП "ГОРОД" - Заказчик (уже установлено в V005_insert_test_company_grod.sql)
+-- UPDATE companies SET role = 'CUSTOMER' WHERE inn = '7805298833'; 

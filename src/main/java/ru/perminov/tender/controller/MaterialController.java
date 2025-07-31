@@ -34,8 +34,9 @@ public class MaterialController {
     @PostMapping
     public ResponseEntity<MaterialDto> create(@RequestBody @Valid MaterialDtoNew materialDtoNew) {
         log.info("Получен POST-запрос: создать материал. Данные: {}", materialDtoNew);
+        log.info("Ссылка материала: {}", materialDtoNew.link());
         MaterialDto created = materialService.create(materialDtoNew);
-        log.info("Создан материал с id={}", created.id());
+        log.info("Создан материал с id={}, ссылка: {}", created.id(), created.link());
         return ResponseEntity.ok(created);
     }
 
