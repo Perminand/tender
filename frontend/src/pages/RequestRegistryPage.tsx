@@ -37,6 +37,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import ResponsiveTable from '../components/ResponsiveTable';
+import { RelatedEntitiesDialog } from '../components/RelatedEntitiesDialog';
 
 interface RequestRegistryRowDto {
   requestId: string;
@@ -68,6 +69,8 @@ export default function RequestRegistryPage() {
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedRequestId, setSelectedRequestId] = useState<string | null>(null);
+  const [relatedEntitiesDialog, setRelatedEntitiesDialog] = useState(false);
+  const [relatedEntitiesData, setRelatedEntitiesData] = useState<any>(null);
   const [filters, setFilters] = useState({
     organization: '',
     project: '',
@@ -170,7 +173,16 @@ export default function RequestRegistryPage() {
       setSelectedRequestId(null);
     } catch (error: any) {
       console.error('Ошибка при удалении заявки:', error);
-      alert('Ошибка при удалении заявки: ' + (error.response?.data?.message || error.message));
+      
+      // Проверяем, является ли ошибка связанной с наличием связанных сущностей
+      if (error.response?.status === 400 && error.response?.data) {
+        // Отображаем модальное окно с информацией о связанных сущностях
+        setRelatedEntitiesData(error.response.data);
+        setRelatedEntitiesDialog(true);
+      } else {
+        alert('Ошибка при удалении заявки: ' + (error.response?.data?.message || error.message));
+      }
+      
       setConfirmDelete(false);
       setSelectedRequestId(null);
     }
@@ -489,6 +501,15 @@ export default function RequestRegistryPage() {
         </DialogActions>
       </Dialog>
 
+      {/* Диалог связанных сущностей */}
+      <RelatedEntitiesDialog
+        open={relatedEntitiesDialog}
+        onClose={() => {
+          setRelatedEntitiesDialog(false);
+          setRelatedEntitiesData(null);
+        }}
+        data={relatedEntitiesData}
+      />
 
     </Paper>
   );

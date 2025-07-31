@@ -21,6 +21,7 @@ import java.util.stream.Collectors;
 public interface MaterialMapper {
     
     @Named("toMaterialDto")
+    @Mapping(target = "characteristics", ignore = true)
     MaterialDto toDto(Material entity);
 
     @Mapping(target = "id", ignore = true)
@@ -29,6 +30,7 @@ public interface MaterialMapper {
     @Mapping(target = "units", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "characteristics", ignore = true)
     Material toEntity(MaterialDtoNew dto);
 
     @Mapping(target = "id", ignore = true)

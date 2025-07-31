@@ -16,6 +16,7 @@ import ru.perminov.tender.dto.material.MaterialDtoNew;
 import ru.perminov.tender.dto.material.MaterialDtoUpdate;
 import ru.perminov.tender.mapper.MaterialMapper;
 import ru.perminov.tender.model.Category;
+import ru.perminov.tender.model.Characteristic;
 import ru.perminov.tender.model.Material;
 import ru.perminov.tender.model.MaterialType;
 import ru.perminov.tender.model.Unit;
@@ -67,6 +68,15 @@ public class MaterialServiceImpl implements MaterialService {
         }
         Material material = materialMapper.toEntity(materialDtoNew);
         updateRelations(material, materialDtoNew.categoryId(), materialDtoNew.materialTypeId(), materialDtoNew.unitIds());
+        
+        // Создаем характеристику, если она указана
+        if (materialDtoNew.characteristics() != null && !materialDtoNew.characteristics().trim().isEmpty()) {
+            Characteristic characteristic = new Characteristic();
+            characteristic.setName(materialDtoNew.characteristics());
+            characteristic.setMaterial(material);
+            material.getCharacteristics().add(characteristic);
+        }
+        
         Material savedMaterial = materialRepository.save(material);
         auditLogService.logSimple(getCurrentUser(), "CREATE_MATERIAL", "Material", savedMaterial.getId().toString(), "Создан материал");
         return materialMapper.toDto(savedMaterial);

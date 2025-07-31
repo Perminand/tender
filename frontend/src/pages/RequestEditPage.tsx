@@ -263,7 +263,7 @@ export default function RequestEditPage() {
   const [importMissing, setImportMissing] = useState<any>(null);
   const [importLoading, setImportLoading] = useState(false);
 
-  const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[], estimateUnits: string[], materials: string[]}>({workTypes:[], characteristics:[], units:[], estimateUnits:[], materials:[]});
+  const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[], estimateUnits: string[], materials: string[], materialCharacteristics: Array<{materialName: string, characteristics: string}>}>({workTypes:[], characteristics:[], units:[], estimateUnits:[], materials:[], materialCharacteristics:[]});
 
 
   const [missingCompanyName, setMissingCompanyName] = useState<string | null>(null);
@@ -923,11 +923,38 @@ export default function RequestEditPage() {
       materialName && !materials.find(m => m.name.trim().toLowerCase() === materialName.trim().toLowerCase())
     )));
     
+    // Анализируем характеристики материалов - ищем материалы с характеристиками, которых нет в базе
+    const materialCharacteristicsToCreate: Array<{materialName: string, characteristics: string}> = [];
+    
+    for (const material of pendingImportData.materials || []) {
+      if (material.estimateMaterialName && material.size) {
+        const existingMaterial = materials.find(m => 
+          m.name.trim().toLowerCase() === material.estimateMaterialName.trim().toLowerCase()
+        );
+        
+        if (existingMaterial) {
+          // Материал существует, проверяем есть ли у него такая характеристика
+          const hasCharacteristic = existingMaterial.characteristics && 
+            existingMaterial.characteristics.some((char: any) => 
+              char.name && char.name.trim().toLowerCase() === material.size.trim().toLowerCase()
+            );
+          
+          if (!hasCharacteristic) {
+            materialCharacteristicsToCreate.push({
+              materialName: material.estimateMaterialName,
+              characteristics: material.size
+            });
+          }
+        }
+      }
+    }
+    
     if (import.meta.env.DEV) {
       console.log('=== АНАЛИЗ МАТЕРИАЛОВ ПРИ ИМПОРТЕ ===');
       console.log('Все estimateMaterialName из импорта:', allEstimateMaterials);
       console.log('Существующие материалы в справочнике:', materials.map(m => m.name));
       console.log('Отсутствующие материалы:', missingMaterials);
+      console.log('Характеристики для добавления к существующим материалам:', materialCharacteristicsToCreate);
     }
     
     setImportWillCreate({
@@ -937,7 +964,8 @@ export default function RequestEditPage() {
       characteristics: missingChars,
       units: missingUnits,
       estimateUnits: missingEstimateUnits,
-      materials: missingMaterials
+      materials: missingMaterials,
+      materialCharacteristics: materialCharacteristicsToCreate
     });
   }, [pendingImportData, projects, warehouses, workTypes, characteristics, units]);
 
@@ -991,10 +1019,53 @@ export default function RequestEditPage() {
     if (importWillCreate.materials.length > 0) {
       console.log('Создаем новые материалы:', importWillCreate.materials);
       for (const materialName of importWillCreate.materials) {
-        const res = await api.post('/api/materials', { name: materialName });
+        // Находим соответствующий материал в импортированных данных для получения характеристик
+        const importedMaterial = pendingImportData.materials.find((m: any) => m.estimateMaterialName === materialName);
+        const characteristics = importedMaterial ? importedMaterial.size || '' : '';
+        
+        const materialData = { 
+          name: materialName,
+          characteristics: characteristics
+        };
+        const res = await api.post('/api/materials', materialData);
         console.log(`Создан материал "${materialName}":`, res.data);
         setMaterials(prev => [...prev, res.data]);
         materialMap[materialName] = res.data;
+      }
+    }
+    
+    // Добавляем характеристики к существующим материалам
+    if (importWillCreate.materialCharacteristics.length > 0) {
+      console.log('Добавляем характеристики к существующим материалам:', importWillCreate.materialCharacteristics);
+      for (const item of importWillCreate.materialCharacteristics) {
+        const existingMaterial = materials.find(m => 
+          m.name.trim().toLowerCase() === item.materialName.trim().toLowerCase()
+        );
+        
+        if (existingMaterial) {
+          try {
+            // Создаем характеристику для существующего материала
+            const characteristicData = {
+              name: item.characteristics,
+              materialId: existingMaterial.id
+            };
+            const res = await api.post('/api/characteristics/with-material', characteristicData);
+            console.log(`Добавлена характеристика "${item.characteristics}" к материалу "${item.materialName}":`, res.data);
+            
+            // Обновляем локальное состояние материалов
+            setMaterials(prev => prev.map(m => {
+              if (m.id === existingMaterial.id) {
+                return {
+                  ...m,
+                  characteristics: [...(m.characteristics || []), res.data]
+                };
+              }
+              return m;
+            }));
+          } catch (error) {
+            console.error(`Ошибка при добавлении характеристики к материалу "${item.materialName}":`, error);
+          }
+        }
       }
     }
     // Интеграция данных
@@ -1396,7 +1467,11 @@ export default function RequestEditPage() {
                         if (typeof value === 'string') {
                           // Если введено новое значение, создаем материал
                           try {
-                            const res = await api.post('/api/materials', { name: value });
+                            const materialData = { 
+                              name: value,
+                              characteristics: mat.size || '' // Добавляем характеристики из поля size
+                            };
+                            const res = await api.post('/api/materials', materialData);
                             setMaterials(prev => [...prev, res.data]);
                             handleMaterialChange(idx, 'estimateMaterialName', value);
                             handleMaterialChange(idx, 'material', res.data);
@@ -1408,7 +1483,11 @@ export default function RequestEditPage() {
                           // Если выбрана опция "Создать:"
                           const materialName = value.name.replace('Создать: ', '');
                           try {
-                            const res = await api.post('/api/materials', { name: materialName });
+                            const materialData = { 
+                              name: materialName,
+                              characteristics: mat.size || '' // Добавляем характеристики из поля size
+                            };
+                            const res = await api.post('/api/materials', materialData);
                             setMaterials(prev => [...prev, res.data]);
                             handleMaterialChange(idx, 'estimateMaterialName', materialName);
                             handleMaterialChange(idx, 'material', res.data);
@@ -1451,14 +1530,93 @@ export default function RequestEditPage() {
                     />
                   </TableCell>
                 <TableCell sx={{ width: colWidths[6], backgroundColor: '#f0f8ff' }} title={mat.size || ''}>
-                  <TextField
-                    size="small"
-                    label="Характеристики (смета)"
+                  <Autocomplete
+                    freeSolo
                     value={mat.size || ''}
-                    onChange={e => handleMaterialChange(idx, 'size', e.target.value)}
-                    sx={{ width: '100%', maxWidth: colWidths[6] }}
+                    onChange={async (_, value) => {
+                      if (typeof value === 'string') {
+                        // Если введено новое значение, создаем характеристику
+                        try {
+                          // Проверяем, есть ли материал
+                          if (mat.material?.id) {
+                            const characteristicData = {
+                              name: value,
+                              materialId: mat.material.id
+                            };
+                            const res = await api.post('/api/characteristics/with-material', characteristicData);
+                            setCharacteristics(prev => [...prev, res.data]);
+                          } else {
+                            // Если материала нет, создаем общую характеристику
+                            const characteristicData = {
+                              name: value,
+                              description: ''
+                            };
+                            const res = await api.post('/api/characteristics', characteristicData);
+                            setCharacteristics(prev => [...prev, res.data]);
+                          }
+                          handleMaterialChange(idx, 'size', value);
+                        } catch (error) {
+                          console.error('Ошибка при создании характеристики:', error);
+                          handleMaterialChange(idx, 'size', value);
+                        }
+                      } else if (value && value.name && value.name.startsWith('Создать: ')) {
+                        // Если выбрана опция "Создать:"
+                        const characteristicName = value.name.replace('Создать: ', '');
+                        try {
+                          // Проверяем, есть ли материал
+                          if (mat.material?.id) {
+                            const characteristicData = {
+                              name: characteristicName,
+                              materialId: mat.material.id
+                            };
+                            const res = await api.post('/api/characteristics/with-material', characteristicData);
+                            setCharacteristics(prev => [...prev, res.data]);
+                          } else {
+                            // Если материала нет, создаем общую характеристику
+                            const characteristicData = {
+                              name: characteristicName,
+                              description: ''
+                            };
+                            const res = await api.post('/api/characteristics', characteristicData);
+                            setCharacteristics(prev => [...prev, res.data]);
+                          }
+                          handleMaterialChange(idx, 'size', characteristicName);
+                        } catch (error) {
+                          console.error('Ошибка при создании характеристики:', error);
+                          handleMaterialChange(idx, 'size', characteristicName);
+                        }
+                      } else {
+                        // Если выбрана существующая характеристика
+                        handleMaterialChange(idx, 'size', value ? value.name : '');
+                      }
+                    }}
+                    onInputChange={(_, value) => handleMaterialChange(idx, 'size', value || '')}
+                    options={characteristics}
+                    getOptionLabel={option => typeof option === 'string' ? option : option.name}
+                    isOptionEqualToValue={(option, value) => 
+                      typeof option === 'string' ? option === value : option.id === value.id
+                    }
+                    renderInput={params => (
+                      <TextField 
+                        {...params} 
+                        size="small" 
+                        label="Характеристики (смета)"
+                      />
+                    )}
+                    filterOptions={(options, state) => {
+                      const filtered = options.filter(option => 
+                        option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+                      );
+                      // Добавляем опцию создания новой характеристики
+                      if (state.inputValue && !options.some(option => 
+                        option.name.toLowerCase() === state.inputValue.toLowerCase()
+                      )) {
+                        filtered.push({ id: '', name: `Создать: ${state.inputValue}` } as any);
+                      }
+                      return filtered;
+                    }}
                   />
-                  </TableCell>
+                </TableCell>
                   <TableCell sx={{ width: colWidths[7], maxWidth: colWidths[7], backgroundColor: '#f0f8ff' }} title={mat.estimateQuantity || ''}>
                   <TextField
                     size="small"
@@ -1856,7 +2014,7 @@ export default function RequestEditPage() {
                   ✓ Найдены сохраненные соответствия столбцов
                 </Typography>
               )}
-              {(importWillCreate.project || importWillCreate.warehouse || importWillCreate.workTypes.length > 0 || importWillCreate.characteristics.length > 0 || importWillCreate.units.length > 0 || importWillCreate.estimateUnits.length > 0 || importWillCreate.materials.length > 0) && (
+              {(importWillCreate.project || importWillCreate.warehouse || importWillCreate.workTypes.length > 0 || importWillCreate.characteristics.length > 0 || importWillCreate.units.length > 0 || importWillCreate.estimateUnits.length > 0 || importWillCreate.materials.length > 0 || importWillCreate.materialCharacteristics.length > 0) && (
                 <Box mt={2}>
                   <Typography variant="subtitle2" color="primary">Будут созданы новые справочники:</Typography>
                   <ul style={{marginTop: 4, marginBottom: 0, paddingLeft: 20}}>
@@ -1867,6 +2025,9 @@ export default function RequestEditPage() {
                     {importWillCreate.units.map(u => <li key={u}>Ед. изм.: <b>{u}</b></li>)}
                     {importWillCreate.estimateUnits.map(u => <li key={u}>Ед. изм.(смета): <b>{u}</b></li>)}
                     {importWillCreate.materials.map(m => <li key={m}>Материал (смета): <b>{m}</b></li>)}
+                    {importWillCreate.materialCharacteristics.map((item, idx) => (
+                      <li key={idx}>Характеристика материала: <b>{item.characteristics}</b> → <b>{item.materialName}</b></li>
+                    ))}
                   </ul>
                 </Box>
               )}

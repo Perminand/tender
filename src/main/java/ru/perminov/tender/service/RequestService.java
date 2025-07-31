@@ -1,6 +1,7 @@
 package ru.perminov.tender.service;
 
 import ru.perminov.tender.dto.RequestDto;
+import ru.perminov.tender.dto.RequestRelatedEntitiesDto;
 import ru.perminov.tender.dto.tender.TenderDto;
 import java.util.List;
 import java.util.UUID;
@@ -18,4 +19,6 @@ public interface RequestService {
     void delete(UUID id);
     
     TenderDto createTenderFromRequest(UUID requestId);
+    
+    RequestRelatedEntitiesDto getRelatedEntities(UUID requestId);
 } 

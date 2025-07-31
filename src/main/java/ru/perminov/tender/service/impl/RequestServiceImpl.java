@@ -6,14 +6,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.RequestDto;
 import ru.perminov.tender.dto.RequestMaterialDto;
+import ru.perminov.tender.dto.RequestRelatedEntitiesDto;
 import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.mapper.RequestMapper;
 import ru.perminov.tender.mapper.RequestMaterialMapper;
 import ru.perminov.tender.model.Request;
 import ru.perminov.tender.model.RequestMaterial;
 import ru.perminov.tender.model.Tender;
+import ru.perminov.tender.model.Invoice;
 import ru.perminov.tender.repository.RequestRepository;
 import ru.perminov.tender.repository.TenderRepository;
+import ru.perminov.tender.repository.InvoiceRepository;
 import ru.perminov.tender.repository.WorkTypeRepository;
 import ru.perminov.tender.service.OrgSupplierMaterialMappingService;
 import ru.perminov.tender.service.RequestService;
@@ -41,6 +44,8 @@ public class RequestServiceImpl implements RequestService {
     private final TenderService tenderService;
     private final AuditLogService auditLogService;
     private final UserRepository userRepository;
+    private final TenderRepository tenderRepository;
+    private final InvoiceRepository invoiceRepository;
 
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -165,8 +170,63 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     public void delete(UUID id) {
+        log.info("Попытка удаления заявки: {}", id);
+        
+        // Проверяем связанные сущности
+        RequestRelatedEntitiesDto relatedEntities = getRelatedEntities(id);
+        
+        if (relatedEntities.hasRelatedEntities()) {
+            log.warn("Невозможно удалить заявку {}: найдены связанные сущности (тендеров: {}, счетов: {})", 
+                    id, relatedEntities.tenders().size(), relatedEntities.invoices().size());
+            throw new IllegalStateException("Невозможно удалить заявку, так как с ней связаны другие сущности");
+        }
+        
         requestRepository.deleteById(id);
         auditLogService.logSimple(getCurrentUser(), "DELETE_REQUEST", "Request", id.toString(), "Удалена заявка");
+        log.info("Заявка {} успешно удалена", id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RequestRelatedEntitiesDto getRelatedEntities(UUID requestId) {
+        log.info("Получение связанных сущностей для заявки: {}", requestId);
+        
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Заявка не найдена"));
+        
+        List<Tender> tenders = tenderRepository.findAllByRequestId(requestId);
+        List<Invoice> invoices = invoiceRepository.findByRequestId(requestId);
+        
+        List<RequestRelatedEntitiesDto.TenderInfo> tenderInfos = tenders.stream()
+                .map(tender -> new RequestRelatedEntitiesDto.TenderInfo(
+                        tender.getId(),
+                        tender.getTenderNumber(),
+                        tender.getTitle(),
+                        tender.getStatus().name()
+                ))
+                .collect(Collectors.toList());
+        
+        List<RequestRelatedEntitiesDto.InvoiceInfo> invoiceInfos = invoices.stream()
+                .map(invoice -> new RequestRelatedEntitiesDto.InvoiceInfo(
+                        invoice.getId(),
+                        invoice.getInvoiceNumber(),
+                        invoice.getStatus().name(),
+                        invoice.getSupplier() != null ? invoice.getSupplier().getName() : "Не указан"
+                ))
+                .collect(Collectors.toList());
+        
+        boolean hasRelatedEntities = !tenders.isEmpty() || !invoices.isEmpty();
+        
+        log.info("Найдено связанных сущностей для заявки {}: тендеров={}, счетов={}", 
+                requestId, tenders.size(), invoices.size());
+        
+        return new RequestRelatedEntitiesDto(
+                requestId,
+                request.getRequestNumber(),
+                tenderInfos,
+                invoiceInfos,
+                hasRelatedEntities
+        );
     }
 
     @Override

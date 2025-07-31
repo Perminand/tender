@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.CharacteristicDto;
+import ru.perminov.tender.dto.CharacteristicDtoNew;
 import ru.perminov.tender.service.CharacteristicService;
 
 import java.util.List;
@@ -46,6 +47,14 @@ public class CharacteristicController {
         log.info("Получен POST-запрос: создать характеристику. Данные: {}", dto);
         CharacteristicDto created = service.save(dto);
         log.info("Создана характеристика с id={}", created.id());
+        return ResponseEntity.ok(created);
+    }
+
+    @PostMapping("/with-material")
+    public ResponseEntity<CharacteristicDto> createWithMaterial(@RequestBody CharacteristicDtoNew dto) {
+        log.info("Получен POST-запрос: создать характеристику для материала. Данные: {}", dto);
+        CharacteristicDto created = service.saveWithMaterial(dto);
+        log.info("Создана характеристика с id={} для материала {}", created.id(), dto.materialId());
         return ResponseEntity.ok(created);
     }
 

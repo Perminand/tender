@@ -22,7 +22,9 @@ public record MaterialDtoNew(
 
         String code,
 
-        UUID categoryId
+        UUID categoryId,
+
+        String characteristics
 
 ) {
 } 

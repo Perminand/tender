@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.RequestDto;
+import ru.perminov.tender.dto.RequestRelatedEntitiesDto;
 import ru.perminov.tender.service.RequestService;
 import jakarta.validation.Valid;
 
@@ -99,11 +100,27 @@ public class RequestController {
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
+    @GetMapping("/{id}/related-entities")
+    public ResponseEntity<RequestRelatedEntitiesDto> getRelatedEntities(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: получить связанные сущности заявки. id={}", id);
+        RequestRelatedEntitiesDto relatedEntities = requestService.getRelatedEntities(id);
+        log.info("Возвращены связанные сущности для заявки {}: тендеров={}, счетов={}", 
+                id, relatedEntities.tenders().size(), relatedEntities.invoices().size());
+        return ResponseEntity.ok(relatedEntities);
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<?> delete(@PathVariable UUID id) {
         log.info("Получен DELETE-запрос: удалить заявку. id={}", id);
-        requestService.delete(id);
-        return ResponseEntity.noContent().build();
+        try {
+            requestService.delete(id);
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            log.warn("Невозможно удалить заявку {}: {}", id, e.getMessage());
+            RequestRelatedEntitiesDto relatedEntities = requestService.getRelatedEntities(id);
+            return ResponseEntity.badRequest().body(relatedEntities);
+        }
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
