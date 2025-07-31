@@ -263,7 +263,7 @@ export default function RequestEditPage() {
   const [importMissing, setImportMissing] = useState<any>(null);
   const [importLoading, setImportLoading] = useState(false);
 
-  const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[], estimateUnits: string[]}>({workTypes:[], characteristics:[], units:[], estimateUnits:[]});
+  const [importWillCreate, setImportWillCreate] = useState<{project?: string, warehouse?: string, workTypes: string[], characteristics: string[], units: string[], estimateUnits: string[], materials: string[]}>({workTypes:[], characteristics:[], units:[], estimateUnits:[], materials:[]});
 
 
   const [missingCompanyName, setMissingCompanyName] = useState<string | null>(null);
@@ -916,13 +916,28 @@ export default function RequestEditPage() {
     // Ед. изм.(смета)
     const allEstimateUnits = ((pendingImportData.materials || []).map((m:any) => m.estimateUnit).filter(Boolean) as string[]);
     const missingEstimateUnits = Array.from(new Set(allEstimateUnits.filter((u:string) => u && !units.find(unit => unit.shortName.trim().toLowerCase() === u.trim().toLowerCase()))));
+    
+    // Материалы (смета) - анализируем estimateMaterialName
+    const allEstimateMaterials = ((pendingImportData.materials || []).map((m:any) => m.estimateMaterialName).filter(Boolean) as string[]);
+    const missingMaterials = Array.from(new Set(allEstimateMaterials.filter((materialName:string) => 
+      materialName && !materials.find(m => m.name.trim().toLowerCase() === materialName.trim().toLowerCase())
+    )));
+    
+    if (import.meta.env.DEV) {
+      console.log('=== АНАЛИЗ МАТЕРИАЛОВ ПРИ ИМПОРТЕ ===');
+      console.log('Все estimateMaterialName из импорта:', allEstimateMaterials);
+      console.log('Существующие материалы в справочнике:', materials.map(m => m.name));
+      console.log('Отсутствующие материалы:', missingMaterials);
+    }
+    
     setImportWillCreate({
       project: missingProject,
       warehouse: missingWarehouse,
       workTypes: missingWorkTypes,
       characteristics: missingChars,
       units: missingUnits,
-      estimateUnits: missingEstimateUnits
+      estimateUnits: missingEstimateUnits,
+      materials: missingMaterials
     });
   }, [pendingImportData, projects, warehouses, workTypes, characteristics, units]);
 
@@ -970,6 +985,18 @@ export default function RequestEditPage() {
       setUnits(unitsRes.data);
       unitMap[u] = res.data;
     }
+    
+    // Материалы (смета) - создаем новые материалы в справочнике
+    let materialMap: Record<string, any> = {};
+    if (importWillCreate.materials.length > 0) {
+      console.log('Создаем новые материалы:', importWillCreate.materials);
+      for (const materialName of importWillCreate.materials) {
+        const res = await api.post('/api/materials', { name: materialName });
+        console.log(`Создан материал "${materialName}":`, res.data);
+        setMaterials(prev => [...prev, res.data]);
+        materialMap[materialName] = res.data;
+      }
+    }
     // Интеграция данных
     const processedMaterials = (pendingImportData.materials || []).map((mat: any) => {
         // workType, characteristics, unit, estimateUnit — ищем среди новых и старых
@@ -977,12 +1004,26 @@ export default function RequestEditPage() {
         let charObj = characteristics.find(c => c.name.trim().toLowerCase() === (mat.characteristics || '').trim().toLowerCase()) || charMap[mat.characteristics];
         let unitObj = units.find(u => u.shortName.trim().toLowerCase() === (mat.unit || '').trim().toLowerCase()) || unitMap[mat.unit];
         let estimateUnitObj = units.find(u => u.shortName.trim().toLowerCase() === (mat.estimateUnit || '').trim().toLowerCase()) || unitMap[mat.estimateUnit];
+        
+        // Материал (смета) - ищем среди новых и старых материалов
+        let materialObj = materials.find(m => m.name.trim().toLowerCase() === (mat.estimateMaterialName || '').trim().toLowerCase()) || materialMap[mat.estimateMaterialName];
+        
+        if (import.meta.env.DEV && mat.estimateMaterialName) {
+          console.log(`Обработка материала "${mat.estimateMaterialName}":`, {
+            estimateMaterialName: mat.estimateMaterialName,
+            foundInMaterials: materials.find(m => m.name.trim().toLowerCase() === (mat.estimateMaterialName || '').trim().toLowerCase()),
+            foundInMaterialMap: materialMap[mat.estimateMaterialName],
+            finalMaterialObj: materialObj
+          });
+        }
+        
         return {
           ...mat,
           workType: workTypeObj ? workTypeObj.id : '',
           characteristics: charObj ? charObj.name : '',
           unit: unitObj ? unitObj : null,
           estimateUnit: estimateUnitObj ? estimateUnitObj : null,
+          material: materialObj ? materialObj : null, // Подставляем найденный материал
         };
     });
 
@@ -1348,16 +1389,67 @@ export default function RequestEditPage() {
                     backgroundColor: '#f0f8ff',
                     borderLeft: '2px solid #1976d2'
                               }} title={mat.estimateMaterialName || ''}>
-            <TextField
-              size="small"
-              label="Наименование материала (смета)"
-              value={mat.estimateMaterialName || ''}
-              onChange={e => handleMaterialChange(idx, 'estimateMaterialName', e.target.value)}
-              sx={{ width: '100%', maxWidth: colWidths[5] }}
-              InputLabelProps={{ shrink: true }}
-
-                  />
-                </TableCell>
+                    <Autocomplete
+                      freeSolo
+                      value={mat.estimateMaterialName || ''}
+                      onChange={async (_, value) => {
+                        if (typeof value === 'string') {
+                          // Если введено новое значение, создаем материал
+                          try {
+                            const res = await api.post('/api/materials', { name: value });
+                            setMaterials(prev => [...prev, res.data]);
+                            handleMaterialChange(idx, 'estimateMaterialName', value);
+                            handleMaterialChange(idx, 'material', res.data);
+                          } catch (error) {
+                            console.error('Ошибка при создании материала:', error);
+                            handleMaterialChange(idx, 'estimateMaterialName', value);
+                          }
+                        } else if (value && value.name && value.name.startsWith('Создать: ')) {
+                          // Если выбрана опция "Создать:"
+                          const materialName = value.name.replace('Создать: ', '');
+                          try {
+                            const res = await api.post('/api/materials', { name: materialName });
+                            setMaterials(prev => [...prev, res.data]);
+                            handleMaterialChange(idx, 'estimateMaterialName', materialName);
+                            handleMaterialChange(idx, 'material', res.data);
+                          } catch (error) {
+                            console.error('Ошибка при создании материала:', error);
+                            handleMaterialChange(idx, 'estimateMaterialName', materialName);
+                          }
+                        } else {
+                          // Если выбран существующий материал
+                          handleMaterialChange(idx, 'estimateMaterialName', value ? value.name : '');
+                          handleMaterialChange(idx, 'material', value);
+                        }
+                      }}
+                      onInputChange={(_, value) => handleMaterialChange(idx, 'estimateMaterialName', value || '')}
+                      options={materials}
+                      getOptionLabel={option => typeof option === 'string' ? option : option.name}
+                      isOptionEqualToValue={(option, value) => 
+                        typeof option === 'string' ? option === value : option.id === value.id
+                      }
+                      renderInput={params => (
+                        <TextField 
+                          {...params} 
+                          size="small" 
+                          label="Наименование материала (смета)" 
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      )}
+                      filterOptions={(options, state) => {
+                        const filtered = options.filter(option => 
+                          option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+                        );
+                        // Добавляем опцию создания нового материала
+                        if (state.inputValue && !options.some(option => 
+                          option.name.toLowerCase() === state.inputValue.toLowerCase()
+                        )) {
+                          filtered.push({ id: '', name: `Создать: ${state.inputValue}` } as any);
+                        }
+                        return filtered;
+                      }}
+                    />
+                  </TableCell>
                 <TableCell sx={{ width: colWidths[6], backgroundColor: '#f0f8ff' }} title={mat.size || ''}>
                   <TextField
                     size="small"
@@ -1764,7 +1856,7 @@ export default function RequestEditPage() {
                   ✓ Найдены сохраненные соответствия столбцов
                 </Typography>
               )}
-              {(importWillCreate.project || importWillCreate.warehouse || importWillCreate.workTypes.length > 0 || importWillCreate.characteristics.length > 0 || importWillCreate.units.length > 0 || importWillCreate.estimateUnits.length > 0) && (
+              {(importWillCreate.project || importWillCreate.warehouse || importWillCreate.workTypes.length > 0 || importWillCreate.characteristics.length > 0 || importWillCreate.units.length > 0 || importWillCreate.estimateUnits.length > 0 || importWillCreate.materials.length > 0) && (
                 <Box mt={2}>
                   <Typography variant="subtitle2" color="primary">Будут созданы новые справочники:</Typography>
                   <ul style={{marginTop: 4, marginBottom: 0, paddingLeft: 20}}>
@@ -1774,6 +1866,7 @@ export default function RequestEditPage() {
                     {importWillCreate.characteristics.map(c => <li key={c}>Характеристика: <b>{c}</b></li>)}
                     {importWillCreate.units.map(u => <li key={u}>Ед. изм.: <b>{u}</b></li>)}
                     {importWillCreate.estimateUnits.map(u => <li key={u}>Ед. изм.(смета): <b>{u}</b></li>)}
+                    {importWillCreate.materials.map(m => <li key={m}>Материал (смета): <b>{m}</b></li>)}
                   </ul>
                 </Box>
               )}
