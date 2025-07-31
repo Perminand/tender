@@ -21,6 +21,7 @@ import {
 import {
   ViewList as ViewListIcon,
   ViewModule as ViewModuleIcon,
+  ExpandMore as ExpandMoreIcon,
   Refresh as RefreshIcon,
   FilterList as FilterIcon,
   Search as SearchIcon
@@ -29,6 +30,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
 import RequestProcessBrief from '../components/RequestProcessBrief';
 import RequestProcessDetailed from '../components/RequestProcessDetailed';
+import RequestProcessMatryoshka from '../components/RequestProcessMatryoshka';
 import ProcessStatistics from '../components/ProcessStatistics';
 import { RequestProcess, ViewMode, RequestProcessFilters } from '../types/requestProcess';
 
@@ -66,7 +68,7 @@ export default function RequestProcessPage() {
   };
 
   useEffect(() => {
-    fetchRequests(viewMode === 'detailed');
+    fetchRequests(viewMode === 'detailed' || viewMode === 'matryoshka');
   }, [viewMode]);
 
   const handleViewModeChange = (event: React.MouseEvent<HTMLElement>, newMode: ViewMode | null) => {
@@ -84,7 +86,7 @@ export default function RequestProcessPage() {
   };
 
   const handleRefresh = () => {
-    fetchRequests(viewMode === 'detailed');
+    fetchRequests(viewMode === 'detailed' || viewMode === 'matryoshka');
   };
 
   const handleFilterChange = (field: string) => (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,6 +190,11 @@ export default function RequestProcessPage() {
                 <ToggleButton value="detailed">
                   <Tooltip title="Подробный вид">
                     <ViewModuleIcon />
+                  </Tooltip>
+                </ToggleButton>
+                <ToggleButton value="matryoshka">
+                  <Tooltip title="Матрешка">
+                    <ExpandMoreIcon />
                   </Tooltip>
                 </ToggleButton>
               </ToggleButtonGroup>
@@ -315,8 +322,10 @@ export default function RequestProcessPage() {
                   onExpand={() => handleRequestExpand(request.requestId)}
                   expanded={expandedRequests.includes(request.requestId)}
                 />
-              ) : (
+              ) : viewMode === 'detailed' ? (
                 <RequestProcessDetailed request={request} />
+              ) : (
+                <RequestProcessMatryoshka request={request} />
               )}
             </Box>
           ))

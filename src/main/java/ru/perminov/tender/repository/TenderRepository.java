@@ -32,8 +32,12 @@ public interface TenderRepository extends JpaRepository<Tender, UUID> {
     @Query("SELECT t FROM Tender t LEFT JOIN FETCH t.request WHERE t.request.id = :requestId")
     Optional<Tender> findByRequestId(@Param("requestId") UUID requestId);
 
-    @Query("SELECT t FROM Tender t LEFT JOIN FETCH t.request WHERE t.request.id = :requestId")
+    @Query("SELECT t FROM Tender t WHERE t.request.id = :requestId")
     List<Tender> findAllByRequestId(@Param("requestId") UUID requestId);
+    
+    // Дополнительный метод для отладки
+    @Query("SELECT COUNT(t) FROM Tender t WHERE t.request.id = :requestId")
+    long countByRequestId(@Param("requestId") UUID requestId);
 
     @Query("SELECT t FROM Tender t " +
            "LEFT JOIN FETCH t.customer " +

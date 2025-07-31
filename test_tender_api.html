@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест API Тендеров</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .result {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Тест API Тендеров</h1>
+        
+        <div class="section">
+            <h2>1. Общая информация о тендерах</h2>
+            <button onclick="testTenders()">Получить общую информацию</button>
+            <div id="tendersResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>2. Тендеры для конкретной заявки</h2>
+            <input type="text" id="requestId" placeholder="ID заявки (UUID)" style="width: 300px;">
+            <button onclick="testTendersByRequest()">Получить тендеры для заявки</button>
+            <div id="tendersByRequestResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>3. Процесс заявки (детальный)</h2>
+            <input type="text" id="requestIdForProcess" placeholder="ID заявки (UUID)" style="width: 300px;">
+            <button onclick="testRequestProcess()">Получить процесс заявки</button>
+            <div id="requestProcessResult" class="result"></div>
+        </div>
+        
+        <div class="section">
+            <h2>4. Список процессов заявок</h2>
+            <button onclick="testRequestProcessList()">Получить список процессов</button>
+            <div id="requestProcessListResult" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api';
+        
+        async function makeRequest(url, resultElementId) {
+            const resultElement = document.getElementById(resultElementId);
+            resultElement.textContent = 'Загрузка...';
+            resultElement.className = 'result';
+            
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                
+                resultElement.textContent = JSON.stringify(data, null, 2);
+                resultElement.className = 'result success';
+            } catch (error) {
+                resultElement.textContent = `Ошибка: ${error.message}`;
+                resultElement.className = 'result error';
+            }
+        }
+        
+        function testTenders() {
+            makeRequest(`${API_BASE}/test/tenders`, 'tendersResult');
+        }
+        
+        function testTendersByRequest() {
+            const requestId = document.getElementById('requestId').value;
+            if (!requestId) {
+                alert('Введите ID заявки');
+                return;
+            }
+            makeRequest(`${API_BASE}/test/tenders/${requestId}`, 'tendersByRequestResult');
+        }
+        
+        function testRequestProcess() {
+            const requestId = document.getElementById('requestIdForProcess').value;
+            if (!requestId) {
+                alert('Введите ID заявки');
+                return;
+            }
+            makeRequest(`${API_BASE}/requests/process/${requestId}`, 'requestProcessResult');
+        }
+        
+        function testRequestProcessList() {
+            makeRequest(`${API_BASE}/requests/process/list`, 'requestProcessListResult');
+        }
+        
+        // Автоматически загружаем общую информацию при загрузке страницы
+        window.onload = function() {
+            testTenders();
+        };
+    </script>
+</body>
+</html> 

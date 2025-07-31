@@ -179,6 +179,11 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
   const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
   const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
 
+  // Отладочная информация
+  console.log('RequestProcessDetailed - request:', request);
+  console.log('RequestProcessDetailed - tenders:', request.tenders);
+  console.log('RequestProcessDetailed - tendersCount:', request.tendersCount);
+
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleDateString('ru-RU');

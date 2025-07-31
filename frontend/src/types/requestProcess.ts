@@ -84,7 +84,7 @@ export interface ReceiptProcess {
   currency: string;
 }
 
-export type ViewMode = 'brief' | 'detailed';
+export type ViewMode = 'brief' | 'detailed' | 'matryoshka';
 
 export interface RequestProcessFilters {
   organization: string;

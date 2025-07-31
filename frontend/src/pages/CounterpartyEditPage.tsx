@@ -305,7 +305,16 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
             } else {
                 await api.put(url, payload);
             }
-            navigate('/counterparties');
+            
+            // Проверяем, есть ли returnUrl для возврата
+            const params = new URLSearchParams(location.search);
+            const returnUrl = params.get('returnUrl');
+            
+            if (returnUrl) {
+                navigate(returnUrl);
+            } else {
+                navigate('/counterparties');
+            }
         } catch (error: any) {
             const errorText = error.response?.data || error.message || 'Произошла неизвестная ошибка';
             setSaveError(`Не удалось сохранить контрагента. ${errorText}`);

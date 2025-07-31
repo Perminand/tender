@@ -245,6 +245,8 @@ public class RequestServiceImpl implements RequestService {
         // Создаем DTO для тендера
         TenderDto tenderDto = new TenderDto();
         tenderDto.setRequestId(requestId);
+        log.info("Создание DTO тендера с requestId: {}", requestId);
+        
         tenderDto.setTitle("Тендер по заявке " + request.getRequestNumber());
         tenderDto.setDescription("Тендер создан на основе заявки " + request.getRequestNumber());
         tenderDto.setCustomerId(request.getOrganization().getId());
@@ -257,7 +259,9 @@ public class RequestServiceImpl implements RequestService {
         }
         
         // Создаем тендер через сервис
+        log.info("Вызов tenderService.createTender с DTO: {}", tenderDto);
         TenderDto createdTender = tenderService.createTender(tenderDto);
+        log.info("Тендер создан успешно. ID: {}, requestId: {}", createdTender.getId(), createdTender.getRequestId());
         
         // Обновляем статус заявки на 'TENDER'
         log.info("Текущий статус заявки {}: {}", requestId, request.getStatus());

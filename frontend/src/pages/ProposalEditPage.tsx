@@ -102,6 +102,7 @@ const ProposalEditPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [duplicateItems, setDuplicateItems] = useState<Set<number>>(new Set());
+  const [savingDictionaryItem, setSavingDictionaryItem] = useState(false);
   
   // Состояния для справочников
   const [brands, setBrands] = useState<DictionaryItem[]>([]);
@@ -113,6 +114,18 @@ const ProposalEditPage: React.FC = () => {
   const [positionModalOpen, setPositionModalOpen] = useState(false);
   const [currentPositionIndex, setCurrentPositionIndex] = useState(0);
   const [currentPositionData, setCurrentPositionData] = useState<ProposalItemForm | null>(null);
+  const [fillingStarted, setFillingStarted] = useState(false);
+  const [savingPosition, setSavingPosition] = useState(false);
+  
+  // Логирование изменений состояния модального окна
+  useEffect(() => {
+    console.log('Состояние модального окна изменилось:', {
+      positionModalOpen,
+      currentPositionIndex,
+      fillingStarted,
+      currentPositionData: currentPositionData ? 'установлен' : 'null'
+    });
+  }, [positionModalOpen, currentPositionIndex, fillingStarted, currentPositionData]);
   
   const [formData, setFormData] = useState<ProposalFormData>({
     tenderId: tenderId || '',
@@ -126,6 +139,9 @@ const ProposalEditPage: React.FC = () => {
     validUntil: '',
     proposalItems: []
   });
+
+  // Состояние для автокомплета поставщика
+  const [selectedSupplier, setSelectedSupplier] = useState<Company | null>(null);
   
   // Ширина столбцов
   const defaultWidths = [40, 200, 120, 120, 150, 120, 80, 100, 100, 80, 100, 120, 120, 100, 60];
@@ -287,6 +303,57 @@ const ProposalEditPage: React.FC = () => {
     loadTenderItems();
   }, [tenderId]);
 
+  // Инициализация selectedSupplier при изменении companies или formData.supplierId
+  useEffect(() => {
+    if (companies.length > 0 && formData.supplierId) {
+      const supplier = companies.find(company => company.id === formData.supplierId);
+      setSelectedSupplier(supplier || null);
+    }
+  }, [companies, formData.supplierId]);
+
+  // Восстановление процесса заполнения позиций при возврате на страницу
+  useEffect(() => {
+    if (fillingStarted && tenderItems.length > 0 && currentPositionIndex < tenderItems.length && !positionModalOpen) {
+      // Если процесс заполнения был начат, но модальное окно закрыто, показываем следующую позицию
+      showNextPosition();
+    }
+  }, [fillingStarted, tenderItems.length, currentPositionIndex, positionModalOpen]);
+
+  // Сохранение состояния процесса заполнения в localStorage
+  useEffect(() => {
+    if (tenderId) {
+      const key = `proposal_filling_${tenderId}`;
+      if (fillingStarted) {
+        localStorage.setItem(key, JSON.stringify({
+          fillingStarted,
+          currentPositionIndex,
+          proposalItemsCount: formData.proposalItems.length
+        }));
+      } else {
+        localStorage.removeItem(key);
+      }
+    }
+  }, [fillingStarted, currentPositionIndex, formData.proposalItems.length, tenderId]);
+
+  // Восстановление состояния процесса заполнения из localStorage
+  useEffect(() => {
+    if (tenderId && !fillingStarted) {
+      const key = `proposal_filling_${tenderId}`;
+      const savedState = localStorage.getItem(key);
+      if (savedState) {
+        try {
+          const state = JSON.parse(savedState);
+          if (state.fillingStarted && state.currentPositionIndex >= 0) {
+            setFillingStarted(true);
+            setCurrentPositionIndex(state.currentPositionIndex);
+          }
+        } catch (error) {
+          console.error('Ошибка при восстановлении состояния заполнения:', error);
+        }
+      }
+    }
+  }, [tenderId, fillingStarted]);
+
   const loadCompanies = async () => {
     try {
       const response = await api.get('/api/companies?role=SUPPLIER');
@@ -298,12 +365,26 @@ const ProposalEditPage: React.FC = () => {
 
   const loadDictionaries = async () => {
     try {
+      console.log('Загружаем справочники...');
       const [brandsResponse, manufacturersResponse, countriesResponse, warrantiesResponse] = await Promise.all([
         api.get('/api/dictionaries/brands'),
         api.get('/api/dictionaries/manufacturers'),
         api.get('/api/dictionaries/countries'),
         api.get('/api/dictionaries/warranties')
       ]);
+      
+      console.log('Справочники загружены:', {
+        brands: brandsResponse.data.length,
+        manufacturers: manufacturersResponse.data.length,
+        countries: countriesResponse.data.length,
+        warranties: warrantiesResponse.data.length
+      });
+      console.log('Данные справочников:', {
+        brands: brandsResponse.data,
+        manufacturers: manufacturersResponse.data,
+        countries: countriesResponse.data,
+        warranties: warrantiesResponse.data
+      });
       
       setBrands(brandsResponse.data);
       setManufacturers(manufacturersResponse.data);
@@ -320,10 +401,17 @@ const ProposalEditPage: React.FC = () => {
     try {
       const response = await api.get(`/api/tenders/${tenderId}/items`);
       setTenderItems(response.data);
+      console.log('Загружены позиции тендера:', response.data.length, 'fillingStarted:', fillingStarted);
       
-      // Начинаем процесс заполнения позиций
-      if (response.data.length > 0) {
+      // Начинаем процесс заполнения позиций только если он еще не был начат
+      if (response.data.length > 0 && !fillingStarted) {
+        console.log('Автоматически запускаем заполнение позиций');
         startPositionFilling();
+      } else {
+        console.log('Автоматический запуск не выполнен:', {
+          hasItems: response.data.length > 0,
+          fillingStarted: fillingStarted
+        });
       }
     } catch (error) {
       console.error('Error loading tender items:', error);
@@ -332,13 +420,17 @@ const ProposalEditPage: React.FC = () => {
 
   // Функция для начала заполнения позиций
   const startPositionFilling = () => {
+    console.log('startPositionFilling вызван');
     setCurrentPositionIndex(0);
+    setFillingStarted(true);
+    console.log('fillingStarted установлен в true, вызываем showNextPosition');
     showNextPosition();
   };
 
   // Функция для показа следующей позиции
   const showNextPosition = () => {
     console.log('showNextPosition вызван, currentPositionIndex:', currentPositionIndex, 'tenderItems.length:', tenderItems.length);
+    console.log('positionModalOpen будет установлен в true');
     if (currentPositionIndex < tenderItems.length) {
       const tenderItem = tenderItems[currentPositionIndex];
       console.log('Показываем позицию:', tenderItem);
@@ -360,44 +452,71 @@ const ProposalEditPage: React.FC = () => {
         deliveryCost: 0
       });
       setPositionModalOpen(true);
+      console.log('Модальное окно должно открыться, positionModalOpen установлен в true');
+      console.log('currentPositionData установлен:', currentPositionData);
+    } else {
+      console.log('Нет больше позиций для показа');
     }
   };
 
   // Функция для сохранения позиции и перехода к следующей
   const handleSavePosition = () => {
-    if (currentPositionData) {
+    if (currentPositionData && !savingPosition) {
+      setSavingPosition(true);
+      
       setFormData(prev => ({
         ...prev,
         proposalItems: [...prev.proposalItems, currentPositionData]
       }));
       
-      setCurrentPositionIndex(prev => prev + 1);
+      // Очищаем данные текущей позиции
+      setCurrentPositionData(null);
+      
+      const nextIndex = currentPositionIndex + 1;
+      setCurrentPositionIndex(nextIndex);
       setPositionModalOpen(false);
       
       // Показываем следующую позицию или завершаем
       setTimeout(() => {
-        if (currentPositionIndex + 1 < tenderItems.length) {
+        if (nextIndex < tenderItems.length) {
           showNextPosition();
         }
+        setSavingPosition(false);
       }, 100);
     }
   };
 
   // Функция для пропуска позиции
   const handleSkipPosition = () => {
-    setCurrentPositionIndex(prev => prev + 1);
-    setPositionModalOpen(false);
-    
-    setTimeout(() => {
-      if (currentPositionIndex + 1 < tenderItems.length) {
-        showNextPosition();
-      }
-    }, 100);
+    if (!savingPosition) {
+      setSavingPosition(true);
+      
+      // Очищаем данные текущей позиции
+      setCurrentPositionData(null);
+      
+      const nextIndex = currentPositionIndex + 1;
+      setCurrentPositionIndex(nextIndex);
+      setPositionModalOpen(false);
+      
+      setTimeout(() => {
+        if (nextIndex < tenderItems.length) {
+          showNextPosition();
+        }
+        setSavingPosition(false);
+      }, 100);
+    }
   };
 
   // Функция для завершения заполнения и перехода к обычному режиму
   const handleFinishFilling = () => {
+    if (savingPosition) return;
+    
     setPositionModalOpen(false);
+    setFillingStarted(false);
+    // Очищаем localStorage
+    if (tenderId) {
+      localStorage.removeItem(`proposal_filling_${tenderId}`);
+    }
     // Создаем пустые формы для оставшихся позиций
     const remainingItems = tenderItems.slice(currentPositionIndex).map((item: TenderItem) => ({
       tenderItemId: item.id,
@@ -463,6 +582,10 @@ const ProposalEditPage: React.FC = () => {
         }))
       };
       await api.post('/api/proposals', proposalData);
+      // Очищаем localStorage при успешной отправке
+      if (tenderId) {
+        localStorage.removeItem(`proposal_filling_${tenderId}`);
+      }
       navigate(`/tenders/${tenderId}`);
     } catch (error: any) {
       console.error('Error saving proposal:', error);
@@ -544,6 +667,33 @@ const ProposalEditPage: React.FC = () => {
     }));
   };
 
+  // Обработчик изменения поставщика в автокомплете
+  const handleSupplierChange = (event: any, newValue: Company | null) => {
+    if (newValue && newValue.id === 'CREATE_NEW') {
+      // Если выбрана опция создания нового поставщика
+      const supplierName = newValue.name.replace(/^Создать: /, '');
+      handleCreateSupplier(supplierName);
+    } else {
+      setSelectedSupplier(newValue);
+      setFormData(prev => ({
+        ...prev,
+        supplierId: newValue?.id || ''
+      }));
+    }
+  };
+
+  // Обработчик создания нового поставщика
+  const handleCreateSupplier = (inputValue: string) => {
+    // Переходим на страницу создания контрагента с предзаполненными данными
+    const params = new URLSearchParams({
+      name: inputValue,
+      shortName: inputValue,
+      role: 'SUPPLIER',
+      returnUrl: `/tenders/${tenderId}/proposals/new`
+    });
+    navigate(`/counterparties/new?${params.toString()}`);
+  };
+
   const handleItemChange = (index: number, field: keyof ProposalItemForm, value: string | number) => {
     setFormData(prev => ({
       ...prev,
@@ -551,6 +701,57 @@ const ProposalEditPage: React.FC = () => {
         i === index ? { ...item, [field]: value } : item
       )
     }));
+  };
+
+  // Функция для перезагрузки справочников
+  const reloadDictionaries = async () => {
+    try {
+      console.log('Перезагружаем справочники...');
+      const [brandsResponse, manufacturersResponse, countriesResponse, warrantiesResponse] = await Promise.all([
+        api.get('/api/dictionaries/brands'),
+        api.get('/api/dictionaries/manufacturers'),
+        api.get('/api/dictionaries/countries'),
+        api.get('/api/dictionaries/warranties')
+      ]);
+      
+      setBrands(brandsResponse.data);
+      setManufacturers(manufacturersResponse.data);
+      setCountries(countriesResponse.data);
+      setWarranties(warrantiesResponse.data);
+      
+      console.log('Справочники перезагружены:', {
+        brands: brandsResponse.data.length,
+        manufacturers: manufacturersResponse.data.length,
+        countries: countriesResponse.data.length,
+        warranties: warrantiesResponse.data.length
+      });
+    } catch (error) {
+      console.error('Ошибка при перезагрузке справочников:', error);
+    }
+  };
+
+  // Функция для сохранения новой сущности в базу данных
+  const saveNewDictionaryItem = async (type: string, name: string): Promise<DictionaryItem> => {
+    setSavingDictionaryItem(true);
+    try {
+      console.log(`Отправляем запрос на создание ${type}:`, { name });
+      const response = await api.post(`/api/dictionaries/${type}`, { name });
+      console.log(`Новая ${type} сохранена в базу:`, response.data);
+      
+      // Перезагружаем справочники после успешного создания
+      await reloadDictionaries();
+      
+      return response.data;
+    } catch (error: any) {
+      console.error(`Ошибка при сохранении ${type}:`, error);
+      const errorMessage = error.response?.data?.message || error.message || `Ошибка при создании ${type}`;
+      setError(`Не удалось создать ${type}: ${errorMessage}`);
+      setErrorDialogOpen(true);
+      // Возвращаем временную сущность если сохранение не удалось
+      return { id: `temp_${Date.now()}`, name };
+    } finally {
+      setSavingDictionaryItem(false);
+    }
   };
 
   // Функция для обновления данных в модальном окне
@@ -673,20 +874,62 @@ const ProposalEditPage: React.FC = () => {
           
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth required error={!formData.supplierId && error !== null} sx={{ mb: 2 }}>
-                <InputLabel id="supplier-label">Поставщик</InputLabel>
-                <Select
-                  labelId="supplier-label"
-                  value={formData.supplierId}
-                  label="Поставщик"
-                  onChange={e => setFormData({ ...formData, supplierId: e.target.value })}
-                  required
-                >
-                  {companies.map((company) => (
-                    <MenuItem key={company.id} value={company.id}>{company.name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <Autocomplete
+                options={companies}
+                getOptionLabel={(option) => option.name}
+                value={selectedSupplier}
+                onChange={handleSupplierChange}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Поставщик"
+                    required
+                    error={!formData.supplierId && error !== null}
+                    helperText={!formData.supplierId && error !== null ? 'Поставщик обязателен для заполнения' : ''}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    <Box>
+                      {option.id === 'CREATE_NEW' ? (
+                        <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
+                          {option.name}
+                        </Typography>
+                      ) : (
+                        <>
+                          <Typography variant="body1">{option.name}</Typography>
+                          {option.shortName && option.shortName !== option.name && (
+                            <Typography variant="caption" color="text.secondary">
+                              {option.shortName}
+                            </Typography>
+                          )}
+                        </>
+                      )}
+                    </Box>
+                  </li>
+                )}
+                filterOptions={(options, { inputValue }) => {
+                  const filterValue = inputValue.toLowerCase();
+                  const filtered = options.filter(option => 
+                    option.name.toLowerCase().includes(filterValue) ||
+                    (option.shortName && option.shortName.toLowerCase().includes(filterValue))
+                  );
+                  
+                  // Добавляем опцию создания нового поставщика, если есть введенный текст и нет совпадений
+                  if (inputValue && !options.some(option => 
+                    option.name.toLowerCase() === inputValue.toLowerCase() ||
+                    (option.shortName && option.shortName.toLowerCase() === inputValue.toLowerCase())
+                  )) {
+                    filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}`, shortName: inputValue } as any);
+                  }
+                  return filtered;
+                }}
+                isOptionEqualToValue={(option, value) => option.id === value.id}
+                noOptionsText="Поставщик не найден"
+                loading={loading}
+                loadingText="Загрузка поставщиков..."
+                sx={{ mb: 2 }}
+              />
             </Grid>
 
             <Grid item xs={12} md={6}>
@@ -786,9 +1029,58 @@ const ProposalEditPage: React.FC = () => {
       )}
       <Card>
         <CardContent>
-          <Typography variant="h6" sx={{ mb: 2 }}>
-            Позиции предложения
-          </Typography>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Typography variant="h6">
+              Позиции предложения
+            </Typography>
+            {tenderItems.length > 0 && !fillingStarted && formData.proposalItems.length === 0 && (
+              <Button
+                variant="contained"
+                color="primary"
+                onClick={startPositionFilling}
+                startIcon={<AddIcon />}
+              >
+                Заполнить через модальное окно
+              </Button>
+            )}
+            {tenderItems.length > 0 && formData.proposalItems.length > 0 && (
+              <Button
+                variant="outlined"
+                color="secondary"
+                onClick={() => {
+                  setFormData(prev => ({ ...prev, proposalItems: [] }));
+                  setFillingStarted(false);
+                  setCurrentPositionIndex(0);
+                  if (tenderId) {
+                    localStorage.removeItem(`proposal_filling_${tenderId}`);
+                  }
+                }}
+                startIcon={<AddIcon />}
+              >
+                Начать заново
+              </Button>
+            )}
+            {tenderItems.length > 0 && fillingStarted && formData.proposalItems.length === 0 && (
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={() => {
+                  setFillingStarted(false);
+                  setCurrentPositionIndex(0);
+                  if (tenderId) {
+                    localStorage.removeItem(`proposal_filling_${tenderId}`);
+                  }
+                  setTimeout(() => {
+                    startPositionFilling();
+                  }, 100);
+                }}
+                startIcon={<AddIcon />}
+              >
+                Запустить модальное окно
+              </Button>
+            )}
+
+          </Box>
           <TableContainer component={Paper} variant="outlined" sx={{ mb: 2, overflowX: 'auto', width: '100%', maxWidth: '100%', maxHeight: '600px', overflowY: 'auto' }}>
             <Table sx={{ minWidth: 2500, width: 'max-content', tableLayout: 'fixed' }} className="resizable-table">
               <TableHead>
@@ -1029,11 +1321,13 @@ const ProposalEditPage: React.FC = () => {
       {/* Модальное окно для заполнения позиции */}
       <Dialog 
         open={positionModalOpen} 
-        onClose={() => setPositionModalOpen(false)}
+        onClose={() => !savingPosition && setPositionModalOpen(false)}
         maxWidth="md"
         fullWidth
       >
         <DialogTitle>
+          {savingPosition && <CircularProgress size={20} sx={{ mr: 1 }} />}
+          {savingDictionaryItem && <CircularProgress size={20} sx={{ mr: 1 }} />}
           Позиция {currentPositionIndex + 1} из {tenderItems.length}
         </DialogTitle>
         <DialogContent>
@@ -1044,11 +1338,21 @@ const ProposalEditPage: React.FC = () => {
             
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <Autocomplete<DictionaryItem, false, true, true>
+                <Autocomplete
                   options={brands}
-                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
-                  value={currentPositionData?.brand}
-                  onChange={(event, newValue) => handleModalItemChange('brand', newValue)}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
+                  value={currentPositionData?.brand || null}
+                  onChange={async (event, newValue) => {
+                    if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                      // Создаем новую сущность и сохраняем в базу
+                      const brandName = newValue.name.replace(/^Создать: /, '');
+                      console.log('Создаем новый бренд:', brandName);
+                      const newBrand = await saveNewDictionaryItem('brands', brandName);
+                      handleModalItemChange('brand', newBrand);
+                    } else {
+                      handleModalItemChange('brand', newValue);
+                    }
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1057,10 +1361,32 @@ const ProposalEditPage: React.FC = () => {
                       fullWidth
                     />
                   )}
+                  renderOption={(props, option) => {
+                    const { key, ...otherProps } = props;
+                    return (
+                      <li key={key} {...otherProps}>
+                        <Typography variant="body1">
+                          {typeof option === 'string' ? option : (option?.name || '')}
+                        </Typography>
+                      </li>
+                    );
+                  }}
+                  filterOptions={(options, { inputValue }) => {
+                    const filtered = options.filter(option => 
+                      option.name.toLowerCase().includes(inputValue.toLowerCase())
+                    );
+                    if (inputValue && !options.some(option => 
+                      option.name.toLowerCase() === inputValue.toLowerCase()
+                    )) {
+                      filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                    }
+                    return filtered;
+                  }}
                   freeSolo
                   autoComplete
                   includeInputInList
                   filterSelectedOptions
+                  noOptionsText="Бренд не найден"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -1073,11 +1399,21 @@ const ProposalEditPage: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Autocomplete<DictionaryItem, false, true, true>
+                <Autocomplete
                   options={manufacturers}
-                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
                   value={currentPositionData?.manufacturer}
-                  onChange={(event, newValue) => handleModalItemChange('manufacturer', newValue)}
+                  onChange={async (event, newValue) => {
+                    if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                      // Создаем новую сущность и сохраняем в базу
+                      const manufacturerName = newValue.name.replace(/^Создать: /, '');
+                      console.log('Создаем нового производителя:', manufacturerName);
+                      const newManufacturer = await saveNewDictionaryItem('manufacturers', manufacturerName);
+                      handleModalItemChange('manufacturer', newManufacturer);
+                    } else {
+                      handleModalItemChange('manufacturer', newValue);
+                    }
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1086,18 +1422,50 @@ const ProposalEditPage: React.FC = () => {
                       fullWidth
                     />
                   )}
+                  renderOption={(props, option) => {
+                    const { key, ...otherProps } = props;
+                    return (
+                      <li key={key} {...otherProps}>
+                        <Typography variant="body1">
+                          {typeof option === 'string' ? option : (option?.name || '')}
+                        </Typography>
+                      </li>
+                    );
+                  }}
+                  filterOptions={(options, { inputValue }) => {
+                    const filtered = options.filter(option => 
+                      option.name.toLowerCase().includes(inputValue.toLowerCase())
+                    );
+                    if (inputValue && !options.some(option => 
+                      option.name.toLowerCase() === inputValue.toLowerCase()
+                    )) {
+                      filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                    }
+                    return filtered;
+                  }}
                   freeSolo
                   autoComplete
                   includeInputInList
                   filterSelectedOptions
+                  noOptionsText="Производитель не найден"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Autocomplete<DictionaryItem, false, true, true>
+                <Autocomplete
                   options={countries}
-                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
                   value={currentPositionData?.countryOfOrigin}
-                  onChange={(event, newValue) => handleModalItemChange('countryOfOrigin', newValue)}
+                  onChange={async (event, newValue) => {
+                    if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                      // Создаем новую сущность и сохраняем в базу
+                      const countryName = newValue.name.replace(/^Создать: /, '');
+                      console.log('Создаем новую страну:', countryName);
+                      const newCountry = await saveNewDictionaryItem('countries', countryName);
+                      handleModalItemChange('countryOfOrigin', newCountry);
+                    } else {
+                      handleModalItemChange('countryOfOrigin', newValue);
+                    }
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1106,10 +1474,32 @@ const ProposalEditPage: React.FC = () => {
                       fullWidth
                     />
                   )}
+                  renderOption={(props, option) => {
+                    const { key, ...otherProps } = props;
+                    return (
+                      <li key={key} {...otherProps}>
+                        <Typography variant="body1">
+                          {typeof option === 'string' ? option : (option?.name || '')}
+                        </Typography>
+                      </li>
+                    );
+                  }}
+                  filterOptions={(options, { inputValue }) => {
+                    const filtered = options.filter(option => 
+                      option.name.toLowerCase().includes(inputValue.toLowerCase())
+                    );
+                    if (inputValue && !options.some(option => 
+                      option.name.toLowerCase() === inputValue.toLowerCase()
+                    )) {
+                      filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                    }
+                    return filtered;
+                  }}
                   freeSolo
                   autoComplete
                   includeInputInList
                   filterSelectedOptions
+                  noOptionsText="Страна не найдена"
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
@@ -1176,11 +1566,21 @@ const ProposalEditPage: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <Autocomplete<DictionaryItem, false, true, true>
+                <Autocomplete
                   options={warranties}
-                  getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
+                  getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
                   value={currentPositionData?.warranty}
-                  onChange={(event, newValue) => handleModalItemChange('warranty', newValue)}
+                  onChange={async (event, newValue) => {
+                    if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                      // Создаем новую сущность и сохраняем в базу
+                      const warrantyName = newValue.name.replace(/^Создать: /, '');
+                      console.log('Создаем новую гарантию:', warrantyName);
+                      const newWarranty = await saveNewDictionaryItem('warranties', warrantyName);
+                      handleModalItemChange('warranty', newWarranty);
+                    } else {
+                      handleModalItemChange('warranty', newValue);
+                    }
+                  }}
                   renderInput={(params) => (
                     <TextField
                       {...params}
@@ -1189,10 +1589,32 @@ const ProposalEditPage: React.FC = () => {
                       fullWidth
                     />
                   )}
+                  renderOption={(props, option) => {
+                    const { key, ...otherProps } = props;
+                    return (
+                      <li key={key} {...otherProps}>
+                        <Typography variant="body1">
+                          {typeof option === 'string' ? option : (option?.name || '')}
+                        </Typography>
+                      </li>
+                    );
+                  }}
+                  filterOptions={(options, { inputValue }) => {
+                    const filtered = options.filter(option => 
+                      option.name.toLowerCase().includes(inputValue.toLowerCase())
+                    );
+                    if (inputValue && !options.some(option => 
+                      option.name.toLowerCase() === inputValue.toLowerCase()
+                    )) {
+                      filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                    }
+                    return filtered;
+                  }}
                   freeSolo
                   autoComplete
                   includeInputInList
                   filterSelectedOptions
+                  noOptionsText="Гарантия не найдена"
                 />
               </Grid>
               <Grid item xs={12}>
@@ -1221,14 +1643,14 @@ const ProposalEditPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleFinishFilling} color="secondary">
+          <Button onClick={handleFinishFilling} color="secondary" disabled={savingPosition || savingDictionaryItem}>
             Завершить заполнение
           </Button>
-          <Button onClick={handleSkipPosition} color="secondary">
+          <Button onClick={handleSkipPosition} color="secondary" disabled={savingPosition || savingDictionaryItem}>
             Пропустить
           </Button>
-          <Button onClick={handleSavePosition} variant="contained">
-            {currentPositionIndex + 1 < tenderItems.length ? 'Сохранить и продолжить' : 'Завершить'}
+          <Button onClick={handleSavePosition} variant="contained" disabled={savingPosition || savingDictionaryItem}>
+            {savingPosition ? 'Сохранение...' : (currentPositionIndex + 1 < tenderItems.length ? 'Сохранить и продолжить' : 'Завершить')}
           </Button>
         </DialogActions>
       </Dialog>

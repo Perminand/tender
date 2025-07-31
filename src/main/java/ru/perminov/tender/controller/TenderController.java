@@ -30,7 +30,10 @@ public class TenderController {
     @PostMapping
     public ResponseEntity<TenderDto> createTender(@RequestBody TenderDto tenderDto) {
         log.info("Получен POST-запрос: создать тендер. Данные: {}", tenderDto);
-        return ResponseEntity.ok(tenderService.createTender(tenderDto));
+        log.info("RequestId в DTO: {}", tenderDto.getRequestId());
+        TenderDto createdTender = tenderService.createTender(tenderDto);
+        log.info("Тендер создан успешно. ID: {}, requestId: {}", createdTender.getId(), createdTender.getRequestId());
+        return ResponseEntity.ok(createdTender);
     }
 
     @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")

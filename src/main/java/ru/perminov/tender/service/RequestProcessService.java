@@ -1,6 +1,7 @@
 package ru.perminov.tender.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.RequestProcessDto;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class RequestProcessService {
 
     private final RequestRepository requestRepository;
@@ -26,8 +28,14 @@ public class RequestProcessService {
     private final ReceiptRepository receiptRepository;
 
     public RequestProcessDto getRequestProcess(UUID requestId) {
+        log.info("Загрузка процесса заявки с ID: {}", requestId);
+        
         Request request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new RuntimeException("Заявка не найдена"));
+
+        log.info("Заявка {} найдена: номер {}, организация: {}", 
+                requestId, request.getRequestNumber(), 
+                request.getOrganization() != null ? request.getOrganization().getName() : "не указана");
 
         RequestProcessDto dto = new RequestProcessDto();
         dto.setRequestId(request.getId());
@@ -45,7 +53,22 @@ public class RequestProcessService {
         dto.setMaterialsCount(request.getRequestMaterials().size());
 
         // Загружаем тендеры
+        log.info("Поиск тендеров для заявки {}", requestId);
+        
+        // Проверяем количество тендеров через COUNT запрос
+        long tenderCount = tenderRepository.countByRequestId(requestId);
+        log.info("Количество тендеров для заявки {} (через COUNT): {}", requestId, tenderCount);
+        
         List<Tender> tenders = tenderRepository.findAllByRequestId(requestId);
+        log.info("Найдено тендеров для заявки {}: {}", requestId, tenders.size());
+        
+        if (tenders.isEmpty()) {
+            log.warn("Тендеры для заявки {} не найдены", requestId);
+        } else {
+            tenders.forEach(tender -> log.info("Найден тендер: {} (ID: {}) для заявки {}", 
+                    tender.getTenderNumber(), tender.getId(), requestId));
+        }
+        
         dto.setTendersCount(tenders.size());
         dto.setTenders(tenders.stream().map(this::mapTenderToDto).collect(Collectors.toList()));
 
@@ -73,18 +96,37 @@ public class RequestProcessService {
     }
 
     private RequestProcessDto.TenderProcessDto mapTenderToDto(Tender tender) {
+        log.info("Маппинг тендера: {} (ID: {})", tender.getTenderNumber(), tender.getId());
+        
         RequestProcessDto.TenderProcessDto dto = new RequestProcessDto.TenderProcessDto();
         dto.setTenderId(tender.getId());
         dto.setTenderNumber(tender.getTenderNumber());
         dto.setTenderDate(tender.getStartDate() != null ? tender.getStartDate().toLocalDate() : null);
+        log.info("Тендер {}: дата тендера установлена: {}", tender.getTenderNumber(), dto.getTenderDate());
         dto.setStatus(tender.getStatus().name());
         
+        log.info("Тендер {}: дата начала: {}, статус: {}", 
+                tender.getTenderNumber(), 
+                tender.getStartDate(), 
+                tender.getStatus());
+        
         // Рассчитываем общую сумму тендера
+        log.info("Тендер {}: загружаем элементы тендера", tender.getTenderNumber());
         BigDecimal totalAmount = tender.getTenderItems().stream()
-                .map(item -> BigDecimal.valueOf(item.getQuantity() != null ? item.getQuantity() : 0.0)
-                        .multiply(BigDecimal.valueOf(item.getEstimatedPrice() != null ? item.getEstimatedPrice() : 0.0)))
+                .map(item -> {
+                    BigDecimal quantity = BigDecimal.valueOf(item.getQuantity() != null ? item.getQuantity() : 0.0);
+                    BigDecimal price = BigDecimal.valueOf(item.getEstimatedPrice() != null ? item.getEstimatedPrice() : 0.0);
+                    BigDecimal itemTotal = quantity.multiply(price);
+                    log.info("Элемент тендера: количество={}, цена={}, сумма={}", quantity, price, itemTotal);
+                    return itemTotal;
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         dto.setTotalAmount(totalAmount);
+        
+        log.info("Тендер {}: количество элементов: {}, общая сумма: {}", 
+                tender.getTenderNumber(), 
+                tender.getTenderItems().size(), 
+                totalAmount);
 
         // Загружаем предложения
         List<SupplierProposal> proposals = supplierProposalRepository.findByTenderId(tender.getId());
@@ -93,6 +135,11 @@ public class RequestProcessService {
                 .filter(p -> p.getStatus() == SupplierProposal.ProposalStatus.ACCEPTED)
                 .count());
         dto.setProposals(proposals.stream().map(this::mapProposalToDto).collect(Collectors.toList()));
+        
+        log.info("Тендер {}: количество предложений: {}, выбранных: {}", 
+                tender.getTenderNumber(), 
+                proposals.size(), 
+                dto.getSelectedProposalsCount());
 
         return dto;
     }

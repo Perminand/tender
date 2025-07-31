@@ -70,6 +70,8 @@ public class TenderServiceImpl implements TenderService {
 
     @Override
     public TenderDto createTender(TenderDto tenderDto) {
+        log.info("Создание тендера с данными: {}", tenderDto);
+        
         Tender tender = tenderMapper.toEntity(tenderDto);
         
         // Устанавливаем статус по умолчанию
@@ -78,6 +80,17 @@ public class TenderServiceImpl implements TenderService {
         // Генерируем номер тендера если не указан
         if (tender.getTenderNumber() == null || tender.getTenderNumber().isEmpty()) {
             tender.setTenderNumber("T-" + System.currentTimeMillis());
+        }
+
+        // Устанавливаем заявку по requestId
+        if (tenderDto.getRequestId() != null) {
+            log.info("Установка заявки для тендера: requestId={}", tenderDto.getRequestId());
+            Request request = requestRepository.findById(tenderDto.getRequestId())
+                .orElseThrow(() -> new RuntimeException("Заявка не найдена с ID: " + tenderDto.getRequestId()));
+            tender.setRequest(request);
+            log.info("Заявка установлена для тендера: {}", request.getRequestNumber());
+        } else {
+            log.warn("RequestId не указан для тендера");
         }
 
         // Устанавливаем заказчика по customerId
