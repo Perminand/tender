@@ -15,7 +15,6 @@ public record MaterialDtoNew(
 
         UUID materialTypeId,
 
-        @URL(message = "Некорректная ссылка")
         String link,
 
         Set<UUID> unitIds,

@@ -21,6 +21,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -45,7 +47,7 @@ public class Material {
     private String description;
 
     @OneToMany(mappedBy = "material", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Characteristic> characteristics;
+    private List<Characteristic> characteristics = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "material_type_id")
@@ -59,7 +61,7 @@ public class Material {
         joinColumns = @JoinColumn(name = "material_id"),
         inverseJoinColumns = @JoinColumn(name = "unit_id")
     )
-    private Set<Unit> units; // единицы измерения
+    private Set<Unit> units = new HashSet<>(); // единицы измерения
 
     private String code; // код/артикул
 
@@ -74,7 +76,7 @@ public class Material {
     private LocalDateTime updatedAt;
 
     @OneToMany(mappedBy = "material", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<SupplierMaterialName> supplierNames;
+    private List<SupplierMaterialName> supplierNames = new ArrayList<>();
 
     @Override
     public boolean equals(Object o) {

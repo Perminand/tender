@@ -8,6 +8,7 @@ import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
+import ru.perminov.tender.dto.CompanyRelatedEntitiesDto;
 import ru.perminov.tender.dto.company.contact.ContactDetailsDto;
 import ru.perminov.tender.dto.company.contact.ContactTypeDetailsDto;
 import ru.perminov.tender.mapper.company.CompanyMapper;
@@ -19,12 +20,26 @@ import ru.perminov.tender.model.company.CompanyType;
 import ru.perminov.tender.model.company.Contact;
 import ru.perminov.tender.model.company.ContactPerson;
 import ru.perminov.tender.model.company.ContactType;
+import ru.perminov.tender.model.Request;
+import ru.perminov.tender.model.Tender;
+import ru.perminov.tender.model.Invoice;
+import ru.perminov.tender.model.Payment;
+import ru.perminov.tender.model.Contract;
+import ru.perminov.tender.model.Delivery;
+import ru.perminov.tender.model.Document;
 import ru.perminov.tender.repository.company.BankRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.repository.company.CompanyTypeRepository;
 import ru.perminov.tender.repository.company.ContactPersonRepository;
 import ru.perminov.tender.repository.company.ContactRepository;
 import ru.perminov.tender.repository.company.ContactTypeRepository;
+import ru.perminov.tender.repository.RequestRepository;
+import ru.perminov.tender.repository.TenderRepository;
+import ru.perminov.tender.repository.InvoiceRepository;
+import ru.perminov.tender.repository.PaymentRepository;
+import ru.perminov.tender.repository.ContractRepository;
+import ru.perminov.tender.repository.DeliveryRepository;
+import ru.perminov.tender.repository.DocumentRepository;
 import ru.perminov.tender.service.company.CompanyService;
 import ru.perminov.tender.model.company.CompanyRole;
 import org.apache.poi.ss.usermodel.Workbook;
@@ -53,6 +68,13 @@ public class CompanyServiceImpl implements CompanyService {
     private final ContactPersonRepository contactPersonRepository;
     private final ContactRepository contactRepository;
     private final BankRepository bankRepository;
+    private final RequestRepository requestRepository;
+    private final TenderRepository tenderRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final PaymentRepository paymentRepository;
+    private final ContractRepository contractRepository;
+    private final DeliveryRepository deliveryRepository;
+    private final DocumentRepository documentRepository;
 
     @Override
     @Transactional
@@ -128,7 +150,74 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     @Transactional
     public void delete(UUID id) {
+        // Проверяем связанные сущности
+        CompanyRelatedEntitiesDto relatedEntities = getRelatedEntities(id);
+        
+        if (relatedEntities.hasRelatedEntities()) {
+            throw new IllegalStateException("Невозможно удалить компанию, так как с ней связаны другие сущности");
+        }
+        
         companyRepository.deleteById(id);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CompanyRelatedEntitiesDto getRelatedEntities(UUID companyId) {
+        Company company = companyRepository.findById(companyId)
+                .orElseThrow(() -> new IllegalArgumentException("Компания не найдена"));
+        
+        // Получаем связанные сущности (используем только существующие методы)
+        List<Request> requests = requestRepository.findByOrganizationId(companyId);
+        List<Tender> tenders = tenderRepository.findByCustomerId(companyId);
+        List<Invoice> supplierInvoices = invoiceRepository.findBySupplierId(companyId);
+        
+        // Преобразуем в DTO
+        List<CompanyRelatedEntitiesDto.RequestInfo> requestInfos = requests.stream()
+                .map(request -> new CompanyRelatedEntitiesDto.RequestInfo(
+                        request.getId(),
+                        request.getRequestNumber(),
+                        request.getStatus().name()
+                ))
+                .collect(Collectors.toList());
+        
+        List<CompanyRelatedEntitiesDto.TenderInfo> tenderInfos = tenders.stream()
+                .map(tender -> new CompanyRelatedEntitiesDto.TenderInfo(
+                        tender.getId(),
+                        tender.getTenderNumber(),
+                        tender.getTitle(),
+                        tender.getStatus().name()
+                ))
+                .collect(Collectors.toList());
+        
+        List<CompanyRelatedEntitiesDto.InvoiceInfo> invoiceInfos = supplierInvoices.stream()
+                .map(invoice -> new CompanyRelatedEntitiesDto.InvoiceInfo(
+                        invoice.getId(),
+                        invoice.getInvoiceNumber(),
+                        invoice.getStatus().name(),
+                        "supplier"
+                ))
+                .collect(Collectors.toList());
+        
+        // Пока оставляем пустые списки для остальных сущностей
+        List<CompanyRelatedEntitiesDto.PaymentInfo> paymentInfos = new ArrayList<>();
+        List<CompanyRelatedEntitiesDto.ContractInfo> contractInfos = new ArrayList<>();
+        List<CompanyRelatedEntitiesDto.DeliveryInfo> deliveryInfos = new ArrayList<>();
+        List<CompanyRelatedEntitiesDto.DocumentInfo> documentInfos = new ArrayList<>();
+        
+        boolean hasRelatedEntities = !requests.isEmpty() || !tenders.isEmpty() || !supplierInvoices.isEmpty();
+        
+        return new CompanyRelatedEntitiesDto(
+                companyId,
+                company.getName(),
+                requestInfos,
+                tenderInfos,
+                invoiceInfos,
+                paymentInfos,
+                contractInfos,
+                deliveryInfos,
+                documentInfos,
+                hasRelatedEntities
+        );
     }
 
     @Override

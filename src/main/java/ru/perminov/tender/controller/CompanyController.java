@@ -15,6 +15,7 @@ import ru.perminov.tender.dto.company.CompanyDto;
 import ru.perminov.tender.dto.company.CompanyDtoForUpdate;
 import ru.perminov.tender.dto.company.CompanyDtoNew;
 import ru.perminov.tender.dto.company.CompanyDtoUpdate;
+import ru.perminov.tender.dto.CompanyRelatedEntitiesDto;
 import ru.perminov.tender.service.ExcelService;
 import ru.perminov.tender.service.company.CompanyService;
 import ru.perminov.tender.service.company.impl.CompanyServiceImpl.ImportResult;
@@ -48,12 +49,27 @@ public class CompanyController {
         return ResponseEntity.ok(updated);
     }
 
+    @GetMapping("/{id}/related-entities")
+    public ResponseEntity<CompanyRelatedEntitiesDto> getRelatedEntities(@PathVariable UUID id) {
+        log.info("Получен GET-запрос: получить связанные сущности компании. id={}", id);
+        CompanyRelatedEntitiesDto relatedEntities = companyService.getRelatedEntities(id);
+        log.info("Возвращены связанные сущности для компании {}: заявок={}, тендеров={}, счетов={}", 
+                id, relatedEntities.requests().size(), relatedEntities.tenders().size(), relatedEntities.invoices().size());
+        return ResponseEntity.ok(relatedEntities);
+    }
+
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable UUID id) {
+    public ResponseEntity<?> delete(@PathVariable UUID id) {
         log.info("Получен DELETE-запрос: удалить компанию. id={}", id);
-        companyService.delete(id);
-        log.info("Удалена компания с id={}", id);
-        return ResponseEntity.ok().build();
+        try {
+            companyService.delete(id);
+            log.info("Удалена компания с id={}", id);
+            return ResponseEntity.ok().build();
+        } catch (IllegalStateException e) {
+            log.warn("Невозможно удалить компанию {}: {}", id, e.getMessage());
+            CompanyRelatedEntitiesDto relatedEntities = companyService.getRelatedEntities(id);
+            return ResponseEntity.badRequest().body(relatedEntities);
+        }
     }
 
     @GetMapping("/{id}")

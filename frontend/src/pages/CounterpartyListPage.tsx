@@ -10,6 +10,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import FileUploadIcon from '@mui/icons-material/FileUpload';
 import Pagination from '@mui/material/Pagination';
 import ResponsiveTable from '../components/ResponsiveTable';
+import { CompanyRelatedEntitiesDialog } from '../components/CompanyRelatedEntitiesDialog';
 
 interface Counterparty {
   id: number;
@@ -37,6 +38,8 @@ const CounterpartyListPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
   const [roleFilter, setRoleFilter] = useState('');
+  const [relatedEntitiesDialog, setRelatedEntitiesDialog] = useState(false);
+  const [relatedEntitiesData, setRelatedEntitiesData] = useState<any>(null);
 
   useEffect(() => {
     const fetchCounterparties = async () => {
@@ -127,8 +130,15 @@ const CounterpartyListPage: React.FC = () => {
       setCounterparties(dataResponse.data);
       setFilteredCounterparties(dataResponse.data);
     } catch (error: any) {
-      const errorText = error.response?.data || error.message || 'Ошибка удаления';
-      setSnackbar({open: true, message: `Ошибка удаления: ${errorText}`, severity: 'error'});
+      // Проверяем, является ли ошибка связанной с наличием связанных сущностей
+      if (error.response?.status === 400 && error.response?.data) {
+        // Отображаем модальное окно с информацией о связанных сущностях
+        setRelatedEntitiesData(error.response.data);
+        setRelatedEntitiesDialog(true);
+      } else {
+        const errorText = error.response?.data || error.message || 'Ошибка удаления';
+        setSnackbar({open: true, message: `Ошибка удаления: ${errorText}`, severity: 'error'});
+      }
     }
   };
 
@@ -400,6 +410,16 @@ const CounterpartyListPage: React.FC = () => {
             <Button onClick={() => setImportDialogOpen(false)}>Закрыть</Button>
           </DialogActions>
         </Dialog>
+
+        {/* Диалог связанных сущностей */}
+        <CompanyRelatedEntitiesDialog
+          open={relatedEntitiesDialog}
+          onClose={() => {
+            setRelatedEntitiesDialog(false);
+            setRelatedEntitiesData(null);
+          }}
+          data={relatedEntitiesData}
+        />
       </Box>
     </Container>
   );
