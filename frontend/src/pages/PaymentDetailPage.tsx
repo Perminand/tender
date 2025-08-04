@@ -16,6 +16,7 @@ import {
 } from '@mui/material';
 import { CheckCircle, Cancel, Payment } from '@mui/icons-material';
 import { api } from '../utils/api';
+import { formatDate } from '../utils/dateUtils';
 
 const PaymentDetailPage: React.FC = () => {
   const { id } = useParams();
@@ -103,8 +104,8 @@ const PaymentDetailPage: React.FC = () => {
           <Typography><b>Поставка:</b> {payment.deliveryNumber || '-'}</Typography>
           <Typography><b>Тип:</b> {payment.paymentType}</Typography>
           <Typography><b>Сумма:</b> {payment.amount?.toLocaleString()} ₽</Typography>
-          <Typography><b>Срок оплаты:</b> {payment.dueDate ? new Date(payment.dueDate).toLocaleDateString() : '-'}</Typography>
-          <Typography><b>Дата оплаты:</b> {payment.paidDate ? new Date(payment.paidDate).toLocaleDateString() : '-'}</Typography>
+                  <Typography><b>Срок оплаты:</b> {formatDate(payment.dueDate)}</Typography>
+        <Typography><b>Дата оплаты:</b> {formatDate(payment.paidDate)}</Typography>
           <Typography><b>Счет:</b> {payment.invoiceNumber || '-'}</Typography>
           <Typography><b>Описание:</b> {payment.notes || '-'}</Typography>
         </Box>
