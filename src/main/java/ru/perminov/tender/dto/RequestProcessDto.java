@@ -36,6 +36,7 @@ public class RequestProcessDto {
     
     // Статистика
     private int materialsCount;
+    private List<String> materials;
     private int tendersCount;
     private int proposalsCount;
     private int contractsCount;

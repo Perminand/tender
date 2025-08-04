@@ -133,6 +133,14 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
   const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
   const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
 
+  // Логируем данные заявки для отладки
+  console.log('=== ДАННЫЕ ЗАЯВКИ НА ФРОНТЕНДЕ ===');
+  console.log('Заявка №:', request.requestNumber);
+  console.log('Проект:', request.project);
+  console.log('Склад (location):', request.location);
+  console.log('Полная заявка:', request);
+  console.log('===================================');
+
   // Отладочная информация
   console.log('RequestProcessMatryoshka - request:', request);
   console.log('RequestProcessMatryoshka - tenders:', request.tenders);
@@ -227,7 +235,19 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
   };
 
   const handleViewProposalDetail = (proposalId: string) => {
-    navigate(`/proposals/${proposalId}`);
+    window.open(`/proposals/${proposalId}`, '_blank');
+  };
+
+  const handleViewTenderDetail = (tenderId: string) => {
+    window.open(`/tenders/${tenderId}`, '_blank');
+  };
+
+  const handleViewInvoiceDetail = (invoiceId: string) => {
+    window.open(`/invoices/${invoiceId}`, '_blank');
+  };
+
+  const handleViewDeliveryDetail = (deliveryId: string) => {
+    window.open(`/deliveries/${deliveryId}`, '_blank');
   };
 
   const handleInvoiceClick = (invoiceId: string) => {
@@ -247,7 +267,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
   };
 
   const handleViewProposals = (tenderId: string) => {
-    navigate(`/proposals?tenderId=${tenderId}`);
+    window.open(`/proposals?tenderId=${tenderId}`, '_blank');
   };
 
   return (
@@ -265,7 +285,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                 Заявка № {request.requestNumber}
               </Typography>
               <Typography variant="body2">
-                {formatDate(request.requestDate)} • {request.location}
+                {formatDate(request.requestDate)} • {request.project} • {request.location || 'Склад не указан'}
               </Typography>
             </Box>
           </Box>
@@ -392,7 +412,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                             Тендер к Заявке № {request.requestNumber}
                           </Typography>
                           <Typography variant="body2">
-                            {formatDate(tender.tenderDate)} • {tender.proposalsCount} предложений
+                            {formatDate(tender.tenderDate)} • {request.project} • {request.location || 'Склад не указан'} • {tender.proposalsCount} предложений
                           </Typography>
                         </Box>
                       </Box>
@@ -406,24 +426,26 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                           size="small"
                         />
                         <Button
-                          variant="contained"
+                          variant="outlined"
                           size="small"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleViewProposals(tender.tenderId);
+                            handleViewTenderDetail(tender.tenderId);
                           }}
                           sx={{ 
                             minWidth: 'auto', 
                             px: 1, 
                             py: 0.5,
                             fontSize: '0.75rem',
-                            bgcolor: 'primary.main',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
                             '&:hover': {
-                              bgcolor: 'primary.dark'
+                              borderColor: 'primary.dark',
+                              bgcolor: 'primary.50'
                             }
                           }}
                         >
-                          Прием предложений
+                          Просмотр
                         </Button>
                         <IconButton size="small">
                           {expandedTenders.includes(tender.tenderId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -525,7 +547,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                             Счёт {invoice.invoiceNumber}
                           </Typography>
                           <Typography variant="body2">
-                            {formatDate(invoice.invoiceDate)} • {invoice.supplierName}
+                            {formatDate(invoice.invoiceDate)} • {request.project} • {request.location || 'Склад не указан'} • {invoice.supplierName}
                           </Typography>
                           <Typography variant="caption" color="textSecondary">
                             Срок оплаты: {formatDate(invoice.dueDate)}
@@ -544,6 +566,28 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                           status={invoice.status}
                           size="small"
                         />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewInvoiceDetail(invoice.invoiceId);
+                          }}
+                          sx={{ 
+                            minWidth: 'auto', 
+                            px: 1, 
+                            py: 0.5,
+                            fontSize: '0.75rem',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            '&:hover': {
+                              borderColor: 'primary.dark',
+                              bgcolor: 'primary.50'
+                            }
+                          }}
+                        >
+                          Просмотр
+                        </Button>
                         <IconButton size="small">
                           {expandedInvoices.includes(invoice.invoiceId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
@@ -669,7 +713,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                             Поставка по Заявке № {request.requestNumber}
                           </Typography>
                           <Typography variant="body2">
-                            {formatDate(delivery.deliveryDate)} • {delivery.supplierName}
+                            {formatDate(delivery.deliveryDate)} • {request.project} • {request.location || 'Склад не указан'} • {delivery.supplierName}
                           </Typography>
                         </Box>
                       </Box>
@@ -682,6 +726,28 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                           status={delivery.status}
                           size="small"
                         />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewDeliveryDetail(delivery.deliveryId);
+                          }}
+                          sx={{ 
+                            minWidth: 'auto', 
+                            px: 1, 
+                            py: 0.5,
+                            fontSize: '0.75rem',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            '&:hover': {
+                              borderColor: 'primary.dark',
+                              bgcolor: 'primary.50'
+                            }
+                          }}
+                        >
+                          Просмотр
+                        </Button>
                         <IconButton size="small">
                           {expandedDeliveries.includes(delivery.deliveryId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>

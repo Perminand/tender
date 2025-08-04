@@ -43,7 +43,24 @@ public class RequestProcessService {
         dto.setRequestDate(request.getDate());
         dto.setOrganization(request.getOrganization() != null ? request.getOrganization().getName() : "");
         dto.setProject(request.getProject() != null ? request.getProject().getName() : "");
-        dto.setLocation(request.getLocation());
+        
+        // Определяем склад: сначала проверяем location, потом название склада
+        String location = request.getLocation();
+        if (location == null || location.trim().isEmpty()) {
+            location = request.getWarehouse() != null ? request.getWarehouse().getName() : "";
+        }
+        dto.setLocation(location);
+        
+        // Логируем информацию о проекте и складе
+        log.info("=== ДЕТАЛЬНАЯ ИНФОРМАЦИЯ О ЗАЯВКЕ {} ===", request.getRequestNumber());
+        log.info("Проект: '{}'", dto.getProject());
+        log.info("Склад (итоговый): '{}'", dto.getLocation());
+        log.info("Location (из БД): '{}'", request.getLocation());
+        log.info("Warehouse (из БД): {}", request.getWarehouse());
+        if (request.getWarehouse() != null) {
+            log.info("Warehouse.name: '{}'", request.getWarehouse().getName());
+        }
+        log.info("==========================================");
         dto.setApplicant(request.getApplicant());
         dto.setApprover(request.getApprover());
         dto.setPerformer(request.getPerformer());
@@ -51,6 +68,20 @@ public class RequestProcessService {
         dto.setStatus(request.getStatus() != null ? request.getStatus().name() : "");
         dto.setNotes(request.getNotes());
         dto.setMaterialsCount(request.getRequestMaterials().size());
+        
+        // Заполняем список материалов
+        List<String> materials = request.getRequestMaterials().stream()
+                .map(requestMaterial -> {
+                    if (requestMaterial.getMaterial() != null) {
+                        return requestMaterial.getMaterial().getName();
+                    } else if (requestMaterial.getMaterialLink() != null && !requestMaterial.getMaterialLink().trim().isEmpty()) {
+                        return requestMaterial.getMaterialLink();
+                    } else {
+                        return "Материал без названия";
+                    }
+                })
+                .collect(Collectors.toList());
+        dto.setMaterials(materials);
 
         // Загружаем тендеры
         log.info("Поиск тендеров для заявки {}", requestId);
