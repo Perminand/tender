@@ -250,6 +250,10 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
     window.open(`/deliveries/${deliveryId}`, '_blank');
   };
 
+  const handleViewRequestDetail = (requestId: string) => {
+    window.open(`/requests/${requestId}`, '_blank');
+  };
+
   const handleInvoiceClick = (invoiceId: string) => {
     setExpandedInvoices(prev => 
       prev.includes(invoiceId) 
@@ -298,6 +302,28 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
               status={request.status}
               size="small"
             />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleViewRequestDetail(request.requestId);
+              }}
+              sx={{ 
+                minWidth: 'auto', 
+                px: 1, 
+                py: 0.5,
+                fontSize: '0.75rem',
+                borderColor: 'primary.main',
+                color: 'primary.main',
+                '&:hover': {
+                  borderColor: 'primary.dark',
+                  bgcolor: 'primary.50'
+                }
+              }}
+            >
+              Просмотр
+            </Button>
             <IconButton size="small">
               {expandedRequest ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             </IconButton>
