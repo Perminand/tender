@@ -24,6 +24,12 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     List<Contract> findByTenderId(UUID tenderId);
     
     /**
+     * Найти контракты по заявке (через тендер)
+     */
+    @Query("SELECT c FROM Contract c JOIN c.tender t WHERE t.request.id = :requestId")
+    List<Contract> findByTenderRequestId(@Param("requestId") UUID requestId);
+    
+    /**
      * Найти контракт по номеру
      */
     Contract findByContractNumber(String contractNumber);

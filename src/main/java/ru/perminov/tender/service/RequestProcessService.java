@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.RequestProcessDto;
 import ru.perminov.tender.model.*;
+import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.*;
 
 import java.math.BigDecimal;
@@ -108,6 +109,11 @@ public class RequestProcessService {
         dto.setInvoicesCount(invoices.size());
         dto.setInvoices(invoices.stream().map(this::mapInvoiceToDto).collect(Collectors.toList()));
 
+        // Загружаем контракты
+        List<Contract> contracts = contractRepository.findByTenderRequestId(requestId);
+        dto.setContractsCount(contracts.size());
+        dto.setContracts(contracts.stream().map(this::mapContractToDto).collect(Collectors.toList()));
+
         // Загружаем поставки
         List<Delivery> deliveries = deliveryRepository.findByContractTenderRequestId(requestId);
         dto.setDeliveriesCount(deliveries.size());
@@ -179,6 +185,7 @@ public class RequestProcessService {
         RequestProcessDto.SupplierProposalDto dto = new RequestProcessDto.SupplierProposalDto();
         dto.setProposalId(proposal.getId());
         dto.setProposalNumber(proposal.getProposalNumber());
+        dto.setSupplierId(proposal.getSupplier() != null ? proposal.getSupplier().getId() : null);
         dto.setSupplierName(proposal.getSupplier() != null ? proposal.getSupplier().getName() : "");
         dto.setSupplierContact(proposal.getSupplier() != null && !proposal.getSupplier().getContactPersons().isEmpty() 
                 ? proposal.getSupplier().getContactPersons().get(0).getFirstName() + " " + proposal.getSupplier().getContactPersons().get(0).getLastName() : "");
@@ -242,6 +249,30 @@ public class RequestProcessService {
         dto.setStatus(receipt.getStatus().name());
         dto.setTotalAmount(receipt.getTotalAmount());
         dto.setCurrency(receipt.getCurrency());
+        return dto;
+    }
+
+    private RequestProcessDto.ContractProcessDto mapContractToDto(Contract contract) {
+        RequestProcessDto.ContractProcessDto dto = new RequestProcessDto.ContractProcessDto();
+        dto.setContractId(contract.getId());
+        dto.setContractNumber(contract.getContractNumber());
+        dto.setContractDate(contract.getCreatedAt().toLocalDate());
+        
+        // Получаем данные поставщика через supplierProposal
+        Company supplier = null;
+        if (contract.getSupplierProposal() != null && contract.getSupplierProposal().getSupplier() != null) {
+            supplier = contract.getSupplierProposal().getSupplier();
+        }
+        
+        dto.setSupplierName(supplier != null ? supplier.getName() : "");
+        dto.setSupplierContact(supplier != null && !supplier.getContactPersons().isEmpty() 
+                ? supplier.getContactPersons().get(0).getFirstName() + " " + supplier.getContactPersons().get(0).getLastName() : "");
+        dto.setSupplierPhone(supplier != null ? supplier.getPhone() : "");
+        dto.setStatus(contract.getStatus().name());
+        dto.setTotalAmount(contract.getTotalAmount());
+        dto.setStartDate(contract.getStartDate());
+        dto.setEndDate(contract.getEndDate());
+        dto.setDescription(contract.getDescription());
         return dto;
     }
 

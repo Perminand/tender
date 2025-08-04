@@ -46,6 +46,7 @@ public class RequestProcessDto {
     
     // Детальная информация
     private List<TenderProcessDto> tenders;
+    private List<ContractProcessDto> contracts;
     private List<InvoiceProcessDto> invoices;
     private List<DeliveryProcessDto> deliveries;
     
@@ -65,6 +66,7 @@ public class RequestProcessDto {
     public static class SupplierProposalDto {
         private UUID proposalId;
         private String proposalNumber;
+        private UUID supplierId;
         private String supplierName;
         private String supplierContact;
         private String supplierPhone;
@@ -72,6 +74,21 @@ public class RequestProcessDto {
         private String status;
         private BigDecimal totalPrice;
         private String currency;
+    }
+    
+    @Data
+    public static class ContractProcessDto {
+        private UUID contractId;
+        private String contractNumber;
+        private LocalDate contractDate;
+        private String supplierName;
+        private String supplierContact;
+        private String supplierPhone;
+        private String status;
+        private BigDecimal totalAmount;
+        private LocalDate startDate;
+        private LocalDate endDate;
+        private String description;
     }
     
     @Data

@@ -197,6 +197,31 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
     }).format(amount);
   };
 
+  const formatPhone = (phone: string) => {
+    if (!phone) return '';
+    
+    // Убираем все нецифровые символы
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Если 10 цифр, добавляем префикс +7
+    if (digitsOnly.length === 10) {
+      return `+7${digitsOnly}`;
+    }
+    
+    // Если 11 цифр и начинается с 8, заменяем на +7
+    if (digitsOnly.length === 11 && digitsOnly.startsWith('8')) {
+      return `+7${digitsOnly.substring(1)}`;
+    }
+    
+    // Если уже начинается с +7, возвращаем как есть
+    if (phone.startsWith('+7')) {
+      return phone;
+    }
+    
+    // В остальных случаях возвращаем исходный номер
+    return phone;
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'DRAFT':
@@ -414,7 +439,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                                   <Box>
                                     <Typography variant="body2">{proposal.supplierContact}</Typography>
                                     <Typography variant="caption" color="textSecondary">
-                                      {proposal.supplierPhone}
+                                      {formatPhone(proposal.supplierPhone)}
                                     </Typography>
                                   </Box>
                                 </TableCell>
@@ -518,7 +543,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                       </ListItem>
                       <ListItem>
                         <ListItemIcon><PhoneIcon /></ListItemIcon>
-                        <ListItemText primary="Телефон" secondary={invoice.supplierPhone} />
+                        <ListItemText primary="Телефон" secondary={formatPhone(invoice.supplierPhone)} />
                       </ListItem>
                     </List>
                   </Box>

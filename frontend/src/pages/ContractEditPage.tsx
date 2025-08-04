@@ -37,7 +37,9 @@ interface Contract {
   title: string;
   tenderId: string;
   supplierId: string;
+  supplierName: string;
   customerId: string;
+  customerName: string;
   status: string;
   totalAmount: number;
   startDate: string;
@@ -97,17 +99,31 @@ const getStatusLabel = (status: string) => {
 };
 
 const ContractEditPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id, tenderId: tenderIdFromPath, supplierId: supplierIdFromPath } = useParams<{ 
+    id: string; 
+    tenderId: string; 
+    supplierId: string; 
+  }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Получаем значения из query string
-  const tenderId = searchParams.get('tenderId') || '';
-  const supplierId = searchParams.get('supplierId') || '';
+  const tenderIdFromQuery = searchParams.get('tenderId') || '';
+  const supplierIdFromQuery = searchParams.get('supplierId') || '';
   const amount = Number(searchParams.get('amount')) || 0;
   const supplierName = searchParams.get('supplierName') || '';
 
+  // Приоритет отдаем параметрам из URL path, затем из query string
+  const tenderId = tenderIdFromPath || tenderIdFromQuery;
+  const supplierId = supplierIdFromPath || supplierIdFromQuery;
+
   const isCreatingFromTender = Boolean(tenderId && supplierId);
+
+  // Логируем параметры для отладки
+  console.log('ContractEditPage - URL params:', { id, tenderIdFromPath, supplierIdFromPath });
+  console.log('ContractEditPage - Query params:', { tenderIdFromQuery, supplierIdFromQuery, amount, supplierName });
+  console.log('ContractEditPage - Final params:', { tenderId, supplierId });
+  console.log('ContractEditPage - isCreatingFromTender:', isCreatingFromTender);
 
   const [contract, setContract] = useState<Contract | null>(null);
   const [tenders, setTenders] = useState<Tender[]>([]);
@@ -120,8 +136,8 @@ const ContractEditPage: React.FC = () => {
   const [formData, setFormData] = useState({
     contractNumber: '',
     title: '',
-    tenderId: tenderId,
-    supplierId: supplierId,
+    tenderId: tenderId || '',
+    supplierId: supplierId || '',
     status: 'DRAFT',
     totalAmount: amount,
     startDate: dayjs(),
@@ -131,6 +147,7 @@ const ContractEditPage: React.FC = () => {
   });
 
   useEffect(() => {
+    console.log('ContractEditPage useEffect - id:', id, 'isCreatingFromTender:', isCreatingFromTender);
     if (id) {
       fetchContract();
     } else if (isCreatingFromTender) {
@@ -193,21 +210,25 @@ const ContractEditPage: React.FC = () => {
   };
 
   const fetchTenderData = async () => {
+    console.log('fetchTenderData - tenderId:', tenderId, 'supplierId:', supplierId);
     setLoading(true);
     try {
       // Получаем данные тендера (именно по id)
       const tenderResponse = await api.get(`/api/tenders/${tenderId}`);
       const tenderData = tenderResponse.data;
+      console.log('fetchTenderData - tenderData:', tenderData);
       setTenderData(tenderData);
       
       // Получаем предложения поставщика
       const proposalsResponse = await api.get(`/api/proposals/tender/${tenderId}`);
       const proposalsData = proposalsResponse.data;
+      console.log('fetchTenderData - proposalsData:', proposalsData);
       
       setProposals(proposalsData);
       
       // Находим выбранное предложение поставщика
       const selectedProposal = proposalsData.find((p: SupplierProposal) => p.supplierId === supplierId);
+      console.log('fetchTenderData - selectedProposal:', selectedProposal);
       
       // Устанавливаем данные по умолчанию
       const startDate = dayjs();

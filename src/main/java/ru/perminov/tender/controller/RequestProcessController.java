@@ -41,7 +41,7 @@ public class RequestProcessController {
             return ResponseEntity.ok(processes);
         } catch (Exception e) {
             log.error("Ошибка при получении списка процессов заявок: {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.internalServerError().build();
         }
     }
 
@@ -51,6 +51,7 @@ public class RequestProcessController {
             RequestProcessDto process = requestProcessService.getRequestProcess(requestId);
             // Для краткого представления очищаем детальные списки
             process.setTenders(null);
+            process.setContracts(null);
             process.setInvoices(null);
             process.setDeliveries(null);
             return ResponseEntity.ok(process);
@@ -66,6 +67,7 @@ public class RequestProcessController {
             // Для краткого представления очищаем детальные списки
             processes.forEach(process -> {
                 process.setTenders(null);
+                process.setContracts(null);
                 process.setInvoices(null);
                 process.setDeliveries(null);
             });

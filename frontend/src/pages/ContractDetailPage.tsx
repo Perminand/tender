@@ -20,6 +20,7 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Edit from '@mui/icons-material/Edit';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 import dayjs from 'dayjs';
 import { api } from '../utils/api';
 
@@ -165,6 +166,14 @@ const ContractDetailPage: React.FC = () => {
             onClick={() => navigate(`/contracts/${id}/manage`)}
           >
             Управление контрактом
+          </Button>
+          <Button 
+            variant="contained" 
+            color="success"
+            startIcon={<ReceiptIcon />}
+            onClick={() => navigate(`/invoices/new?contractId=${id}`)}
+          >
+            Создать счет
           </Button>
         </Box>
       </Box>

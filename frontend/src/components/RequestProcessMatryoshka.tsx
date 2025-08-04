@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '@mui/material/styles';
 import {
   Box,
   Card,
@@ -59,7 +60,7 @@ const StyledCard = styled(Card)(({ theme }) => ({
   }
 }));
 
-const ProcessStep = styled(Box)(({ theme, color }: { theme: any; color: string }) => ({
+const ProcessStep = styled(Box)<{ color: string }>(({ theme, color }) => ({
   padding: theme.spacing(1.5),
   borderRadius: theme.spacing(1),
   backgroundColor: color,
@@ -77,7 +78,7 @@ const ProcessStep = styled(Box)(({ theme, color }: { theme: any; color: string }
   }
 }));
 
-const NestedStep = styled(Box)(({ theme, color }: { theme: any; color: string }) => ({
+const NestedStep = styled(Box)<{ color: string }>(({ theme, color }) => ({
   padding: theme.spacing(1),
   borderRadius: theme.spacing(1),
   backgroundColor: color,
@@ -96,7 +97,7 @@ const NestedStep = styled(Box)(({ theme, color }: { theme: any; color: string })
   }
 }));
 
-const StatusChip = styled(Chip)(({ theme, status }: { theme: any; status: string }) => {
+const StatusChip = styled(Chip)<{ status: string }>(({ theme, status }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -127,10 +128,12 @@ const StatusChip = styled(Chip)(({ theme, status }: { theme: any; status: string
 
 export default function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   const navigate = useNavigate();
+  const theme = useTheme();
   const [expandedRequest, setExpandedRequest] = useState(false);
   const [expandedTenders, setExpandedTenders] = useState<string[]>([]);
   const [expandedProposals, setExpandedProposals] = useState<string[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
+  const [expandedContracts, setExpandedContracts] = useState<string[]>([]);
   const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
 
   // Логируем данные заявки для отладки
@@ -157,6 +160,31 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
       currency: 'RUB',
       minimumFractionDigits: 2
     }).format(amount);
+  };
+
+  const formatPhone = (phone: string) => {
+    if (!phone) return '';
+    
+    // Убираем все нецифровые символы
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // Если 10 цифр, добавляем префикс +7
+    if (digitsOnly.length === 10) {
+      return `+7${digitsOnly}`;
+    }
+    
+    // Если 11 цифр и начинается с 8, заменяем на +7
+    if (digitsOnly.length === 11 && digitsOnly.startsWith('8')) {
+      return `+7${digitsOnly.substring(1)}`;
+    }
+    
+    // Если уже начинается с +7, возвращаем как есть
+    if (phone.startsWith('+7')) {
+      return phone;
+    }
+    
+    // В остальных случаях возвращаем исходный номер
+    return phone;
   };
 
   const getStatusLabel = (status: string) => {
@@ -203,6 +231,8 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
         return '#d1ecf1'; // Голубой для тендера
       case 'proposal':
         return '#d4edda'; // Зеленый для предложений
+      case 'contract':
+        return '#e2d9f3'; // Фиолетовый для контрактов
       case 'invoice':
         return '#f8d7da'; // Красный для счетов
       case 'delivery':
@@ -254,6 +284,18 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
     window.open(`/requests/${requestId}`, '_blank');
   };
 
+  const handleContractClick = (contractId: string) => {
+    setExpandedContracts(prev => 
+      prev.includes(contractId) 
+        ? prev.filter(id => id !== contractId)
+        : [...prev, contractId]
+    );
+  };
+
+  const handleViewContractDetail = (contractId: string) => {
+    window.open(`/contracts/${contractId}`, '_blank');
+  };
+
   const handleInvoiceClick = (invoiceId: string) => {
     setExpandedInvoices(prev => 
       prev.includes(invoiceId) 
@@ -297,11 +339,11 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
             <Typography variant="h6" color="primary.main" fontWeight="bold">
               {formatCurrency(request.requestTotalAmount)}
             </Typography>
-            <StatusChip
-              label={getStatusLabel(request.status)}
-              status={request.status}
-              size="small"
-            />
+                                    <StatusChip
+                          label={getStatusLabel(request.status)}
+                          status={request.status}
+                          size="small"
+                        />
             <Button
               variant="outlined"
               size="small"
@@ -418,6 +460,8 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                 </Grid>
               </Grid>
             </Box>
+          </Box>
+        </Collapse>
 
             {/* Тендеры */}
             {request.tenders && request.tenders.length > 0 && (
@@ -482,7 +526,122 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                     {/* Предложения в тендере */}
                     <Collapse in={expandedTenders.includes(tender.tenderId)}>
                       <Box ml={3}>
-                        {tender.proposals && tender.proposals.map((proposal) => (
+                        {tender.status === 'AWARDED' ? (
+                          // Для присужденных тендеров показываем только победившее предложение (с лучшей ценой)
+                          (() => {
+                            const acceptedProposals = tender.proposals?.filter(proposal => proposal.status === 'ACCEPTED') || [];
+                            console.log(`Тендер ${tender.tenderId}: найдено ${acceptedProposals.length} принятых предложений:`, acceptedProposals);
+                            
+                            // Сортируем по цене (самая низкая цена - победитель) и берем первое
+                            const winnerProposal = acceptedProposals
+                              .sort((a, b) => (a.totalPrice || 0) - (b.totalPrice || 0))
+                              .slice(0, 1)[0];
+                            
+                            console.log(`Тендер ${tender.tenderId}: победитель:`, winnerProposal);
+                            return winnerProposal ? [winnerProposal] : [];
+                          })()
+                            .map((proposal) => (
+                              <Box key={proposal.proposalId}>
+                                <NestedStep 
+                                  color={getStepColor('proposal', 1)}
+                                  onClick={() => handleProposalClick(proposal.proposalId)}
+                                >
+                                  <Box display="flex" alignItems="center" gap={1}>
+                                    <BusinessIcon />
+                                    <Box>
+                                      <Typography variant="body2" fontWeight="bold" color="success.main">
+                                        🏆 {proposal.supplierName} (ПОБЕДИТЕЛЬ)
+                                      </Typography>
+                                      <Typography variant="caption">
+                                        {proposal.supplierContact} • {formatPhone(proposal.supplierPhone)}
+                                      </Typography>
+                                    </Box>
+                                  </Box>
+                                  <Box display="flex" alignItems="center" gap={1}>
+                                    <Typography variant="body2" fontWeight="bold">
+                                      {formatCurrency(proposal.totalPrice)}
+                                    </Typography>
+                                    <StatusChip
+                                      label={getStatusLabel(proposal.status)}
+                                      status={proposal.status}
+                                      size="small"
+                                    />
+                                    <Button
+                                      variant="outlined"
+                                      size="small"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewProposalDetail(proposal.proposalId);
+                                      }}
+                                      sx={{ 
+                                        minWidth: 'auto', 
+                                        px: 1, 
+                                        py: 0.5,
+                                        fontSize: '0.75rem',
+                                        borderColor: 'primary.main',
+                                        color: 'primary.main',
+                                        '&:hover': {
+                                          borderColor: 'primary.dark',
+                                          bgcolor: 'primary.50'
+                                        }
+                                      }}
+                                    >
+                                      Просмотр
+                                    </Button>
+                                    <IconButton size="small">
+                                      {expandedProposals.includes(proposal.proposalId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                                    </IconButton>
+                                  </Box>
+                                </NestedStep>
+
+                                {/* Действия для победившего предложения */}
+                                <Collapse in={expandedProposals.includes(proposal.proposalId)}>
+                                  <Box ml={3}>
+                                    <Paper sx={{ p: 2, mb: 2, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+                                      <Typography variant="subtitle2" color="success.main" gutterBottom>
+                                        🎉 Победившее предложение
+                                      </Typography>
+                                      
+                                      {/* Проверяем, есть ли контракт */}
+                                      {request.contractsCount === 0 ? (
+                                        <Box>
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            Контракт еще не заключен
+                                          </Typography>
+                                          <Button
+                                            variant="contained"
+                                            color="success"
+                                            size="small"
+                                            onClick={() => window.open(`/tenders/${tender.tenderId}/contract/new/${proposal.supplierId}`, '_blank')}
+                                            sx={{ mt: 1 }}
+                                          >
+                                            Заключить контракт
+                                          </Button>
+                                        </Box>
+                                      ) : (
+                                        <Box>
+                                          <Typography variant="body2" color="text.secondary" gutterBottom>
+                                            Контракт заключен
+                                          </Typography>
+                                          <Button
+                                            variant="contained"
+                                            color="primary"
+                                            size="small"
+                                            onClick={() => window.open(`/invoices/new?tenderId=${tender.tenderId}&supplierName=${encodeURIComponent(proposal.supplierName)}`, '_blank')}
+                                            sx={{ mt: 1 }}
+                                          >
+                                            Создать счет
+                                          </Button>
+                                        </Box>
+                                      )}
+                                    </Paper>
+                                  </Box>
+                                </Collapse>
+                              </Box>
+                            ))
+                        ) : (
+                          // Для остальных статусов показываем все предложения
+                          tender.proposals && tender.proposals.map((proposal) => (
                           <Box key={proposal.proposalId}>
                             <NestedStep 
                               color={getStepColor('proposal', 1)}
@@ -495,7 +654,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                                     {proposal.supplierName}
                                   </Typography>
                                   <Typography variant="caption">
-                                    {proposal.supplierContact} • {proposal.supplierPhone}
+                                        {proposal.supplierContact} • {formatPhone(proposal.supplierPhone)}
                                   </Typography>
                                 </Box>
                               </Box>
@@ -546,7 +705,226 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                               </Box>
                             </Collapse>
                           </Box>
+                        ))
+                        )}
+                              </Box>
+                            </Collapse>
+                          </Box>
                         ))}
+              </Box>
+            )}
+
+            {/* Контракты */}
+            {request.contracts && request.contracts.length > 0 && (
+              <Box mb={2}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Контракты ({request.contracts.length})
+                </Typography>
+                {request.contracts.map((contract) => (
+                  <Box key={contract.contractId}>
+                    <NestedStep 
+                      color={getStepColor('contract', 1)}
+                      onClick={() => handleContractClick(contract.contractId)}
+                    >
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <DescriptionIcon />
+                        <Box>
+                          <Typography variant="body1">
+                            Контракт {contract.contractNumber}
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatDate(contract.contractDate)} • {request.project} • {request.location || 'Склад не указан'} • {contract.supplierName}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            Срок действия: {formatDate(contract.startDate)} - {formatDate(contract.endDate)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography variant="body2">
+                          {formatCurrency(contract.totalAmount)}
+                        </Typography>
+                        <StatusChip
+                          label={getStatusLabel(contract.status)}
+                          status={contract.status}
+                          size="small"
+                        />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewContractDetail(contract.contractId);
+                          }}
+                          sx={{ 
+                            minWidth: 'auto', 
+                            px: 1, 
+                            py: 0.5,
+                            fontSize: '0.75rem',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            '&:hover': {
+                              borderColor: 'primary.dark',
+                              bgcolor: 'primary.50'
+                            }
+                          }}
+                        >
+                          Просмотр
+                        </Button>
+                        <IconButton size="small">
+                          {expandedContracts.includes(contract.contractId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        </IconButton>
+                      </Box>
+                    </NestedStep>
+
+                    {/* Детали контракта */}
+                    <Collapse in={expandedContracts.includes(contract.contractId)}>
+                      <Box ml={3}>
+                        {/* Информация о контракте */}
+                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Детали контракта
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Поставщик
+                              </Typography>
+                              <Typography variant="body2">
+                                {contract.supplierName}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                Контакт: {contract.supplierContact} • {formatPhone(contract.supplierPhone)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Финансы
+                              </Typography>
+                              <Typography variant="body2">
+                                Общая сумма: {formatCurrency(contract.totalAmount)}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                Статус: {getStatusLabel(contract.status)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="caption" color="textSecondary">
+                                Описание
+                              </Typography>
+                              <Typography variant="body2">
+                                {contract.description || 'Описание отсутствует'}
+                              </Typography>
+                            </Grid>
+                          </Grid>
+                        </Paper>
+
+                        {/* Поставка по контракту */}
+                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'lightblue.50', border: '1px solid', borderColor: 'lightblue.200' }}>
+                          <Typography variant="subtitle2" gutterBottom color="primary.main">
+                            Поставка по контракту
+                          </Typography>
+                          
+                          {/* Находим счета для этого контракта */}
+                          {request.invoices && request.invoices
+                            .filter(invoice => invoice.supplierName === contract.supplierName)
+                            .map((invoice) => (
+                              <Box key={invoice.invoiceId} mb={2} p={2} bgcolor="white" borderRadius={1} border="1px solid" borderColor="grey.300">
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                  <Typography variant="body1" fontWeight="bold">
+                                    {invoice.supplierName}
+                                  </Typography>
+                                  <Typography variant="body2" color="textSecondary">
+                                    {invoice.supplierContact} • {formatPhone(invoice.supplierPhone)}
+                                  </Typography>
+                                </Box>
+                                
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                                  <Typography variant="body2" fontWeight="bold">
+                                    Счёт {invoice.invoiceNumber}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    от {formatDate(invoice.invoiceDate)}
+                                  </Typography>
+                                </Box>
+                                
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                  <Typography variant="body2">
+                                    с НДС {formatCurrency(invoice.totalAmount)}
+                                  </Typography>
+                                  <Typography variant="body2">
+                                    Оплата {formatDate(invoice.dueDate)}
+                                  </Typography>
+                                </Box>
+                                
+                                <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
+                                  <Typography variant="body2" fontWeight="bold">
+                                    {formatCurrency(invoice.totalAmount)} долг {formatCurrency(invoice.remainingAmount)}
+                                  </Typography>
+                                  <Box sx={{ 
+                                    width: 20, 
+                                    height: 20, 
+                                    borderRadius: '50%', 
+                                    bgcolor: invoice.remainingAmount === 0 ? 'success.main' : 'warning.main', 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center',
+                                    color: 'white',
+                                    fontSize: '12px'
+                                  }}>
+                                    {invoice.remainingAmount === 0 ? '✓' : '!'}
+                                  </Box>
+                                </Box>
+                                
+                                {/* Поступления для этого счета */}
+                                {invoice.receipts && invoice.receipts.length > 0 && (
+                                  <Box mt={2}>
+                                    {invoice.receipts.map((receipt) => (
+                                      <Box key={receipt.receiptId} p={2} bgcolor="grey.50" borderRadius={1} border="1px solid" borderColor="grey.200">
+                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                          <Typography variant="body1" fontWeight="bold">
+                                            Поступление
+                                          </Typography>
+                                          <Typography variant="body2">
+                                            УПД {receipt.receiptNumber}
+                                          </Typography>
+                                        </Box>
+                                        
+                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                                          <Typography variant="body2">
+                                            от {formatDate(receipt.receiptDate)}
+                                          </Typography>
+                                          <Typography variant="body2" fontWeight="bold">
+                                            {formatCurrency(receipt.totalAmount)}
+                                          </Typography>
+                                        </Box>
+                                        
+                                        <Box display="flex" justifyContent="space-between" alignItems="center">
+                                          <Typography variant="caption" color="textSecondary">
+                                            Статус: {getStatusLabel(receipt.status)}
+                                          </Typography>
+                                          <StatusChip
+                                            label={getStatusLabel(receipt.status)}
+                                            status={receipt.status}
+                                            size="small"
+                                          />
+                                        </Box>
+                                      </Box>
+                                    ))}
+                                  </Box>
+                                )}
+                              </Box>
+                            ))}
+                          
+                          {/* Если нет счетов, показываем сообщение */}
+                          {(!request.invoices || request.invoices.filter(invoice => invoice.supplierName === contract.supplierName).length === 0) && (
+                            <Box p={2} bgcolor="grey.100" borderRadius={1} textAlign="center">
+                              <Typography variant="body2" color="textSecondary">
+                                Счета для данного контракта не найдены
+                              </Typography>
+                            </Box>
+                          )}
+                        </Paper>
                       </Box>
                     </Collapse>
                   </Box>
@@ -637,7 +1015,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                                 {invoice.supplierName}
                               </Typography>
                               <Typography variant="caption" color="textSecondary">
-                                Контакт: {invoice.supplierContact} • {invoice.supplierPhone}
+                                Контакт: {invoice.supplierContact} • {formatPhone(invoice.supplierPhone)}
                               </Typography>
                             </Grid>
                             <Grid item xs={6}>
@@ -687,30 +1065,30 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                               УПД по счету ({invoice.receipts.length})
                             </Typography>
                             {invoice.receipts.map((receipt) => (
-                              <NestedStep key={receipt.receiptId} color={getStepColor('receipt', 1)}>
-                                <Box display="flex" alignItems="center" gap={1}>
-                                  <DescriptionIcon />
-                                  <Box>
-                                    <Typography variant="body2">
-                                      УПД {receipt.receiptNumber}
-                                    </Typography>
-                                    <Typography variant="caption">
-                                      {formatDate(receipt.receiptDate)}
-                                    </Typography>
-                                  </Box>
-                                </Box>
-                                <Box display="flex" alignItems="center" gap={1}>
-                                  <Typography variant="body2">
-                                    {formatCurrency(receipt.totalAmount)}
-                                  </Typography>
-                                  <StatusChip
-                                    label={getStatusLabel(receipt.status)}
-                                    status={receipt.status}
-                                    size="small"
-                                  />
-                                </Box>
-                              </NestedStep>
-                            ))}
+                          <NestedStep key={receipt.receiptId} color={getStepColor('receipt', 1)}>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <DescriptionIcon />
+                              <Box>
+                                <Typography variant="body2">
+                                  УПД {receipt.receiptNumber}
+                                </Typography>
+                                <Typography variant="caption">
+                                  {formatDate(receipt.receiptDate)}
+                                </Typography>
+                              </Box>
+                            </Box>
+                            <Box display="flex" alignItems="center" gap={1}>
+                              <Typography variant="body2">
+                                {formatCurrency(receipt.totalAmount)}
+                              </Typography>
+                              <StatusChip
+                                label={getStatusLabel(receipt.status)}
+                                status={receipt.status}
+                                size="small"
+                              />
+                            </Box>
+                          </NestedStep>
+                        ))}
                           </Box>
                         )}
                       </Box>
@@ -814,8 +1192,6 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                 ))}
               </Box>
             )}
-          </Box>
-        </Collapse>
       </CardContent>
     </StyledCard>
   );

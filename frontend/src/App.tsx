@@ -43,6 +43,7 @@ import DashboardWrapper from './components/DashboardWrapper';
 import PaymentEditPage from './pages/PaymentEditPage';
 import PaymentDetailPage from './pages/PaymentDetailPage';
 import InvoiceManagementPage from './pages/InvoiceManagementPage';
+import InvoiceEditPage from './pages/InvoiceEditPage';
 import UserManagementPage from './pages/UserManagementPage';
 import CustomerInfoPage from './pages/CustomerInfoPage';
 import CustomerSummaryPage from './pages/CustomerSummaryPage';
@@ -520,6 +521,20 @@ const App: React.FC = () => (
         <ProtectedRoute>
           <Layout>
             <InvoiceManagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/invoices/new" element={
+        <ProtectedRoute>
+          <Layout>
+            <InvoiceEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/invoices/:id" element={
+        <ProtectedRoute>
+          <Layout>
+            <InvoiceEditPage />
           </Layout>
         </ProtectedRoute>
       } />

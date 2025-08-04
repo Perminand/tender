@@ -23,6 +23,7 @@ export interface RequestProcess {
   deliveriesCount: number;
   receiptsCount: number;
   tenders?: TenderProcess[];
+  contracts?: ContractProcess[];
   invoices?: InvoiceProcess[];
   deliveries?: DeliveryProcess[];
 }
@@ -41,6 +42,7 @@ export interface TenderProcess {
 export interface SupplierProposal {
   proposalId: string;
   proposalNumber: string;
+  supplierId: string;
   supplierName: string;
   supplierContact: string;
   supplierPhone: string;
@@ -48,6 +50,20 @@ export interface SupplierProposal {
   status: string;
   totalPrice: number;
   currency: string;
+}
+
+export interface ContractProcess {
+  contractId: string;
+  contractNumber: string;
+  contractDate: string;
+  supplierName: string;
+  supplierContact: string;
+  supplierPhone: string;
+  status: string;
+  totalAmount: number;
+  startDate: string;
+  endDate: string;
+  description: string;
 }
 
 export interface InvoiceProcess {

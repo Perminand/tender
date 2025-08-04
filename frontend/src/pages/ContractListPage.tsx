@@ -61,7 +61,9 @@ interface Contract {
   title: string;
   tenderId: string;
   supplierId: string;
+  supplierName: string;
   customerId: string;
+  customerName: string;
   status: string;
   totalAmount: number;
   startDate: string;

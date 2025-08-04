@@ -31,4 +31,12 @@ public class ContractDto {
     private TenderDto tender;
     private UUID warehouseId;
     private String warehouseName;
+    
+    // Supplier information
+    private UUID supplierId;
+    private String supplierName;
+    
+    // Customer information
+    private UUID customerId;
+    private String customerName;
 } 

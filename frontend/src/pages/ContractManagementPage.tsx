@@ -118,6 +118,35 @@ interface Payment {
   invoiceNumber: string;
 }
 
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  paymentDate?: string;
+  supplierName: string;
+  supplierContact: string;
+  supplierPhone: string;
+  status: string;
+  totalAmount: number;
+  paidAmount: number;
+  remainingAmount: number;
+  currency: string;
+  vatAmount: number;
+  paymentTerms?: string;
+  notes?: string;
+  receipts?: Receipt[];
+}
+
+interface Receipt {
+  id: string;
+  receiptNumber: string;
+  receiptDate: string;
+  status: string;
+  totalAmount: number;
+  currency: string;
+}
+
 interface Document {
   id: string;
   fileName: string;
@@ -148,7 +177,9 @@ interface Contract {
   title: string;
   tenderId: string;
   supplierId: string;
+  supplierName: string;
   customerId: string;
+  customerName: string;
   status: string;
   totalAmount: number;
   startDate: string;
@@ -213,6 +244,7 @@ const ContractManagementPage: React.FC = () => {
   const [contract, setContract] = useState<Contract | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -264,6 +296,15 @@ const ContractManagementPage: React.FC = () => {
       } catch (error) {
         console.error('Ошибка загрузки платежей:', error);
         setPayments([]);
+      }
+
+      // Загружаем счета
+      try {
+        const invoicesResponse = await api.get(`/api/invoices/contract/${id}`);
+        setInvoices(invoicesResponse.data);
+      } catch (error) {
+        console.error('Ошибка загрузки счетов:', error);
+        setInvoices([]);
       }
 
       // Загружаем документы
@@ -335,6 +376,18 @@ const ContractManagementPage: React.FC = () => {
     switch (status) {
       case 'PENDING': return 'Ожидает оплаты';
       case 'PAID': return 'Оплачен';
+      case 'OVERDUE': return 'Просрочен';
+      case 'CANCELLED': return 'Отменен';
+      default: return status;
+    }
+  };
+
+  const getInvoiceStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT': return 'Черновик';
+      case 'SENT': return 'Отправлен';
+      case 'PAID': return 'Оплачен';
+      case 'PARTIALLY_PAID': return 'Частично оплачен';
       case 'OVERDUE': return 'Просрочен';
       case 'CANCELLED': return 'Отменен';
       default: return status;
@@ -622,7 +675,7 @@ const ContractManagementPage: React.FC = () => {
 
       {/* Статистика */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>Поставки</Typography>
@@ -633,7 +686,18 @@ const ContractManagementPage: React.FC = () => {
             </CardContent>
           </Card>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={2}>
+          <Card>
+            <CardContent>
+              <Typography color="textSecondary" gutterBottom>Счета</Typography>
+              <Typography variant="h4">{(invoices || []).length}</Typography>
+              <Typography variant="body2" color="textSecondary">
+                {(invoices || []).filter(inv => inv.status === 'OVERDUE').length} просрочены
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+        <Grid item xs={12} sm={6} md={2}>
           <Card>
             <CardContent>
               <Typography color="textSecondary" gutterBottom>Платежи</Typography>
@@ -676,6 +740,7 @@ const ContractManagementPage: React.FC = () => {
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="contract management tabs">
             <Tab label="Позиции" />
             <Tab label="Поставки" />
+            <Tab label="Счета" />
             <Tab label="Платежи" />
             <Tab label="Документы" />
             <Tab label="История" />
@@ -781,8 +846,71 @@ const ContractManagementPage: React.FC = () => {
           )}
         </TabPanel>
 
-        {/* Платежи */}
+        {/* Счета */}
         <TabPanel value={tabValue} index={2}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6">Счета</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate(`/invoices/new?contractId=${contract.id}`)}
+            >
+              Создать счет
+            </Button>
+          </Box>
+          {(invoices || []).length > 0 ? (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Номер счета</TableCell>
+                    <TableCell>Дата</TableCell>
+                    <TableCell>Поставщик</TableCell>
+                    <TableCell>Статус</TableCell>
+                    <TableCell>Сумма</TableCell>
+                    <TableCell>Оплачено</TableCell>
+                    <TableCell>Остаток</TableCell>
+                    <TableCell>Действия</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(invoices || []).map((invoice) => (
+                    <TableRow key={invoice.id}>
+                      <TableCell>{invoice.invoiceNumber}</TableCell>
+                      <TableCell>
+                        {dayjs(invoice.invoiceDate).format('DD.MM.YYYY')}
+                      </TableCell>
+                      <TableCell>{invoice.supplierName}</TableCell>
+                      <TableCell>
+                        <Chip 
+                          label={getInvoiceStatusLabel(invoice.status)} 
+                          color={invoice.status === 'PAID' ? 'success' : invoice.status === 'OVERDUE' ? 'error' : 'default' as any}
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>{formatPrice(invoice.totalAmount)}</TableCell>
+                      <TableCell>{formatPrice(invoice.paidAmount)}</TableCell>
+                      <TableCell>{formatPrice(invoice.remainingAmount)}</TableCell>
+                      <TableCell>
+                        <IconButton 
+                          size="small"
+                          onClick={() => navigate(`/invoices/${invoice.id}`)}
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="info">Счета не найдены</Alert>
+          )}
+        </TabPanel>
+
+        {/* Платежи */}
+        <TabPanel value={tabValue} index={3}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6">Платежи</Typography>
             <Button
@@ -838,7 +966,7 @@ const ContractManagementPage: React.FC = () => {
         </TabPanel>
 
         {/* Документы */}
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={4}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6">Документы</Typography>
             <Button
@@ -897,7 +1025,7 @@ const ContractManagementPage: React.FC = () => {
         </TabPanel>
 
         {/* История изменений */}
-        <TabPanel value={tabValue} index={4}>
+        <TabPanel value={tabValue} index={5}>
           <Typography variant="h6" gutterBottom>История изменений</Typography>
           {(auditLogs || []).length > 0 ? (
             <List>
