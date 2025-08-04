@@ -36,6 +36,10 @@ const pathToBreadcrumbs: Record<string, BreadcrumbItem[]> = {
     { label: 'Контрактная работа', path: '/payments' },
     { label: 'Платежи', path: '/payments' }
   ],
+  '/invoices': [
+    { label: 'Контрактная работа', path: '/invoices' },
+    { label: 'Счета', path: '/invoices' }
+  ],
   '/counterparties': [
     { label: 'Справочники', path: '/counterparties' },
     { label: 'Контрагенты', path: '/counterparties' }

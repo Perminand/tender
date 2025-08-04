@@ -42,6 +42,7 @@ import DeliveryEditPage from './pages/DeliveryEditPage';
 import DashboardWrapper from './components/DashboardWrapper';
 import PaymentEditPage from './pages/PaymentEditPage';
 import PaymentDetailPage from './pages/PaymentDetailPage';
+import InvoiceManagementPage from './pages/InvoiceManagementPage';
 import UserManagementPage from './pages/UserManagementPage';
 import CustomerInfoPage from './pages/CustomerInfoPage';
 import CustomerSummaryPage from './pages/CustomerSummaryPage';
@@ -79,7 +80,7 @@ const App: React.FC = () => (
       <Route path="/" element={
         <ProtectedRoute>
           <Layout>
-            <DefaultRedirect />
+            <RequestProcessPage />
           </Layout>
         </ProtectedRoute>
       } />
@@ -415,6 +416,13 @@ const App: React.FC = () => (
           </Layout>
         </ProtectedRoute>
       } />
+      <Route path="/proposals/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <ProposalEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
       <Route path="/notifications" element={
         <ProtectedRoute>
           <Layout>
@@ -506,6 +514,16 @@ const App: React.FC = () => (
           </Layout>
         </ProtectedRoute>
       } />
+      
+      {/* Управление счетами */}
+      <Route path="/invoices" element={
+        <ProtectedRoute>
+          <Layout>
+            <InvoiceManagementPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      
       <Route path="/documents" element={
         <ProtectedRoute>
           <Layout>

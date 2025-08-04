@@ -87,6 +87,11 @@ const getStatusLabel = (status: string) => {
     case 'COMPLETED': return 'Завершен';
     case 'TERMINATED': return 'Расторгнут';
     case 'SUSPENDED': return 'Приостановлен';
+    case 'SUBMITTED': return 'Подано';
+    case 'UNDER_REVIEW': return 'На рассмотрении';
+    case 'ACCEPTED': return 'Принято';
+    case 'REJECTED': return 'Отклонено';
+    case 'WITHDRAWN': return 'Отозвано';
     default: return status;
   }
 };
@@ -643,7 +648,7 @@ const ContractEditPage: React.FC = () => {
                             <TableCell>{proposal.proposalNumber}</TableCell>
                             <TableCell>
                               <Chip 
-                                label={proposal.status} 
+                                label={getStatusLabel(proposal.status)} 
                                 color={proposal.status === 'ACCEPTED' ? 'success' : 'default'}
                                 size="small"
                               />

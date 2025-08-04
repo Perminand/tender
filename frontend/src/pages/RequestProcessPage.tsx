@@ -41,7 +41,7 @@ export default function RequestProcessPage() {
   const [requests, setRequests] = useState<RequestProcess[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('brief');
+  const [viewMode, setViewMode] = useState<ViewMode>('matryoshka');
   const [expandedRequests, setExpandedRequests] = useState<string[]>([]);
   const [filters, setFilters] = useState<RequestProcessFilters>({
     organization: '',
@@ -164,10 +164,10 @@ export default function RequestProcessPage() {
       {/* Заголовок страницы */}
       <Box mb={3}>
         <Typography variant="h4" component="h1" gutterBottom>
-          Реестр процессов заявок
+          Система управления закупками
         </Typography>
         <Typography variant="body1" color="textSecondary">
-          Отслеживание полной цепочки: Заявка → Тендер → Предложения → Счет → Поставка
+          Главная страница. Отслеживание полной цепочки: Заявка → Тендер → Предложения → Счет → Поставка
         </Typography>
       </Box>
 

@@ -197,6 +197,41 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
     }).format(amount);
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT':
+        return 'Черновик';
+      case 'PUBLISHED':
+        return 'Опубликован';
+      case 'BIDDING':
+        return 'Прием предложений';
+      case 'EVALUATION':
+        return 'Оценка';
+      case 'AWARDED':
+        return 'Присужден';
+      case 'CANCELLED':
+        return 'Отменен';
+      case 'SUBMITTED':
+        return 'Подана';
+      case 'APPROVED':
+        return 'Одобрена';
+      case 'IN_PROGRESS':
+        return 'В работе';
+      case 'COMPLETED':
+        return 'Завершена';
+      case 'UNDER_REVIEW':
+        return 'На рассмотрении';
+      case 'ACCEPTED':
+        return 'Принято';
+      case 'REJECTED':
+        return 'Отклонено';
+      case 'WITHDRAWN':
+        return 'Отозвано';
+      default:
+        return status;
+    }
+  };
+
   const handleTenderExpand = (tenderId: string) => {
     setExpandedTenders(prev => 
       prev.includes(tenderId) 
@@ -235,11 +270,11 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                 {formatDate(request.requestDate)} • {request.location}
               </Typography>
             </Box>
-            <StatusChip
-              label={request.status}
-              status={request.status}
-              icon={<AssignmentIcon />}
-            />
+                                <StatusChip
+                      label={getStatusLabel(request.status)}
+                      status={request.status}
+                      icon={<AssignmentIcon />}
+                    />
           </Box>
 
           <Grid container spacing={3}>
@@ -339,7 +374,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <StatusChip
-                      label={tender.status}
+                      label={getStatusLabel(tender.status)}
                       status={tender.status}
                       icon={<GavelIcon />}
                     />
@@ -386,7 +421,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                                 <TableCell>{formatDate(proposal.submissionDate)}</TableCell>
                                 <TableCell>
                                   <StatusChip
-                                    label={proposal.status}
+                                    label={getStatusLabel(proposal.status)}
                                     status={proposal.status}
                                     size="small"
                                   />
@@ -429,7 +464,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <StatusChip
-                      label={invoice.status}
+                      label={getStatusLabel(invoice.status)}
                       status={invoice.status}
                       icon={<ReceiptIcon />}
                     />
@@ -510,7 +545,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                                 <TableCell>{formatDate(receipt.receiptDate)}</TableCell>
                                 <TableCell>
                                   <StatusChip
-                                    label={receipt.status}
+                                    label={getStatusLabel(receipt.status)}
                                     status={receipt.status}
                                     size="small"
                                   />
@@ -553,7 +588,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                   </Box>
                   <Box display="flex" alignItems="center" gap={1}>
                     <StatusChip
-                      label={delivery.status}
+                      label={getStatusLabel(delivery.status)}
                       status={delivery.status}
                       icon={<DeliveryIcon />}
                     />
@@ -571,32 +606,32 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                   <Divider sx={{ my: 2 }} />
                   {delivery.receipts && delivery.receipts.length > 0 && (
                     <Box>
-                      <Typography variant="subtitle1" gutterBottom>
-                        Поступления по поставке
-                      </Typography>
-                      <TableContainer component={Paper} variant="outlined">
-                        <Table size="small">
-                          <TableHead>
-                            <TableRow>
-                              <TableCell>Номер поступления</TableCell>
-                              <TableCell>Дата</TableCell>
-                              <TableCell>Статус</TableCell>
-                              <TableCell align="right">Сумма</TableCell>
-                            </TableRow>
-                          </TableHead>
-                          <TableBody>
-                            {delivery.receipts.map((receipt) => (
-                              <TableRow key={receipt.receiptId}>
-                                <TableCell>{receipt.receiptNumber}</TableCell>
-                                <TableCell>{formatDate(receipt.receiptDate)}</TableCell>
-                                <TableCell>
-                                  <StatusChip
-                                    label={receipt.status}
-                                    status={receipt.status}
-                                    size="small"
-                                  />
-                                </TableCell>
-                                <TableCell align="right">
+                                              <Typography variant="subtitle1" gutterBottom>
+                          Поступления по поставке
+                        </Typography>
+                        <TableContainer component={Paper} variant="outlined">
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Номер поступления</TableCell>
+                                <TableCell>Дата</TableCell>
+                                <TableCell>Статус</TableCell>
+                                <TableCell align="right">Сумма</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {delivery.receipts.map((receipt) => (
+                                <TableRow key={receipt.receiptId}>
+                                  <TableCell>{receipt.receiptNumber}</TableCell>
+                                  <TableCell>{formatDate(receipt.receiptDate)}</TableCell>
+                                  <TableCell>
+                                    <StatusChip
+                                      label={getStatusLabel(receipt.status)}
+                                      status={receipt.status}
+                                      size="small"
+                                    />
+                                  </TableCell>
+                                  <TableCell align="right">
                                   {formatCurrency(receipt.totalAmount)}
                                 </TableCell>
                               </TableRow>

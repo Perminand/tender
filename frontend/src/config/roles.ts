@@ -12,13 +12,14 @@ export const ROLE_PERMISSIONS: RolePermissions = {
   'ROLE_ADMIN': {
     menuItems: [
       'dashboard',
-      'requests/registry',
       'requests/process',
+      'requests/registry',
       'tenders',
       'proposals',
       'customer-summary',
       'contracts',
       'deliveries',
+      'invoices',
       'payments',
       'documents',
       'notifications',
@@ -45,6 +46,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       '/api/customer-info/*',
       '/api/contracts/*',
       '/api/deliveries/*',
+      '/api/invoices/*',
       '/api/payments/*',
       '/api/documents/*',
       '/api/notifications/*',
@@ -65,6 +67,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'tender_management',
       'contract_management',
       'delivery_management',
+      'invoice_management',
       'payment_management',
       'document_management',
       'notification_management',
@@ -73,18 +76,19 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'settings',
       'user_management'
     ],
-    defaultRoute: '/dashboard'
+    defaultRoute: '/requests/process'
   },
   'ROLE_MANAGER': {
     menuItems: [
       'dashboard',
-      'requests/registry',
       'requests/process',
+      'requests/registry',
       'tenders',
       'proposals',
       'customer-summary',
       'contracts',
       'deliveries',
+      'invoices',
       'payments',
       'documents',
       'notifications',
@@ -108,6 +112,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       '/api/customer-info/*',
       '/api/contracts/*',
       '/api/deliveries/*',
+      '/api/invoices/*',
       '/api/payments/*',
       '/api/documents/*',
       '/api/notifications/*',
@@ -127,6 +132,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'tender_management',
       'contract_management',
       'delivery_management',
+      'invoice_management',
       'payment_management',
       'document_management',
       'notification_management',
@@ -134,13 +140,13 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'analytics',
       'settings'
     ],
-    defaultRoute: '/requests/registry'
+    defaultRoute: '/requests/process'
   },
   'ROLE_CUSTOMER': {
     menuItems: [
       'dashboard',
-      'requests/registry',
-      'requests/process'
+      'requests/process',
+      'requests/registry'
     ],
     apiEndpoints: [
       '/api/dashboard',
@@ -154,10 +160,11 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'dashboard',
       'request_viewing'
     ],
-    defaultRoute: '/contracts'
+    defaultRoute: '/requests/process'
   },
   'ROLE_SUPPLIER': {
     menuItems: [
+      'requests/process',
       'tenders',
       'proposals'
     ],
@@ -169,11 +176,12 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'tender_viewing',
       'proposal_management'
     ],
-    defaultRoute: '/tenders'
+    defaultRoute: '/requests/process'
   },
   'ROLE_ANALYST': {
     menuItems: [
       'dashboard',
+      'requests/process',
       'price-analysis'
     ],
     apiEndpoints: [
@@ -184,17 +192,18 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'dashboard',
       'analytics'
     ],
-    defaultRoute: '/dashboard'
+    defaultRoute: '/requests/process'
   },
   'ROLE_VIEWER': {
     menuItems: [
       'dashboard',
-      'requests/registry',
       'requests/process',
+      'requests/registry',
       'tenders',
       'customer-summary',
       'contracts',
       'deliveries',
+      'invoices',
       'documents',
       'notifications'
     ],
@@ -206,6 +215,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       '/api/customer-info/*',
       '/api/contracts/*',
       '/api/deliveries/*',
+      '/api/invoices/*',
       '/api/documents/*',
       '/api/notifications/*'
     ],
@@ -214,10 +224,11 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'tender_viewing',
       'contract_viewing',
       'delivery_viewing',
+      'invoice_viewing',
       'document_viewing',
       'notification_viewing'
     ],
-    defaultRoute: '/dashboard'
+    defaultRoute: '/requests/process'
   }
 };
 
@@ -247,7 +258,7 @@ export const getDefaultRoute = (userRoles: string[]): string => {
       return roleConfig.defaultRoute;
     }
   }
-  return '/login';
+  return '/requests/process';
 };
 
 export const getMenuItemsForRoles = (userRoles: string[]): string[] => {

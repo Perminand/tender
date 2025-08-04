@@ -208,6 +208,27 @@ const CustomerDashboard: React.FC = () => {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT':
+        return 'Черновик';
+      case 'ACTIVE':
+        return 'Активен';
+      case 'COMPLETED':
+        return 'Завершен';
+      case 'PENDING':
+        return 'Ожидает';
+      case 'IN_PROGRESS':
+        return 'В работе';
+      case 'CANCELLED':
+        return 'Отменен';
+      case 'OVERDUE':
+        return 'Просрочен';
+      default:
+        return status;
+    }
+  };
+
   const handleExportReport = (type: string) => {
     console.log(`Экспорт отчета: ${type}`);
   };
@@ -317,7 +338,7 @@ const CustomerDashboard: React.FC = () => {
                       secondary={`${contract.supplierName} - ${formatCurrency(contract.totalValue)}`}
                     />
                     <Chip 
-                      label={contract.status} 
+                      label={getStatusLabel(contract.status)} 
                       color={getStatusColor(contract.status) as any}
                       size="small" 
                     />
@@ -371,7 +392,7 @@ const CustomerDashboard: React.FC = () => {
                         <TableCell>{contract.supplierName}</TableCell>
                         <TableCell>
                           <Chip 
-                            label={contract.status} 
+                            label={getStatusLabel(contract.status)} 
                             color={getStatusColor(contract.status) as any}
                             size="small" 
                           />

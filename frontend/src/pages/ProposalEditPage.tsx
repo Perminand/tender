@@ -94,7 +94,8 @@ interface Company {
 }
 
 const ProposalEditPage: React.FC = () => {
-  const { tenderId } = useParams<{ tenderId: string }>();
+  const { tenderId, id } = useParams<{ tenderId?: string; id?: string }>();
+  const isEditMode = Boolean(id);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -297,11 +298,16 @@ const ProposalEditPage: React.FC = () => {
   };
 
   useEffect(() => {
-    console.log('ProposalEditPage загружается, tenderId:', tenderId);
+    console.log('ProposalEditPage загружается, tenderId:', tenderId, 'id:', id, 'isEditMode:', isEditMode);
     loadCompanies();
     loadDictionaries();
-    loadTenderItems();
-  }, [tenderId]);
+    
+    if (isEditMode && id) {
+      loadProposal();
+    } else if (tenderId) {
+      loadTenderItems();
+    }
+  }, [tenderId, id, isEditMode]);
 
   // Инициализация selectedSupplier при изменении companies или formData.supplierId
   useEffect(() => {
@@ -418,6 +424,55 @@ const ProposalEditPage: React.FC = () => {
     }
   };
 
+  const loadProposal = async () => {
+    if (!id) return;
+    
+    try {
+      const response = await api.get(`/api/proposals/${id}`);
+      const proposal = response.data;
+      
+      // Загружаем позиции тендера для этого предложения
+      if (proposal.tenderId) {
+        const tenderItemsResponse = await api.get(`/api/tenders/${proposal.tenderId}/items`);
+        setTenderItems(tenderItemsResponse.data);
+      }
+      
+      // Преобразуем данные предложения в формат формы
+      setFormData({
+        tenderId: proposal.tenderId || '',
+        supplierId: proposal.supplierId || '',
+        coverLetter: proposal.coverLetter || '',
+        technicalProposal: proposal.technicalProposal || '',
+        commercialTerms: proposal.commercialTerms || '',
+        paymentTerms: proposal.paymentTerms || '',
+        deliveryTerms: proposal.deliveryTerms || '',
+        warrantyTerms: proposal.warrantyTerms || '',
+        validUntil: proposal.validUntil || '',
+        proposalItems: proposal.proposalItems?.map((item: any) => ({
+          tenderItemId: item.tenderItemId || '',
+          description: item.description || '',
+          brand: item.brand || null,
+          model: item.model || '',
+          manufacturer: item.manufacturer || null,
+          countryOfOrigin: item.countryOfOrigin || null,
+          quantity: item.quantity || 0,
+          unitPrice: item.unitPrice || 0,
+          specifications: item.specifications || '',
+          deliveryPeriod: item.deliveryPeriod || '',
+          warranty: item.warranty || null,
+          additionalInfo: item.additionalInfo || '',
+          unitPriceWithVat: item.unitPriceWithVat || 0,
+          weight: item.weight || 0,
+          deliveryCost: item.deliveryCost || 0
+        })) || []
+      });
+      
+      console.log('Загружено предложение для редактирования:', proposal);
+    } catch (error) {
+      console.error('Error loading proposal:', error);
+    }
+  };
+
   // Функция для начала заполнения позиций
   const startPositionFilling = () => {
     console.log('startPositionFilling вызван');
@@ -464,10 +519,27 @@ const ProposalEditPage: React.FC = () => {
     if (currentPositionData && !savingPosition) {
       setSavingPosition(true);
       
-      setFormData(prev => ({
-        ...prev,
-        proposalItems: [...prev.proposalItems, currentPositionData]
-      }));
+      setFormData(prev => {
+        // Проверяем, есть ли уже позиция с таким tenderItemId
+        const existingIndex = prev.proposalItems.findIndex(
+          item => item.tenderItemId === currentPositionData.tenderItemId
+        );
+        
+        let newProposalItems;
+        if (existingIndex !== -1) {
+          // Заменяем существующую позицию
+          newProposalItems = [...prev.proposalItems];
+          newProposalItems[existingIndex] = currentPositionData;
+        } else {
+          // Добавляем новую позицию
+          newProposalItems = [...prev.proposalItems, currentPositionData];
+        }
+        
+        return {
+          ...prev,
+          proposalItems: newProposalItems
+        };
+      });
       
       // Очищаем данные текущей позиции
       setCurrentPositionData(null);
@@ -490,6 +562,24 @@ const ProposalEditPage: React.FC = () => {
   const handleSkipPosition = () => {
     if (!savingPosition) {
       setSavingPosition(true);
+      
+      // При пропуске позиции добавляем пустую форму, если её ещё нет
+      if (currentPositionData) {
+        setFormData(prev => {
+          const existingIndex = prev.proposalItems.findIndex(
+            item => item.tenderItemId === currentPositionData.tenderItemId
+          );
+          
+          if (existingIndex === -1) {
+            // Добавляем пустую позицию только если её ещё нет
+            return {
+              ...prev,
+              proposalItems: [...prev.proposalItems, currentPositionData]
+            };
+          }
+          return prev;
+        });
+      }
       
       // Очищаем данные текущей позиции
       setCurrentPositionData(null);
@@ -517,24 +607,29 @@ const ProposalEditPage: React.FC = () => {
     if (tenderId) {
       localStorage.removeItem(`proposal_filling_${tenderId}`);
     }
-    // Создаем пустые формы для оставшихся позиций
-    const remainingItems = tenderItems.slice(currentPositionIndex).map((item: TenderItem) => ({
-      tenderItemId: item.id,
-      description: item.description,
-      brand: null,
-      model: '',
-      manufacturer: null,
-      countryOfOrigin: null,
-      quantity: item.quantity,
-      unitPrice: 0,
-      specifications: item.specifications || '',
-      deliveryPeriod: '',
-      warranty: null,
-      additionalInfo: '',
-      unitPriceWithVat: 0,
-      weight: 0,
-      deliveryCost: 0
-    }));
+    
+    // Создаем пустые формы для оставшихся позиций, избегая дубликатов
+    const existingTenderItemIds = new Set(formData.proposalItems.map(item => item.tenderItemId));
+    const remainingItems = tenderItems
+      .slice(currentPositionIndex)
+      .filter(item => !existingTenderItemIds.has(item.id))
+      .map((item: TenderItem) => ({
+        tenderItemId: item.id,
+        description: item.description,
+        brand: null,
+        model: '',
+        manufacturer: null,
+        countryOfOrigin: null,
+        quantity: item.quantity,
+        unitPrice: 0,
+        specifications: item.specifications || '',
+        deliveryPeriod: '',
+        warranty: null,
+        additionalInfo: '',
+        unitPriceWithVat: 0,
+        weight: 0,
+        deliveryCost: 0
+      }));
     
     setFormData(prev => ({
       ...prev,
@@ -581,12 +676,20 @@ const ProposalEditPage: React.FC = () => {
           totalPrice: item.quantity * item.unitPrice
         }))
       };
-      await api.post('/api/proposals', proposalData);
-      // Очищаем localStorage при успешной отправке
-      if (tenderId) {
-        localStorage.removeItem(`proposal_filling_${tenderId}`);
+      
+      if (isEditMode && id) {
+        // Режим редактирования - обновляем существующее предложение
+        await api.put(`/api/proposals/${id}`, proposalData);
+        navigate(`/proposals/${id}`);
+      } else {
+        // Режим создания - создаем новое предложение
+        await api.post('/api/proposals', proposalData);
+        // Очищаем localStorage при успешной отправке
+        if (tenderId) {
+          localStorage.removeItem(`proposal_filling_${tenderId}`);
+        }
+        navigate(`/tenders/${tenderId}`);
       }
-      navigate(`/tenders/${tenderId}`);
     } catch (error: any) {
       console.error('Error saving proposal:', error);
       let message = 'Ошибка сохранения предложения';
@@ -643,10 +746,20 @@ const ProposalEditPage: React.FC = () => {
           totalPrice: item.quantity * item.unitPrice
         }))
       };
-      const response = await api.post('/api/proposals', proposalData);
-      // Затем подаем предложение
-      await api.post(`/api/proposals/${response.data.id}/submit`);
-      navigate(`/tenders/${tenderId}`);
+      
+      if (isEditMode && id) {
+        // Режим редактирования - обновляем существующее предложение
+        await api.put(`/api/proposals/${id}`, proposalData);
+        // Затем подаем предложение
+        await api.post(`/api/proposals/${id}/submit`);
+        navigate(`/proposals/${id}`);
+      } else {
+        // Режим создания - создаем новое предложение
+        const response = await api.post('/api/proposals', proposalData);
+        // Затем подаем предложение
+        await api.post(`/api/proposals/${response.data.id}/submit`);
+        navigate(`/tenders/${tenderId}`);
+      }
     } catch (error: any) {
       console.error('Error submitting proposal:', error);
       let message = 'Ошибка подачи предложения';
@@ -685,16 +798,17 @@ const ProposalEditPage: React.FC = () => {
   // Обработчик создания нового поставщика
   const handleCreateSupplier = (inputValue: string) => {
     // Переходим на страницу создания контрагента с предзаполненными данными
+    const returnUrl = isEditMode ? `/proposals/${id}/edit` : `/tenders/${tenderId}/proposals/new`;
     const params = new URLSearchParams({
       name: inputValue,
       shortName: inputValue,
       role: 'SUPPLIER',
-      returnUrl: `/tenders/${tenderId}/proposals/new`
+      returnUrl: returnUrl
     });
     navigate(`/counterparties/new?${params.toString()}`);
   };
 
-  const handleItemChange = (index: number, field: keyof ProposalItemForm, value: string | number) => {
+  const handleItemChange = (index: number, field: keyof ProposalItemForm, value: string | number | DictionaryItem | null) => {
     setFormData(prev => ({
       ...prev,
       proposalItems: prev.proposalItems.map((item, i) => 
@@ -829,6 +943,26 @@ const ProposalEditPage: React.FC = () => {
     setDuplicateItems(duplicates);
   };
 
+  // Функция для удаления дубликатов
+  const removeDuplicates = () => {
+    const seenTenderItemIds = new Set<string>();
+    const uniqueItems = formData.proposalItems.filter(item => {
+      if (item.tenderItemId && item.tenderItemId !== '') {
+        if (seenTenderItemIds.has(item.tenderItemId)) {
+          return false; // Пропускаем дубликат
+        } else {
+          seenTenderItemIds.add(item.tenderItemId);
+          return true; // Оставляем первую позицию
+        }
+      }
+      return true; // Оставляем позиции без tenderItemId
+    });
+    setFormData(prev => ({
+      ...prev,
+      proposalItems: uniqueItems
+    }));
+  };
+
   // Проверяем дубликаты при изменении данных
   useEffect(() => {
     checkDuplicates();
@@ -850,7 +984,7 @@ const ProposalEditPage: React.FC = () => {
         `}
       </style>
       <Typography variant="h4" component="h1" sx={{ mb: 3 }}>
-        Подача предложения
+        {isEditMode ? 'Редактирование предложения' : 'Подача предложения'}
       </Typography>
 
       {/* Модальное окно для ошибок */}
@@ -1023,7 +1157,19 @@ const ProposalEditPage: React.FC = () => {
       </Card>
 
       {duplicateItems.size > 0 && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 2 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={removeDuplicates}
+            >
+              Удалить дубликаты
+            </Button>
+          }
+        >
           Обнаружены дублирующие позиции ({duplicateItems.size} строк). Удалите дубликаты перед отправкой предложения.
         </Alert>
       )}
@@ -1171,11 +1317,55 @@ const ProposalEditPage: React.FC = () => {
                         </FormControl>
                       </TableCell>
                       <TableCell {...getCellStyles(2)}>
-                        <TextField
-                          size="small"
+                        <Autocomplete
+                          options={brands}
+                          getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
                           value={item.brand}
-                          onChange={e => handleItemChange(index, 'brand', e.target.value)}
-                          fullWidth
+                          onChange={async (event, newValue) => {
+                            if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                              // Создаем новый бренд и сохраняем в базу
+                              const brandName = newValue.name.replace(/^Создать: /, '');
+                              console.log('Создаем новый бренд:', brandName);
+                              const newBrand = await saveNewDictionaryItem('brands', brandName);
+                              handleItemChange(index, 'brand', newBrand);
+                            } else {
+                              handleItemChange(index, 'brand', newValue);
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              size="small"
+                              fullWidth
+                            />
+                          )}
+                          renderOption={(props, option) => {
+                            const { key, ...otherProps } = props;
+                            return (
+                              <li key={key} {...otherProps}>
+                                <Typography variant="body1">
+                                  {typeof option === 'string' ? option : (option?.name || '')}
+                                </Typography>
+                              </li>
+                            );
+                          }}
+                          filterOptions={(options, { inputValue }) => {
+                            const filtered = options.filter(option => 
+                              option.name.toLowerCase().includes(inputValue.toLowerCase())
+                            );
+                            if (inputValue && !options.some(option => 
+                              option.name.toLowerCase() === inputValue.toLowerCase()
+                            )) {
+                              filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                            }
+                            return filtered;
+                          }}
+                          freeSolo
+                          autoComplete
+                          includeInputInList
+                          filterSelectedOptions
+                          noOptionsText="Бренд не найден"
+                          size="small"
                         />
                       </TableCell>
                       <TableCell {...getCellStyles(3)}>
@@ -1187,14 +1377,110 @@ const ProposalEditPage: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell {...getCellStyles(4)}>
-                        <TextField
-                          size="small"
+                        <Autocomplete
+                          options={manufacturers}
+                          getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
                           value={item.manufacturer}
-                          onChange={e => handleItemChange(index, 'manufacturer', e.target.value)}
-                          fullWidth
+                          onChange={async (event, newValue) => {
+                            if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                              // Создаем нового производителя и сохраняем в базу
+                              const manufacturerName = newValue.name.replace(/^Создать: /, '');
+                              console.log('Создаем нового производителя:', manufacturerName);
+                              const newManufacturer = await saveNewDictionaryItem('manufacturers', manufacturerName);
+                              handleItemChange(index, 'manufacturer', newManufacturer);
+                            } else {
+                              handleItemChange(index, 'manufacturer', newValue);
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              size="small"
+                              fullWidth
+                            />
+                          )}
+                          renderOption={(props, option) => {
+                            const { key, ...otherProps } = props;
+                            return (
+                              <li key={key} {...otherProps}>
+                                <Typography variant="body1">
+                                  {typeof option === 'string' ? option : (option?.name || '')}
+                                </Typography>
+                              </li>
+                            );
+                          }}
+                          filterOptions={(options, { inputValue }) => {
+                            const filtered = options.filter(option => 
+                              option.name.toLowerCase().includes(inputValue.toLowerCase())
+                            );
+                            if (inputValue && !options.some(option => 
+                              option.name.toLowerCase() === inputValue.toLowerCase()
+                            )) {
+                              filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                            }
+                            return filtered;
+                          }}
+                          freeSolo
+                          autoComplete
+                          includeInputInList
+                          filterSelectedOptions
+                          noOptionsText="Производитель не найден"
+                          size="small"
                         />
                       </TableCell>
                       <TableCell {...getCellStyles(5)}>
+                        <Autocomplete
+                          options={countries}
+                          getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
+                          value={item.countryOfOrigin}
+                          onChange={async (event, newValue) => {
+                            if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                              // Создаем новую страну и сохраняем в базу
+                              const countryName = newValue.name.replace(/^Создать: /, '');
+                              console.log('Создаем новую страну:', countryName);
+                              const newCountry = await saveNewDictionaryItem('countries', countryName);
+                              handleItemChange(index, 'countryOfOrigin', newCountry);
+                            } else {
+                              handleItemChange(index, 'countryOfOrigin', newValue);
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              size="small"
+                              fullWidth
+                            />
+                          )}
+                          renderOption={(props, option) => {
+                            const { key, ...otherProps } = props;
+                            return (
+                              <li key={key} {...otherProps}>
+                                <Typography variant="body1">
+                                  {typeof option === 'string' ? option : (option?.name || '')}
+                                </Typography>
+                              </li>
+                            );
+                          }}
+                          filterOptions={(options, { inputValue }) => {
+                            const filtered = options.filter(option => 
+                              option.name.toLowerCase().includes(inputValue.toLowerCase())
+                            );
+                            if (inputValue && !options.some(option => 
+                              option.name.toLowerCase() === inputValue.toLowerCase()
+                            )) {
+                              filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                            }
+                            return filtered;
+                          }}
+                          freeSolo
+                          autoComplete
+                          includeInputInList
+                          filterSelectedOptions
+                          noOptionsText="Страна не найдена"
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell {...getCellStyles(6)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1204,7 +1490,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(6)}>
+                      <TableCell {...getCellStyles(7)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1217,7 +1503,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(7)}>
+                      <TableCell {...getCellStyles(8)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1230,7 +1516,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(8)}>
+                      <TableCell {...getCellStyles(9)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1243,7 +1529,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(9)}>
+                      <TableCell {...getCellStyles(10)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1256,10 +1542,70 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(10)}>
+                      <TableCell {...getCellStyles(11)}>
+                        <TextField
+                          size="small"
+                          value={item.deliveryPeriod || ''}
+                          onChange={e => handleItemChange(index, 'deliveryPeriod', e.target.value)}
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell {...getCellStyles(12)}>
+                        <Autocomplete
+                          options={warranties}
+                          getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
+                          value={item.warranty}
+                          onChange={async (event, newValue) => {
+                            if (newValue && typeof newValue === 'object' && newValue.id === 'CREATE_NEW') {
+                              // Создаем новую гарантию и сохраняем в базу
+                              const warrantyName = newValue.name.replace(/^Создать: /, '');
+                              console.log('Создаем новую гарантию:', warrantyName);
+                              const newWarranty = await saveNewDictionaryItem('warranties', warrantyName);
+                              handleItemChange(index, 'warranty', newWarranty);
+                            } else {
+                              handleItemChange(index, 'warranty', newValue);
+                            }
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              size="small"
+                              fullWidth
+                            />
+                          )}
+                          renderOption={(props, option) => {
+                            const { key, ...otherProps } = props;
+                            return (
+                              <li key={key} {...otherProps}>
+                                <Typography variant="body1">
+                                  {typeof option === 'string' ? option : (option?.name || '')}
+                                </Typography>
+                              </li>
+                            );
+                          }}
+                          filterOptions={(options, { inputValue }) => {
+                            const filtered = options.filter(option => 
+                              option.name.toLowerCase().includes(inputValue.toLowerCase())
+                            );
+                            if (inputValue && !options.some(option => 
+                              option.name.toLowerCase() === inputValue.toLowerCase()
+                            )) {
+                              filtered.push({ id: 'CREATE_NEW', name: `Создать: ${inputValue}` } as any);
+                            }
+                            return filtered;
+                          }}
+                          freeSolo
+                          autoComplete
+                          includeInputInList
+                          filterSelectedOptions
+                          noOptionsText="Гарантия не найдена"
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell {...getCellStyles(13)}>
                         {(item.quantity * item.unitPrice).toLocaleString('ru-RU')} ₽
                       </TableCell>
-                      <TableCell {...getCellStyles(11)}>
+                      <TableCell {...getCellStyles(14)}>
                         <IconButton color="error" onClick={() => handleRemoveItem(index)} size="small">
                           <DeleteIcon />
                         </IconButton>
@@ -1294,7 +1640,7 @@ const ProposalEditPage: React.FC = () => {
       <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end', mt: 3 }}>
         <Button
           variant="outlined"
-          onClick={() => navigate(`/tenders/${tenderId}`)}
+          onClick={() => navigate(isEditMode ? `/proposals/${id}` : `/tenders/${tenderId}`)}
           disabled={loading}
         >
           Отмена
@@ -1305,7 +1651,7 @@ const ProposalEditPage: React.FC = () => {
           disabled={loading || !formData.supplierId}
           startIcon={<SaveIcon />}
         >
-          Сохранить
+          {isEditMode ? 'Обновить' : 'Сохранить'}
         </Button>
         <Button
           variant="contained"
@@ -1314,7 +1660,7 @@ const ProposalEditPage: React.FC = () => {
           onClick={handleSubmitProposal}
           disabled={loading}
         >
-          {loading ? <CircularProgress size={20} /> : 'Подать предложение'}
+          {loading ? <CircularProgress size={20} /> : (isEditMode ? 'Обновить предложение' : 'Подать предложение')}
         </Button>
       </Box>
 

@@ -39,7 +39,7 @@ import {
   TrendingUp as TrendingUpIcon,
   FileUpload as FileUploadIcon
 } from '@mui/icons-material';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import Pagination from '@mui/material/Pagination';
 import ResponsiveTable from '../components/ResponsiveTable';
@@ -81,6 +81,7 @@ const getStatusLabel = (status: string) => {
 const ProposalRegistryPage: React.FC = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const [searchParams] = useSearchParams();
   const [proposals, setProposals] = useState<ProposalDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -91,6 +92,9 @@ const ProposalRegistryPage: React.FC = () => {
   const [page, setPage] = useState(1);
   const rowsPerPage = 50;
   const navigate = useNavigate();
+  
+  // Получаем tenderId из URL параметров
+  const tenderIdFromUrl = searchParams.get('tenderId');
 
   useEffect(() => {
     loadProposals();
@@ -204,7 +208,8 @@ const ProposalRegistryPage: React.FC = () => {
   const filteredProposals = proposals.filter(proposal => {
     const statusMatch = statusFilter === 'ALL' || proposal.status === statusFilter;
     const supplierMatch = !supplierFilter || proposal.supplierId === supplierFilter;
-    return statusMatch && supplierMatch;
+    const tenderMatch = !tenderIdFromUrl || proposal.tenderId === tenderIdFromUrl;
+    return statusMatch && supplierMatch && tenderMatch;
   });
 
   const sortedProposals = [...filteredProposals].sort((a, b) => new Date(b.submissionDate).getTime() - new Date(a.submissionDate).getTime());
@@ -348,9 +353,16 @@ const ProposalRegistryPage: React.FC = () => {
         flexDirection: { xs: 'column', sm: 'row' },
         gap: { xs: 2, sm: 0 }
       }}>
-        <Typography variant={isMobile ? "h5" : "h4"} component="h1">
-          Реестр предложений
-        </Typography>
+        <Box>
+          <Typography variant={isMobile ? "h5" : "h4"} component="h1">
+            Реестр предложений
+          </Typography>
+          {tenderIdFromUrl && (
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+              Отфильтровано по тендеру
+            </Typography>
+          )}
+        </Box>
         <Box sx={{ 
           display: 'flex', 
           gap: { xs: 1, sm: 2 },
@@ -364,6 +376,15 @@ const ProposalRegistryPage: React.FC = () => {
           >
             Экспорт
           </Button>
+          {tenderIdFromUrl && (
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/proposals')}
+              size={isMobile ? 'small' : 'medium'}
+            >
+              Показать все
+            </Button>
+          )}
           <Button
             variant="contained"
             onClick={() => navigate('/tenders')}

@@ -15,6 +15,7 @@ export interface RequestProcess {
   tenderTotalAmount: number;
   deltaAmount: number;
   materialsCount: number;
+  materials?: string[];
   tendersCount: number;
   proposalsCount: number;
   contractsCount: number;
@@ -53,7 +54,8 @@ export interface InvoiceProcess {
   invoiceId: string;
   invoiceNumber: string;
   invoiceDate: string;
-  paymentDate: string;
+  dueDate: string;
+  paymentDate?: string;
   supplierName: string;
   supplierContact: string;
   supplierPhone: string;
@@ -62,6 +64,9 @@ export interface InvoiceProcess {
   paidAmount: number;
   remainingAmount: number;
   currency: string;
+  vatAmount: number;
+  paymentTerms?: string;
+  notes?: string;
   receipts?: ReceiptProcess[];
 }
 

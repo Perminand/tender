@@ -116,6 +116,25 @@ export default function RequestProcessBrief({ request, onExpand, expanded = fals
     }).format(amount);
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT':
+        return 'Черновик';
+      case 'SUBMITTED':
+        return 'Подана';
+      case 'APPROVED':
+        return 'Одобрена';
+      case 'IN_PROGRESS':
+        return 'В работе';
+      case 'COMPLETED':
+        return 'Завершена';
+      case 'CANCELLED':
+        return 'Отменена';
+      default:
+        return status;
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'COMPLETED':
@@ -169,7 +188,7 @@ export default function RequestProcessBrief({ request, onExpand, expanded = fals
           </Box>
           <Box display="flex" alignItems="center" gap={1}>
             <StatusChip
-              label={request.status}
+              label={getStatusLabel(request.status)}
               status={request.status}
               icon={getStatusIcon(request.status)}
               size="small"

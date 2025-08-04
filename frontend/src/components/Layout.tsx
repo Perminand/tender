@@ -17,6 +17,7 @@ import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import DescriptionIcon from '@mui/icons-material/Description';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import PaymentIcon from '@mui/icons-material/Payment';
+import ReceiptIcon from '@mui/icons-material/Receipt';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -54,6 +55,7 @@ const menuStructure = [
   {
     title: 'Главная',
     items: [
+      { label: 'Процессы заявок', to: '/requests/process', icon: <AssessmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
       { label: 'Дашборд', to: '/dashboard', icon: <DashboardIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] }
     ]
   },
@@ -61,7 +63,6 @@ const menuStructure = [
     title: 'Тендерные процедуры',
     items: [
       { label: 'Реестр заявок', to: '/requests/registry', icon: <AssignmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
-      { label: 'Процесс заявок', to: '/requests/process', icon: <AssessmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
       { label: 'Тендеры', to: '/tenders', icon: <GavelIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_SUPPLIER', 'ROLE_VIEWER'] },
       { label: 'Предложения', to: '/proposals', icon: <LocalOfferIcon />, roles: ['ROLE_SUPPLIER', 'ROLE_MANAGER', 'ROLE_ADMIN'] },
       { label: 'Информация о заказчиках', to: '/customer-summary', icon: <BusinessIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] }
@@ -72,6 +73,7 @@ const menuStructure = [
     items: [
       { label: 'Контракты', to: '/contracts', icon: <DescriptionIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
       { label: 'Поставки', to: '/deliveries', icon: <LocalShippingIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
+      { label: 'Счета', to: '/invoices', icon: <ReceiptIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
       { label: 'Платежи', to: '/payments', icon: <PaymentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] }
     ]
   },
@@ -105,7 +107,14 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const [mobileOpen, setMobileOpen] = useState(false);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Главная']));
+
+  // Автоматически раскрываем раздел "Главная" если пользователь на главной странице
+  React.useEffect(() => {
+    if (location.pathname === '/' || location.pathname === '/dashboard' || location.pathname === '/requests/process') {
+      setExpandedSections(prev => new Set([...prev, 'Главная']));
+    }
+  }, [location.pathname]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { user, logout } = useAuth();
   const { canAccess } = usePermissions();
@@ -158,7 +167,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     ...section,
     items: section.items.filter(item => {
       // Проверяем права доступа через централизованную систему
-      const menuPath = item.to.replace('/', '').replace('/', '/');
+      const menuPath = item.to.startsWith('/') ? item.to.slice(1) : item.to;
       return canAccess(menuPath);
     })
   })).filter(section => {
@@ -215,7 +224,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <Collapse in={isExpanded} timeout="auto" unmountOnExit>
                   <List component="div" disablePadding>
                     {section.items.map((item) => {
-                      const selected = location.pathname.startsWith(item.to);
+                      const selected = location.pathname === item.to || 
+                        (item.to === '/requests/process' && location.pathname === '/');
                       return (
                         <ListItem key={item.to} disablePadding>
                           <ListItemButton

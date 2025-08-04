@@ -219,6 +219,13 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  const handleRefreshAll = async () => {
+    await Promise.all([
+      fetchDashboardData(),
+      fetchSavingsByMonth()
+    ]);
+  };
+
   const fetchSavingsByMonth = async () => {
     try {
       const response = await api.get(`/api/dashboard/savings-by-month?username=${username}`);
@@ -227,6 +234,8 @@ const DashboardPage: React.FC = () => {
       setSavingsByMonth([]);
     }
   };
+
+
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ru-RU', {
@@ -253,6 +262,35 @@ const DashboardPage: React.FC = () => {
         return 'error';
       default:
         return 'default';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'DRAFT':
+        return 'Черновик';
+      case 'PUBLISHED':
+        return 'Опубликован';
+      case 'BIDDING':
+        return 'Прием предложений';
+      case 'EVALUATION':
+        return 'Оценка';
+      case 'AWARDED':
+        return 'Присужден';
+      case 'CANCELLED':
+        return 'Отменен';
+      case 'COMPLETED':
+        return 'Завершен';
+      case 'IN_PROGRESS':
+        return 'В работе';
+      case 'PENDING':
+        return 'Ожидает';
+      case 'OVERDUE':
+        return 'Просрочен';
+      case 'ACTIVE':
+        return 'Активен';
+      default:
+        return status;
     }
   };
 
@@ -317,7 +355,7 @@ const DashboardPage: React.FC = () => {
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="Обновить данные">
-            <IconButton onClick={fetchDashboardData} size={isMobile ? 'small' : 'medium'}>
+            <IconButton onClick={handleRefreshAll} size={isMobile ? 'small' : 'medium'}>
               <RefreshIcon />
             </IconButton>
           </Tooltip>
@@ -542,7 +580,7 @@ const DashboardPage: React.FC = () => {
                       </Typography>
                       <Box sx={{ mt: 1 }}>
                         <Chip 
-                          label={tender.status} 
+                          label={getStatusLabel(tender.status)} 
                           size="small" 
                           color={getStatusColor(tender.status) as any}
                         />
@@ -604,7 +642,7 @@ const DashboardPage: React.FC = () => {
                         </TableCell>
                         <TableCell>
                           <Chip 
-                            label={delivery.status} 
+                            label={getStatusLabel(delivery.status)} 
                             color={getStatusColor(delivery.status) as any}
                             size="small" 
                           />
