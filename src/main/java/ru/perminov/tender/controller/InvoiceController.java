@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.InvoiceDto;
 import ru.perminov.tender.dto.InvoiceDtoNew;
 import ru.perminov.tender.dto.InvoiceDtoUpdate;
+import ru.perminov.tender.dto.InvoiceItemDto;
 import ru.perminov.tender.service.InvoiceService;
 
 import java.util.List;
@@ -119,5 +120,12 @@ public class InvoiceController {
     public ResponseEntity<List<InvoiceDto>> getPendingPaymentInvoices() {
         log.info("Получение счетов ожидающих оплаты");
         return ResponseEntity.ok(invoiceService.getPendingPaymentInvoices());
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER', 'CUSTOMER')")
+    @GetMapping("/{id}/items")
+    public ResponseEntity<List<InvoiceItemDto>> getInvoiceItems(@PathVariable UUID id) {
+        log.info("Получение позиций счета: {}", id);
+        return ResponseEntity.ok(invoiceService.getInvoiceItems(id));
     }
 } 

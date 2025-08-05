@@ -55,7 +55,7 @@ const menuStructure = [
   {
     title: 'Главная',
     items: [
-      { label: 'Процессы заявок', to: '/requests/process', icon: <AssessmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] },
+      { label: 'Процессы заявок', to: '/requests/process', icon: <AssessmentIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] },
       { label: 'Дашборд', to: '/dashboard', icon: <DashboardIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_ANALYST', 'ROLE_VIEWER', 'ROLE_CUSTOMER'] }
     ]
   },
@@ -111,7 +111,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // Автоматически раскрываем раздел "Главная" если пользователь на главной странице
   React.useEffect(() => {
-    if (location.pathname === '/' || location.pathname === '/dashboard' || location.pathname === '/requests/process') {
+    if (location.pathname === '/' || location.pathname === '/dashboard') {
       setExpandedSections(prev => new Set([...prev, 'Главная']));
     }
   }, [location.pathname]);
@@ -171,11 +171,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       return canAccess(menuPath);
     })
   })).filter(section => {
-    // Раздел "Справочники" всегда отображается, даже без подпунктов
-    if (section.title === 'Справочники') {
-      return true;
-    }
-    // Остальные разделы отображаются только если есть доступные подпункты
+    // Все разделы отображаются только если есть доступные подпункты
     return section.items.length > 0;
   });
 

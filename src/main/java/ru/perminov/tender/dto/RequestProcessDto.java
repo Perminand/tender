@@ -97,6 +97,8 @@ public class RequestProcessDto {
         private String invoiceNumber;
         private LocalDate invoiceDate;
         private LocalDate paymentDate;
+        private UUID contractId;
+        private String contractNumber;
         private String supplierName;
         private String supplierContact;
         private String supplierPhone;

@@ -145,7 +145,6 @@ export const ROLE_PERMISSIONS: RolePermissions = {
   'ROLE_CUSTOMER': {
     menuItems: [
       'dashboard',
-      'requests/process',
       'requests/registry'
     ],
     apiEndpoints: [
@@ -160,7 +159,7 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       'dashboard',
       'request_viewing'
     ],
-    defaultRoute: '/requests/process'
+    defaultRoute: '/requests/registry'
   },
   'ROLE_SUPPLIER': {
     menuItems: [

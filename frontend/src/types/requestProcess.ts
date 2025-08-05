@@ -72,6 +72,8 @@ export interface InvoiceProcess {
   invoiceDate: string;
   dueDate: string;
   paymentDate?: string;
+  contractId?: string;
+  contractNumber?: string;
   supplierName: string;
   supplierContact: string;
   supplierPhone: string;

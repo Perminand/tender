@@ -64,7 +64,8 @@ const DefaultRedirect: React.FC = () => {
   const navigate = useNavigate();
   React.useEffect(() => {
     if (!isLoading && isAuthenticated && user && user.roles) {
-      navigate(getDefaultRoute(user.roles), { replace: true });
+      const defaultRoute = getDefaultRoute(user.roles);
+      navigate(defaultRoute, { replace: true });
     }
   }, [isLoading, isAuthenticated, user, navigate]);
   return null;
@@ -81,7 +82,7 @@ const App: React.FC = () => (
       <Route path="/" element={
         <ProtectedRoute>
           <Layout>
-            <RequestProcessPage />
+            <DefaultRedirect />
           </Layout>
         </ProtectedRoute>
       } />

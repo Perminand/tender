@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Box,
   Typography,
@@ -82,6 +83,126 @@ const getStatusLabel = (status?: string) => {
 
 const RequestDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  
+  // Определяем, является ли пользователь заказчиком
+  const isCustomer = user?.roles.includes('ROLE_CUSTOMER');
+  
+  // Определяем столбцы в зависимости от роли пользователя
+  const getColumns = () => {
+    if (isCustomer) {
+      // Для заказчиков скрываем сметные столбцы
+      return ['#', 'Вид работ', 'Наименование в заявке', 'Кол-во', 'Ед. изм.', 'Ссылка', 'Примечание', 'Поставить к дате'];
+    } else {
+      // Для остальных ролей показываем все столбцы
+      return ['#', 'Вид работ', 'Наименование в заявке', 'Кол-во', 'Ед. изм.', 'Наименование материала (смета)', 'Характеристики (смета)', 'Кол-во (смета)', 'Ед. изм.(смета)', 'Цена (смета)', 'Стоимость (смета)', 'Ссылка', 'Примечание', 'Поставить к дате'];
+    }
+  };
+  
+  const columns = getColumns();
+  
+  // Функция для рендеринга ячейки в зависимости от столбца
+  const renderCell = (mat: RequestMaterial, idx: number, column: string) => {
+    switch (column) {
+      case '#':
+        return (
+          <TableCell sx={{ width: colWidths[0] }} title={`${idx + 1}`}>
+            {idx + 1}
+          </TableCell>
+        );
+      case 'Вид работ':
+        return (
+          <TableCell sx={{ width: colWidths[1] }} title={mat.workType && typeof mat.workType === 'object' ? (mat.workType as { name: string }).name : mat.workType || '-'}>
+            {mat.workType && typeof mat.workType === 'object' ? (mat.workType as { name: string }).name : mat.workType || '-'}
+          </TableCell>
+        );
+      case 'Наименование в заявке':
+        return (
+          <TableCell sx={{ width: colWidths[2] }} title={mat.supplierMaterialName || '-'}>
+            {mat.supplierMaterialName || '-'}
+          </TableCell>
+        );
+      case 'Кол-во':
+        return (
+          <TableCell sx={{ width: colWidths[3] }} title={mat.quantity || '-'}>
+            {mat.quantity || '-'}
+          </TableCell>
+        );
+      case 'Ед. изм.':
+        return (
+          <TableCell sx={{ width: colWidths[4] }} title={mat.unit && typeof mat.unit === 'object' ? mat.unit.shortName : mat.unit || '-'}>
+            {mat.unit && typeof mat.unit === 'object' ? mat.unit.shortName : mat.unit || '-'}
+          </TableCell>
+        );
+      case 'Наименование материала (смета)':
+        return (
+          <TableCell sx={{ 
+            width: colWidths[5],
+            backgroundColor: '#f0f8ff',
+            borderLeft: '2px solid #1976d2'
+          }} title={mat.estimateMaterialName || '-'}>
+            {mat.estimateMaterialName || '-'}
+          </TableCell>
+        );
+      case 'Характеристики (смета)':
+        return (
+          <TableCell sx={{ width: colWidths[6], backgroundColor: '#f0f8ff' }} title={mat.size || '-'}>
+            {mat.size || '-'}
+          </TableCell>
+        );
+      case 'Кол-во (смета)':
+        return (
+          <TableCell sx={{ width: colWidths[7], backgroundColor: '#f0f8ff' }} title={mat.estimateQuantity || '-'}>
+            {mat.estimateQuantity || '-'}
+          </TableCell>
+        );
+      case 'Ед. изм.(смета)':
+        return (
+          <TableCell sx={{ width: colWidths[8], backgroundColor: '#f0f8ff' }} title={mat.estimateUnit && typeof mat.estimateUnit === 'object' ? mat.estimateUnit.shortName : mat.estimateUnit || '-'}>
+            {mat.estimateUnit && typeof mat.estimateUnit === 'object' ? mat.estimateUnit.shortName : mat.estimateUnit || '-'}
+          </TableCell>
+        );
+      case 'Цена (смета)':
+        return (
+          <TableCell sx={{ width: colWidths[9], backgroundColor: '#f0f8ff' }} title={mat.estimatePrice || '-'}>
+            {mat.estimatePrice || '-'}
+          </TableCell>
+        );
+      case 'Стоимость (смета)':
+        const estimateTotal = mat.estimatePrice && (mat.estimateQuantity || mat.quantity) ?
+          (parseFloat(mat.estimatePrice) * parseFloat(mat.estimateQuantity || mat.quantity)).toLocaleString() : '';
+        return (
+          <TableCell sx={{ 
+            width: colWidths[10],
+            backgroundColor: '#f0f8ff',
+            borderRight: '2px solid #1976d2'
+          }} title={estimateTotal || '-'}>
+            {estimateTotal || '-'}
+          </TableCell>
+        );
+      case 'Ссылка':
+        return (
+          <TableCell sx={{ width: colWidths[11] }} title={mat.materialLink || '-'}>
+            {mat.materialLink || '-'}
+          </TableCell>
+        );
+      case 'Примечание':
+        return (
+          <TableCell sx={{ width: colWidths[12] }} title={mat.note || '-'}>
+            {mat.note || '-'}
+          </TableCell>
+        );
+      case 'Поставить к дате':
+        return (
+          <TableCell sx={{ width: colWidths[13] }} title={mat.deliveryDate ? dayjs(mat.deliveryDate).format('DD.MM.YYYY') : '-'}>
+            {mat.deliveryDate ? dayjs(mat.deliveryDate).format('DD.MM.YYYY') : '-'}
+          </TableCell>
+        );
+      default:
+        return null;
+    }
+  };
+  
   const [request, setRequest] = useState<RequestDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -96,11 +217,7 @@ const RequestDetailPage: React.FC = () => {
       return [40, 120, 200, 80, 80, 200, 150, 80, 80, 80, 100, 150, 150, 120];
     }
 
-    const columnHeaders = [
-      '#', 'Вид работ', 'Наименование в заявке', 'Кол-во', 'Ед. изм.',
-      'Наименование материала (смета)', 'Характеристики (смета)', 'Кол-во (смета)', 
-      'Ед. изм.(смета)', 'Цена (смета)', 'Стоимость (смета)', 'Ссылка', 'Примечание', 'Поставить к дате'
-    ];
+    const columnHeaders = columns;
 
     const calculateTextWidth = (text: string, isHeader: boolean = false, isCompact: boolean = false) => {
       // Для компактных столбцов (числовые, короткие тексты и цены) используем меньшую ширину
@@ -117,66 +234,52 @@ const RequestDetailPage: React.FC = () => {
     };
 
     const widths = columnHeaders.map((header, colIndex) => {
-      // Определяем, является ли столбец числовым или коротким текстом
-      const isNumericColumn = colIndex === 0 || colIndex === 3 || colIndex === 7 || colIndex === 9 || colIndex === 10;
-      const isShortTextColumn = colIndex === 4 || colIndex === 8; // Ед. изм. и Ед. изм.(смета)
-      const isPriceColumn = colIndex === 9 || colIndex === 10; // Цена (смета) и Стоимость (смета)
-      const isCompactColumn = isNumericColumn || isPriceColumn; // Убрали isShortTextColumn из компактных
+      // Определяем тип столбца на основе его названия
+      const isNumericColumn = header === '#' || header === 'Кол-во' || (isCustomer ? false : (header === 'Кол-во (смета)' || header === 'Цена (смета)' || header === 'Стоимость (смета)'));
+      const isShortTextColumn = header === 'Ед. изм.' || (isCustomer ? false : header === 'Ед. изм.(смета)');
+      const isPriceColumn = isCustomer ? false : (header === 'Цена (смета)' || header === 'Стоимость (смета)');
+      const isCompactColumn = isNumericColumn || isPriceColumn;
       let maxWidth = calculateTextWidth(header, true, isCompactColumn);
 
       request.materials.forEach((mat, rowIndex) => {
         let cellText = '';
         
-        switch (colIndex) {
-          case 0: // #
+        // Определяем содержимое ячейки на основе названия столбца
+        if (header === '#') {
             cellText = (rowIndex + 1).toString();
-            break;
-          case 1: // Вид работ
+        } else if (header === 'Вид работ') {
             cellText = mat.workType && typeof mat.workType === 'object' ? (mat.workType as { name: string }).name : (mat.workType || '');
-            break;
-          case 2: // Наименование в заявке
+        } else if (header === 'Наименование в заявке') {
             cellText = mat.supplierMaterialName || '';
-            break;
-          case 3: // Кол-во
+        } else if (header === 'Кол-во') {
             cellText = mat.quantity || '';
-            break;
-          case 4: // Ед. изм.
+        } else if (header === 'Ед. изм.') {
             cellText = mat.unit && typeof mat.unit === 'object' ? mat.unit.shortName : (mat.unit || '');
-            break;
-          case 5: // Наименование материала (смета)
+        } else if (header === 'Наименование материала (смета)') {
             cellText = mat.estimateMaterialName || '';
-            break;
-          case 6: // Характеристики (смета)
+        } else if (header === 'Характеристики (смета)') {
             cellText = mat.characteristics || '';
-            break;
-          case 7: // Кол-во (смета)
+        } else if (header === 'Кол-во (смета)') {
             cellText = mat.estimateQuantity || '';
-            break;
-          case 8: // Ед. изм.(смета)
+        } else if (header === 'Ед. изм.(смета)') {
             cellText = mat.estimateUnit && typeof mat.estimateUnit === 'object' ? mat.estimateUnit.shortName : (mat.estimateUnit || '');
-            break;
-          case 9: // Цена (смета)
+        } else if (header === 'Цена (смета)') {
             cellText = mat.estimatePrice || '';
-            break;
-          case 10: // Стоимость (смета)
+        } else if (header === 'Стоимость (смета)') {
             const estimateTotal = mat.estimatePrice && (mat.estimateQuantity || mat.quantity) ?
               (parseFloat(mat.estimatePrice) * parseFloat(mat.estimateQuantity || mat.quantity)).toLocaleString() : '';
             cellText = estimateTotal;
-            break;
-          case 11: // Ссылка
+        } else if (header === 'Ссылка') {
             cellText = mat.materialLink || '';
-            break;
-          case 12: // Примечание
+        } else if (header === 'Примечание') {
             cellText = mat.note || '';
-            break;
-          case 13: // Поставить к дате
+        } else if (header === 'Поставить к дате') {
             cellText = mat.deliveryDate ? dayjs(mat.deliveryDate).format('DD.MM.YYYY') : '';
-            break;
         }
 
         let cellWidth;
-        // Специальная логика для столбцов "Ед. изм." и "Ед. изм.(смета)"
-        if (colIndex === 4 || colIndex === 8) {
+        // Специальная логика для столбцов единиц измерения
+        if (header === 'Ед. изм.' || header === 'Ед. изм.(смета)') {
           // Для единиц измерения: ширина по самой длинной записи + 5 пикселей
           const charWidth = 8; // Обычная ширина символа
           const padding = 16; // Отступ
@@ -358,83 +461,33 @@ const RequestDetailPage: React.FC = () => {
         <Table size="small" sx={{ minWidth: 2000, width: 'max-content' }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ width: colWidths[0] }}>#</TableCell>
-              <TableCell sx={{ width: colWidths[1] }}>Вид работ</TableCell>
-              <TableCell sx={{ width: colWidths[2] }}>Наименование в заявке</TableCell>
-              <TableCell sx={{ width: colWidths[3] }}>Кол-во</TableCell>
-              <TableCell sx={{ width: colWidths[4] }}>Ед. изм.</TableCell>
-              <TableCell sx={{ 
-                width: colWidths[5],
-                backgroundColor: '#f0f8ff',
-                borderLeft: '2px solid #1976d2',
-                fontWeight: 'bold'
-              }}>Наименование материала (смета)</TableCell>
-              <TableCell sx={{ 
-                width: colWidths[6],
-                backgroundColor: '#f0f8ff',
-                fontWeight: 'bold'
-              }}>Характеристики (смета)</TableCell>
-              <TableCell sx={{ 
-                width: colWidths[7],
-                backgroundColor: '#f0f8ff',
-                fontWeight: 'bold'
-              }}>Кол-во (смета)</TableCell>
-              <TableCell sx={{ 
-                width: colWidths[8],
-                backgroundColor: '#f0f8ff',
-                fontWeight: 'bold'
-              }}>Ед. изм.(смета)</TableCell>
-              <TableCell sx={{ 
-                width: colWidths[9],
-                backgroundColor: '#f0f8ff',
-                fontWeight: 'bold'
-              }}>Цена (смета)</TableCell>
-              <TableCell sx={{ 
-                width: colWidths[10],
-                backgroundColor: '#f0f8ff',
-                borderRight: '2px solid #1976d2',
-                fontWeight: 'bold'
-              }}>Стоимость (смета)</TableCell>
-              <TableCell sx={{ width: colWidths[11] }}>Ссылка</TableCell>
-              <TableCell sx={{ width: colWidths[12] }}>Примечание</TableCell>
-              <TableCell sx={{ width: colWidths[13] }}>Поставить к дате</TableCell>
+              {columns.map((column, idx) => (
+                <TableCell 
+                  key={column}
+                  sx={{ 
+                    width: colWidths[idx],
+                    // Выделяем сметные столбцы
+                    backgroundColor: (column === 'Наименование материала (смета)' || column === 'Характеристики (смета)' || column === 'Кол-во (смета)' || column === 'Ед. изм.(смета)' || column === 'Цена (смета)' || column === 'Стоимость (смета)') ? '#f0f8ff' : 'inherit',
+                    borderLeft: column === 'Наименование материала (смета)' ? '2px solid #1976d2' : 'inherit',
+                    borderRight: column === 'Стоимость (смета)' ? '2px solid #1976d2' : 'inherit',
+                    fontWeight: (column === 'Наименование материала (смета)' || column === 'Характеристики (смета)' || column === 'Кол-во (смета)' || column === 'Ед. изм.(смета)' || column === 'Цена (смета)' || column === 'Стоимость (смета)') ? 'bold' : 'normal'
+                  }}
+                >
+                  {column}
+                </TableCell>
+              ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {Array.isArray(request.materials) && request.materials.length > 0 ? (
-              request.materials.map((mat, idx) => {
-                const estimateTotal = mat.estimatePrice && (mat.estimateQuantity || mat.quantity) ?
-                  (parseFloat(mat.estimatePrice) * parseFloat(mat.estimateQuantity || mat.quantity)).toLocaleString() : '';
-                return (
+              request.materials.map((mat, idx) => (
                   <TableRow key={mat.id || idx}>
-                    <TableCell sx={{ width: colWidths[0] }} title={`${idx + 1}`}>{idx + 1}</TableCell>
-                    <TableCell sx={{ width: colWidths[1] }} title={mat.workType && typeof mat.workType === 'object' ? (mat.workType as { name: string }).name : mat.workType || '-'}>{mat.workType && typeof mat.workType === 'object' ? (mat.workType as { name: string }).name : mat.workType || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[2] }} title={mat.supplierMaterialName || '-'}>{mat.supplierMaterialName || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[3] }} title={mat.quantity || '-'}>{mat.quantity || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[4] }} title={mat.unit && typeof mat.unit === 'object' ? mat.unit.shortName : mat.unit || '-'}>{mat.unit && typeof mat.unit === 'object' ? mat.unit.shortName : mat.unit || '-'}</TableCell>
-                    <TableCell sx={{ 
-                      width: colWidths[5],
-                      backgroundColor: '#f0f8ff',
-                      borderLeft: '2px solid #1976d2'
-                    }} title={mat.estimateMaterialName || '-'}>{mat.estimateMaterialName || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[6], backgroundColor: '#f0f8ff' }} title={mat.size || '-'}>{mat.size || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[7], backgroundColor: '#f0f8ff' }} title={mat.estimateQuantity || '-'}>{mat.estimateQuantity || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[8], backgroundColor: '#f0f8ff' }} title={mat.estimateUnit && typeof mat.estimateUnit === 'object' ? mat.estimateUnit.shortName : mat.estimateUnit || '-'}>{mat.estimateUnit && typeof mat.estimateUnit === 'object' ? mat.estimateUnit.shortName : mat.estimateUnit || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[9], backgroundColor: '#f0f8ff' }} title={mat.estimatePrice || '-'}>{mat.estimatePrice || '-'}</TableCell>
-                    <TableCell sx={{ 
-                      width: colWidths[10],
-                      backgroundColor: '#f0f8ff',
-                      borderRight: '2px solid #1976d2'
-                    }} title={estimateTotal || '-'}>{estimateTotal || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[11] }} title={mat.materialLink || '-'}>{mat.materialLink || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[12] }} title={mat.note || '-'}>{mat.note || '-'}</TableCell>
-                    <TableCell sx={{ width: colWidths[13] }} title={mat.deliveryDate ? dayjs(mat.deliveryDate).format('DD.MM.YYYY') : '-'}>{mat.deliveryDate ? dayjs(mat.deliveryDate).format('DD.MM.YYYY') : '-'}</TableCell>
+                  {columns.map((column) => renderCell(mat, idx, column))}
                   </TableRow>
-                );
-              })
+              ))
             ) : (
               <TableRow>
-                              <TableCell colSpan={14} align="center" sx={{ color: 'text.secondary' }}>
+                <TableCell colSpan={columns.length} align="center" sx={{ color: 'text.secondary' }}>
                   Нет материалов
                 </TableCell>
               </TableRow>

@@ -65,7 +65,9 @@ const RegisterPage: React.FC = () => {
         companyId: formData.companyId || undefined,
         roles: formData.roles,
       });
-      navigate('/dashboard');
+      // После успешной регистрации перенаправляем на корневой маршрут,
+      // который автоматически перенаправит на правильную страницу
+      navigate('/');
     } catch (error: any) {
       console.error('Ошибка регистрации:', error);
       setError(

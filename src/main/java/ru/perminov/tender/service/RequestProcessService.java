@@ -10,6 +10,7 @@ import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.*;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -104,15 +105,23 @@ public class RequestProcessService {
         dto.setTendersCount(tenders.size());
         dto.setTenders(tenders.stream().map(this::mapTenderToDto).collect(Collectors.toList()));
 
-        // Загружаем счета
-        List<Invoice> invoices = invoiceRepository.findInvoicesByRequestOrderByDate(requestId);
-        dto.setInvoicesCount(invoices.size());
-        dto.setInvoices(invoices.stream().map(this::mapInvoiceToDto).collect(Collectors.toList()));
-
         // Загружаем контракты
         List<Contract> contracts = contractRepository.findByTenderRequestId(requestId);
         dto.setContractsCount(contracts.size());
         dto.setContracts(contracts.stream().map(this::mapContractToDto).collect(Collectors.toList()));
+
+        // Загружаем счета через контракты
+        List<Invoice> invoices = new ArrayList<>();
+        log.info("Загружаем счета для {} контрактов", contracts.size());
+        for (Contract contract : contracts) {
+            log.info("Поиск счетов для контракта: {} ({})", contract.getContractNumber(), contract.getId());
+            List<Invoice> contractInvoices = invoiceRepository.findByContractId(contract.getId());
+            log.info("Найдено {} счетов для контракта {}", contractInvoices.size(), contract.getContractNumber());
+            invoices.addAll(contractInvoices);
+        }
+        log.info("Всего найдено {} счетов для заявки {}", invoices.size(), requestId);
+        dto.setInvoicesCount(invoices.size());
+        dto.setInvoices(invoices.stream().map(this::mapInvoiceToDto).collect(Collectors.toList()));
 
         // Загружаем поставки
         List<Delivery> deliveries = deliveryRepository.findByContractTenderRequestId(requestId);
@@ -203,15 +212,28 @@ public class RequestProcessService {
         dto.setInvoiceNumber(invoice.getInvoiceNumber());
         dto.setInvoiceDate(invoice.getInvoiceDate());
         dto.setPaymentDate(invoice.getPaymentDate());
+        
+        // Добавляем информацию о контракте
+        if (invoice.getContract() != null) {
+            dto.setContractId(invoice.getContract().getId());
+            dto.setContractNumber(invoice.getContract().getContractNumber());
+            log.info("Счет {} привязан к контракту {} ({})", 
+                    invoice.getInvoiceNumber(), 
+                    invoice.getContract().getContractNumber(), 
+                    invoice.getContract().getId());
+        } else {
+            log.warn("Счет {} не привязан к контракту", invoice.getInvoiceNumber());
+        }
+        
         dto.setSupplierName(invoice.getSupplier() != null ? invoice.getSupplier().getName() : "");
-        dto.setSupplierContact(invoice.getSupplier() != null && !invoice.getSupplier().getContactPersons().isEmpty() 
+        dto.setSupplierContact(invoice.getSupplier() != null && invoice.getSupplier().getContactPersons() != null && !invoice.getSupplier().getContactPersons().isEmpty() 
                 ? invoice.getSupplier().getContactPersons().get(0).getFirstName() + " " + invoice.getSupplier().getContactPersons().get(0).getLastName() : "");
         dto.setSupplierPhone(invoice.getSupplier() != null ? invoice.getSupplier().getPhone() : "");
-        dto.setStatus(invoice.getStatus().name());
-        dto.setTotalAmount(invoice.getTotalAmount());
-        dto.setPaidAmount(invoice.getPaidAmount());
-        dto.setRemainingAmount(invoice.getRemainingAmount());
-        dto.setCurrency(invoice.getCurrency());
+        dto.setStatus(invoice.getStatus() != null ? invoice.getStatus().name() : "");
+        dto.setTotalAmount(invoice.getTotalAmount() != null ? invoice.getTotalAmount() : BigDecimal.ZERO);
+        dto.setPaidAmount(invoice.getPaidAmount() != null ? invoice.getPaidAmount() : BigDecimal.ZERO);
+        dto.setRemainingAmount(invoice.getRemainingAmount() != null ? invoice.getRemainingAmount() : BigDecimal.ZERO);
+        dto.setCurrency(invoice.getCurrency() != null ? invoice.getCurrency() : "RUB");
 
         // Загружаем поступления для этого счета
         List<Receipt> receipts = receiptRepository.findByInvoiceId(invoice.getId());
@@ -226,11 +248,15 @@ public class RequestProcessService {
         dto.setDeliveryNumber(delivery.getDeliveryNumber());
         dto.setDeliveryDate(delivery.getDeliveryDate());
         dto.setSupplierName(delivery.getSupplier() != null ? delivery.getSupplier().getName() : "");
-        dto.setStatus(delivery.getStatus().name());
+        dto.setStatus(delivery.getStatus() != null ? delivery.getStatus().name() : "");
         
         // Рассчитываем общую сумму поставки
         BigDecimal totalAmount = delivery.getDeliveryItems().stream()
-                .map(item -> item.getDeliveredQuantity().multiply(item.getUnitPrice()))
+                .map(item -> {
+                    BigDecimal quantity = item.getDeliveredQuantity() != null ? item.getDeliveredQuantity() : BigDecimal.ZERO;
+                    BigDecimal price = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
+                    return quantity.multiply(price);
+                })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         dto.setTotalAmount(totalAmount);
 
@@ -246,9 +272,9 @@ public class RequestProcessService {
         dto.setReceiptId(receipt.getId());
         dto.setReceiptNumber(receipt.getReceiptNumber());
         dto.setReceiptDate(receipt.getReceiptDate());
-        dto.setStatus(receipt.getStatus().name());
-        dto.setTotalAmount(receipt.getTotalAmount());
-        dto.setCurrency(receipt.getCurrency());
+        dto.setStatus(receipt.getStatus() != null ? receipt.getStatus().name() : "");
+        dto.setTotalAmount(receipt.getTotalAmount() != null ? receipt.getTotalAmount() : BigDecimal.ZERO);
+        dto.setCurrency(receipt.getCurrency() != null ? receipt.getCurrency() : "RUB");
         return dto;
     }
 
@@ -265,11 +291,11 @@ public class RequestProcessService {
         }
         
         dto.setSupplierName(supplier != null ? supplier.getName() : "");
-        dto.setSupplierContact(supplier != null && !supplier.getContactPersons().isEmpty() 
+        dto.setSupplierContact(supplier != null && supplier.getContactPersons() != null && !supplier.getContactPersons().isEmpty() 
                 ? supplier.getContactPersons().get(0).getFirstName() + " " + supplier.getContactPersons().get(0).getLastName() : "");
         dto.setSupplierPhone(supplier != null ? supplier.getPhone() : "");
-        dto.setStatus(contract.getStatus().name());
-        dto.setTotalAmount(contract.getTotalAmount());
+        dto.setStatus(contract.getStatus() != null ? contract.getStatus().name() : "");
+        dto.setTotalAmount(contract.getTotalAmount() != null ? contract.getTotalAmount() : BigDecimal.ZERO);
         dto.setStartDate(contract.getStartDate());
         dto.setEndDate(contract.getEndDate());
         dto.setDescription(contract.getDescription());

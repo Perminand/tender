@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import {
   Paper, Typography, Box, Button, CircularProgress, TextField, MenuItem, Toolbar, Dialog, DialogTitle, DialogActions,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, DialogContent, DialogContentText, Container, InputAdornment, IconButton, InputLabel, Select, FormControl
@@ -84,11 +85,163 @@ export default function RequestEditPage() {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  // Определяем, является ли пользователь заказчиком
+  const isCustomer = user?.roles.includes('ROLE_CUSTOMER');
+  
+  // Определяем столбцы в зависимости от роли пользователя
+  const getColumns = () => {
+    if (isCustomer) {
+      // Для заказчиков скрываем сметные столбцы (индексы 5-10)
+      return ['#','Вид работ','Наименование в заявке','Кол-во','Ед. изм.','Ссылка','Примечание','Поставить к дате','Действия'];
+    } else {
+      // Для остальных ролей показываем все столбцы
+      return ['#','Вид работ','Наименование в заявке','Кол-во','Ед. изм.','Наименование материала (смета)','Характеристики (смета)','Кол-во (смета)','Ед. изм.(смета)','Цена (смета)','Стоимость (смета)','Ссылка','Примечание','Поставить к дате','Действия'];
+    }
+  };
+  
+  const columns = getColumns();
+  
+  // Функция для рендеринга ячейки в зависимости от столбца
+  const renderCell = (mat: RequestMaterial, idx: number, column: string) => {
+    switch (column) {
+      case '#':
+        return (
+          <TableCell sx={{ width: colWidths[0] }} title={`${idx + 1}`}>
+            {idx + 1}
+          </TableCell>
+        );
+      case 'Вид работ':
+        return (
+          <TableCell sx={{ width: colWidths[1], whiteSpace: 'nowrap' }} title={workTypes.find(w => w.id === mat.workType)?.name || ''}>
+            <Autocomplete
+              value={workTypes.find(w => w.id === mat.workType) || null}
+              onChange={(_, value) => handleMaterialChange(idx, 'workType', value ? value.id : '')}
+              options={workTypes}
+              getOptionLabel={option => option ? option.name : ''}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={params => (
+                <TextField {...params} size="small" label="Вид работ" />
+              )}
+              disabled={!canEdit}
+            />
+          </TableCell>
+        );
+      case 'Наименование в заявке':
+        return (
+          <TableCell sx={{ width: colWidths[2], minWidth: 180, maxWidth: 300 }} title={mat.supplierMaterialName || ''}>
+            <Autocomplete
+              freeSolo
+              value={mat.supplierMaterialName || ''}
+              onChange={async (_, value) => handleSupplierMaterialNameChange(idx, value || '')}
+              onInputChange={(_, value) => handleSupplierMaterialNameChange(idx, value || '')}
+              options={[]}
+              renderInput={params => (
+                <TextField {...params} size="small" label="Наименование в заявке" InputLabelProps={{ shrink: true }} />
+              )}
+              filterOptions={(options, state) => {
+                if (!state.inputValue) return options;
+                return options.filter(opt => opt === state.inputValue);
+              }}
+              disabled={!canEdit}
+            />
+          </TableCell>
+        );
+      case 'Кол-во':
+        return (
+          <TableCell sx={{ width: colWidths[3], maxWidth: colWidths[3] }} title={mat.quantity || ''}>
+            <TextField
+              size="small"
+              label="Кол-во"
+              value={mat.quantity || ''}
+              onChange={e => handleMaterialChange(idx, 'quantity', e.target.value)}
+              type="number"
+              sx={{ width: '100%', maxWidth: colWidths[3] }}
+              disabled={!canEdit}
+            />
+          </TableCell>
+        );
+      case 'Ед. изм.':
+        return (
+          <TableCell sx={{ width: colWidths[4], maxWidth: colWidths[4] }} title={mat.unit?.shortName || ''}>
+            <TextField
+              select
+              size="small"
+              label="Ед. изм."
+              value={mat.unit?.id || ''}
+              onChange={e => handleMaterialChange(idx, 'unit', e.target.value)}
+              sx={{ width: '100%', maxWidth: colWidths[4] }}
+              disabled={!canEdit}
+            >
+              {units.map(u => (
+                <MenuItem key={u.id} value={u.id}>{u.shortName}</MenuItem>
+              ))}
+            </TextField>
+          </TableCell>
+        );
+      case 'Ссылка':
+        return (
+          <TableCell sx={{ width: colWidths[5], maxWidth: colWidths[5] }} title={mat.materialLink || ''}>
+            <TextField
+              size="small"
+              label="Ссылка"
+              value={mat.materialLink || ''}
+              onChange={e => handleMaterialLinkChange(idx, e.target.value)}
+              sx={{ width: '100%', maxWidth: colWidths[5] }}
+              disabled={!canEdit}
+            />
+          </TableCell>
+        );
+      case 'Примечание':
+        return (
+          <TableCell sx={{ width: colWidths[6], maxWidth: colWidths[6] }} title={mat.note || ''}>
+            <TextField
+              size="small"
+              label="Примечание"
+              value={mat.note || ''}
+              onChange={e => handleMaterialChange(idx, 'note', e.target.value)}
+              sx={{ width: '100%', maxWidth: colWidths[6] }}
+              disabled={!canEdit}
+            />
+          </TableCell>
+        );
+      case 'Поставить к дате':
+        return (
+          <TableCell sx={{ width: colWidths[7], maxWidth: colWidths[7] }} title={mat.deliveryDate || ''}>
+            <TextField
+              size="small"
+              label="Поставить к дате"
+              type="date"
+              value={mat.deliveryDate || ''}
+              onChange={e => handleMaterialChange(idx, 'deliveryDate', e.target.value)}
+              sx={{ width: '100%', maxWidth: colWidths[7] }}
+              disabled={!canEdit}
+            />
+          </TableCell>
+        );
+      case 'Действия':
+        return (
+          <TableCell sx={{ width: colWidths[8], maxWidth: colWidths[8] }}>
+            <IconButton
+              onClick={() => handleRemoveMaterial(idx)}
+              disabled={!canEdit}
+            >
+              <DeleteIcon />
+            </IconButton>
+          </TableCell>
+        );
+      default:
+        return null;
+    }
+  };
 
   const [loading, setLoading] = useState(false);
   const [request, setRequest] = useState<RequestDto>({ materials: [], date: getToday(), status: 'DRAFT' });
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
+  const [selectedMaterialIdx, setSelectedMaterialIdx] = useState<number | null>(null);
+  const [confirmRemoveMaterial, setConfirmRemoveMaterial] = useState(false);
 
   const [companies, setCompanies] = useState<Company[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -109,6 +262,9 @@ export default function RequestEditPage() {
   const [newMaterial, setNewMaterial] = useState('');
   const [openMaterialDialog, setOpenMaterialDialog] = useState(false);
   const [materialDialogIdx, setMaterialDialogIdx] = useState<number | null>(null);
+  
+  // Определяем, может ли пользователь редактировать заявку
+  const canEdit = isCustomer ? request.status === 'DRAFT' : true;
 
 
 
@@ -121,11 +277,7 @@ export default function RequestEditPage() {
       return defaultWidths;
     }
 
-    const columnHeaders = [
-      '#', 'Вид работ', 'Наименование в заявке', 'Кол-во', 'Ед. изм.',
-      'Наименование материала (смета)', 'Характеристики (смета)', 'Кол-во (смета)', 
-      'Ед. изм.(смета)', 'Цена (смета)', 'Стоимость (смета)', 'Ссылка', 'Примечание', 'Поставить к дате', 'Действия'
-    ];
+    const columnHeaders = columns;
 
     const calculateTextWidth = (text: string, isHeader: boolean = false, isCompact: boolean = false) => {
       // Для компактных столбцов (числовые, короткие тексты и цены) используем меньшую ширину
@@ -142,73 +294,58 @@ export default function RequestEditPage() {
     };
 
     const widths = columnHeaders.map((header, colIndex) => {
-      // Определяем, является ли столбец числовым или коротким текстом
-      const isNumericColumn = colIndex === 0 || colIndex === 3 || colIndex === 7 || colIndex === 9 || colIndex === 10;
-      const isShortTextColumn = colIndex === 4 || colIndex === 8; // Ед. изм. и Ед. изм.(смета)
-      const isPriceColumn = colIndex === 9 || colIndex === 10; // Цена (смета) и Стоимость (смета)
-      const isCompactColumn = isNumericColumn || isPriceColumn; // Убрали isShortTextColumn из компактных
+      // Определяем тип столбца на основе его названия
+      const isNumericColumn = header === '#' || header === 'Кол-во' || (isCustomer ? false : (header === 'Кол-во (смета)' || header === 'Цена (смета)' || header === 'Стоимость (смета)'));
+      const isShortTextColumn = header === 'Ед. изм.' || (isCustomer ? false : header === 'Ед. изм.(смета)');
+      const isPriceColumn = isCustomer ? false : (header === 'Цена (смета)' || header === 'Стоимость (смета)');
+      const isCompactColumn = isNumericColumn || isPriceColumn;
       let maxWidth = calculateTextWidth(header, true, isCompactColumn);
 
       // Проходим по всем строкам данных
       request.materials.forEach((mat, rowIndex) => {
         let cellText = '';
         
-        switch (colIndex) {
-          case 0: // #
-            cellText = (rowIndex + 1).toString();
-            break;
-          case 1: // Вид работ
-            const workType = workTypes.find(w => w.id === mat.workType);
-            cellText = workType ? workType.name : (mat.workType || '');
-            break;
-          case 2: // Наименование в заявке
-            cellText = mat.supplierMaterialName || '';
-            break;
-          case 3: // Кол-во
-            cellText = mat.quantity || '';
-            break;
-          case 4: // Ед. изм.
-            const unit = units.find(u => u.id === mat.unit?.id);
-            cellText = unit ? unit.shortName : (mat.unit?.shortName || '');
-            break;
-          case 5: // Наименование материала (смета)
-            const material = materials.find(m => m.id === mat.material?.id);
-            cellText = material ? material.name : (mat.material?.name || '');
-            break;
-          case 6: // Характеристики (смета)
-            cellText = mat.characteristics || '';
-            break;
-          case 7: // Кол-во (смета)
-            cellText = mat.estimateQuantity || '';
-            break;
-          case 8: // Ед. изм.(смета)
-            const estimateUnit = units.find(u => u.id === mat.estimateUnit?.id);
-            cellText = estimateUnit ? estimateUnit.shortName : (mat.estimateUnit?.shortName || '');
-            break;
-          case 9: // Цена (смета)
-            cellText = mat.estimatePrice || '';
-            break;
-          case 10: // Стоимость (смета)
-            const estimateTotal = (parseFloat(mat.estimatePrice || '0') * parseFloat(mat.estimateQuantity || mat.quantity || '0')).toFixed(2);
-            cellText = estimateTotal;
-            break;
-          case 11: // Ссылка
-            cellText = mat.materialLink || '';
-            break;
-          case 12: // Примечание
-            cellText = mat.note || '';
-            break;
-          case 13: // Поставить к дате
-            cellText = mat.deliveryDate ? new Date(mat.deliveryDate).toLocaleDateString('ru-RU') : '';
-            break;
-          case 14: // Действия
-            cellText = 'Удалить';
-            break;
+        // Определяем содержимое ячейки на основе названия столбца
+        if (header === '#') {
+          cellText = (rowIndex + 1).toString();
+        } else if (header === 'Вид работ') {
+          const workType = workTypes.find(w => w.id === mat.workType);
+          cellText = workType ? workType.name : (mat.workType || '');
+        } else if (header === 'Наименование в заявке') {
+          cellText = mat.supplierMaterialName || '';
+        } else if (header === 'Кол-во') {
+          cellText = mat.quantity || '';
+        } else if (header === 'Ед. изм.') {
+          const unit = units.find(u => u.id === mat.unit?.id);
+          cellText = unit ? unit.shortName : (mat.unit?.shortName || '');
+        } else if (header === 'Наименование материала (смета)') {
+          const material = materials.find(m => m.id === mat.material?.id);
+          cellText = material ? material.name : (mat.material?.name || '');
+        } else if (header === 'Характеристики (смета)') {
+          cellText = mat.characteristics || '';
+        } else if (header === 'Кол-во (смета)') {
+          cellText = mat.estimateQuantity || '';
+        } else if (header === 'Ед. изм.(смета)') {
+          const estimateUnit = units.find(u => u.id === mat.estimateUnit?.id);
+          cellText = estimateUnit ? estimateUnit.shortName : (mat.estimateUnit?.shortName || '');
+        } else if (header === 'Цена (смета)') {
+          cellText = mat.estimatePrice || '';
+        } else if (header === 'Стоимость (смета)') {
+          const estimateTotal = (parseFloat(mat.estimatePrice || '0') * parseFloat(mat.estimateQuantity || mat.quantity || '0')).toFixed(2);
+          cellText = estimateTotal;
+        } else if (header === 'Ссылка') {
+          cellText = mat.materialLink || '';
+        } else if (header === 'Примечание') {
+          cellText = mat.note || '';
+        } else if (header === 'Поставить к дате') {
+          cellText = mat.deliveryDate ? new Date(mat.deliveryDate).toLocaleDateString('ru-RU') : '';
+        } else if (header === 'Действия') {
+          cellText = 'Удалить';
         }
 
         let cellWidth;
-        // Специальная логика для столбцов "Ед. изм." и "Ед. изм.(смета)"
-        if (colIndex === 4 || colIndex === 8) {
+        // Специальная логика для столбцов единиц измерения
+        if (header === 'Ед. изм.' || header === 'Ед. изм.(смета)') {
           // Для единиц измерения: ширина по самой длинной записи + 5 пикселей
           const charWidth = 8; // Обычная ширина символа
           const padding = 16; // Отступ
@@ -452,7 +589,7 @@ export default function RequestEditPage() {
     setOpenRemoveMaterialDialog(true);
   };
 
-  const confirmRemoveMaterial = () => {
+  const handleConfirmRemoveMaterial = () => {
     if (removeMaterialIdx !== null) {
       setRequest(prev => ({
         ...prev,
@@ -1397,7 +1534,7 @@ export default function RequestEditPage() {
           <Table size="small" sx={{ minWidth: 2000, width: 'max-content' }}>
             <TableHead>
               <TableRow>
-                  {['#','Вид работ','Наименование в заявке','Кол-во','Ед. изм.','Наименование материала (смета)','Характеристики (смета)','Кол-во (смета)','Ед. изм.(смета)','Цена (смета)','Стоимость (смета)','Ссылка','Примечание','Поставить к дате','Действия'].map((label, idx) => (
+                  {columns.map((label, idx) => (
                   <TableCell
                     key={label}
                     sx={{ 
@@ -1407,15 +1544,15 @@ export default function RequestEditPage() {
                       maxWidth: 800, 
                       userSelect: 'none', 
                       whiteSpace: 'nowrap',
-                      // Выделяем сметные столбцы (индексы 5-10)
-                      backgroundColor: idx >= 5 && idx <= 10 ? '#f0f8ff' : 'inherit',
-                      borderLeft: idx === 5 ? '2px solid #1976d2' : 'inherit',
-                      borderRight: idx === 10 ? '2px solid #1976d2' : 'inherit',
-                      fontWeight: idx >= 5 && idx <= 10 ? 'bold' : 'normal'
+                      // Выделяем сметные столбцы
+                      backgroundColor: (label === 'Наименование материала (смета)' || label === 'Характеристики (смета)' || label === 'Кол-во (смета)' || label === 'Ед. изм.(смета)' || label === 'Цена (смета)' || label === 'Стоимость (смета)') ? '#f0f8ff' : 'inherit',
+                      borderLeft: label === 'Наименование материала (смета)' ? '2px solid #1976d2' : 'inherit',
+                      borderRight: label === 'Стоимость (смета)' ? '2px solid #1976d2' : 'inherit',
+                      fontWeight: (label === 'Наименование материала (смета)' || label === 'Характеристики (смета)' || label === 'Кол-во (смета)' || label === 'Ед. изм.(смета)' || label === 'Цена (смета)' || label === 'Стоимость (смета)') ? 'bold' : 'normal'
                     }}
                   >
                     {label}
-                    {idx !== 0 && idx !== 13 && (
+                    {label !== '#' && label !== 'Поставить к дате' && (
                       <span
                         style={{
                           position: 'absolute',
@@ -1947,7 +2084,7 @@ export default function RequestEditPage() {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenRemoveMaterialDialog(false)}>Отмена</Button>
-          <Button color="error" onClick={confirmRemoveMaterial} startIcon={<DeleteIcon />}>Удалить</Button>
+          <Button color="error" onClick={handleConfirmRemoveMaterial} startIcon={<DeleteIcon />}>Удалить</Button>
         </DialogActions>
       </Dialog>
 

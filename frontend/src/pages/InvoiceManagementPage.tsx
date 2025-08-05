@@ -43,6 +43,7 @@ interface Invoice {
   supplierPhone: string;
   requestNumber: string;
   contractNumber?: string;
+  contractId?: string;
   status: string;
   totalAmount: number;
   paidAmount: number;
@@ -106,14 +107,9 @@ export default function InvoiceManagementPage() {
     }
   };
 
-  const handlePayment = async (id: string) => {
-    try {
-      await api.post(`/api/invoices/${id}/pay`);
-      fetchInvoices();
-    } catch (err) {
-      console.error('Ошибка при оплате счета:', err);
-      setError('Ошибка при оплате счета');
-    }
+  const handlePayment = (invoice: Invoice) => {
+    // Перенаправляем на создание платежа с данными счета
+    navigate(`/payments/new?invoiceId=${invoice.id}&contractId=${invoice.contractId || ''}&amount=${invoice.remainingAmount}&invoiceNumber=${invoice.invoiceNumber}`);
   };
 
   const handleCancel = async (id: string) => {
@@ -274,17 +270,17 @@ export default function InvoiceManagementPage() {
                           </IconButton>
                         </Tooltip>
                       )}
-                      {invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
-                        <Tooltip title="Оплатить">
-                          <IconButton
-                            size="small"
-                            color="primary"
-                            onClick={() => handlePayment(invoice.id)}
-                          >
-                            <PaymentIcon />
-                          </IconButton>
-                        </Tooltip>
-                      )}
+                                             {invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
+                         <Tooltip title="Создать платеж">
+                           <IconButton
+                             size="small"
+                             color="primary"
+                             onClick={() => handlePayment(invoice)}
+                           >
+                             <PaymentIcon />
+                           </IconButton>
+                         </Tooltip>
+                       )}
                       {invoice.status !== 'PAID' && invoice.status !== 'CANCELLED' && (
                         <Tooltip title="Отменить">
                           <IconButton

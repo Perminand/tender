@@ -78,6 +78,16 @@ interface Delivery {
   deliveryItems?: DeliveryItem[];
 }
 
+interface Payment {
+  id: string;
+  paymentNumber: string;
+  amount: number;
+  status: string;
+  dueDate?: string;
+  paymentDate?: string;
+  description?: string;
+}
+
 const DeliveryDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -104,16 +114,21 @@ const DeliveryDetailPage: React.FC = () => {
 
   const fetchDelivery = async () => {
     try {
-      const response = await api.get(`/deliveries/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setDelivery(data);
-      } else {
-        showSnackbar('Поставка не найдена', 'error');
-        navigate('/deliveries');
+      const response = await api.get(`/api/deliveries/${id}`);
+      setDelivery(response.data);
+      
+      // Загружаем позиции поставки
+      try {
+        const itemsResponse = await api.get(`/api/deliveries/${id}/items`);
+        setDelivery(prev => ({ ...prev, deliveryItems: itemsResponse.data }));
+      } catch (itemsError) {
+        console.warn('Не удалось загрузить позиции поставки:', itemsError);
+        // Если позиции не загрузились, это не критично
       }
     } catch (error) {
+      console.error('Ошибка при загрузке поставки:', error);
       showSnackbar('Ошибка при загрузке поставки', 'error');
+      navigate('/deliveries');
     } finally {
       setLoading(false);
     }
@@ -121,12 +136,12 @@ const DeliveryDetailPage: React.FC = () => {
 
   const fetchPayments = async () => {
     try {
-      const response = await api.get(`/payments/delivery/${id}`);
-      if (response.ok) {
-        const data = await response.json();
-        setPayments(data);
-      }
-    } catch {}
+      const response = await api.get(`/api/payments/delivery/${id}`);
+      setPayments(response.data);
+    } catch (error) {
+      console.warn('Не удалось загрузить платежи для поставки:', error);
+      // Если платежи не загрузились, это не критично
+    }
   };
 
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
@@ -148,39 +163,33 @@ const DeliveryDetailPage: React.FC = () => {
     if (!selectedItem) return;
 
     try {
-      const response = await api.put(`/deliveries/${id}/items/${selectedItem.id}/acceptance`, {
+      const response = await api.put(`/api/deliveries/${id}/items/${selectedItem.id}/acceptance`, {
         acceptedQuantity: acceptanceData.acceptedQuantity,
         rejectedQuantity: acceptanceData.rejectedQuantity,
         qualityNotes: acceptanceData.qualityNotes,
         rejectionReason: acceptanceData.rejectionReason,
       });
 
-      if (response.ok) {
-        showSnackbar('Приемка сохранена', 'success');
-        setAcceptanceDialogOpen(false);
-        fetchDelivery(); // Обновляем данные
-      } else {
-        showSnackbar('Ошибка при сохранении приемки', 'error');
-      }
+      showSnackbar('Приемка сохранена', 'success');
+      setAcceptanceDialogOpen(false);
+      fetchDelivery(); // Обновляем данные
     } catch (error) {
+      console.error('Ошибка при сохранении приемки:', error);
       showSnackbar('Ошибка при сохранении приемки', 'error');
     }
   };
 
   const handleStatusChange = async (newStatus: string, comment: string) => {
     try {
-      const response = await api.patch(`/deliveries/${id}/status`, {
+      const response = await api.patch(`/api/deliveries/${id}/status`, {
         status: newStatus,
         comment: comment
       });
 
-      if (response.ok) {
-        showSnackbar('Статус поставки изменен', 'success');
-        fetchDelivery(); // Обновляем данные
-      } else {
-        throw new Error('Ошибка при изменении статуса');
-      }
+      showSnackbar('Статус поставки изменен', 'success');
+      fetchDelivery(); // Обновляем данные
     } catch (error) {
+      console.error('Ошибка при изменении статуса:', error);
       showSnackbar('Ошибка при изменении статуса', 'error');
       throw error;
     }

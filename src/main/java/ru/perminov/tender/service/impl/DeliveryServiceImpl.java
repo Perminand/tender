@@ -12,11 +12,14 @@ import ru.perminov.tender.model.DeliveryItem;
 import ru.perminov.tender.model.ContractItem;
 import ru.perminov.tender.model.Material;
 import ru.perminov.tender.model.Unit;
+import ru.perminov.tender.model.Invoice;
+import ru.perminov.tender.model.InvoiceItem;
 import ru.perminov.tender.repository.DeliveryItemRepository;
 import ru.perminov.tender.repository.DeliveryRepository;
 import ru.perminov.tender.repository.ContractItemRepository;
 import ru.perminov.tender.repository.MaterialRepository;
 import ru.perminov.tender.repository.UnitRepository;
+import ru.perminov.tender.repository.InvoiceRepository;
 import ru.perminov.tender.service.DeliveryService;
 import ru.perminov.tender.model.Contract;
 import ru.perminov.tender.model.company.Company;
@@ -64,6 +67,7 @@ public class DeliveryServiceImpl implements DeliveryService {
     private final PaymentService paymentService;
     private final AuditLogService auditLogService;
     private final UserRepository userRepository;
+    private final InvoiceRepository invoiceRepository;
 
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -476,5 +480,66 @@ public class DeliveryServiceImpl implements DeliveryService {
             stats.put(status.name(), deliveryRepository.countByStatus(status));
         }
         return stats;
+    }
+
+    @Override
+    public DeliveryDto createDeliveryFromInvoice(UUID invoiceId) {
+        // Находим счет
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Счет не найден: " + invoiceId));
+        
+        // Проверяем, что счет привязан к контракту
+        if (invoice.getContract() == null) {
+            throw new RuntimeException("Счет не привязан к контракту");
+        }
+        
+        // Создаем новую поставку
+        Delivery delivery = new Delivery();
+        delivery.setContract(invoice.getContract());
+        delivery.setSupplier(invoice.getSupplier());
+        delivery.setStatus(Delivery.DeliveryStatus.PLANNED);
+        delivery.setDeliveryDate(LocalDate.now());
+        
+        // Генерируем номер поставки
+        String deliveryNumber = "DEL-" + System.currentTimeMillis();
+        delivery.setDeliveryNumber(deliveryNumber);
+        
+        // Сохраняем поставку
+        Delivery savedDelivery = deliveryRepository.save(delivery);
+        
+        // Создаем позиции поставки на основе позиций счета
+        List<DeliveryItem> deliveryItems = new ArrayList<>();
+        for (InvoiceItem invoiceItem : invoice.getInvoiceItems()) {
+            DeliveryItem deliveryItem = new DeliveryItem();
+            deliveryItem.setDelivery(savedDelivery);
+            deliveryItem.setMaterial(invoiceItem.getMaterial());
+            deliveryItem.setUnit(invoiceItem.getUnit());
+            deliveryItem.setOrderedQuantity(invoiceItem.getQuantity());
+            deliveryItem.setDeliveredQuantity(invoiceItem.getQuantity()); // По умолчанию доставляем все
+            deliveryItem.setAcceptedQuantity(BigDecimal.ZERO); // Пока ничего не принято
+            deliveryItem.setRejectedQuantity(BigDecimal.ZERO);
+            deliveryItem.setUnitPrice(invoiceItem.getUnitPrice());
+            deliveryItem.setTotalPrice(invoiceItem.getTotalPrice());
+            deliveryItem.setAcceptanceStatus(DeliveryItem.AcceptanceStatus.PENDING);
+            
+            deliveryItems.add(deliveryItem);
+        }
+        
+        // Сохраняем позиции поставки
+        deliveryItemRepository.saveAll(deliveryItems);
+        
+        // Логируем создание поставки
+        User currentUser = getCurrentUser();
+        if (currentUser != null) {
+            auditLogService.logAction(
+                currentUser,
+                "CREATE",
+                "DELIVERY",
+                savedDelivery.getId().toString(),
+                "Создана поставка на основе счета " + invoice.getInvoiceNumber()
+            );
+        }
+        
+        return deliveryMapper.toDto(savedDelivery);
     }
 } 

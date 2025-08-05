@@ -3,6 +3,7 @@ package ru.perminov.tender.service;
 import ru.perminov.tender.dto.InvoiceDto;
 import ru.perminov.tender.dto.InvoiceDtoNew;
 import ru.perminov.tender.dto.InvoiceDtoUpdate;
+import ru.perminov.tender.dto.InvoiceItemDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -36,4 +37,6 @@ public interface InvoiceService {
     List<InvoiceDto> getOverdueInvoices();
     
     List<InvoiceDto> getPendingPaymentInvoices();
+    
+    List<InvoiceItemDto> getInvoiceItems(UUID invoiceId);
 } 

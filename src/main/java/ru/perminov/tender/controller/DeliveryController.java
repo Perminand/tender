@@ -133,4 +133,11 @@ public class DeliveryController {
         DeliveryItemDto dto = deliveryService.updateDeliveryItemAcceptance(deliveryId, itemId, acceptanceDto);
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'VIEWER')")
+    @PostMapping("/from-invoice/{invoiceId}")
+    public ResponseEntity<DeliveryDto> createDeliveryFromInvoice(@PathVariable UUID invoiceId) {
+        log.info("Создание поставки на основе счета: {}", invoiceId);
+        return ResponseEntity.ok(deliveryService.createDeliveryFromInvoice(invoiceId));
+    }
 } 

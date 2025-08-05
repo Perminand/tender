@@ -31,7 +31,9 @@ const LoginPage: React.FC = () => {
 
     try {
       await login(credentials);
-      navigate('/dashboard');
+      // После успешного входа перенаправляем на корневой маршрут,
+      // который автоматически перенаправит на правильную страницу
+      navigate('/');
     } catch (error: any) {
       console.error('Ошибка входа:', error);
       setError(
@@ -57,7 +59,9 @@ const LoginPage: React.FC = () => {
 
     try {
       await login({ username, password });
-      navigate('/dashboard');
+      // После успешного входа перенаправляем на корневой маршрут,
+      // который автоматически перенаправит на правильную страницу
+      navigate('/');
     } catch (error: any) {
       console.error('Ошибка демо входа:', error);
       setError('Ошибка при демо входе');

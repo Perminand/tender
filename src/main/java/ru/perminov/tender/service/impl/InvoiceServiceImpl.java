@@ -316,4 +316,39 @@ public class InvoiceServiceImpl implements InvoiceService {
                 .map(InvoiceDto::fromEntity)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InvoiceItemDto> getInvoiceItems(UUID invoiceId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Счет не найден: " + invoiceId));
+        
+        return invoice.getInvoiceItems().stream()
+                .map(this::mapInvoiceItemToDto)
+                .collect(Collectors.toList());
+    }
+
+    private InvoiceItemDto mapInvoiceItemToDto(InvoiceItem item) {
+        InvoiceItemDto dto = new InvoiceItemDto();
+        dto.setId(item.getId());
+        dto.setInvoiceId(item.getInvoice().getId());
+        
+        if (item.getMaterial() != null) {
+            dto.setMaterialId(item.getMaterial().getId());
+            dto.setMaterialName(item.getMaterial().getName());
+        }
+        
+        dto.setDescription(item.getDescription());
+        dto.setQuantity(item.getQuantity());
+        
+        if (item.getUnit() != null) {
+            dto.setUnitId(item.getUnit().getId());
+            dto.setUnitName(item.getUnit().getName());
+        }
+        
+        dto.setUnitPrice(item.getUnitPrice());
+        dto.setTotalPrice(item.getTotalPrice());
+        
+        return dto;
+    }
 } 

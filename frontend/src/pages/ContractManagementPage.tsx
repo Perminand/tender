@@ -739,9 +739,9 @@ const ContractManagementPage: React.FC = () => {
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="contract management tabs">
             <Tab label="Позиции" />
-            <Tab label="Поставки" />
             <Tab label="Счета" />
             <Tab label="Платежи" />
+            <Tab label="Поставки" />
             <Tab label="Документы" />
             <Tab label="История" />
           </Tabs>
@@ -792,62 +792,8 @@ const ContractManagementPage: React.FC = () => {
           </TableContainer>
         </TabPanel>
 
-        {/* Поставки */}
-        <TabPanel value={tabValue} index={1}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-            <Typography variant="h6">Поставки</Typography>
-            <Button
-              variant="contained"
-              startIcon={<AddIcon />}
-              onClick={() => navigate(`/deliveries/new?contractId=${contract.id}`)}
-            >
-              Добавить поставку
-            </Button>
-          </Box>
-          {(deliveries || []).length > 0 ? (
-            <TableContainer component={Paper}>
-              <Table>
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Номер</TableCell>
-                    <TableCell>Дата поставки</TableCell>
-                    <TableCell>Статус</TableCell>
-                    <TableCell>Сумма</TableCell>
-                    <TableCell>Действия</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {(deliveries || []).map((delivery) => (
-                    <TableRow key={delivery.id}>
-                      <TableCell>{delivery.deliveryNumber}</TableCell>
-                      <TableCell>
-                        {delivery.plannedDate ? dayjs(delivery.plannedDate).format('DD.MM.YYYY') : '-'}
-                      </TableCell>
-                      <TableCell>{getDeliveryStatusLabel(delivery.status)}</TableCell>
-                      <TableCell>{formatPrice((delivery.deliveryItems || []).reduce((sum, item) => sum + item.totalPrice, 0))}</TableCell>
-                      <TableCell>
-                        <IconButton onClick={() => navigate(`/deliveries/${delivery.id}`)}>
-                          <VisibilityIcon />
-                        </IconButton>
-                        <IconButton 
-                          onClick={() => handleCreatePaymentFromDelivery(delivery)}
-                          title="Создать платеж по поставке"
-                        >
-                          <PaymentIcon />
-                        </IconButton>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          ) : (
-            <Alert severity="info">Поставки не найдены</Alert>
-          )}
-        </TabPanel>
-
         {/* Счета */}
-        <TabPanel value={tabValue} index={2}>
+        <TabPanel value={tabValue} index={1}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6">Счета</Typography>
             <Button
@@ -909,8 +855,10 @@ const ContractManagementPage: React.FC = () => {
           )}
         </TabPanel>
 
+        
+
         {/* Платежи */}
-        <TabPanel value={tabValue} index={3}>
+        <TabPanel value={tabValue} index={2}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
             <Typography variant="h6">Платежи</Typography>
             <Button
@@ -962,6 +910,60 @@ const ContractManagementPage: React.FC = () => {
             </TableContainer>
           ) : (
             <Alert severity="info">Платежи не найдены</Alert>
+          )}
+        </TabPanel>
+
+        {/* Поставки */}
+        <TabPanel value={tabValue} index={3}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography variant="h6">Поставки</Typography>
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={() => navigate(`/deliveries/new?contractId=${contract.id}`)}
+            >
+              Добавить поставку
+            </Button>
+          </Box>
+          {(deliveries || []).length > 0 ? (
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Номер</TableCell>
+                    <TableCell>Дата поставки</TableCell>
+                    <TableCell>Статус</TableCell>
+                    <TableCell>Сумма</TableCell>
+                    <TableCell>Действия</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {(deliveries || []).map((delivery) => (
+                    <TableRow key={delivery.id}>
+                      <TableCell>{delivery.deliveryNumber}</TableCell>
+                      <TableCell>
+                        {delivery.plannedDate ? dayjs(delivery.plannedDate).format('DD.MM.YYYY') : '-'}
+                      </TableCell>
+                      <TableCell>{getDeliveryStatusLabel(delivery.status)}</TableCell>
+                      <TableCell>{formatPrice((delivery.deliveryItems || []).reduce((sum, item) => sum + item.totalPrice, 0))}</TableCell>
+                      <TableCell>
+                        <IconButton onClick={() => navigate(`/deliveries/${delivery.id}`)}>
+                          <VisibilityIcon />
+                        </IconButton>
+                        <IconButton 
+                          onClick={() => handleCreatePaymentFromDelivery(delivery)}
+                          title="Создать платеж по поставке"
+                        >
+                          <PaymentIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="info">Поставки не найдены</Alert>
           )}
         </TabPanel>
 

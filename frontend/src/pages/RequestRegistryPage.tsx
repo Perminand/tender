@@ -35,6 +35,7 @@ import {
   Send as SendIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 import { api } from '../utils/api';
 import ResponsiveTable from '../components/ResponsiveTable';
 import { RelatedEntitiesDialog } from '../components/RelatedEntitiesDialog';
@@ -64,6 +65,10 @@ const columns = [
 export default function RequestRegistryPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { user } = useAuth();
+  
+  // Определяем, является ли пользователь заказчиком
+  const isCustomer = user?.roles.includes('ROLE_CUSTOMER');
   const [data, setData] = useState<RequestRegistryRowDto[]>([]);
   const [loading, setLoading] = useState(false);
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
@@ -89,6 +94,12 @@ export default function RequestRegistryPage() {
       const params = Object.fromEntries(
         Object.entries(filters).filter(([_, v]) => v)
       );
+      
+      // Для заказчиков добавляем параметр для получения только их заявок
+      if (isCustomer) {
+        params.customerOnly = 'true';
+      }
+      
       const res = await api.get<RequestRegistryRowDto[]>('/api/requests/registry', { params });
       setData(res.data);
     } catch (error) {
@@ -276,28 +287,37 @@ export default function RequestRegistryPage() {
           >
             <VisibilityIcon />
           </IconButton>
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/requests/${row.requestId}/customer-info`);
-            }}
-            title="Информация о заказчике"
-          >
-            <BusinessIcon />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/requests/${row.requestId}/edit`);
-            }}
-            title="Редактировать"
-          >
-            <Edit />
-          </IconButton>
+          
+          {/* Кнопка "Информация о заказчике" только для не-заказчиков */}
+          {!isCustomer && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/requests/${row.requestId}/customer-info`);
+              }}
+              title="Информация о заказчике"
+            >
+              <BusinessIcon />
+            </IconButton>
+          )}
+          
+          {/* Кнопка "Редактировать" только для заказчиков в статусе "черновик" или для всех остальных */}
+          {(isCustomer ? row.status === 'DRAFT' : true) && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/requests/${row.requestId}/edit`);
+              }}
+              title="Редактировать"
+            >
+              <Edit />
+            </IconButton>
+          )}
 
-          {row.status === 'SAVED' && (
+          {/* Кнопка "Создать тендер" только для не-заказчиков */}
+          {!isCustomer && row.status === 'SAVED' && (
             <IconButton
               size="small"
               onClick={(e) => {
@@ -311,18 +331,22 @@ export default function RequestRegistryPage() {
               <SendIcon />
             </IconButton>
           )}
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedRequestId(row.requestId);
-              setConfirmDelete(true);
-            }}
-            title="Удалить"
-            color="error"
-          >
-            <DeleteIcon />
-          </IconButton>
+          
+          {/* Кнопка "Удалить" только для заказчиков в статусе "черновик" или для всех остальных */}
+          {(isCustomer ? row.status === 'DRAFT' : true) && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedRequestId(row.requestId);
+                setConfirmDelete(true);
+              }}
+              title="Удалить"
+              color="error"
+            >
+              <DeleteIcon />
+            </IconButton>
+          )}
         </Box>
       ),
       mobile: false

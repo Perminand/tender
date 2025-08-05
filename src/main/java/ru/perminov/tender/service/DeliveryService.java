@@ -85,4 +85,9 @@ public interface DeliveryService {
      * Получить статистику по статусам
      */
     Map<String, Long> getStatusStats();
+
+    /**
+     * Создать поставку на основе счета
+     */
+    DeliveryDto createDeliveryFromInvoice(UUID invoiceId);
 } 

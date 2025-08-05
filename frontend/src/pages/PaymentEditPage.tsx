@@ -29,14 +29,17 @@ const PaymentEditPage: React.FC = () => {
   const query = useQuery();
   const { id } = useParams();
   const contractIdFromQuery = query.get('contractId') || '';
+  const invoiceIdFromQuery = query.get('invoiceId') || '';
+  const amountFromQuery = query.get('amount') || '';
+  const invoiceNumberFromQuery = query.get('invoiceNumber') || '';
 
   const [form, setForm] = useState({
     paymentNumber: '',
     paymentDate: dayjs(),
     type: 'PROGRESS',
-    amount: '',
+    amount: amountFromQuery,
     status: 'PENDING',
-    invoiceNumber: '',
+    invoiceNumber: invoiceNumberFromQuery,
     description: '',
     contractId: contractIdFromQuery,
   });
@@ -56,14 +59,44 @@ const PaymentEditPage: React.FC = () => {
       fetchPayment();
     } else {
       fetchContracts();
+      // Если передан invoiceId, загружаем данные счета
+      if (invoiceIdFromQuery) {
+        fetchInvoiceData();
+      }
     }
-  }, [id]);
+  }, [id, invoiceIdFromQuery]);
 
   const fetchContracts = async () => {
     try {
       const response = await api.get('/api/contracts');
       setContracts(response.data);
     } catch {}
+  };
+
+  const fetchInvoiceData = async () => {
+    try {
+      const response = await api.get(`/api/invoices/${invoiceIdFromQuery}`);
+      const invoice = response.data;
+      
+      // Обновляем форму данными счета
+      setForm(prev => ({
+        ...prev,
+        contractId: invoice.contractId || prev.contractId,
+        amount: invoice.remainingAmount?.toString() || prev.amount,
+        invoiceNumber: invoice.invoiceNumber || prev.invoiceNumber,
+        description: `Оплата счета ${invoice.invoiceNumber}`,
+      }));
+      
+      // Если есть contractId, загружаем данные контракта
+      if (invoice.contractId) {
+        const contractResponse = await api.get(`/api/contracts/${invoice.contractId}`);
+        const contract = contractResponse.data;
+        setSupplierName(contract.supplierName || '');
+        setCurrency(contract.currency || 'RUB');
+      }
+    } catch (error) {
+      console.error('Ошибка при загрузке данных счета:', error);
+    }
   };
 
   const fetchPayment = async () => {
@@ -158,16 +191,26 @@ const PaymentEditPage: React.FC = () => {
         description: form.description,
         status: form.status,
       };
+      
       const url = isEdit ? `/api/payments/${id}` : '/api/payments';
       const method = isEdit ? 'PUT' : 'POST';
-      const response = await api.post(url, payload);
-      if (response.ok) {
+      
+      const response = await api[isEdit ? 'put' : 'post'](url, payload);
+      
+      if (response.status === 200 || response.status === 201) {
         showSnackbar(isEdit ? 'Платеж обновлен' : 'Платеж создан', 'success');
-        setTimeout(() => navigate(-1), 1000);
+        
+        // Если создан платеж для счета, перенаправляем на страницу счетов
+        if (!isEdit && invoiceIdFromQuery) {
+          setTimeout(() => navigate('/invoices'), 1000);
+        } else {
+          setTimeout(() => navigate(-1), 1000);
+        }
       } else {
         showSnackbar('Ошибка при сохранении платежа', 'error');
       }
-    } catch {
+    } catch (error) {
+      console.error('Ошибка при сохранении платежа:', error);
       showSnackbar('Ошибка при сохранении платежа', 'error');
     } finally {
       setSaving(false);
@@ -176,11 +219,31 @@ const PaymentEditPage: React.FC = () => {
 
   return (
     <Box sx={{ p: 3, maxWidth: 600, mx: 'auto' }}>
+      <Box display="flex" alignItems="center" mb={2}>
+        <Button
+          variant="outlined"
+          onClick={() => {
+            if (!isEdit && invoiceIdFromQuery) {
+              navigate('/invoices');
+            } else {
+              navigate(-1);
+            }
+          }}
+          sx={{ mr: 2 }}
+        >
+          ← Назад
+        </Button>
+        <Typography variant="h5">
+          {isEdit ? 'Редактирование платежа' : 'Создание платежа'}
+          {!isEdit && invoiceNumberFromQuery && (
+            <Typography variant="body2" color="textSecondary" sx={{ mt: 1 }}>
+              для счета {invoiceNumberFromQuery}
+            </Typography>
+          )}
+        </Typography>
+      </Box>
       <Card>
         <CardContent>
-          <Typography variant="h5" gutterBottom>
-            {isEdit ? 'Редактирование платежа' : 'Создание платежа'}
-          </Typography>
           <Grid container spacing={2}>
             <Grid item xs={12}>
               <TextField label="Номер платежа" value={form.paymentNumber} onChange={e => handleChange('paymentNumber', e.target.value)} fullWidth required />

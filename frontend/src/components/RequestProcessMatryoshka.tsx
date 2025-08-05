@@ -827,7 +827,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                           
                           {/* Находим счета для этого контракта */}
                           {request.invoices && request.invoices
-                            .filter(invoice => invoice.supplierName === contract.supplierName)
+                            .filter(invoice => invoice.contractId === contract.contractId)
                             .map((invoice) => (
                               <Box key={invoice.invoiceId} mb={2} p={2} bgcolor="white" borderRadius={1} border="1px solid" borderColor="grey.300">
                                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
@@ -917,7 +917,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                             ))}
                           
                           {/* Если нет счетов, показываем сообщение */}
-                          {(!request.invoices || request.invoices.filter(invoice => invoice.supplierName === contract.supplierName).length === 0) && (
+                          {(!request.invoices || request.invoices.filter(invoice => invoice.contractId === contract.contractId).length === 0) && (
                             <Box p={2} bgcolor="grey.100" borderRadius={1} textAlign="center">
                               <Typography variant="body2" color="textSecondary">
                                 Счета для данного контракта не найдены
