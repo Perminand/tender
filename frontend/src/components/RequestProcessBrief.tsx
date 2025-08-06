@@ -308,9 +308,37 @@ export default function RequestProcessBrief({ request, onExpand, expanded = fals
               Счета
             </Typography>
           </Box>
-          <Typography variant="body2">
-            {request.invoicesCount} счетов
-          </Typography>
+          <Box display="flex" alignItems="center" gap={1}>
+            <Typography variant="body2">
+              {request.invoicesCount} счетов
+            </Typography>
+            {request.invoicesCount === 0 && (
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<ReceiptIcon />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.open(`/invoices/new?requestId=${request.requestId}&requestNumber=${encodeURIComponent(request.requestNumber)}`, '_blank');
+                }}
+                sx={{
+                  ml: 1,
+                  minWidth: 'auto',
+                  px: 1,
+                  py: 0.5,
+                  fontSize: '0.75rem',
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  '&:hover': {
+                    borderColor: 'primary.dark',
+                    bgcolor: 'primary.50'
+                  }
+                }}
+              >
+                Создать
+              </Button>
+            )}
+          </Box>
         </ProcessStep>
 
         <ProcessStep color={getStepColor('deliveries', request.deliveriesCount)}>

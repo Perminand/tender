@@ -44,7 +44,7 @@ import {
   ArrowForward as ArrowForwardIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
-import { RequestProcess, TenderProcess, InvoiceProcess, DeliveryProcess, SupplierProposal, ReceiptProcess } from '../types/requestProcess';
+import { RequestProcess, TenderProcess, DeliveryProcess, SupplierProposal } from '../types/requestProcess';
 
 interface RequestProcessMatryoshkaProps {
   request: RequestProcess;
@@ -126,15 +126,14 @@ const StatusChip = styled(Chip)<{ status: string }>(({ theme, status }) => {
   };
 });
 
-export default function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
+function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   const navigate = useNavigate();
   const theme = useTheme();
   const [expandedRequest, setExpandedRequest] = useState(false);
   const [expandedTenders, setExpandedTenders] = useState<string[]>([]);
   const [expandedProposals, setExpandedProposals] = useState<string[]>([]);
-  const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
   const [expandedContracts, setExpandedContracts] = useState<string[]>([]);
-  const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
+
 
   // Логируем данные заявки для отладки
   console.log('=== ДАННЫЕ ЗАЯВКИ НА ФРОНТЕНДЕ ===');
@@ -272,10 +271,6 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
     window.open(`/tenders/${tenderId}`, '_blank');
   };
 
-  const handleViewInvoiceDetail = (invoiceId: string) => {
-    window.open(`/invoices/${invoiceId}`, '_blank');
-  };
-
   const handleViewDeliveryDetail = (deliveryId: string) => {
     window.open(`/deliveries/${deliveryId}`, '_blank');
   };
@@ -294,22 +289,6 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
 
   const handleViewContractDetail = (contractId: string) => {
     window.open(`/contracts/${contractId}`, '_blank');
-  };
-
-  const handleInvoiceClick = (invoiceId: string) => {
-    setExpandedInvoices(prev => 
-      prev.includes(invoiceId) 
-        ? prev.filter(id => id !== invoiceId)
-        : [...prev, invoiceId]
-    );
-  };
-
-  const handleDeliveryClick = (deliveryId: string) => {
-    setExpandedDeliveries(prev => 
-      prev.includes(deliveryId) 
-        ? prev.filter(id => id !== deliveryId)
-        : [...prev, deliveryId]
-    );
   };
 
   const handleViewProposals = (tenderId: string) => {
@@ -771,6 +750,7 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                         >
                           Просмотр
                         </Button>
+
                         <IconButton size="small">
                           {expandedContracts.includes(contract.contractId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
@@ -816,281 +796,78 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
                                 {contract.description || 'Описание отсутствует'}
                               </Typography>
                             </Grid>
-                          </Grid>
-                        </Paper>
-
-                        {/* Поставка по контракту */}
-                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'lightblue.50', border: '1px solid', borderColor: 'lightblue.200' }}>
-                          <Typography variant="subtitle2" gutterBottom color="primary.main">
-                            Поставка по контракту
-                          </Typography>
-                          
-                          {/* Находим счета для этого контракта */}
-                          {request.invoices && request.invoices
-                            .filter(invoice => invoice.contractId === contract.contractId)
-                            .map((invoice) => (
-                              <Box key={invoice.invoiceId} mb={2} p={2} bgcolor="white" borderRadius={1} border="1px solid" borderColor="grey.300">
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                  <Typography variant="body1" fontWeight="bold">
-                                    {invoice.supplierName}
-                                  </Typography>
-                                  <Typography variant="body2" color="textSecondary">
-                                    {invoice.supplierContact} • {formatPhone(invoice.supplierPhone)}
-                                  </Typography>
+                            
+                            {/* Материалы контракта */}
+                            {contract.contractItems && contract.contractItems.length > 0 && (
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                  Материалы контракта ({contract.contractItems.length})
+                                </Typography>
+                                <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1 }}>
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>№</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Материал</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Кол-во</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Ед.</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Цена</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Сумма</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {contract.contractItems.map((item, index) => (
+                                        <TableRow key={item.id || index}>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{index + 1}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.materialName}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.quantity}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.unitName}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.unitPrice)}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.totalPrice)}</TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
                                 </Box>
-                                
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                                  <Typography variant="body2" fontWeight="bold">
-                                    Счёт {invoice.invoiceNumber}
-                                  </Typography>
-                                  <Typography variant="body2">
-                                    от {formatDate(invoice.invoiceDate)}
-                                  </Typography>
-                                </Box>
-                                
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                  <Typography variant="body2">
-                                    с НДС {formatCurrency(invoice.totalAmount)}
-                                  </Typography>
-                                  <Typography variant="body2">
-                                    Оплата {formatDate(invoice.dueDate)}
-                                  </Typography>
-                                </Box>
-                                
-                                <Box display="flex" justifyContent="space-between" alignItems="center" mt={2}>
-                                  <Typography variant="body2" fontWeight="bold">
-                                    {formatCurrency(invoice.totalAmount)} долг {formatCurrency(invoice.remainingAmount)}
-                                  </Typography>
-                                  <Box sx={{ 
-                                    width: 20, 
-                                    height: 20, 
-                                    borderRadius: '50%', 
-                                    bgcolor: invoice.remainingAmount === 0 ? 'success.main' : 'warning.main', 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    justifyContent: 'center',
+                              </Grid>
+                            )}
+                            
+                            <Grid item xs={12}>
+                              <Box display="flex" justifyContent="flex-end" mt={2}>
+                                <Button
+                                  variant="contained"
+                                  startIcon={<ReceiptIcon />}
+                                  onClick={() => {
+                                    // Создание счета из контракта с подстановкой данных
+                                    const params = new URLSearchParams({
+                                      contractId: contract.contractId,
+                                      supplierName: encodeURIComponent(contract.supplierName),
+                                      totalAmount: contract.totalAmount.toString(),
+                                      supplierContact: encodeURIComponent(contract.supplierContact || ''),
+                                      supplierPhone: encodeURIComponent(contract.supplierPhone || ''),
+                                      source: 'matryoshka',
+                                      requestId: request.requestId,
+                                      requestNumber: encodeURIComponent(request.requestNumber)
+                                    });
+                                    window.open(`/invoices/new?${params.toString()}`, '_blank');
+                                  }}
+                                  sx={{
+                                    bgcolor: 'success.main',
                                     color: 'white',
-                                    fontSize: '12px'
-                                  }}>
-                                    {invoice.remainingAmount === 0 ? '✓' : '!'}
-                                  </Box>
-                                </Box>
-                                
-                                {/* Поступления для этого счета */}
-                                {invoice.receipts && invoice.receipts.length > 0 && (
-                                  <Box mt={2}>
-                                    {invoice.receipts.map((receipt) => (
-                                      <Box key={receipt.receiptId} p={2} bgcolor="grey.50" borderRadius={1} border="1px solid" borderColor="grey.200">
-                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                          <Typography variant="body1" fontWeight="bold">
-                                            Поступление
-                                          </Typography>
-                                          <Typography variant="body2">
-                                            УПД {receipt.receiptNumber}
-                                          </Typography>
-                                        </Box>
-                                        
-                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                                          <Typography variant="body2">
-                                            от {formatDate(receipt.receiptDate)}
-                                          </Typography>
-                                          <Typography variant="body2" fontWeight="bold">
-                                            {formatCurrency(receipt.totalAmount)}
-                                          </Typography>
-                                        </Box>
-                                        
-                                        <Box display="flex" justifyContent="space-between" alignItems="center">
-                                          <Typography variant="caption" color="textSecondary">
-                                            Статус: {getStatusLabel(receipt.status)}
-                                          </Typography>
-                                          <StatusChip
-                                            label={getStatusLabel(receipt.status)}
-                                            status={receipt.status}
-                                            size="small"
-                                          />
-                                        </Box>
-                                      </Box>
-                                    ))}
-                                  </Box>
-                                )}
+                                    '&:hover': {
+                                      bgcolor: 'success.dark'
+                                    }
+                                  }}
+                                >
+                                  Создать счет
+                                </Button>
                               </Box>
-                            ))}
-                          
-                          {/* Если нет счетов, показываем сообщение */}
-                          {(!request.invoices || request.invoices.filter(invoice => invoice.contractId === contract.contractId).length === 0) && (
-                            <Box p={2} bgcolor="grey.100" borderRadius={1} textAlign="center">
-                              <Typography variant="body2" color="textSecondary">
-                                Счета для данного контракта не найдены
-                              </Typography>
-                            </Box>
-                          )}
-                        </Paper>
-                      </Box>
-                    </Collapse>
-                  </Box>
-                ))}
-              </Box>
-            )}
-
-            {/* Счета */}
-            {request.invoices && request.invoices.length > 0 && (
-              <Box mb={2}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Счета ({request.invoices.length})
-                </Typography>
-                {request.invoices.map((invoice) => (
-                  <Box key={invoice.invoiceId}>
-                    <NestedStep 
-                      color={getStepColor('invoice', 1)}
-                      onClick={() => handleInvoiceClick(invoice.invoiceId)}
-                    >
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <ReceiptIcon />
-                        <Box>
-                          <Typography variant="body1">
-                            Счёт {invoice.invoiceNumber}
-                          </Typography>
-                          <Typography variant="body2">
-                            {formatDate(invoice.invoiceDate)} • {request.project} • {request.location || 'Склад не указан'} • {invoice.supplierName}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            Срок оплаты: {formatDate(invoice.dueDate)}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="body2">
-                          {formatCurrency(invoice.totalAmount)}
-                        </Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          Оплачено: {formatCurrency(invoice.paidAmount)}
-                        </Typography>
-                        <StatusChip
-                          label={getStatusLabel(invoice.status)}
-                          status={invoice.status}
-                          size="small"
-                        />
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewInvoiceDetail(invoice.invoiceId);
-                          }}
-                          sx={{ 
-                            minWidth: 'auto', 
-                            px: 1, 
-                            py: 0.5,
-                            fontSize: '0.75rem',
-                            borderColor: 'primary.main',
-                            color: 'primary.main',
-                            '&:hover': {
-                              borderColor: 'primary.dark',
-                              bgcolor: 'primary.50'
-                            }
-                          }}
-                        >
-                          Просмотр
-                        </Button>
-                        <IconButton size="small">
-                          {expandedInvoices.includes(invoice.invoiceId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        </IconButton>
-                      </Box>
-                    </NestedStep>
-
-                    {/* Детали счета */}
-                    <Collapse in={expandedInvoices.includes(invoice.invoiceId)}>
-                      <Box ml={3}>
-                        {/* Информация о счете */}
-                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Детали счета
-                          </Typography>
-                          <Grid container spacing={2}>
-                            <Grid item xs={6}>
-                              <Typography variant="caption" color="textSecondary">
-                                Поставщик
-                              </Typography>
-                              <Typography variant="body2">
-                                {invoice.supplierName}
-                              </Typography>
-                              <Typography variant="caption" color="textSecondary">
-                                Контакт: {invoice.supplierContact} • {formatPhone(invoice.supplierPhone)}
-                              </Typography>
                             </Grid>
-                            <Grid item xs={6}>
-                              <Typography variant="caption" color="textSecondary">
-                                Финансы
-                              </Typography>
-                              <Typography variant="body2">
-                                Общая сумма: {formatCurrency(invoice.totalAmount)}
-                              </Typography>
-                              <Typography variant="body2">
-                                НДС: {formatCurrency(invoice.vatAmount)}
-                              </Typography>
-                              <Typography variant="body2">
-                                Оплачено: {formatCurrency(invoice.paidAmount)}
-                              </Typography>
-                              <Typography variant="body2" color={invoice.remainingAmount > 0 ? 'error.main' : 'success.main'}>
-                                Остаток: {formatCurrency(invoice.remainingAmount)}
-                              </Typography>
-                            </Grid>
-                            {invoice.paymentTerms && (
-                              <Grid item xs={12}>
-                                <Typography variant="caption" color="textSecondary">
-                                  Условия оплаты
-                                </Typography>
-                                <Typography variant="body2">
-                                  {invoice.paymentTerms}
-                                </Typography>
-                              </Grid>
-                            )}
-                            {invoice.notes && (
-                              <Grid item xs={12}>
-                                <Typography variant="caption" color="textSecondary">
-                                  Примечания
-                                </Typography>
-                                <Typography variant="body2">
-                                  {invoice.notes}
-                                </Typography>
-                              </Grid>
-                            )}
+
                           </Grid>
                         </Paper>
-                        
-                        {/* УПД для счета */}
-                        {invoice.receipts && invoice.receipts.length > 0 && (
-                          <Box>
-                            <Typography variant="subtitle2" gutterBottom>
-                              УПД по счету ({invoice.receipts.length})
-                            </Typography>
-                            {invoice.receipts.map((receipt) => (
-                          <NestedStep key={receipt.receiptId} color={getStepColor('receipt', 1)}>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <DescriptionIcon />
-                              <Box>
-                                <Typography variant="body2">
-                                  УПД {receipt.receiptNumber}
-                                </Typography>
-                                <Typography variant="caption">
-                                  {formatDate(receipt.receiptDate)}
-                                </Typography>
-                              </Box>
-                            </Box>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <Typography variant="body2">
-                                {formatCurrency(receipt.totalAmount)}
-                              </Typography>
-                              <StatusChip
-                                label={getStatusLabel(receipt.status)}
-                                status={receipt.status}
-                                size="small"
-                              />
-                            </Box>
-                          </NestedStep>
-                        ))}
-                          </Box>
-                        )}
+
+
                       </Box>
                     </Collapse>
                   </Box>
@@ -1098,101 +875,10 @@ export default function RequestProcessMatryoshka({ request }: RequestProcessMatr
               </Box>
             )}
 
-            {/* Поставки */}
-            {request.deliveries && request.deliveries.length > 0 && (
-              <Box mb={2}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Поставки ({request.deliveries.length})
-                </Typography>
-                {request.deliveries.map((delivery) => (
-                  <Box key={delivery.deliveryId}>
-                    <NestedStep 
-                      color={getStepColor('delivery', 1)}
-                      onClick={() => handleDeliveryClick(delivery.deliveryId)}
-                    >
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <DeliveryIcon />
-                        <Box>
-                          <Typography variant="body1">
-                            Поставка по Заявке № {request.requestNumber}
-                          </Typography>
-                          <Typography variant="body2">
-                            {formatDate(delivery.deliveryDate)} • {request.project} • {request.location || 'Склад не указан'} • {delivery.supplierName}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="body2">
-                          {formatCurrency(delivery.totalAmount)}
-                        </Typography>
-                        <StatusChip
-                          label={getStatusLabel(delivery.status)}
-                          status={delivery.status}
-                          size="small"
-                        />
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewDeliveryDetail(delivery.deliveryId);
-                          }}
-                          sx={{ 
-                            minWidth: 'auto', 
-                            px: 1, 
-                            py: 0.5,
-                            fontSize: '0.75rem',
-                            borderColor: 'primary.main',
-                            color: 'primary.main',
-                            '&:hover': {
-                              borderColor: 'primary.dark',
-                              bgcolor: 'primary.50'
-                            }
-                          }}
-                        >
-                          Просмотр
-                        </Button>
-                        <IconButton size="small">
-                          {expandedDeliveries.includes(delivery.deliveryId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        </IconButton>
-                      </Box>
-                    </NestedStep>
 
-                    {/* УПД для поставки */}
-                    <Collapse in={expandedDeliveries.includes(delivery.deliveryId)}>
-                      <Box ml={3}>
-                        {delivery.receipts && delivery.receipts.map((receipt) => (
-                          <NestedStep key={receipt.receiptId} color={getStepColor('receipt', 1)}>
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <DescriptionIcon />
-                              <Box>
-                                <Typography variant="body2">
-                                  УПД {receipt.receiptNumber}
-                                </Typography>
-                                                              <Typography variant="caption">
-                                {formatDate(receipt.receiptDate)}
-                              </Typography>
-                            </Box>
-                          </Box>
-                          <Box display="flex" alignItems="center" gap={1}>
-                            <Typography variant="body2">
-                              {formatCurrency(receipt.totalAmount)}
-                            </Typography>
-                            <StatusChip
-                              label={getStatusLabel(receipt.status)}
-                              status={receipt.status}
-                              size="small"
-                            />
-                          </Box>
-                          </NestedStep>
-                        ))}
-                      </Box>
-                    </Collapse>
-                  </Box>
-                ))}
-              </Box>
-            )}
       </CardContent>
     </StyledCard>
   );
 } 
+
+export default RequestProcessMatryoshka;

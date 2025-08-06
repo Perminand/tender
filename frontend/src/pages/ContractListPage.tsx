@@ -159,7 +159,7 @@ const ContractListPage: React.FC = () => {
   const handleConfirmDelete = async () => {
     if (selectedContractId) {
       try {
-        await api.delete(`/contracts/${selectedContractId}`);
+        await api.delete(`/api/contracts/${selectedContractId}`);
         showSnackbar('Контракт удален', 'success');
         reloadAll();
       } catch (error) {

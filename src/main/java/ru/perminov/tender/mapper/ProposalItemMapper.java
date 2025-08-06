@@ -19,5 +19,9 @@ public interface ProposalItemMapper {
     @Mapping(target = "supplierProposalId", source = "supplierProposal.id")
     @Mapping(target = "tenderItemId", source = "tenderItem.id")
     ProposalItemDto toDto(ProposalItem entity);
+    
+    @Mapping(target = "unit", ignore = true) // Игнорируем unit при маппинге DTO в сущность
+    @Mapping(target = "supplierProposal", ignore = true)
+    @Mapping(target = "tenderItem", ignore = true)
     ProposalItem toEntity(ProposalItemDto dto);
 } 

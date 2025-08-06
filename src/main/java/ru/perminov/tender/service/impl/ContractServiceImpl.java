@@ -360,7 +360,16 @@ public class ContractServiceImpl implements ContractService {
             contractItem.setItemNumber(proposalItem.getItemNumber());
             contractItem.setDescription(proposalItem.getDescription());
             contractItem.setQuantity(BigDecimal.valueOf(proposalItem.getQuantity()));
-            contractItem.setUnit(proposalItem.getUnit());
+            
+            // Приоритет единицы измерения: сначала из предложения, потом из тендерной позиции
+            if (proposalItem.getUnit() != null) {
+                contractItem.setUnit(proposalItem.getUnit());
+            } else if (proposalItem.getTenderItem() != null && proposalItem.getTenderItem().getUnit() != null) {
+                contractItem.setUnit(proposalItem.getTenderItem().getUnit());
+                log.info("Скопирована единица измерения из тендерной позиции: {} для позиции контракта {}", 
+                        proposalItem.getTenderItem().getUnit().getName(), proposalItem.getDescription());
+            }
+            
             contractItem.setUnitPrice(BigDecimal.valueOf(proposalItem.getUnitPrice()));
             contractItem.setTotalPrice(BigDecimal.valueOf(proposalItem.getTotalPrice()));
             contractItem.setSpecifications(proposalItem.getSpecifications());

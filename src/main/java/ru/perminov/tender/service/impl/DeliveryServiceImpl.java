@@ -531,7 +531,7 @@ public class DeliveryServiceImpl implements DeliveryService {
         // Логируем создание поставки
         User currentUser = getCurrentUser();
         if (currentUser != null) {
-            auditLogService.logAction(
+            auditLogService.logSimple(
                 currentUser,
                 "CREATE",
                 "DELIVERY",

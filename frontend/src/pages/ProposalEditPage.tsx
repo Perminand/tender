@@ -64,6 +64,7 @@ interface ProposalItemForm {
   manufacturer: DictionaryItem | null;
   countryOfOrigin: DictionaryItem | null;
   quantity: number;
+  unitName: string;
   unitPrice: number;
   specifications: string;
   deliveryPeriod: string;
@@ -155,7 +156,7 @@ const ProposalEditPage: React.FC = () => {
     }
 
     const columnHeaders = [
-      '№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 
+      '№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 'Ед. изм.',
       'Цена за ед.', 'Цена с НДС', 'Вес', 'Доставка', 'Срок поставки', 'Гарантия', 'Сумма', 'Действия'
     ];
 
@@ -201,28 +202,31 @@ const ProposalEditPage: React.FC = () => {
           case 6: // Количество
             cellText = item.quantity?.toString() || '';
             break;
-          case 7: // Цена за ед.
+          case 7: // Ед. изм.
+            cellText = item.unitName || '';
+            break;
+          case 8: // Цена за ед.
             cellText = item.unitPrice?.toString() || '';
             break;
-          case 8: // Цена с НДС
+          case 9: // Цена с НДС
             cellText = item.unitPriceWithVat?.toString() || '';
             break;
-          case 9: // Вес
+          case 10: // Вес
             cellText = item.weight?.toString() || '';
             break;
-          case 10: // Доставка
+          case 11: // Доставка
             cellText = item.deliveryCost?.toString() || '';
             break;
-          case 11: // Срок поставки
+          case 12: // Срок поставки
             cellText = item.deliveryPeriod || '';
             break;
-          case 12: // Гарантия
+          case 13: // Гарантия
             cellText = item.warranty?.name || '';
             break;
-          case 13: // Сумма
+          case 14: // Сумма
             cellText = ((item.quantity || 0) * (item.unitPrice || 0)).toString();
             break;
-          case 14: // Действия
+          case 15: // Действия
             cellText = '';
             break;
         }
@@ -408,6 +412,11 @@ const ProposalEditPage: React.FC = () => {
       const response = await api.get(`/api/tenders/${tenderId}/items`);
       setTenderItems(response.data);
       console.log('Загружены позиции тендера:', response.data.length, 'fillingStarted:', fillingStarted);
+      console.log('Детали позиций тендера:', response.data.map(item => ({
+        description: item.description,
+        quantity: item.quantity,
+        unitName: item.unitName
+      })));
       
       // Начинаем процесс заполнения позиций только если он еще не был начат
       if (response.data.length > 0 && !fillingStarted) {
@@ -431,10 +440,13 @@ const ProposalEditPage: React.FC = () => {
       const response = await api.get(`/api/proposals/${id}`);
       const proposal = response.data;
       
+      let tenderItemsResponse = null;
+      
       // Загружаем позиции тендера для этого предложения
       if (proposal.tenderId) {
-        const tenderItemsResponse = await api.get(`/api/tenders/${proposal.tenderId}/items`);
+        tenderItemsResponse = await api.get(`/api/tenders/${proposal.tenderId}/items`);
         setTenderItems(tenderItemsResponse.data);
+        console.log('Загружены позиции тендера для редактирования:', tenderItemsResponse.data.length);
       }
       
       // Преобразуем данные предложения в формат формы
@@ -456,6 +468,7 @@ const ProposalEditPage: React.FC = () => {
           manufacturer: item.manufacturer || null,
           countryOfOrigin: item.countryOfOrigin || null,
           quantity: item.quantity || 0,
+          unitName: item.unitName || '',
           unitPrice: item.unitPrice || 0,
           specifications: item.specifications || '',
           deliveryPeriod: item.deliveryPeriod || '',
@@ -468,6 +481,17 @@ const ProposalEditPage: React.FC = () => {
       });
       
       console.log('Загружено предложение для редактирования:', proposal);
+      
+      // Если есть позиции тендера, но нет позиций предложения, запускаем процесс заполнения
+      if (proposal.tenderId && (!proposal.proposalItems || proposal.proposalItems.length === 0)) {
+        // Проверяем, что позиции тендера были загружены
+        if (tenderItemsResponse && tenderItemsResponse.data && tenderItemsResponse.data.length > 0) {
+          console.log('Запускаем процесс заполнения позиций для редактирования');
+          setTimeout(() => {
+            startPositionFilling();
+          }, 100);
+        }
+      }
     } catch (error) {
       console.error('Error loading proposal:', error);
     }
@@ -489,6 +513,7 @@ const ProposalEditPage: React.FC = () => {
     if (currentPositionIndex < tenderItems.length) {
       const tenderItem = tenderItems[currentPositionIndex];
       console.log('Показываем позицию:', tenderItem);
+      console.log('Единицы измерения в тендерной позиции:', tenderItem.unitName);
       setCurrentPositionData({
         tenderItemId: tenderItem.id,
         description: tenderItem.description,
@@ -497,6 +522,7 @@ const ProposalEditPage: React.FC = () => {
         manufacturer: null,
         countryOfOrigin: null,
         quantity: tenderItem.quantity,
+        unitName: tenderItem.unitName || '',
         unitPrice: 0,
         specifications: tenderItem.specifications || '',
         deliveryPeriod: '',
@@ -529,10 +555,10 @@ const ProposalEditPage: React.FC = () => {
         if (existingIndex !== -1) {
           // Заменяем существующую позицию
           newProposalItems = [...prev.proposalItems];
-          newProposalItems[existingIndex] = currentPositionData;
+          newProposalItems[existingIndex] = currentPositionData as ProposalItemForm;
         } else {
           // Добавляем новую позицию
-          newProposalItems = [...prev.proposalItems, currentPositionData];
+          newProposalItems = [...prev.proposalItems, currentPositionData as ProposalItemForm];
         }
         
         return {
@@ -574,7 +600,7 @@ const ProposalEditPage: React.FC = () => {
             // Добавляем пустую позицию только если её ещё нет
             return {
               ...prev,
-              proposalItems: [...prev.proposalItems, currentPositionData]
+              proposalItems: [...prev.proposalItems, currentPositionData as ProposalItemForm]
             };
           }
           return prev;
@@ -621,6 +647,7 @@ const ProposalEditPage: React.FC = () => {
         manufacturer: null,
         countryOfOrigin: null,
         quantity: item.quantity,
+        unitName: item.unitName || '',
         unitPrice: 0,
         specifications: item.specifications || '',
         deliveryPeriod: '',
@@ -895,6 +922,7 @@ const ProposalEditPage: React.FC = () => {
           manufacturer: null,
           countryOfOrigin: null,
           quantity: 1,
+          unitName: '',
           unitPrice: 0,
           specifications: '',
           deliveryPeriod: '',
@@ -1231,7 +1259,7 @@ const ProposalEditPage: React.FC = () => {
             <Table sx={{ minWidth: 2500, width: 'max-content', tableLayout: 'fixed' }} className="resizable-table">
               <TableHead>
                 <TableRow>
-                  {['№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 'Цена за ед.', 'Цена с НДС', 'Вес', 'Доставка', 'Срок поставки', 'Гарантия', 'Сумма', 'Действия'].map((label, idx) => (
+                  {['№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 'Ед. изм.', 'Цена за ед.', 'Цена с НДС', 'Вес', 'Доставка', 'Срок поставки', 'Гарантия', 'Сумма', 'Действия'].map((label, idx) => (
                     <TableCell
                       key={label}
                       sx={{ 
@@ -1253,7 +1281,7 @@ const ProposalEditPage: React.FC = () => {
                       } as React.CSSProperties}
                     >
                       {label}
-                      {idx !== 0 && idx !== 11 && (
+                      {idx !== 0 && idx !== 12 && (
                         <span
                           style={{
                             position: 'absolute',
@@ -1297,6 +1325,7 @@ const ProposalEditPage: React.FC = () => {
                               if (tenderItem) {
                                 handleItemChange(index, 'description', tenderItem.description);
                                 handleItemChange(index, 'quantity', tenderItem.quantity);
+                                handleItemChange(index, 'unitName', tenderItem.unitName || '');
                                 handleItemChange(index, 'specifications', tenderItem.specifications || '');
                               }
                             }}
@@ -1493,6 +1522,14 @@ const ProposalEditPage: React.FC = () => {
                       <TableCell {...getCellStyles(7)}>
                         <TextField
                           size="small"
+                          value={selectedTenderItem ? selectedTenderItem.unitName : item.unitName}
+                          disabled
+                          fullWidth
+                        />
+                      </TableCell>
+                      <TableCell {...getCellStyles(8)}>
+                        <TextField
+                          size="small"
                           type="number"
                           value={item.unitPrice}
                           onChange={e => {
@@ -1503,7 +1540,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(8)}>
+                      <TableCell {...getCellStyles(9)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1516,7 +1553,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(9)}>
+                      <TableCell {...getCellStyles(10)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1529,7 +1566,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(10)}>
+                      <TableCell {...getCellStyles(11)}>
                         <TextField
                           size="small"
                           type="number"
@@ -1542,7 +1579,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(11)}>
+                      <TableCell {...getCellStyles(12)}>
                         <TextField
                           size="small"
                           value={item.deliveryPeriod || ''}
@@ -1550,7 +1587,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(12)}>
+                      <TableCell {...getCellStyles(13)}>
                         <Autocomplete
                           options={warranties}
                           getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
@@ -1602,10 +1639,10 @@ const ProposalEditPage: React.FC = () => {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(13)}>
+                      <TableCell {...getCellStyles(14)}>
                         {(item.quantity * item.unitPrice).toLocaleString('ru-RU')} ₽
                       </TableCell>
-                      <TableCell {...getCellStyles(14)}>
+                      <TableCell {...getCellStyles(15)}>
                         <IconButton color="error" onClick={() => handleRemoveItem(index)} size="small">
                           <DeleteIcon />
                         </IconButton>
@@ -1614,7 +1651,7 @@ const ProposalEditPage: React.FC = () => {
                   );
                 })}
                 <TableRow>
-                  <TableCell colSpan={14} align="right">
+                  <TableCell colSpan={15} align="right">
                     <Typography variant="h6">
                       Итого:
                     </Typography>
@@ -1854,6 +1891,15 @@ const ProposalEditPage: React.FC = () => {
                   label="Количество"
                   type="number"
                   value={currentPositionData?.quantity || ''}
+                  disabled
+                  size="small"
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Ед. изм."
+                  value={currentPositionData?.unitName || ''}
                   disabled
                   size="small"
                 />

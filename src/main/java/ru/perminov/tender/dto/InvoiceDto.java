@@ -18,6 +18,8 @@ public class InvoiceDto {
     private String supplierName;
     private String supplierContact;
     private String supplierPhone;
+    private UUID customerId;
+    private String customerName;
     private UUID requestId;
     private String requestNumber;
     private String invoiceNumber;
@@ -43,6 +45,12 @@ public class InvoiceDto {
         if (invoice.getContract() != null) {
             dto.setContractId(invoice.getContract().getId());
             dto.setContractNumber(invoice.getContract().getContractNumber());
+            
+            // Получаем данные заказчика из тендера контракта
+            if (invoice.getContract().getTender() != null && invoice.getContract().getTender().getCustomer() != null) {
+                dto.setCustomerId(invoice.getContract().getTender().getCustomer().getId());
+                dto.setCustomerName(invoice.getContract().getTender().getCustomer().getName());
+            }
         }
         
         if (invoice.getSupplier() != null) {

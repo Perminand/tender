@@ -2,10 +2,11 @@ import React, { useEffect, useState } from 'react';
 import {
   Box, Button, Card, CardContent, Chip, DialogContent, FormControl, Grid, InputLabel, MenuItem, Paper, Select, Snackbar, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography, Alert
 } from '@mui/material';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import dayjs, { Dayjs } from 'dayjs';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { api } from '../utils/api';
 
 interface DeliveryItem {
@@ -55,8 +56,11 @@ interface Contract {
 const DeliveryEditPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { id } = useParams<{ id: string }>();
   const params = new URLSearchParams(location.search);
   const contractId = params.get('contractId');
+  
+  const isEditMode = !!id;
 
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -64,10 +68,14 @@ const DeliveryEditPage: React.FC = () => {
   const [contract, setContract] = useState<Contract | null>(null);
   const [contractItems, setContractItems] = useState<ContractItem[]>([]);
   const [deliveryItems, setDeliveryItems] = useState<DeliveryItem[]>([]);
+  const [originalDeliveryItems, setOriginalDeliveryItems] = useState<DeliveryItem[]>([]);
   const [selectedSupplierId, setSelectedSupplierId] = useState('');
   const [selectedWarehouseId, setSelectedWarehouseId] = useState('');
   const [plannedDate, setPlannedDate] = useState<Dayjs | null>(null);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const [delivery, setDelivery] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   useEffect(() => {
     api.get('/api/contracts').then(res => setContracts(res.data));
@@ -75,10 +83,50 @@ const DeliveryEditPage: React.FC = () => {
     api.get('/api/warehouses').then(res => setWarehouses(Array.isArray(res.data) ? res.data : []));
   }, []);
 
+  // Загрузка существующей поставки для редактирования
+  useEffect(() => {
+    if (isEditMode && id) {
+      setLoading(true);
+      api.get(`/api/deliveries/${id}`)
+        .then(res => {
+          console.log('Delivery data:', res.data);
+          setDelivery(res.data);
+          
+          // Заполняем поля формы данными поставки
+          if (res.data.plannedDate) {
+            setPlannedDate(dayjs(res.data.plannedDate));
+          }
+          if (res.data.contractId) {
+            // Загружаем контракт для существующей поставки
+            api.get(`/api/contracts/${res.data.contractId}`)
+              .then(contractRes => {
+                setContract(contractRes.data);
+                if (contractRes.data.tender?.awardedSupplierId) {
+                  setSelectedSupplierId(contractRes.data.tender.awardedSupplierId);
+                }
+                if (contractRes.data.warehouseId) {
+                  setSelectedWarehouseId(contractRes.data.warehouseId);
+                }
+              });
+          }
+        })
+        .catch(error => {
+          console.error('Error loading delivery:', error);
+          setSnackbar({ open: true, message: 'Ошибка при загрузке поставки', severity: 'error' });
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    }
+  }, [isEditMode, id]);
+
   // Подгружаем контракт и его позиции
   useEffect(() => {
-    if (contractId) {
-      api.get(`/api/contracts/${contractId}`)
+    const targetContractId = isEditMode && delivery?.contractId ? delivery.contractId : contractId;
+    
+    if (targetContractId) {
+      console.log('Loading contract data for contractId:', targetContractId);
+      api.get(`/api/contracts/${targetContractId}`)
         .then(res => {
           console.log('Contract data:', res.data); // Отладочная информация
           setContract(res.data);
@@ -87,26 +135,93 @@ const DeliveryEditPage: React.FC = () => {
             setSelectedSupplierId(res.data.tender.awardedSupplierId);
           }
           if (res.data.warehouseId) setSelectedWarehouseId(res.data.warehouseId);
+        })
+        .catch(error => {
+          console.error('Error loading contract:', error);
         });
-      api.get(`/api/contracts/${contractId}/items`)
+        
+      setLoadingItems(true);
+      api.get(`/api/contracts/${targetContractId}/items`)
         .then(res => {
+          console.log('Contract items loaded:', res.data);
           setContractItems(res.data);
-          setDeliveryItems(res.data.map((item: ContractItem, idx: number) => ({
-            contractItemId: item.id,
-            materialId: item.materialId,
-            materialName: item.materialName,
-            description: item.description,
-            itemNumber: idx + 1,
-            orderedQuantity: 0,
-            unitId: item.unitId,
-            unitName: item.unitName,
-            unitPrice: item.unitPrice,
-            totalPrice: 0,
-            acceptanceStatus: 'PENDING',
-          })));
-        });
+          
+          if (isEditMode && delivery) {
+            // При редактировании загружаем существующие позиции поставки
+            api.get(`/api/deliveries/${id}/items`)
+              .then(itemsRes => {
+                console.log('Delivery items:', itemsRes.data);
+                if (itemsRes.data && itemsRes.data.length > 0) {
+                  // Создаем deliveryItems только на основе существующих позиций поставки
+                  const existingDeliveryItems = itemsRes.data.map((di: any, idx: number) => {
+                    const contractItem = res.data.find((item: ContractItem) => item.id === di.contractItemId);
+                    if (contractItem) {
+                      return {
+                        contractItemId: di.contractItemId,
+                        materialId: contractItem.materialId,
+                        materialName: contractItem.materialName,
+                        description: contractItem.description,
+                        itemNumber: idx + 1,
+                        orderedQuantity: di.quantity || 0,
+                        unitId: contractItem.unitId,
+                        unitName: contractItem.unitName,
+                        unitPrice: contractItem.unitPrice,
+                        totalPrice: (di.quantity || 0) * contractItem.unitPrice,
+                        acceptanceStatus: di.acceptanceStatus || 'PENDING',
+                      };
+                    }
+                    return null;
+                  }).filter(Boolean);
+                  
+                  setDeliveryItems(existingDeliveryItems);
+                  setOriginalDeliveryItems(existingDeliveryItems);
+                } else {
+                  // Если позиций поставки нет, создаем пустые
+                  setDeliveryItems(res.data.map((item: ContractItem, idx: number) => ({
+                    contractItemId: item.id,
+                    materialId: item.materialId,
+                    materialName: item.materialName,
+                    description: item.description,
+                    itemNumber: idx + 1,
+                    orderedQuantity: 0,
+                    unitId: item.unitId,
+                    unitName: item.unitName,
+                    unitPrice: item.unitPrice,
+                    totalPrice: 0,
+                    acceptanceStatus: 'PENDING',
+                  })));
+                }
+              })
+              .catch(error => {
+                console.error('Error loading delivery items:', error);
+                // Если не удалось загрузить позиции поставки, оставляем пустой массив
+                setDeliveryItems([]);
+              });
+          } else {
+            // При создании новой поставки создаем пустые позиции
+            setDeliveryItems(res.data.map((item: ContractItem, idx: number) => ({
+              contractItemId: item.id,
+              materialId: item.materialId,
+              materialName: item.materialName,
+              description: item.description,
+              itemNumber: idx + 1,
+              orderedQuantity: 0,
+              unitId: item.unitId,
+              unitName: item.unitName,
+              unitPrice: item.unitPrice,
+              totalPrice: 0,
+              acceptanceStatus: 'PENDING',
+            })));
+          }
+                 })
+         .catch(error => {
+           console.error('Error loading contract items:', error);
+         })
+         .finally(() => {
+           setLoadingItems(false);
+         });
     }
-  }, [contractId]);
+  }, [contractId, isEditMode, delivery?.contractId]);
 
   // Синхронизируем selectedWarehouseId с contract?.warehouseId после загрузки складов и контракта
   useEffect(() => {
@@ -126,7 +241,20 @@ const DeliveryEditPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
-    const itemsToSubmit = deliveryItems.filter(item => item.orderedQuantity > 0);
+    
+    // При редактировании отправляем только те позиции, которые были изначально
+    let itemsToSubmit;
+    if (isEditMode) {
+      // Фильтруем только те позиции, которые были в исходной поставке
+      itemsToSubmit = deliveryItems.filter(item => {
+        const wasInOriginal = originalDeliveryItems.some(original => original.contractItemId === item.contractItemId);
+        return wasInOriginal && item.orderedQuantity > 0;
+      });
+    } else {
+      // При создании новой поставки отправляем все позиции с количеством > 0
+      itemsToSubmit = deliveryItems.filter(item => item.orderedQuantity > 0);
+    }
+    
     if (itemsToSubmit.length === 0) {
       setSnackbar({ open: true, message: 'Укажите количество хотя бы для одной позиции', severity: 'error' });
       return;
@@ -143,17 +271,33 @@ const DeliveryEditPage: React.FC = () => {
         deliveryItems: itemsToSubmit
       };
       console.log('Submitting delivery data:', submitData); // Отладочная информация
-      const response = await api.post('/api/deliveries', submitData);
-      if (response.status === 200 || response.status === 201) {
-        setSnackbar({ open: true, message: 'Поставка создана', severity: 'success' });
-        setTimeout(() => {
-          navigate(`/contracts/${contractId}/manage`);
-        }, 1000);
+      
+      let response;
+      if (isEditMode && id) {
+        // Обновление существующей поставки
+        response = await api.put(`/api/deliveries/${id}`, submitData);
+        if (response.status === 200) {
+          setSnackbar({ open: true, message: 'Поставка обновлена', severity: 'success' });
+          setTimeout(() => {
+            navigate(`/deliveries/${id}`);
+          }, 1000);
+        } else {
+          setSnackbar({ open: true, message: 'Ошибка при обновлении поставки', severity: 'error' });
+        }
       } else {
-        setSnackbar({ open: true, message: 'Ошибка при создании поставки', severity: 'error' });
+        // Создание новой поставки
+        response = await api.post('/api/deliveries', submitData);
+        if (response.status === 200 || response.status === 201) {
+          setSnackbar({ open: true, message: 'Поставка создана', severity: 'success' });
+          setTimeout(() => {
+            navigate(`/contracts/${contractId}/manage`);
+          }, 1000);
+        } else {
+          setSnackbar({ open: true, message: 'Ошибка при создании поставки', severity: 'error' });
+        }
       }
     } catch (error: any) {
-      let message = 'Ошибка при создании поставки';
+      let message = isEditMode ? 'Ошибка при обновлении поставки' : 'Ошибка при создании поставки';
       if (error.response && error.response.data) {
         const raw =
           typeof error.response.data === 'string'
@@ -176,14 +320,39 @@ const DeliveryEditPage: React.FC = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+        <Typography>Загрузка поставки...</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>Создать поставку</Typography>
+      <Box display="flex" alignItems="center" mb={2}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate(-1)}
+          sx={{ mr: 2 }}
+        >
+          Назад
+        </Button>
+        <Typography variant="h4">
+          {isEditMode ? 'Редактировать поставку' : 'Создать поставку'}
+        </Typography>
+      </Box>
       <Paper sx={{ p: 2, mb: 3 }}>
         <form onSubmit={handleSubmit}>
           <Grid container spacing={2}>
             <Grid item xs={6}>
-              <TextField name="deliveryNumber" label="Номер поставки" fullWidth required />
+              <TextField 
+                name="deliveryNumber" 
+                label="Номер поставки" 
+                defaultValue={delivery?.deliveryNumber || ''}
+                fullWidth 
+                required 
+              />
             </Grid>
             <Grid item xs={6}>
               <TextField label="Контракт" value={contract ? `${contract.contractNumber} | ${contract.title}` : ''} fullWidth disabled />
@@ -221,15 +390,31 @@ const DeliveryEditPage: React.FC = () => {
               </LocalizationProvider>
             </Grid>
             <Grid item xs={6}>
-              <TextField name="trackingNumber" label="Трек номер" fullWidth />
+              <TextField 
+                name="trackingNumber" 
+                label="Трек номер" 
+                defaultValue={delivery?.trackingNumber || ''}
+                fullWidth 
+              />
             </Grid>
             <Grid item xs={12}>
-              <TextField name="notes" label="Примечания" multiline rows={3} fullWidth />
+              <TextField 
+                name="notes" 
+                label="Примечания" 
+                defaultValue={delivery?.notes || ''}
+                multiline 
+                rows={3} 
+                fullWidth 
+              />
             </Grid>
-            {contractItems.length > 0 && (
-              <Grid item xs={12}>
-                <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Позиции поставки</Typography>
-                <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+                         <Grid item xs={12}>
+               <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>Позиции поставки</Typography>
+               {loadingItems ? (
+                 <Box sx={{ p: 2, textAlign: 'center' }}>
+                   <Typography>Загрузка позиций контракта...</Typography>
+                 </Box>
+               ) : contractItems.length > 0 ? (
+                 <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -267,13 +452,27 @@ const DeliveryEditPage: React.FC = () => {
                     </TableBody>
                   </Table>
                 </TableContainer>
-              </Grid>
-            )}
+               ) : (
+                 <Box sx={{ p: 2, textAlign: 'center', border: '1px dashed #ccc', borderRadius: 1 }}>
+                   <Typography color="textSecondary">
+                     {contract ? 'Позиции контракта не найдены' : 'Выберите контракт для загрузки позиций'}
+                   </Typography>
+                 </Box>
+               )}
+             </Grid>
             <Grid item xs={12} sx={{ mt: 2, display: 'flex', gap: 2 }}>
-              <Button type="submit" variant="contained">Создать поставку</Button>
+              <Button type="submit" variant="contained">
+                {isEditMode ? 'Обновить поставку' : 'Создать поставку'}
+              </Button>
               <Button 
                 variant="outlined" 
-                onClick={() => navigate(`/contracts/${contractId}/manage`)}
+                onClick={() => {
+                  if (isEditMode && id) {
+                    navigate(`/deliveries/${id}`);
+                  } else {
+                    navigate(`/contracts/${contractId}/manage`);
+                  }
+                }}
               >
                 Отмена
               </Button>

@@ -126,8 +126,11 @@ public class InvoiceServiceImpl implements InvoiceService {
         
         InvoiceDto dto = InvoiceDto.fromEntity(invoice);
         dto.setInvoiceItems(invoice.getInvoiceItems().stream()
-                .map(InvoiceItemDto::fromEntity)
+                .map(this::mapInvoiceItemToDto)
                 .collect(Collectors.toList()));
+        
+        log.info("Счет загружен: contractId={}, supplierName={}, customerName={}", 
+                dto.getContractId(), dto.getSupplierName(), dto.getCustomerName());
         
         return dto;
     }

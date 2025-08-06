@@ -13,11 +13,13 @@ import ru.perminov.tender.model.SupplierProposal;
 import ru.perminov.tender.model.ProposalItem;
 import ru.perminov.tender.model.Tender;
 import ru.perminov.tender.model.TenderItem;
+import ru.perminov.tender.model.Unit;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.SupplierProposalRepository;
 import ru.perminov.tender.repository.ProposalItemRepository;
 import ru.perminov.tender.repository.TenderRepository;
 import ru.perminov.tender.repository.TenderItemRepository;
+import ru.perminov.tender.repository.UnitRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
@@ -42,6 +44,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     private final TenderRepository tenderRepository;
     private final TenderItemRepository tenderItemRepository;
     private final CompanyRepository companyRepository;
+    private final UnitRepository unitRepository;
     private final NotificationService notificationService;
     private final SupplierProposalMapper supplierProposalMapper;
     private final ProposalItemMapper proposalItemMapper;
@@ -80,7 +83,10 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         
         // Сохраняем позиции из DTO
         if (proposalDto.getProposalItems() != null) {
+            log.info("Получены позиции предложения из фронтенда: {}", proposalDto.getProposalItems().size());
             for (ProposalItemDto itemDto : proposalDto.getProposalItems()) {
+                log.info("Позиция из фронтенда: {} - unitName: {}, unitId: {}", 
+                        itemDto.getDescription(), itemDto.getUnitName(), itemDto.getUnitId());
                  // Валидация цен и количества
                 if (itemDto.getQuantity() != null && itemDto.getQuantity() <= 0) {
                     throw new RuntimeException("Количество должно быть больше 0");
@@ -93,6 +99,9 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
                 }
                 
                 ProposalItem item = proposalItemMapper.toEntity(itemDto);
+                log.info("После маппинга в сущность: {} - unit: {}", 
+                        item.getDescription(), 
+                        item.getUnit() != null ? item.getUnit().getName() : "null");
                 item.setSupplierProposal(savedProposal);
                 // Логируем tenderItemId
                 log.info("Сохраняем позицию предложения: description={}, tenderItemId={}", item.getDescription(), itemDto.getTenderItemId());
@@ -101,6 +110,55 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
                     TenderItem tenderItem = tenderItemRepository.findById(itemDto.getTenderItemId())
                         .orElseThrow(() -> new RuntimeException("Позиция тендера не найдена: " + itemDto.getTenderItemId()));
                     item.setTenderItem(tenderItem);
+                    
+                    // Копируем единицу измерения из тендерной позиции, если она не указана в предложении
+                    if (item.getUnit() == null && tenderItem.getUnit() != null) {
+                        item.setUnit(tenderItem.getUnit());
+                        log.info("Скопирована единица измерения из тендерной позиции: {} для позиции {}", 
+                                tenderItem.getUnit().getName(), item.getDescription());
+                    }
+                    
+                    // Если unitId передан из фронтенда, устанавливаем unit
+                    if (itemDto.getUnitId() != null && item.getUnit() == null) {
+                        try {
+                            Unit unit = unitRepository.findById(itemDto.getUnitId()).orElse(null);
+                            if (unit != null) {
+                                item.setUnit(unit);
+                                log.info("Установлена единица измерения по unitId: {} ({}) для позиции {}", 
+                                        unit.getName(), unit.getId(), item.getDescription());
+                            } else {
+                                log.warn("Единица измерения с unitId {} не найдена для позиции {}", 
+                                        itemDto.getUnitId(), item.getDescription());
+                            }
+                        } catch (Exception e) {
+                            log.error("Ошибка при поиске единицы измерения по unitId {}: {}", 
+                                    itemDto.getUnitId(), e.getMessage());
+                        }
+                    }
+                    
+                    // Если unitName передан из фронтенда, но unit не установлен, устанавливаем unit
+                    if (itemDto.getUnitName() != null && !itemDto.getUnitName().isEmpty() && item.getUnit() == null) {
+                        try {
+                            Unit unit = unitRepository.findByName(itemDto.getUnitName()).orElse(null);
+                            if (unit != null) {
+                                item.setUnit(unit);
+                                log.info("Установлена единица измерения по unitName: {} ({}) для позиции {}", 
+                                        unit.getName(), unit.getId(), item.getDescription());
+                            } else {
+                                log.warn("Единица измерения с unitName {} не найдена для позиции {}", 
+                                        itemDto.getUnitName(), item.getDescription());
+                            }
+                        } catch (Exception e) {
+                            log.error("Ошибка при поиске единицы измерения по unitName {}: {}", 
+                                    itemDto.getUnitName(), e.getMessage());
+                        }
+                    }
+                    
+                    // Логируем состояние единицы измерения после всех операций
+                    log.info("Позиция предложения: {} - Единица измерения после сохранения: {} (unitId: {})", 
+                            item.getDescription(), 
+                            item.getUnit() != null ? item.getUnit().getName() : "null",
+                            item.getUnit() != null ? item.getUnit().getId() : "null");
                 }
                 if (itemDto.getTenderItemId() != null) {
                     boolean exists = proposalItemRepository.existsBySupplierProposalIdAndTenderItemId(savedProposal.getId(), itemDto.getTenderItemId());
@@ -113,7 +171,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         }
         
         // Рассчитать и сохранить totalPrice
-        List<ProposalItem> items = proposalItemRepository.findBySupplierProposalId(savedProposal.getId());
+        List<ProposalItem> items = proposalItemRepository.findBySupplierProposalIdWithUnit(savedProposal.getId());
         double total = items.stream().filter(i -> i.getTotalPrice() != null).mapToDouble(ProposalItem::getTotalPrice).sum();
         savedProposal.setTotalPrice(total);
         supplierProposalRepository.save(savedProposal);
@@ -157,7 +215,32 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     public List<SupplierProposalDto> getProposalsByTender(UUID tenderId) {
         List<SupplierProposal> proposals = supplierProposalRepository.findByTenderId(tenderId);
         return proposals.stream()
-                .map(supplierProposalMapper::toDto)
+                .map(proposal -> {
+                    SupplierProposalDto dto = supplierProposalMapper.toDto(proposal);
+                    // Загружаем позиции предложения с единицами измерения
+                    List<ProposalItem> items = proposalItemRepository.findBySupplierProposalIdWithUnit(proposal.getId());
+                    
+                    // Логируем состояние единиц измерения в базе данных
+                    for (ProposalItem item : items) {
+                        log.info("Позиция предложения в БД: {} - Единица измерения: {} (unitId: {})", 
+                                item.getDescription(), 
+                                item.getUnit() != null ? item.getUnit().getName() : "null",
+                                item.getUnit() != null ? item.getUnit().getId() : "null");
+                    }
+                    
+                    List<ProposalItemDto> itemDtos = items.stream()
+                            .map(proposalItemMapper::toDto)
+                            .collect(Collectors.toList());
+                    
+                    // Логируем единицы измерения для отладки
+                    for (ProposalItemDto itemDto : itemDtos) {
+                        log.info("Позиция предложения в DTO: {} - Единица измерения: {} (unitId: {})", 
+                                itemDto.getDescription(), itemDto.getUnitName(), itemDto.getUnitId());
+                    }
+                    
+                    dto.setProposalItems(itemDtos);
+                    return dto;
+                })
                 .collect(Collectors.toList());
     }
 
@@ -216,7 +299,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         SupplierProposal savedProposal = supplierProposalRepository.save(proposal);
         
         // Пересчитать и сохранить totalPrice
-        List<ProposalItem> items = proposalItemRepository.findBySupplierProposalId(savedProposal.getId());
+        List<ProposalItem> items = proposalItemRepository.findBySupplierProposalIdWithUnit(savedProposal.getId());
         double total = items.stream().filter(i -> i.getTotalPrice() != null).mapToDouble(ProposalItem::getTotalPrice).sum();
         savedProposal.setTotalPrice(total);
         supplierProposalRepository.save(savedProposal);
@@ -308,7 +391,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     @Override
     @Transactional(readOnly = true)
     public List<ProposalItemDto> getProposalItems(UUID proposalId) {
-        List<ProposalItem> items = proposalItemRepository.findBySupplierProposalId(proposalId);
+        List<ProposalItem> items = proposalItemRepository.findBySupplierProposalIdWithUnit(proposalId);
         List<ProposalItemDto> itemDtos = items.stream()
                 .map(proposalItemMapper::toDto)
                 .collect(Collectors.toList());
@@ -370,7 +453,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         
         // Для каждого предложения получаем позиции и находим лучшие цены
         for (SupplierProposal proposal : validProposals) {
-            List<ProposalItem> items = proposalItemRepository.findBySupplierProposalId(proposal.getId());
+            List<ProposalItem> items = proposalItemRepository.findBySupplierProposalIdWithUnit(proposal.getId());
             
             for (ProposalItem item : items) {
                 if (item.getTenderItem() != null && item.getUnitPrice() != null) {

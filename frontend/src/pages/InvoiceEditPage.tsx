@@ -103,6 +103,13 @@ const InvoiceEditPage: React.FC = () => {
   
   const isEditMode = !!id;
   const contractId = searchParams.get('contractId');
+  const supplierName = searchParams.get('supplierName');
+  const totalAmount = searchParams.get('totalAmount');
+  const supplierContact = searchParams.get('supplierContact');
+  const supplierPhone = searchParams.get('supplierPhone');
+  const source = searchParams.get('source');
+  const requestId = searchParams.get('requestId');
+  const requestNumber = searchParams.get('requestNumber');
   
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -131,6 +138,7 @@ const InvoiceEditPage: React.FC = () => {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [suppliers, setSuppliers] = useState<Company[]>([]);
   const [customers, setCustomers] = useState<Company[]>([]);
+  const [contractItems, setContractItems] = useState<InvoiceItem[]>([]);
 
   useEffect(() => {
     if (isEditMode) {
@@ -155,9 +163,101 @@ const InvoiceEditPage: React.FC = () => {
           customerName: selectedContract.customerName,
           totalAmount: selectedContract.totalAmount
         }));
+
+        // Загружаем материалы контракта при автоматическом заполнении
+        const loadContractItems = async () => {
+          try {
+            const response = await api.get(`/api/contracts/${contractId}/items`);
+            const contractItemsData = response.data.map((item: any) => ({
+              id: '',
+              materialId: item.materialId,
+              materialName: item.materialName,
+              quantity: item.quantity,
+              unitId: item.unitId,
+              unitName: item.unitName,
+              unitPrice: item.unitPrice,
+              totalPrice: item.quantity * item.unitPrice,
+              description: item.description
+            }));
+            setContractItems(contractItemsData);
+            
+            // Автоматически добавляем материалы контракта в счет
+            setInvoice(prev => ({
+              ...prev,
+              invoiceItems: contractItemsData
+            }));
+          } catch (error) {
+            console.error('Ошибка при загрузке материалов контракта:', error);
+            setContractItems([]);
+          }
+        };
+
+        loadContractItems();
       }
     }
   }, [contractId, contracts]);
+
+  // Загрузка данных контракта для существующего счета
+  useEffect(() => {
+    if (isEditMode && invoice.contractId && contracts.length > 0 && (!invoice.supplierName || !invoice.customerName)) {
+      console.log('Загружаем данные контракта из списка контрактов:', {
+        contractId: invoice.contractId,
+        contractsCount: contracts.length,
+        hasSupplierName: !!invoice.supplierName,
+        hasCustomerName: !!invoice.customerName
+      });
+      const selectedContract = contracts.find(c => c.id === invoice.contractId);
+      if (selectedContract) {
+        console.log('Найден контракт в списке:', selectedContract);
+        setInvoice(prev => ({
+          ...prev,
+          supplierId: selectedContract.supplierId,
+          supplierName: selectedContract.supplierName,
+          customerId: selectedContract.customerId,
+          customerName: selectedContract.customerName,
+          totalAmount: selectedContract.totalAmount
+        }));
+      } else {
+        console.warn('Контракт не найден в списке:', invoice.contractId);
+      }
+    }
+  }, [isEditMode, invoice.contractId, contracts, invoice.supplierName, invoice.customerName]);
+
+  // Автоматическое заполнение данных из URL параметров (для создания счета из матрешки)
+  useEffect(() => {
+    if (!isEditMode) {
+      const updates: Partial<Invoice> = {};
+      
+      if (supplierName) {
+        updates.supplierName = decodeURIComponent(supplierName);
+      }
+      
+      if (totalAmount) {
+        const amount = parseFloat(totalAmount);
+        if (!isNaN(amount)) {
+          updates.totalAmount = amount;
+        }
+      }
+      
+      if (Object.keys(updates).length > 0) {
+        setInvoice(prev => ({
+          ...prev,
+          ...updates
+        }));
+      }
+      
+      // Логируем информацию о создании счета из матрешки
+      if (source === 'matryoshka') {
+        console.log('Создание счета из матрешки:', {
+          contractId,
+          supplierName: supplierName ? decodeURIComponent(supplierName) : null,
+          totalAmount,
+          requestId,
+          requestNumber: requestNumber ? decodeURIComponent(requestNumber) : null
+        });
+      }
+    }
+  }, [supplierName, totalAmount, isEditMode, source, contractId, requestId, requestNumber]);
 
   const fetchInvoice = async () => {
     if (!id) return;
@@ -165,7 +265,9 @@ const InvoiceEditPage: React.FC = () => {
     setLoading(true);
     try {
       const response = await api.get(`/api/invoices/${id}`);
-      setInvoice(response.data);
+      const invoiceData = response.data;
+      console.log('Загруженные данные счета:', invoiceData);
+      setInvoice(invoiceData);
       
       // Загружаем позиции счета
       try {
@@ -174,6 +276,30 @@ const InvoiceEditPage: React.FC = () => {
       } catch (itemsError) {
         console.warn('Не удалось загрузить позиции счета:', itemsError);
         // Если позиции не загрузились, это не критично
+      }
+      
+      // Если у счета есть contractId, но нет данных поставщика/заказчика, загружаем их из контракта
+      if (invoiceData.contractId && (!invoiceData.supplierName || !invoiceData.customerName)) {
+        console.log('Загружаем данные контракта для счета:', {
+          contractId: invoiceData.contractId,
+          hasSupplierName: !!invoiceData.supplierName,
+          hasCustomerName: !!invoiceData.customerName
+        });
+        try {
+          const contractResponse = await api.get(`/api/contracts/${invoiceData.contractId}`);
+          const contractData = contractResponse.data;
+          console.log('Данные контракта загружены:', contractData);
+          setInvoice(prev => ({
+            ...prev,
+            supplierId: contractData.supplierId,
+            supplierName: contractData.supplierName,
+            customerId: contractData.customerId,
+            customerName: contractData.customerName,
+            totalAmount: contractData.totalAmount
+          }));
+        } catch (contractError) {
+          console.warn('Не удалось загрузить данные контракта:', contractError);
+        }
       }
     } catch (error) {
       console.error('Ошибка при загрузке счета:', error);
@@ -243,7 +369,7 @@ const InvoiceEditPage: React.FC = () => {
     setInvoice(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleContractChange = (contractId: string) => {
+  const handleContractChange = async (contractId: string) => {
     const selectedContract = contracts.find(c => c.id === contractId);
     if (selectedContract) {
       setInvoice(prev => ({
@@ -255,6 +381,32 @@ const InvoiceEditPage: React.FC = () => {
         customerName: selectedContract.customerName,
         totalAmount: selectedContract.totalAmount
       }));
+
+      // Загружаем материалы контракта
+      try {
+        const response = await api.get(`/api/contracts/${contractId}/items`);
+        const contractItemsData = response.data.map((item: any) => ({
+          id: '',
+          materialId: item.materialId,
+          materialName: item.materialName,
+          quantity: item.quantity,
+          unitId: item.unitId,
+          unitName: item.unitName,
+          unitPrice: item.unitPrice,
+          totalPrice: item.quantity * item.unitPrice,
+          description: item.description
+        }));
+        setContractItems(contractItemsData);
+        
+        // Автоматически добавляем материалы контракта в счет
+        setInvoice(prev => ({
+          ...prev,
+          invoiceItems: contractItemsData
+        }));
+      } catch (error) {
+        console.error('Ошибка при загрузке материалов контракта:', error);
+        setContractItems([]);
+      }
     }
   };
 
@@ -299,6 +451,11 @@ const InvoiceEditPage: React.FC = () => {
           </Button>
           <Typography variant="h4" component="h1">
             {isEditMode ? 'Редактирование счета' : 'Создание счета'}
+            {source === 'matryoshka' && (
+              <Typography variant="subtitle1" color="primary" sx={{ mt: 1 }}>
+                Из матрешки заявки №{requestNumber ? decodeURIComponent(requestNumber) : 'N/A'}
+              </Typography>
+            )}
           </Typography>
         </Box>
 
@@ -341,7 +498,10 @@ const InvoiceEditPage: React.FC = () => {
                   </FormControl>
                   {contractId && (
                     <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                      Контракт автоматически выбран из страницы управления контрактом
+                      {source === 'matryoshka' 
+                        ? 'Контракт автоматически выбран из матрешки заявки'
+                        : 'Контракт автоматически выбран из страницы управления контрактом'
+                      }
                     </Typography>
                   )}
                 </Grid>
@@ -354,7 +514,10 @@ const InvoiceEditPage: React.FC = () => {
                     disabled
                   />
                   <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                    Автоматически заполняется из контракта
+                    {source === 'matryoshka' 
+                      ? 'Автоматически заполняется из контракта матрешки'
+                      : 'Автоматически заполняется из контракта'
+                    }
                   </Typography>
                 </Grid>
 
@@ -366,7 +529,10 @@ const InvoiceEditPage: React.FC = () => {
                     disabled
                   />
                   <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                    Автоматически заполняется из контракта
+                    {source === 'matryoshka' 
+                      ? 'Автоматически заполняется из контракта матрешки'
+                      : 'Автоматически заполняется из контракта'
+                    }
                   </Typography>
                 </Grid>
 
@@ -388,7 +554,10 @@ const InvoiceEditPage: React.FC = () => {
                     required
                   />
                   <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
-                    Автоматически заполняется из контракта
+                    {source === 'matryoshka' 
+                      ? 'Автоматически заполняется из контракта матрешки'
+                      : 'Автоматически заполняется из контракта'
+                    }
                   </Typography>
                 </Grid>
 
@@ -451,11 +620,11 @@ const InvoiceEditPage: React.FC = () => {
                 </Grid>
 
                 {/* Материалы */}
-                {isEditMode && invoice.invoiceItems && invoice.invoiceItems.length > 0 && (
+                {invoice.invoiceItems && invoice.invoiceItems.length > 0 && (
                   <Grid item xs={12}>
                     <Divider sx={{ my: 2 }} />
                     <Typography variant="h6" gutterBottom>
-                      Материалы
+                      Материалы контракта
                     </Typography>
                     <TableContainer component={Paper}>
                       <Table>

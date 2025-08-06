@@ -387,6 +387,7 @@ const ProposalDetailPage: React.FC = () => {
                       <TableCell>Бренд/Модель</TableCell>
                       <TableCell>Производитель</TableCell>
                       <TableCell>Количество</TableCell>
+                      <TableCell>Ед. изм.</TableCell>
                       <TableCell>Цена за ед.</TableCell>
                       <TableCell>Цена с НДС</TableCell>
                       <TableCell>Вес</TableCell>
@@ -404,9 +405,8 @@ const ProposalDetailPage: React.FC = () => {
                           {item.brand} {item.model}
                         </TableCell>
                         <TableCell>{item.manufacturer}</TableCell>
-                        <TableCell>
-                          {item.quantity} {item.unitName}
-                        </TableCell>
+                        <TableCell>{item.quantity}</TableCell>
+                        <TableCell>{item.unitName || '-'}</TableCell>
                         <TableCell>{formatPrice(item.unitPrice)}</TableCell>
                         <TableCell>{item.unitPriceWithVat ? formatPrice(item.unitPriceWithVat) : '-'}</TableCell>
                         <TableCell>{item.weight ? `${item.weight} кг` : '-'}</TableCell>
@@ -422,7 +422,7 @@ const ProposalDetailPage: React.FC = () => {
                       </TableRow>
                     ))}
                     <TableRow>
-                      <TableCell colSpan={9} align="right">
+                      <TableCell colSpan={10} align="right">
                         <Typography variant="h6">
                           Итого:
                         </Typography>

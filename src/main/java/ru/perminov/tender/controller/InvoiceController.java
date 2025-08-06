@@ -34,6 +34,8 @@ public class InvoiceController {
     public ResponseEntity<InvoiceDto> getInvoiceById(@PathVariable UUID id) {
         log.info("Получение счета по id: {}", id);
         InvoiceDto dto = invoiceService.getInvoiceById(id);
+        log.info("Счет возвращен: id={}, contractId={}, supplierName={}, customerName={}", 
+                dto.getId(), dto.getContractId(), dto.getSupplierName(), dto.getCustomerName());
         return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
     }
 

@@ -15,5 +15,7 @@ public interface UnitMapper {
     @Named("toUnitDto")
     UnitDto toUnitDto(Unit unit);
     
+    Unit toEntity(UnitDto dto);
+    
     void updateUnitFromDto(UnitDtoUpdate dto, @MappingTarget Unit unit);
 } 

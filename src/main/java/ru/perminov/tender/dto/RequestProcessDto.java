@@ -89,6 +89,17 @@ public class RequestProcessDto {
         private LocalDate startDate;
         private LocalDate endDate;
         private String description;
+        private List<ContractItemDto> contractItems;
+    }
+    
+    @Data
+    public static class ContractItemDto {
+        private UUID id;
+        private String materialName;
+        private Double quantity;
+        private String unitName;
+        private BigDecimal unitPrice;
+        private BigDecimal totalPrice;
     }
     
     @Data
@@ -96,6 +107,7 @@ public class RequestProcessDto {
         private UUID invoiceId;
         private String invoiceNumber;
         private LocalDate invoiceDate;
+        private LocalDate dueDate;
         private LocalDate paymentDate;
         private UUID contractId;
         private String contractNumber;
@@ -107,7 +119,21 @@ public class RequestProcessDto {
         private BigDecimal paidAmount;
         private BigDecimal remainingAmount;
         private String currency;
+        private BigDecimal vatAmount;
+        private String paymentTerms;
+        private String notes;
         private List<ReceiptProcessDto> receipts;
+        private List<InvoiceItemDto> invoiceItems;
+    }
+    
+    @Data
+    public static class InvoiceItemDto {
+        private UUID id;
+        private String materialName;
+        private Double quantity;
+        private String unitName;
+        private BigDecimal unitPrice;
+        private BigDecimal totalPrice;
     }
     
     @Data
@@ -115,6 +141,8 @@ public class RequestProcessDto {
         private UUID deliveryId;
         private String deliveryNumber;
         private LocalDate deliveryDate;
+        private UUID contractId;
+        private String contractNumber;
         private String supplierName;
         private String status;
         private BigDecimal totalAmount;

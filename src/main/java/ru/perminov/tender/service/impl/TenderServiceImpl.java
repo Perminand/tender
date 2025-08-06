@@ -380,6 +380,14 @@ public class TenderServiceImpl implements TenderService {
             : new ArrayList<>();
         log.info("Найдено элементов тендера: {}", items.size());
         
+        // Логируем единицы измерения в тендерных позициях
+        for (TenderItem item : items) {
+            log.info("Тендерная позиция: {} - Единица измерения: {} (unitId: {})", 
+                    item.getDescription(), 
+                    item.getUnit() != null ? item.getUnit().getName() : "null",
+                    item.getUnit() != null ? item.getUnit().getId() : "null");
+        }
+        
         List<TenderItemDto> result = items.stream()
                 .map(tenderItemMapper::toDto)
                 .collect(Collectors.toList());
@@ -649,6 +657,11 @@ public class TenderServiceImpl implements TenderService {
             tenderItem.setQuantity(requestMaterial.getQuantity());
             // Копируем unit всегда
             tenderItem.setUnit(requestMaterial.getUnit());
+            log.info("Создание тендерной позиции: {} - Единица измерения из заявки: {} (unitId: {})", 
+                    requestMaterial.getSupplierMaterialName() != null ? requestMaterial.getSupplierMaterialName() : 
+                    (requestMaterial.getMaterial() != null ? requestMaterial.getMaterial().getName() : "Неизвестно"),
+                    requestMaterial.getUnit() != null ? requestMaterial.getUnit().getName() : "null",
+                    requestMaterial.getUnit() != null ? requestMaterial.getUnit().getId() : "null");
             tenderItem.setSpecifications(requestMaterial.getNote());
             tenderItem.setEstimatedPrice(requestMaterial.getEstimatePrice());
             

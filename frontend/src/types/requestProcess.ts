@@ -64,6 +64,16 @@ export interface ContractProcess {
   startDate: string;
   endDate: string;
   description: string;
+  contractItems?: ContractItem[];
+}
+
+export interface ContractItem {
+  id: string;
+  materialName: string;
+  quantity: number;
+  unitName: string;
+  unitPrice: number;
+  totalPrice: number;
 }
 
 export interface InvoiceProcess {
@@ -86,12 +96,24 @@ export interface InvoiceProcess {
   paymentTerms?: string;
   notes?: string;
   receipts?: ReceiptProcess[];
+  invoiceItems?: InvoiceItem[];
+}
+
+export interface InvoiceItem {
+  id: string;
+  materialName: string;
+  quantity: number;
+  unitName: string;
+  unitPrice: number;
+  totalPrice: number;
 }
 
 export interface DeliveryProcess {
   deliveryId: string;
   deliveryNumber: string;
   deliveryDate: string;
+  contractId?: string;
+  contractNumber?: string;
   supplierName: string;
   status: string;
   totalAmount: number;

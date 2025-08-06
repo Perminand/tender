@@ -145,7 +145,10 @@ public class RequestServiceImpl implements RequestService {
                 
                 try {
                     RequestMaterial material = requestMaterialMapper.toEntity(materialDto);
-                    log.info("Материал создан через маппер: id={}, materialLink={}", material.getId(), material.getMaterialLink());
+                    log.info("Материал создан через маппер: id={}, materialLink={}, unit={} (unitId: {})", 
+                            material.getId(), material.getMaterialLink(), 
+                            material.getUnit() != null ? material.getUnit().getName() : "null",
+                            material.getUnit() != null ? material.getUnit().getId() : "null");
                     
                     material.setRequest(request);
                     if (materialDto.workType() != null && materialDto.workType().getId() != null) {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   Typography,
@@ -31,7 +32,6 @@ import {
   Gavel as GavelIcon,
   Description as DescriptionIcon,
   Receipt as ReceiptIcon,
-  LocalShipping as DeliveryIcon,
   CheckCircle as CheckCircleIcon,
   Warning as WarningIcon,
   Error as ErrorIcon,
@@ -177,7 +177,6 @@ const StatusChip = styled(Chip)(({ theme, status }: { theme: any; status: string
 export default function RequestProcessDetailed({ request }: RequestProcessDetailedProps) {
   const [expandedTenders, setExpandedTenders] = useState<string[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
-  const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
 
   // Отладочная информация
   console.log('RequestProcessDetailed - request:', request);
@@ -273,13 +272,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
     );
   };
 
-  const handleDeliveryExpand = (deliveryId: string) => {
-    setExpandedDeliveries(prev => 
-      prev.includes(deliveryId) 
-        ? prev.filter(id => id !== deliveryId)
-        : [...prev, deliveryId]
-    );
-  };
+
 
   return (
     <Box>
@@ -469,13 +462,32 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
       )}
 
       {/* Счета */}
-      {request.invoices && request.invoices.length > 0 && (
-        <ProcessSection>
-          <Typography variant="h6" gutterBottom>
+      <ProcessSection>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6">
             <ReceiptIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-            Счета ({request.invoices.length})
+            Счета ({request.invoicesCount || 0})
           </Typography>
-          {request.invoices.map((invoice) => (
+          {(!request.invoices || request.invoices.length === 0) && (
+            <Button
+              variant="contained"
+              startIcon={<ReceiptIcon />}
+              onClick={() => window.open(`/invoices/new?requestId=${request.requestId}&requestNumber=${encodeURIComponent(request.requestNumber)}`, '_blank')}
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: 'primary.dark'
+                }
+              }}
+            >
+              Создать счет
+            </Button>
+          )}
+        </Box>
+        
+        {request.invoices && request.invoices.length > 0 ? (
+          request.invoices.map((invoice) => (
             <Card key={invoice.invoiceId} sx={{ mb: 2 }}>
               <CardContent>
                 <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -588,90 +600,27 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
                 </Collapse>
               </CardContent>
             </Card>
-          ))}
-        </ProcessSection>
-      )}
-
-      {/* Поставки */}
-      {request.deliveries && request.deliveries.length > 0 && (
-        <ProcessSection>
-          <Typography variant="h6" gutterBottom>
-            <DeliveryIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
-            Поставки ({request.deliveries.length})
-          </Typography>
-          {request.deliveries.map((delivery) => (
-            <Card key={delivery.deliveryId} sx={{ mb: 2 }}>
-              <CardContent>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                  <Box>
-                    <Typography variant="h6">
-                      Поставка по Заявке № {request.requestNumber}
-                    </Typography>
-                    <Typography variant="body2" color="textSecondary">
-                      {formatDate(delivery.deliveryDate)} • {delivery.supplierName}
-                    </Typography>
-                  </Box>
-                  <Box display="flex" alignItems="center" gap={1}>
-                    <StatusChip
-                      label={getStatusLabel(delivery.status)}
-                      status={delivery.status}
-                      icon={<DeliveryIcon />}
-                    />
-                    <IconButton onClick={() => handleDeliveryExpand(delivery.deliveryId)}>
-                      {expandedDeliveries.includes(delivery.deliveryId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                    </IconButton>
-                  </Box>
-                </Box>
-
-                <Typography variant="body1" color="primary" gutterBottom>
-                  {formatCurrency(delivery.totalAmount)}
-                </Typography>
-
-                <Collapse in={expandedDeliveries.includes(delivery.deliveryId)}>
-                  <Divider sx={{ my: 2 }} />
-                  {delivery.receipts && delivery.receipts.length > 0 && (
-                    <Box>
-                                              <Typography variant="subtitle1" gutterBottom>
-                          Поступления по поставке
-                        </Typography>
-                        <TableContainer component={Paper} variant="outlined">
-                          <Table size="small">
-                            <TableHead>
-                              <TableRow>
-                                <TableCell>Номер поступления</TableCell>
-                                <TableCell>Дата</TableCell>
-                                <TableCell>Статус</TableCell>
-                                <TableCell align="right">Сумма</TableCell>
-                              </TableRow>
-                            </TableHead>
-                            <TableBody>
-                              {delivery.receipts.map((receipt) => (
-                                <TableRow key={receipt.receiptId}>
-                                  <TableCell>{receipt.receiptNumber}</TableCell>
-                                  <TableCell>{formatDate(receipt.receiptDate)}</TableCell>
-                                  <TableCell>
-                                    <StatusChip
-                                      label={getStatusLabel(receipt.status)}
-                                      status={receipt.status}
-                                      size="small"
-                                    />
-                                  </TableCell>
-                                  <TableCell align="right">
-                                  {formatCurrency(receipt.totalAmount)}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </TableContainer>
-                    </Box>
-                  )}
-                </Collapse>
-              </CardContent>
-            </Card>
-          ))}
-        </ProcessSection>
-      )}
+          ))
+        ) : (
+          <Box 
+            sx={{ 
+              p: 3, 
+              border: '2px dashed #ccc', 
+              borderRadius: 1, 
+              textAlign: 'center',
+              bgcolor: 'grey.50'
+            }}
+          >
+            <ReceiptIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Счета не созданы
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+              Создайте счет для заявки №{request.requestNumber}
+            </Typography>
+          </Box>
+        )}
+      </ProcessSection>
     </Box>
   );
-} 
+}

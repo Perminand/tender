@@ -488,6 +488,13 @@ const App: React.FC = () => (
           </Layout>
         </ProtectedRoute>
       } />
+      <Route path="/deliveries/:id/edit" element={
+        <ProtectedRoute>
+          <Layout>
+            <DeliveryEditPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
       <Route path="/payments" element={
         <ProtectedRoute>
           <Layout>

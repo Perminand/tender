@@ -49,7 +49,7 @@ const PaymentDetailPage: React.FC = () => {
 
   const handleConfirm = async () => {
     try {
-      const response = await api.post(`/payments/${id}/confirm`);
+      const response = await api.post(`/api/payments/${id}/confirm`);
       if (response.ok) {
         showSnackbar('Платеж подтвержден', 'success');
         setConfirmDialogOpen(false);

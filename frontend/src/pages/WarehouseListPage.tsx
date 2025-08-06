@@ -108,7 +108,7 @@ const WarehouseListPage: React.FC = () => {
     }
     try {
       if (editingWarehouse) {
-        await api.put(`/warehouses/${editingWarehouse.id}`, formData);
+        await api.put(`/api/warehouses/${editingWarehouse.id}`, formData);
         setSnackbar({open: true, message: 'Склад успешно обновлён', severity: 'success'});
       } else {
         await api.post('/warehouses', formData);
@@ -126,7 +126,7 @@ const WarehouseListPage: React.FC = () => {
       return;
     }
     try {
-      await api.delete(`/warehouses/${id}`);
+              await api.delete(`/api/warehouses/${id}`);
       setSnackbar({open: true, message: 'Склад успешно удалён', severity: 'success'});
       fetchWarehouses();
     } catch (error) {

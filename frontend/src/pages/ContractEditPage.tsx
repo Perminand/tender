@@ -230,6 +230,14 @@ const ContractEditPage: React.FC = () => {
       const selectedProposal = proposalsData.find((p: SupplierProposal) => p.supplierId === supplierId);
       console.log('fetchTenderData - selectedProposal:', selectedProposal);
       
+      // Логируем позиции предложения для отладки единиц измерения
+      if (selectedProposal && selectedProposal.proposalItems) {
+        console.log('Позиции предложения с единицами измерения:');
+        selectedProposal.proposalItems.forEach((item: any, index: number) => {
+          console.log(`Позиция ${index + 1}: ${item.description} - Ед.изм.: ${item.unitName}`);
+        });
+      }
+      
       // Устанавливаем данные по умолчанию
       const startDate = dayjs();
       const endDate = startDate.add(1, 'year');
@@ -597,7 +605,7 @@ const ContractEditPage: React.FC = () => {
                                 <TableCell>{item.brand} {item.model}</TableCell>
                                 <TableCell>{item.manufacturer}</TableCell>
                                 <TableCell>{item.quantity}</TableCell>
-                                <TableCell>{item.unitName}</TableCell>
+                                <TableCell>{item.unitName || 'Не указано'}</TableCell>
                                 <TableCell>{item.unitPrice?.toLocaleString()} ₽</TableCell>
                                 <TableCell>{item.totalPrice?.toLocaleString()} ₽</TableCell>
                                 <TableCell>{item.deliveryPeriod}</TableCell>
