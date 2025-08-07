@@ -59,6 +59,7 @@ const DeliveryEditPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const params = new URLSearchParams(location.search);
   const contractId = params.get('contractId');
+  const invoiceId = params.get('invoiceId');
   
   const isEditMode = !!id;
 
@@ -76,30 +77,43 @@ const DeliveryEditPage: React.FC = () => {
   const [delivery, setDelivery] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
+  // Загрузка базовых данных (контракты, поставщики, склады)
   useEffect(() => {
-    api.get('/api/contracts').then(res => setContracts(res.data));
-    api.get('/api/companies?role=SUPPLIER').then(res => setSuppliers(res.data));
-    api.get('/api/warehouses').then(res => setWarehouses(Array.isArray(res.data) ? res.data : []));
+    const loadBasicData = async () => {
+      try {
+        const [contractsRes, suppliersRes, warehousesRes] = await Promise.all([
+          api.get('/api/contracts'),
+          api.get('/api/companies?role=SUPPLIER'),
+          api.get('/api/warehouses')
+        ]);
+        
+        setContracts(contractsRes.data);
+        setSuppliers(suppliersRes.data);
+        setWarehouses(Array.isArray(warehousesRes.data) ? warehousesRes.data : []);
+      } catch (error) {
+        console.error('Error loading basic data:', error);
+      }
+    };
+    
+    loadBasicData();
   }, []);
 
-  // Загрузка существующей поставки для редактирования
+  // Загрузка данных из счета, если передан invoiceId
   useEffect(() => {
-    if (isEditMode && id) {
-      setLoading(true);
-      api.get(`/api/deliveries/${id}`)
+    if (invoiceId && !isEditMode) {
+      console.log('Loading invoice data for invoiceId:', invoiceId);
+      api.get(`/api/invoices/${invoiceId}`)
         .then(res => {
-          console.log('Delivery data:', res.data);
-          setDelivery(res.data);
+          console.log('Invoice data:', res.data);
+          const invoice = res.data;
           
-          // Заполняем поля формы данными поставки
-          if (res.data.plannedDate) {
-            setPlannedDate(dayjs(res.data.plannedDate));
-          }
-          if (res.data.contractId) {
-            // Загружаем контракт для существующей поставки
-            api.get(`/api/contracts/${res.data.contractId}`)
+          if (invoice.contractId) {
+            console.log('Loading contract from invoice, contractId:', invoice.contractId);
+            api.get(`/api/contracts/${invoice.contractId}`)
               .then(contractRes => {
+                console.log('Contract data from invoice:', contractRes.data);
                 setContract(contractRes.data);
                 if (contractRes.data.tender?.awardedSupplierId) {
                   setSelectedSupplierId(contractRes.data.tender.awardedSupplierId);
@@ -107,54 +121,108 @@ const DeliveryEditPage: React.FC = () => {
                 if (contractRes.data.warehouseId) {
                   setSelectedWarehouseId(contractRes.data.warehouseId);
                 }
+                
+                // Загружаем позиции контракта
+                setLoadingItems(true);
+                api.get(`/api/contracts/${invoice.contractId}/items`)
+                  .then(itemsRes => {
+                    console.log('Contract items from invoice:', itemsRes.data);
+                    setContractItems(itemsRes.data);
+                    
+                    // Создаем позиции поставки на основе позиций контракта
+                    const newDeliveryItems = itemsRes.data.map((item: ContractItem, idx: number) => ({
+                      contractItemId: item.id,
+                      materialId: item.materialId,
+                      materialName: item.materialName,
+                      description: item.description,
+                      itemNumber: idx + 1,
+                      orderedQuantity: 0,
+                      unitId: item.unitId,
+                      unitName: item.unitName,
+                      unitPrice: item.unitPrice,
+                      totalPrice: 0,
+                      acceptanceStatus: 'PENDING',
+                    }));
+                    setDeliveryItems(newDeliveryItems);
+                  })
+                  .catch(error => {
+                    console.error('Error loading contract items from invoice:', error);
+                  })
+                  .finally(() => {
+                    setLoadingItems(false);
+                  });
+              })
+              .catch(error => {
+                console.error('Error loading contract from invoice:', error);
               });
           }
         })
         .catch(error => {
-          console.error('Error loading delivery:', error);
-          setSnackbar({ open: true, message: 'Ошибка при загрузке поставки', severity: 'error' });
-        })
-        .finally(() => {
-          setLoading(false);
+          console.error('Error loading invoice:', error);
         });
     }
-  }, [isEditMode, id]);
+  }, [invoiceId, isEditMode]);
 
-  // Подгружаем контракт и его позиции
+  // Загрузка существующей поставки для редактирования
   useEffect(() => {
-    const targetContractId = isEditMode && delivery?.contractId ? delivery.contractId : contractId;
-    
-    if (targetContractId) {
-      console.log('Loading contract data for contractId:', targetContractId);
-      api.get(`/api/contracts/${targetContractId}`)
-        .then(res => {
-          console.log('Contract data:', res.data); // Отладочная информация
-          setContract(res.data);
-          if (res.data.tender?.awardedSupplierId) {
-            console.log('Awarded supplier ID:', res.data.tender.awardedSupplierId); // Отладочная информация
-            setSelectedSupplierId(res.data.tender.awardedSupplierId);
-          }
-          if (res.data.warehouseId) setSelectedWarehouseId(res.data.warehouseId);
-        })
-        .catch(error => {
-          console.error('Error loading contract:', error);
-        });
-        
-      setLoadingItems(true);
-      api.get(`/api/contracts/${targetContractId}/items`)
-        .then(res => {
-          console.log('Contract items loaded:', res.data);
-          setContractItems(res.data);
+    if (isEditMode && id && !dataLoaded) {
+      setLoading(true);
+      console.log('Loading delivery for editing, id:', id);
+      
+      const loadDeliveryData = async () => {
+        try {
+          // Загружаем данные поставки
+          const deliveryRes = await api.get(`/api/deliveries/${id}`);
+          console.log('Delivery data loaded:', deliveryRes.data);
+          console.log('Delivery structure:', {
+            id: deliveryRes.data.id,
+            deliveryNumber: deliveryRes.data.deliveryNumber,
+            contractId: deliveryRes.data.contractId,
+            supplierId: deliveryRes.data.supplierId,
+            warehouseId: deliveryRes.data.warehouseId,
+            plannedDate: deliveryRes.data.plannedDate,
+            trackingNumber: deliveryRes.data.trackingNumber,
+            notes: deliveryRes.data.notes,
+            status: deliveryRes.data.status,
+            allKeys: Object.keys(deliveryRes.data)
+          });
+          const deliveryData = deliveryRes.data;
+          setDelivery(deliveryData);
           
-          if (isEditMode && delivery) {
-            // При редактировании загружаем существующие позиции поставки
-            api.get(`/api/deliveries/${id}/items`)
-              .then(itemsRes => {
-                console.log('Delivery items:', itemsRes.data);
-                if (itemsRes.data && itemsRes.data.length > 0) {
-                  // Создаем deliveryItems только на основе существующих позиций поставки
-                  const existingDeliveryItems = itemsRes.data.map((di: any, idx: number) => {
-                    const contractItem = res.data.find((item: ContractItem) => item.id === di.contractItemId);
+          // Заполняем поля формы данными поставки
+          if (deliveryData.plannedDate) {
+            setPlannedDate(dayjs(deliveryData.plannedDate));
+          }
+          
+            // Загружаем контракт для существующей поставки
+          if (deliveryData.contractId) {
+            console.log('Loading contract for delivery, contractId:', deliveryData.contractId);
+            const contractRes = await api.get(`/api/contracts/${deliveryData.contractId}`);
+            console.log('Contract data loaded:', contractRes.data);
+                setContract(contractRes.data);
+            
+                if (contractRes.data.tender?.awardedSupplierId) {
+                  setSelectedSupplierId(contractRes.data.tender.awardedSupplierId);
+                }
+                if (contractRes.data.warehouseId) {
+                  setSelectedWarehouseId(contractRes.data.warehouseId);
+                }
+            
+            // Загружаем позиции контракта
+            setLoadingItems(true);
+            const itemsRes = await api.get(`/api/contracts/${deliveryData.contractId}/items`);
+            console.log('Contract items loaded:', itemsRes.data);
+            setContractItems(itemsRes.data);
+            
+            // Загружаем существующие позиции поставки
+            try {
+              const deliveryItemsRes = await api.get(`/api/deliveries/${id}/items`);
+              console.log('Delivery items loaded:', deliveryItemsRes.data);
+              
+              if (deliveryItemsRes.data && deliveryItemsRes.data.length > 0) {
+                // Создаем deliveryItems на основе существующих позиций поставки
+                const existingDeliveryItems = deliveryItemsRes.data.map((di: any, idx: number) => {
+                  const contractItem = itemsRes.data.find((item: ContractItem) => item.id === di.contractItemId);
                     if (contractItem) {
                       return {
                         contractItemId: di.contractItemId,
@@ -162,11 +230,11 @@ const DeliveryEditPage: React.FC = () => {
                         materialName: contractItem.materialName,
                         description: contractItem.description,
                         itemNumber: idx + 1,
-                        orderedQuantity: di.quantity || 0,
+                        orderedQuantity: di.orderedQuantity || 0,
                         unitId: contractItem.unitId,
                         unitName: contractItem.unitName,
                         unitPrice: contractItem.unitPrice,
-                        totalPrice: (di.quantity || 0) * contractItem.unitPrice,
+                        totalPrice: (di.orderedQuantity || 0) * contractItem.unitPrice,
                         acceptanceStatus: di.acceptanceStatus || 'PENDING',
                       };
                     }
@@ -176,8 +244,68 @@ const DeliveryEditPage: React.FC = () => {
                   setDeliveryItems(existingDeliveryItems);
                   setOriginalDeliveryItems(existingDeliveryItems);
                 } else {
-                  // Если позиций поставки нет, создаем пустые
-                  setDeliveryItems(res.data.map((item: ContractItem, idx: number) => ({
+                // Если позиций поставки нет, создаем пустые на основе контракта
+                const emptyDeliveryItems = itemsRes.data.map((item: ContractItem, idx: number) => ({
+                  contractItemId: item.id,
+                  materialId: item.materialId,
+                  materialName: item.materialName,
+                  description: item.description,
+                  itemNumber: idx + 1,
+                  orderedQuantity: 0,
+                  unitId: item.unitId,
+                  unitName: item.unitName,
+                  unitPrice: item.unitPrice,
+                  totalPrice: 0,
+                  acceptanceStatus: 'PENDING',
+                }));
+                setDeliveryItems(emptyDeliveryItems);
+              }
+            } catch (error) {
+              console.error('Error loading delivery items:', error);
+              // Если не удалось загрузить позиции поставки, создаем пустые
+              const emptyDeliveryItems = itemsRes.data.map((item: ContractItem, idx: number) => ({
+                contractItemId: item.id,
+                materialId: item.materialId,
+                materialName: item.materialName,
+                description: item.description,
+                itemNumber: idx + 1,
+                orderedQuantity: 0,
+                unitId: item.unitId,
+                unitName: item.unitName,
+                unitPrice: item.unitPrice,
+                totalPrice: 0,
+                acceptanceStatus: 'PENDING',
+              }));
+              setDeliveryItems(emptyDeliveryItems);
+            }
+          } else {
+            console.warn('Delivery does not have contractId:', deliveryData);
+            
+            // Fallback: пытаемся найти контракт по supplierId или другим полям
+            if (deliveryData.supplierId) {
+              console.log('Attempting to find contract by supplierId:', deliveryData.supplierId);
+              try {
+                // Загружаем все контракты и ищем подходящий
+                const contractsRes = await api.get('/api/contracts');
+                const matchingContract = contractsRes.data.find((c: any) => 
+                  c.tender?.awardedSupplierId === deliveryData.supplierId
+                );
+                
+                if (matchingContract) {
+                  console.log('Found matching contract by supplierId:', matchingContract);
+                  setContract(matchingContract);
+                  setSelectedSupplierId(deliveryData.supplierId);
+                  if (matchingContract.warehouseId) {
+                    setSelectedWarehouseId(matchingContract.warehouseId);
+                  }
+                  
+                  // Загружаем позиции найденного контракта
+                  setLoadingItems(true);
+                  const itemsRes = await api.get(`/api/contracts/${matchingContract.id}/items`);
+                  setContractItems(itemsRes.data);
+                  
+                  // Создаем пустые позиции поставки
+                  const emptyDeliveryItems = itemsRes.data.map((item: ContractItem, idx: number) => ({
                     contractItemId: item.id,
                     materialId: item.materialId,
                     materialName: item.materialName,
@@ -189,17 +317,62 @@ const DeliveryEditPage: React.FC = () => {
                     unitPrice: item.unitPrice,
                     totalPrice: 0,
                     acceptanceStatus: 'PENDING',
-                  })));
+                  }));
+                  setDeliveryItems(emptyDeliveryItems);
+                } else {
+                  console.warn('No matching contract found for supplierId:', deliveryData.supplierId);
                 }
-              })
-              .catch(error => {
-                console.error('Error loading delivery items:', error);
-                // Если не удалось загрузить позиции поставки, оставляем пустой массив
-                setDeliveryItems([]);
-              });
-          } else {
-            // При создании новой поставки создаем пустые позиции
-            setDeliveryItems(res.data.map((item: ContractItem, idx: number) => ({
+              } catch (error) {
+                console.error('Error searching for contract by supplierId:', error);
+              }
+            }
+            
+            // Если не удалось найти контракт, показываем предупреждение
+            if (!deliveryData.supplierId) {
+              console.warn('Delivery has no contractId and no supplierId - cannot load contract data');
+            }
+          }
+          
+          console.log('All delivery data loaded successfully');
+          setDataLoaded(true);
+        } catch (error) {
+          console.error('Error loading delivery data:', error);
+          setSnackbar({ open: true, message: 'Ошибка при загрузке поставки', severity: 'error' });
+        } finally {
+          setLoading(false);
+          setLoadingItems(false);
+        }
+      };
+      
+      loadDeliveryData();
+    }
+  }, [isEditMode, id, dataLoaded]);
+
+  // Загрузка контракта и его позиций для создания новой поставки
+  useEffect(() => {
+    if (!isEditMode && contractId && !dataLoaded) {
+      console.log('Loading contract data for new delivery, contractId:', contractId);
+      setLoadingItems(true);
+      
+      api.get(`/api/contracts/${contractId}`)
+        .then(async (res) => {
+          console.log('Contract data for new delivery:', res.data);
+          setContract(res.data);
+          
+          if (res.data.tender?.awardedSupplierId) {
+            setSelectedSupplierId(res.data.tender.awardedSupplierId);
+          }
+          if (res.data.warehouseId) {
+            setSelectedWarehouseId(res.data.warehouseId);
+          }
+          
+          // Загружаем позиции контракта
+          const itemsRes = await api.get(`/api/contracts/${contractId}/items`);
+          console.log('Contract items for new delivery:', itemsRes.data);
+          setContractItems(itemsRes.data);
+          
+          // Создаем пустые позиции поставки
+          const newDeliveryItems = itemsRes.data.map((item: ContractItem, idx: number) => ({
               contractItemId: item.id,
               materialId: item.materialId,
               materialName: item.materialName,
@@ -211,17 +384,18 @@ const DeliveryEditPage: React.FC = () => {
               unitPrice: item.unitPrice,
               totalPrice: 0,
               acceptanceStatus: 'PENDING',
-            })));
-          }
+          }));
+          setDeliveryItems(newDeliveryItems);
+          setDataLoaded(true);
                  })
          .catch(error => {
-           console.error('Error loading contract items:', error);
+          console.error('Error loading contract for new delivery:', error);
          })
          .finally(() => {
            setLoadingItems(false);
          });
     }
-  }, [contractId, isEditMode, delivery?.contractId]);
+  }, [contractId, isEditMode, dataLoaded]);
 
   // Синхронизируем selectedWarehouseId с contract?.warehouseId после загрузки складов и контракта
   useEffect(() => {
@@ -229,6 +403,22 @@ const DeliveryEditPage: React.FC = () => {
       setSelectedWarehouseId(String(contract.warehouseId));
     }
   }, [contract, warehouses]);
+
+  // Отладочная информация
+  console.log('DeliveryEditPage render state:', {
+    isEditMode,
+    id,
+    delivery,
+    contract,
+    contractItems: contractItems.length,
+    deliveryItems: deliveryItems.length,
+    dataLoaded,
+    loading,
+    loadingItems,
+    selectedSupplierId,
+    selectedWarehouseId,
+    warehouses: warehouses.length
+  });
 
   const handleQuantityChange = (index: number, quantity: number) => {
     setDeliveryItems(prev => prev.map((item, idx) => idx === index ? {
@@ -259,18 +449,32 @@ const DeliveryEditPage: React.FC = () => {
       setSnackbar({ open: true, message: 'Укажите количество хотя бы для одной позиции', severity: 'error' });
       return;
     }
+    
     try {
+      // Определяем contractId для отправки
+      const targetContractId = isEditMode ? delivery?.contractId : contractId;
+      
+      // Проверяем, есть ли contractId для отправки
+      if (!targetContractId) {
+        setSnackbar({ 
+          open: true, 
+          message: 'Ошибка: поставка не связана с контрактом. Свяжите поставку с контрактом перед сохранением.', 
+          severity: 'error' 
+        });
+        return;
+      }
+      
       const submitData = {
         deliveryNumber: formData.get('deliveryNumber'),
-        contractId: contractId, // Уже является строкой UUID
-        supplierId: contract?.tender?.awardedSupplierId, // Используем ID поставщика из контракта
-        warehouseId: contract?.warehouseId, // Используем ID склада из контракта
+        contractId: targetContractId,
+        supplierId: contract?.tender?.awardedSupplierId || delivery?.supplierId,
+        warehouseId: contract?.warehouseId || delivery?.warehouseId,
         plannedDate: plannedDate ? plannedDate.format('YYYY-MM-DD') : null,
         trackingNumber: formData.get('trackingNumber'),
         notes: formData.get('notes'),
         deliveryItems: itemsToSubmit
       };
-      console.log('Submitting delivery data:', submitData); // Отладочная информация
+      console.log('Submitting delivery data:', submitData);
       
       let response;
       if (isEditMode && id) {
@@ -290,7 +494,7 @@ const DeliveryEditPage: React.FC = () => {
         if (response.status === 200 || response.status === 201) {
           setSnackbar({ open: true, message: 'Поставка создана', severity: 'success' });
           setTimeout(() => {
-            navigate(`/contracts/${contractId}/manage`);
+            navigate(`/contracts/${targetContractId}/manage`);
           }, 1000);
         } else {
           setSnackbar({ open: true, message: 'Ошибка при создании поставки', severity: 'error' });
@@ -328,6 +532,24 @@ const DeliveryEditPage: React.FC = () => {
     );
   }
 
+  // Показываем индикатор загрузки, если данные еще не загружены
+  if (!dataLoaded && isEditMode) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+        <Typography>Подготовка формы редактирования...</Typography>
+      </Box>
+    );
+  }
+
+  // Показываем индикатор загрузки, если контракт еще не загружен
+  if (isEditMode && delivery && !contract) {
+    return (
+      <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '200px' }}>
+        <Typography>Загрузка данных контракта...</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box sx={{ p: 3 }}>
       <Box display="flex" alignItems="center" mb={2}>
@@ -343,6 +565,14 @@ const DeliveryEditPage: React.FC = () => {
         </Typography>
       </Box>
       <Paper sx={{ p: 2, mb: 3 }}>
+        {delivery && !delivery.contractId && (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            <Typography variant="body2">
+              <strong>Внимание:</strong> Данная поставка не связана с контрактом. 
+              Некоторые поля могут быть недоступны для редактирования.
+            </Typography>
+          </Alert>
+        )}
         <form onSubmit={handleSubmit}>
           <Grid container spacing={2}>
             <Grid item xs={6}>
@@ -355,22 +585,58 @@ const DeliveryEditPage: React.FC = () => {
               />
             </Grid>
             <Grid item xs={6}>
-              <TextField label="Контракт" value={contract ? `${contract.contractNumber} | ${contract.title}` : ''} fullWidth disabled />
-            </Grid>
-            <Grid item xs={6}>
               <TextField 
-                label="Поставщик" 
+                label="Контракт" 
                 value={(() => {
-                  const supplierName = contract?.tender?.awardedSupplier?.shortName || contract?.tender?.awardedSupplier?.name || '';
-                  console.log('Supplier name:', supplierName); // Отладочная информация
-                  return supplierName;
+                  if (contract) {
+                    return `${contract.contractNumber} | ${contract.title}`;
+                  } else if (delivery && !delivery.contractId) {
+                    return 'Контракт не связан с поставкой';
+                  } else {
+                    return 'Загрузка контракта...';
+                  }
                 })()} 
                 fullWidth 
                 disabled 
               />
             </Grid>
             <Grid item xs={6}>
-              <TextField label="Склад" value={warehouses.find(w => String(w.id) === String(selectedWarehouseId))?.name || ''} fullWidth disabled />
+              <TextField 
+                label="Поставщик" 
+                value={(() => {
+                  if (contract?.tender?.awardedSupplier?.shortName || contract?.tender?.awardedSupplier?.name) {
+                    const supplierName = contract.tender.awardedSupplier.shortName || contract.tender.awardedSupplier.name;
+                    console.log('Supplier name for display:', supplierName, 'Contract:', contract, 'Contract tender:', contract?.tender);
+                  return supplierName;
+                  } else if (delivery?.supplierId) {
+                    return `Поставщик ID: ${delivery.supplierId}`;
+                  } else {
+                    return 'Поставщик не определен';
+                  }
+                })()} 
+                fullWidth 
+                disabled 
+              />
+            </Grid>
+            <Grid item xs={6}>
+              <TextField 
+                label="Склад" 
+                value={(() => {
+                  if (contract?.warehouseId) {
+                    const warehouse = warehouses.find(w => String(w.id) === String(contract.warehouseId));
+                    const warehouseName = warehouse?.name || '';
+                    console.log('Warehouse for display:', warehouseName, 'Selected warehouse ID:', selectedWarehouseId, 'Warehouses:', warehouses, 'Contract warehouse ID:', contract?.warehouseId);
+                    return warehouseName;
+                  } else if (delivery?.warehouseId) {
+                    const warehouse = warehouses.find(w => String(w.id) === String(delivery.warehouseId));
+                    return warehouse?.name || `Склад ID: ${delivery.warehouseId}`;
+                  } else {
+                    return 'Склад не определен';
+                  }
+                })()} 
+                fullWidth 
+                disabled 
+              />
             </Grid>
             <Grid item xs={6}>
               <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -455,7 +721,9 @@ const DeliveryEditPage: React.FC = () => {
                ) : (
                  <Box sx={{ p: 2, textAlign: 'center', border: '1px dashed #ccc', borderRadius: 1 }}>
                    <Typography color="textSecondary">
-                     {contract ? 'Позиции контракта не найдены' : 'Выберите контракт для загрузки позиций'}
+                     {contract ? 'Позиции контракта не найдены' : 
+                      delivery && !delivery.contractId ? 'Поставка не связана с контрактом. Позиции недоступны.' :
+                      'Выберите контракт для загрузки позиций'}
                    </Typography>
                  </Box>
                )}
@@ -470,7 +738,12 @@ const DeliveryEditPage: React.FC = () => {
                   if (isEditMode && id) {
                     navigate(`/deliveries/${id}`);
                   } else {
-                    navigate(`/contracts/${contractId}/manage`);
+                    const targetContractId = contractId || delivery?.contractId;
+                    if (targetContractId) {
+                      navigate(`/contracts/${targetContractId}/manage`);
+                    } else {
+                      navigate(-1);
+                    }
                   }
                 }}
               >

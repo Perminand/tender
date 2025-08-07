@@ -40,6 +40,26 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceDto createInvoice(InvoiceDtoNew invoiceDtoNew) {
         log.info("Создание нового счета от поставщика: {}", invoiceDtoNew);
         
+        // Детальное логирование элементов счета
+        if (invoiceDtoNew.getInvoiceItems() != null) {
+            log.info("Количество элементов счета: {}", invoiceDtoNew.getInvoiceItems().size());
+            for (int i = 0; i < invoiceDtoNew.getInvoiceItems().size(); i++) {
+                InvoiceItemDtoNew item = invoiceDtoNew.getInvoiceItems().get(i);
+                log.info("Элемент {}: materialId={}, unitId={}, description={}, quantity={}, unitPrice={}", 
+                        i + 1, item.getMaterialId(), item.getUnitId(), item.getDescription(), 
+                        item.getQuantity(), item.getUnitPrice());
+                
+                // Проверяем, есть ли unitId
+                if (item.getUnitId() == null) {
+                    log.warn("Элемент {} не имеет unitId! description={}", i + 1, item.getDescription());
+                } else {
+                    log.info("Элемент {} имеет unitId: {}", i + 1, item.getUnitId());
+                }
+            }
+        } else {
+            log.warn("Счет не содержит элементов!");
+        }
+        
         // Проверяем существование связанных сущностей
         Contract contract = null;
         if (invoiceDtoNew.getContractId() != null) {
@@ -90,10 +110,18 @@ public class InvoiceServiceImpl implements InvoiceService {
                 item.setDescription(itemDto.getDescription());
                 item.setQuantity(itemDto.getQuantity());
                 
+                // Логируем информацию о единицах измерения
+                log.info("Создание элемента счета: unitId={}, unitName={}", 
+                        itemDto.getUnitId(), 
+                        itemDto.getUnitId() != null ? "будет загружена" : "null");
+                
                 if (itemDto.getUnitId() != null) {
                     Unit unit = unitRepository.findById(itemDto.getUnitId())
                             .orElseThrow(() -> new ResourceNotFoundException("Единица измерения не найдена: " + itemDto.getUnitId()));
                     item.setUnit(unit);
+                    log.info("Установлена единица измерения: {} ({})", unit.getName(), unit.getId());
+                } else {
+                    log.warn("unitId не указан для элемента счета: {}", itemDto.getDescription());
                 }
                 
                 item.setUnitPrice(itemDto.getUnitPrice());
@@ -121,7 +149,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     @Transactional(readOnly = true)
     public InvoiceDto getInvoiceById(UUID id) {
         log.info("Получение счета по id: {}", id);
-        Invoice invoice = invoiceRepository.findById(id)
+        Invoice invoice = invoiceRepository.findByIdWithItemsAndUnits(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Счет не найден: " + id));
         
         InvoiceDto dto = InvoiceDto.fromEntity(invoice);
@@ -185,7 +213,7 @@ public class InvoiceServiceImpl implements InvoiceService {
     public InvoiceDto updateInvoice(UUID id, InvoiceDtoUpdate invoiceDtoUpdate) {
         log.info("Обновление счета: {} с данными: {}", id, invoiceDtoUpdate);
         
-        Invoice invoice = invoiceRepository.findById(id)
+        Invoice invoice = invoiceRepository.findByIdWithItemsAndUnits(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Счет не найден: " + id));
         
         // Обновляем основные поля
@@ -332,6 +360,11 @@ public class InvoiceServiceImpl implements InvoiceService {
     }
 
     private InvoiceItemDto mapInvoiceItemToDto(InvoiceItem item) {
+        log.info("Маппинг InvoiceItem {}: unit={}, unitName={}", 
+                item.getId(), 
+                item.getUnit(), 
+                item.getUnit() != null ? item.getUnit().getName() : "null");
+        
         InvoiceItemDto dto = new InvoiceItemDto();
         dto.setId(item.getId());
         dto.setInvoiceId(item.getInvoice().getId());
@@ -351,6 +384,8 @@ public class InvoiceServiceImpl implements InvoiceService {
         
         dto.setUnitPrice(item.getUnitPrice());
         dto.setTotalPrice(item.getTotalPrice());
+        
+        log.info("InvoiceItemDto создан: unitId={}, unitName={}", dto.getUnitId(), dto.getUnitName());
         
         return dto;
     }

@@ -11,6 +11,7 @@ public class ContractItemDto {
     private UUID materialId;
     private String materialName;
     private BigDecimal quantity;
+    private UUID unitId;
     private String unitName;
     private BigDecimal unitPrice;
     private BigDecimal totalPrice;

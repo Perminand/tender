@@ -104,11 +104,17 @@ const StatusChip = styled(Chip)<{ status: string }>(({ theme, status }) => {
       case 'PAID':
       case 'RECEIVED':
       case 'ACCEPTED':
+      case 'DELIVERED':
         return theme.palette.success.main;
       case 'IN_PROGRESS':
       case 'PARTIALLY_PAID':
       case 'PARTIALLY_RECEIVED':
       case 'UNDER_REVIEW':
+      case 'PLANNED':
+      case 'CONFIRMED':
+      case 'IN_TRANSIT':
+      case 'ARRIVED':
+      case 'PENDING':
         return theme.palette.warning.main;
       case 'CANCELLED':
       case 'REJECTED':
@@ -133,6 +139,8 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   const [expandedTenders, setExpandedTenders] = useState<string[]>([]);
   const [expandedProposals, setExpandedProposals] = useState<string[]>([]);
   const [expandedContracts, setExpandedContracts] = useState<string[]>([]);
+  const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
+  const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
 
 
   // Логируем данные заявки для отладки
@@ -147,6 +155,35 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   console.log('RequestProcessMatryoshka - request:', request);
   console.log('RequestProcessMatryoshka - tenders:', request.tenders);
   console.log('RequestProcessMatryoshka - tendersCount:', request.tendersCount);
+  console.log('RequestProcessMatryoshka - invoices:', request.invoices);
+  console.log('RequestProcessMatryoshka - invoicesCount:', request.invoicesCount);
+  if (request.invoices && request.invoices.length > 0) {
+    console.log('Детали счетов:', request.invoices.map(invoice => ({
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceItems: invoice.invoiceItems,
+      invoiceItemsCount: invoice.invoiceItems?.length || 0
+    })));
+    
+    // Детальное логирование каждого счета
+    request.invoices.forEach(invoice => {
+      console.log('Счет:', invoice.invoiceNumber, 'полные данные:', JSON.stringify(invoice, null, 2));
+      if (invoice.invoiceItems) {
+        invoice.invoiceItems.forEach((item, index) => {
+          console.log(`Элемент ${index + 1} счета ${invoice.invoiceNumber}:`, {
+            materialName: item.materialName,
+            quantity: item.quantity,
+            unitName: item.unitName,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice
+          });
+        });
+      }
+    });
+  }
+  console.log('RequestProcessMatryoshka - contracts:', request.contracts);
+  console.log('RequestProcessMatryoshka - contractsCount:', request.contractsCount);
+  console.log('RequestProcessMatryoshka - deliveries:', request.deliveries);
+  console.log('RequestProcessMatryoshka - deliveriesCount:', request.deliveriesCount);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -216,6 +253,22 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
         return 'Отклонено';
       case 'WITHDRAWN':
         return 'Отозвано';
+      // Статусы поставок
+      case 'PLANNED':
+        return 'Запланирована';
+      case 'CONFIRMED':
+        return 'Подтверждена';
+      case 'IN_TRANSIT':
+        return 'В пути';
+      case 'ARRIVED':
+        return 'Прибыла';
+      case 'DELIVERED':
+        return 'Доставлена';
+      case 'PARTIALLY_ACCEPTED':
+        return 'Частично принята';
+      // Статусы приемки
+      case 'PENDING':
+        return 'Ожидает приемки';
       default:
         return status;
     }
@@ -293,6 +346,26 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
 
   const handleViewProposals = (tenderId: string) => {
     window.open(`/proposals?tenderId=${tenderId}`, '_blank');
+  };
+
+  const handleInvoiceClick = (invoiceId: string) => {
+    setExpandedInvoices(prev => 
+      prev.includes(invoiceId) 
+        ? prev.filter(id => id !== invoiceId)
+        : [...prev, invoiceId]
+    );
+  };
+
+  const handleViewInvoiceDetail = (invoiceId: string) => {
+    window.open(`/invoices/${invoiceId}`, '_blank');
+  };
+
+  const handleDeliveryClick = (deliveryId: string) => {
+    setExpandedDeliveries(prev => 
+      prev.includes(deliveryId) 
+        ? prev.filter(id => id !== deliveryId)
+        : [...prev, deliveryId]
+    );
   };
 
   return (
@@ -860,6 +933,463 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                   }}
                                 >
                                   Создать счет
+                                </Button>
+                              </Box>
+                            </Grid>
+
+                          </Grid>
+                        </Paper>
+
+
+                      </Box>
+                    </Collapse>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {/* Счета */}
+            {request.invoices && request.invoices.length > 0 && (
+              <Box mb={2}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Счета ({request.invoices.length})
+                </Typography>
+                {request.invoices.map((invoice) => (
+                  <Box key={invoice.invoiceId}>
+                    <NestedStep 
+                      color={getStepColor('invoice', 1)}
+                      onClick={() => handleInvoiceClick(invoice.invoiceId)}
+                    >
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <ReceiptIcon />
+                        <Box>
+                          <Typography variant="body1">
+                            Счет {invoice.invoiceNumber}
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatDate(invoice.invoiceDate)} • {request.project} • {request.location || 'Склад не указан'} • {invoice.supplierName}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            Срок оплаты: {formatDate(invoice.dueDate)}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography variant="body2">
+                          {formatCurrency(invoice.totalAmount)}
+                        </Typography>
+                        <StatusChip
+                          label={getStatusLabel(invoice.status)}
+                          status={invoice.status}
+                          size="small"
+                        />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewInvoiceDetail(invoice.invoiceId);
+                          }}
+                          sx={{ 
+                            minWidth: 'auto', 
+                            px: 1, 
+                            py: 0.5,
+                            fontSize: '0.75rem',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            '&:hover': {
+                              borderColor: 'primary.dark',
+                              bgcolor: 'primary.50'
+                            }
+                          }}
+                        >
+                          Просмотр
+                        </Button>
+
+                        <IconButton size="small">
+                          {expandedInvoices.includes(invoice.invoiceId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        </IconButton>
+                      </Box>
+                    </NestedStep>
+
+                    {/* Детали счета */}
+                    <Collapse in={expandedInvoices.includes(invoice.invoiceId)}>
+                      <Box ml={3}>
+                        {/* Информация о счете */}
+                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Детали счета
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Поставщик
+                              </Typography>
+                              <Typography variant="body2">
+                                {invoice.supplierName}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                Контакт: {invoice.supplierContact} • {formatPhone(invoice.supplierPhone)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Финансы
+                              </Typography>
+                              <Typography variant="body2">
+                                Общая сумма: {formatCurrency(invoice.totalAmount)}
+                              </Typography>
+                              <Typography variant="body2">
+                                Оплачено: {formatCurrency(invoice.paidAmount)}
+                              </Typography>
+                              <Typography variant="body2">
+                                Остаток: {formatCurrency(invoice.remainingAmount)}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                Статус: {getStatusLabel(invoice.status)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12}>
+                              <Typography variant="caption" color="textSecondary">
+                                Срок оплаты
+                              </Typography>
+                              <Typography variant="body2">
+                                {formatDate(invoice.dueDate)}
+                              </Typography>
+                            </Grid>
+                            {invoice.paymentTerms && (
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="textSecondary">
+                                  Условия оплаты
+                                </Typography>
+                                <Typography variant="body2">
+                                  {invoice.paymentTerms}
+                                </Typography>
+                              </Grid>
+                            )}
+                            {invoice.notes && (
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="textSecondary">
+                                  Примечания
+                                </Typography>
+                                <Typography variant="body2">
+                                  {invoice.notes}
+                                </Typography>
+                              </Grid>
+                            )}
+                            
+                            {/* Материалы счета */}
+                            {(() => {
+                              console.log('Проверка материалов счета:', {
+                                invoiceNumber: invoice.invoiceNumber,
+                                hasInvoiceItems: !!invoice.invoiceItems,
+                                invoiceItemsLength: (invoice.invoiceItems || []).length,
+                                invoiceItems: invoice.invoiceItems,
+                                shouldShow: invoice.invoiceItems && invoice.invoiceItems.length > 0
+                              });
+                              
+                              if (invoice.invoiceItems) {
+                                invoice.invoiceItems.forEach((item, index) => {
+                                  console.log(`Проверка элемента ${index + 1}:`, {
+                                    materialName: item.materialName,
+                                    quantity: item.quantity,
+                                    unitName: item.unitName,
+                                    unitPrice: item.unitPrice
+                                  });
+                                });
+                              }
+                              return (invoice.invoiceItems || []).length > 0;
+                            })() && (
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                  Материалы счета ({invoice.invoiceItems.length})
+                                </Typography>
+                                <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1 }}>
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>№</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Материал</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Кол-во</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Ед.</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Цена</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Сумма</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                                                             {(invoice.invoiceItems || []).map((item, index) => {
+                                        console.log('Рендеринг элемента счета:', {
+                                          index,
+                                          item,
+                                          materialName: item.materialName,
+                                          quantity: item.quantity,
+                                          unitName: item.unitName,
+                                          unitPrice: item.unitPrice,
+                                          totalPrice: item.totalPrice
+                                        });
+                                        return (
+                                          <TableRow key={item.id || index}>
+                                            <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{index + 1}</TableCell>
+                                            <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.materialName}</TableCell>
+                                            <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.quantity}</TableCell>
+                                            <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.unitName}</TableCell>
+                                            <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.unitPrice)}</TableCell>
+                                            <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.totalPrice)}</TableCell>
+                                          </TableRow>
+                                        );
+                                      })}
+                                    </TableBody>
+                                  </Table>
+                                </Box>
+                              </Grid>
+                            )}
+                            
+                            <Grid item xs={12}>
+                              <Box display="flex" justifyContent="flex-end" mt={2}>
+                                <Button
+                                  variant="contained"
+                                  startIcon={<DeliveryIcon />}
+                                  onClick={() => {
+                                    // Создание поставки из счета
+                                    const params = new URLSearchParams({
+                                      invoiceId: invoice.invoiceId,
+                                      supplierName: encodeURIComponent(invoice.supplierName),
+                                      totalAmount: invoice.totalAmount.toString(),
+                                      supplierContact: encodeURIComponent(invoice.supplierContact || ''),
+                                      supplierPhone: encodeURIComponent(invoice.supplierPhone || ''),
+                                      source: 'matryoshka',
+                                      requestId: request.requestId,
+                                      requestNumber: encodeURIComponent(request.requestNumber)
+                                    });
+                                    
+                                    // Добавляем contractId, если он доступен
+                                    if (invoice.contractId) {
+                                      params.append('contractId', invoice.contractId);
+                                    }
+                                    
+                                    window.open(`/deliveries/new?${params.toString()}`, '_blank');
+                                  }}
+                                  sx={{
+                                    bgcolor: 'info.main',
+                                    color: 'white',
+                                    '&:hover': {
+                                      bgcolor: 'info.dark'
+                                    }
+                                  }}
+                                >
+                                  Создать поставку
+                                </Button>
+                              </Box>
+                            </Grid>
+
+                          </Grid>
+                        </Paper>
+
+
+                      </Box>
+                    </Collapse>
+                  </Box>
+                ))}
+              </Box>
+            )}
+
+            {/* Поставки */}
+            {request.deliveries && request.deliveries.length > 0 && (
+              <Box mb={2}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Поставки ({request.deliveries.length})
+                </Typography>
+                {request.deliveries.map((delivery) => (
+                  <Box key={delivery.deliveryId}>
+                    <NestedStep 
+                      color={getStepColor('delivery', 1)}
+                      onClick={() => handleDeliveryClick(delivery.deliveryId)}
+                    >
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <DeliveryIcon />
+                        <Box>
+                          <Typography variant="body1">
+                            Поставка {delivery.deliveryNumber}
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatDate(delivery.plannedDate)} • {request.project} • {request.location || 'Склад не указан'} • {delivery.supplierName}
+                          </Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            Контракт: {delivery.contractNumber}
+                          </Typography>
+                        </Box>
+                      </Box>
+                      <Box display="flex" alignItems="center" gap={1}>
+                        <Typography variant="body2">
+                          {formatCurrency(delivery.totalAmount)}
+                        </Typography>
+                        <StatusChip
+                          label={getStatusLabel(delivery.status)}
+                          status={delivery.status}
+                          size="small"
+                        />
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewDeliveryDetail(delivery.deliveryId);
+                          }}
+                          sx={{ 
+                            minWidth: 'auto', 
+                            px: 1, 
+                            py: 0.5,
+                            fontSize: '0.75rem',
+                            borderColor: 'primary.main',
+                            color: 'primary.main',
+                            '&:hover': {
+                              borderColor: 'primary.dark',
+                              bgcolor: 'primary.50'
+                            }
+                          }}
+                        >
+                          Просмотр
+                        </Button>
+
+                        <IconButton size="small">
+                          {expandedDeliveries.includes(delivery.deliveryId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        </IconButton>
+                      </Box>
+                    </NestedStep>
+
+                    {/* Детали поставки */}
+                    <Collapse in={expandedDeliveries.includes(delivery.deliveryId)}>
+                      <Box ml={3}>
+                        {/* Информация о поставке */}
+                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Детали поставки
+                          </Typography>
+                          <Grid container spacing={2}>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Поставщик
+                              </Typography>
+                              <Typography variant="body2">
+                                {delivery.supplierName}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                Контракт: {delivery.contractNumber}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Финансы
+                              </Typography>
+                              <Typography variant="body2">
+                                Общая сумма: {formatCurrency(delivery.totalAmount)}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                Статус: {getStatusLabel(delivery.status)}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Даты
+                              </Typography>
+                              <Typography variant="body2">
+                                Запланирована: {formatDate(delivery.plannedDate)}
+                              </Typography>
+                              {delivery.actualDate && (
+                                <Typography variant="body2">
+                                  Фактическая: {formatDate(delivery.actualDate)}
+                                </Typography>
+                              )}
+                            </Grid>
+                            <Grid item xs={6}>
+                              <Typography variant="caption" color="textSecondary">
+                                Склад
+                              </Typography>
+                              <Typography variant="body2">
+                                {delivery.warehouseName || 'Не указан'}
+                              </Typography>
+                              {delivery.trackingNumber && (
+                                <Typography variant="caption" color="textSecondary">
+                                  Трек номер: {delivery.trackingNumber}
+                                </Typography>
+                              )}
+                            </Grid>
+                            {delivery.notes && (
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="textSecondary">
+                                  Примечания
+                                </Typography>
+                                <Typography variant="body2">
+                                  {delivery.notes}
+                                </Typography>
+                              </Grid>
+                            )}
+                            
+                            {/* Материалы поставки */}
+                            {delivery.deliveryItems && delivery.deliveryItems.length > 0 && (
+                              <Grid item xs={12}>
+                                <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                  Материалы поставки ({delivery.deliveryItems.length})
+                                </Typography>
+                                <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1 }}>
+                                  <Table size="small">
+                                    <TableHead>
+                                      <TableRow>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>№</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Материал</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Заказано</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Доставлено</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Принято</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Ед.</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Цена</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Сумма</TableCell>
+                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Статус</TableCell>
+                                      </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                      {delivery.deliveryItems.map((item, index) => (
+                                        <TableRow key={item.id || index}>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{index + 1}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.materialName}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.orderedQuantity}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.deliveredQuantity || 0}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.acceptedQuantity || 0}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.unitName}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.unitPrice)}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.totalPrice)}</TableCell>
+                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>
+                                            <StatusChip
+                                              label={getStatusLabel(item.acceptanceStatus || 'PENDING')}
+                                              status={item.acceptanceStatus || 'PENDING'}
+                                              size="small"
+                                            />
+                                          </TableCell>
+                                        </TableRow>
+                                      ))}
+                                    </TableBody>
+                                  </Table>
+                                </Box>
+                              </Grid>
+                            )}
+                            
+                            <Grid item xs={12}>
+                              <Box display="flex" justifyContent="flex-end" mt={2}>
+                                <Button
+                                  variant="contained"
+                                  startIcon={<CheckCircleIcon />}
+                                  onClick={() => {
+                                    // Управление статусом поставки
+                                    window.open(`/deliveries/${delivery.deliveryId}`, '_blank');
+                                  }}
+                                  sx={{
+                                    bgcolor: 'success.main',
+                                    color: 'white',
+                                    '&:hover': {
+                                      bgcolor: 'success.dark'
+                                    }
+                                  }}
+                                >
+                                  Управление статусом
                                 </Button>
                               </Box>
                             </Grid>

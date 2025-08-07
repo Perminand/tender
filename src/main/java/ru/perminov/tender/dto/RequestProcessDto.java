@@ -140,13 +140,32 @@ public class RequestProcessDto {
     public static class DeliveryProcessDto {
         private UUID deliveryId;
         private String deliveryNumber;
-        private LocalDate deliveryDate;
+        private LocalDate plannedDate;
+        private LocalDate actualDate;
         private UUID contractId;
         private String contractNumber;
         private String supplierName;
+        private String warehouseName;
         private String status;
         private BigDecimal totalAmount;
+        private String trackingNumber;
+        private String notes;
+        private List<DeliveryItemDto> deliveryItems;
         private List<ReceiptProcessDto> receipts;
+    }
+
+    @Data
+    public static class DeliveryItemDto {
+        private UUID id;
+        private String materialName;
+        private BigDecimal orderedQuantity;
+        private BigDecimal deliveredQuantity;
+        private BigDecimal acceptedQuantity;
+        private BigDecimal rejectedQuantity;
+        private String unitName;
+        private BigDecimal unitPrice;
+        private BigDecimal totalPrice;
+        private String acceptanceStatus;
     }
     
     @Data

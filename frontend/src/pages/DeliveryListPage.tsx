@@ -350,13 +350,11 @@ const DeliveryListPage: React.FC = () => {
   };
 
   const handleCreate = () => {
-    setEditingDelivery(null);
-    setDialogOpen(true);
+    navigate('/deliveries/new');
   };
 
   const handleEdit = (delivery: Delivery) => {
-    setEditingDelivery(delivery);
-    setDialogOpen(true);
+    navigate(`/deliveries/${delivery.id}/edit`);
   };
 
   const handleDelete = async (id: number) => {

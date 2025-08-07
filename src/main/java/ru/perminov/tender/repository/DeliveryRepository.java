@@ -22,7 +22,15 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, JpaSp
     /**
      * Найти поставки по контракту
      */
-    List<Delivery> findByContractId(UUID contractId);
+    @Query("SELECT d FROM Delivery d " +
+           "LEFT JOIN FETCH d.contract " +
+           "LEFT JOIN FETCH d.supplier " +
+           "LEFT JOIN FETCH d.warehouse " +
+           "LEFT JOIN FETCH d.deliveryItems di " +
+           "LEFT JOIN FETCH di.material " +
+           "LEFT JOIN FETCH di.unit " +
+           "WHERE d.contract.id = :contractId")
+    List<Delivery> findByContractId(@Param("contractId") UUID contractId);
     
     /**
      * Найти поставки по контракту (через связь)
@@ -94,6 +102,9 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, JpaSp
            "LEFT JOIN FETCH c.tender t " +
            "LEFT JOIN FETCH t.request r " +
            "LEFT JOIN FETCH d.supplier " +
+           "LEFT JOIN FETCH d.deliveryItems di " +
+           "LEFT JOIN FETCH di.material " +
+           "LEFT JOIN FETCH di.unit " +
            "WHERE r.id = :requestId")
     List<Delivery> findByContractTenderRequestId(@Param("requestId") UUID requestId);
 } 

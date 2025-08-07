@@ -168,17 +168,26 @@ const InvoiceEditPage: React.FC = () => {
         const loadContractItems = async () => {
           try {
             const response = await api.get(`/api/contracts/${contractId}/items`);
-            const contractItemsData = response.data.map((item: any) => ({
-              id: '',
-              materialId: item.materialId,
-              materialName: item.materialName,
-              quantity: item.quantity,
-              unitId: item.unitId,
-              unitName: item.unitName,
-              unitPrice: item.unitPrice,
-              totalPrice: item.quantity * item.unitPrice,
-              description: item.description
-            }));
+            console.log('Загружены материалы контракта:', response.data);
+            
+            const contractItemsData = response.data.map((item: any) => {
+              const mappedItem = {
+                id: '',
+                materialId: item.materialId,
+                materialName: item.materialName,
+                quantity: item.quantity,
+                unitId: item.unitId,
+                unitName: item.unitName,
+                unitPrice: item.unitPrice,
+                totalPrice: item.quantity * item.unitPrice,
+                description: item.description
+              };
+              console.log('Маппинг элемента контракта:', {
+                original: item,
+                mapped: mappedItem
+              });
+              return mappedItem;
+            });
             setContractItems(contractItemsData);
             
             // Автоматически добавляем материалы контракта в счет
@@ -267,6 +276,14 @@ const InvoiceEditPage: React.FC = () => {
       const response = await api.get(`/api/invoices/${id}`);
       const invoiceData = response.data;
       console.log('Загруженные данные счета:', invoiceData);
+      console.log('Детали элементов счета:', invoiceData.invoiceItems?.map((item: any, index: number) => ({
+        index,
+        materialName: item.materialName,
+        quantity: item.quantity,
+        unitName: item.unitName,
+        unitPrice: item.unitPrice,
+        totalPrice: item.totalPrice
+      })));
       setInvoice(invoiceData);
       
       // Загружаем позиции счета
@@ -343,6 +360,27 @@ const InvoiceEditPage: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
+
+    console.log('Отправляем данные счета на бэкенд:', {
+      invoice,
+      invoiceItems: invoice.invoiceItems,
+      invoiceItemsCount: invoice.invoiceItems?.length || 0
+    });
+
+    // Детальное логирование элементов счета
+    if (invoice.invoiceItems) {
+      console.log('Детали элементов счета:');
+      invoice.invoiceItems.forEach((item, index) => {
+        console.log(`Элемент ${index + 1}:`, {
+          materialId: item.materialId,
+          unitId: item.unitId,
+          unitName: item.unitName,
+          materialName: item.materialName,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        });
+      });
+    }
 
     try {
       if (isEditMode) {

@@ -254,7 +254,7 @@ public class ContractServiceImpl implements ContractService {
 
     @Override
     public List<ContractItemDto> getContractItems(UUID contractId) {
-        List<ContractItem> items = contractItemRepository.findByContractId(contractId);
+        List<ContractItem> items = contractItemRepository.findByContractIdWithUnitsAndMaterials(contractId);
         return items.stream().map(item -> {
             ContractItemDto dto = new ContractItemDto();
             dto.setId(item.getId());
@@ -262,10 +262,18 @@ public class ContractServiceImpl implements ContractService {
             dto.setMaterialId(item.getMaterial() != null ? item.getMaterial().getId() : null);
             dto.setMaterialName(item.getMaterial() != null ? item.getMaterial().getName() : "");
             dto.setQuantity(item.getQuantity());
+            dto.setUnitId(item.getUnit() != null ? item.getUnit().getId() : null);
             dto.setUnitName(item.getUnit() != null ? item.getUnit().getName() : "");
             dto.setUnitPrice(item.getUnitPrice());
             dto.setTotalPrice(item.getTotalPrice());
             dto.setDescription(item.getDescription());
+            
+            // Логируем информацию о единицах измерения
+            log.info("ContractItem {}: unitId={}, unitName={}", 
+                    item.getId(), 
+                    dto.getUnitId(), 
+                    dto.getUnitName());
+            
             return dto;
         }).collect(Collectors.toList());
     }

@@ -115,10 +115,16 @@ public class RequestProcessService {
         log.info("Загружаем счета для {} контрактов", contracts.size());
         for (Contract contract : contracts) {
             log.info("Поиск счетов для контракта: {} ({})", contract.getContractNumber(), contract.getId());
-            List<Invoice> contractInvoices = invoiceRepository.findByContractId(contract.getId());
+            List<Invoice> contractInvoices = invoiceRepository.findByContractIdWithItemsAndUnits(contract.getId());
             log.info("Найдено {} счетов для контракта {}", contractInvoices.size(), contract.getContractNumber());
             invoices.addAll(contractInvoices);
         }
+        
+        // Также загружаем счета, напрямую связанные с заявкой
+        List<Invoice> requestInvoices = invoiceRepository.findByRequestIdWithItemsAndUnits(requestId);
+        log.info("Найдено {} счетов, напрямую связанных с заявкой {}", requestInvoices.size(), requestId);
+        invoices.addAll(requestInvoices);
+        
         log.info("Всего найдено {} счетов для заявки {}", invoices.size(), requestId);
         dto.setInvoicesCount(invoices.size());
         dto.setInvoices(invoices.stream().map(this::mapInvoiceToDto).collect(Collectors.toList()));
@@ -262,10 +268,27 @@ public class RequestProcessService {
         dto.setNotes(invoice.getNotes());
 
         // Загружаем материалы счета
+        log.info("Загружаем материалы счета {}: количество элементов: {}", 
+                invoice.getInvoiceNumber(), invoice.getInvoiceItems().size());
+        
         List<RequestProcessDto.InvoiceItemDto> invoiceItems = invoice.getInvoiceItems().stream()
                 .map(this::mapInvoiceItemToDto)
                 .collect(Collectors.toList());
         dto.setInvoiceItems(invoiceItems);
+        
+        log.info("Материалы счета {} загружены: {}", 
+                invoice.getInvoiceNumber(), 
+                invoiceItems.stream().map(item -> item.getMaterialName() + " (ед.изм.: " + item.getUnitName() + ")").collect(Collectors.joining(", ")));
+        
+        // Детальное логирование каждого элемента
+        for (RequestProcessDto.InvoiceItemDto item : invoiceItems) {
+            log.info("Элемент счета {}: materialName={}, unitName={}, quantity={}, unitPrice={}", 
+                    invoice.getInvoiceNumber(), 
+                    item.getMaterialName(), 
+                    item.getUnitName(), 
+                    item.getQuantity(), 
+                    item.getUnitPrice());
+        }
 
         // Загружаем поступления для этого счета
         List<Receipt> receipts = receiptRepository.findByInvoiceId(invoice.getId());
@@ -280,6 +303,33 @@ public class RequestProcessService {
         dto.setMaterialName(invoiceItem.getMaterial() != null ? invoiceItem.getMaterial().getName() : 
                            (invoiceItem.getDescription() != null ? invoiceItem.getDescription() : "Материал не указан"));
         dto.setQuantity(invoiceItem.getQuantity() != null ? invoiceItem.getQuantity().doubleValue() : 0.0);
+        
+        // Логируем информацию о единицах измерения
+        log.info("Маппинг InvoiceItem {}: unit={}, unitName={}", 
+                invoiceItem.getId(), 
+                invoiceItem.getUnit(), 
+                invoiceItem.getUnit() != null ? invoiceItem.getUnit().getName() : "null");
+        
+        // Детальное логирование всех полей
+        log.info("InvoiceItem {} детали: materialName={}, quantity={}, unitPrice={}, totalPrice={}", 
+                invoiceItem.getId(),
+                invoiceItem.getMaterial() != null ? invoiceItem.getMaterial().getName() : "null",
+                invoiceItem.getQuantity(),
+                invoiceItem.getUnitPrice(),
+                invoiceItem.getTotalPrice());
+        
+        // Проверяем, есть ли единица измерения в базе данных
+        if (invoiceItem.getUnit() == null) {
+            log.warn("InvoiceItem {} не имеет единицы измерения в базе данных! materialName={}", 
+                    invoiceItem.getId(), 
+                    invoiceItem.getMaterial() != null ? invoiceItem.getMaterial().getName() : "null");
+        } else {
+            log.info("InvoiceItem {} имеет единицу измерения: {} ({})", 
+                    invoiceItem.getId(), 
+                    invoiceItem.getUnit().getName(), 
+                    invoiceItem.getUnit().getId());
+        }
+        
         dto.setUnitName(invoiceItem.getUnit() != null ? invoiceItem.getUnit().getName() : "");
         dto.setUnitPrice(invoiceItem.getUnitPrice() != null ? invoiceItem.getUnitPrice() : BigDecimal.ZERO);
         dto.setTotalPrice(invoiceItem.getTotalPrice() != null ? invoiceItem.getTotalPrice() : BigDecimal.ZERO);
@@ -292,37 +342,84 @@ public class RequestProcessService {
         RequestProcessDto.DeliveryProcessDto dto = new RequestProcessDto.DeliveryProcessDto();
         dto.setDeliveryId(delivery.getId());
         dto.setDeliveryNumber(delivery.getDeliveryNumber());
-        dto.setDeliveryDate(delivery.getDeliveryDate());
+        dto.setPlannedDate(delivery.getPlannedDeliveryDate());
+        dto.setActualDate(delivery.getActualDate());
         dto.setContractId(delivery.getContract() != null ? delivery.getContract().getId() : null);
         dto.setContractNumber(delivery.getContract() != null ? delivery.getContract().getContractNumber() : "");
         dto.setSupplierName(delivery.getSupplier() != null ? delivery.getSupplier().getName() : "");
+        dto.setWarehouseName(delivery.getWarehouse() != null ? delivery.getWarehouse().getName() : "");
         dto.setStatus(delivery.getStatus() != null ? delivery.getStatus().name() : "");
+        dto.setTrackingNumber(delivery.getTrackingNumber());
+        dto.setNotes(delivery.getNotes());
         
-        log.info("Поставка {}: дата поставки: {}, поставщик: {}, статус: {}", 
+        log.info("Поставка {}: запланированная дата: {}, фактическая дата: {}, поставщик: {}, склад: {}, статус: {}", 
                 delivery.getDeliveryNumber(), 
-                delivery.getDeliveryDate(), 
+                dto.getPlannedDate(),
+                dto.getActualDate(),
                 dto.getSupplierName(), 
+                dto.getWarehouseName(),
                 dto.getStatus());
         
         // Рассчитываем общую сумму поставки
-        BigDecimal totalAmount = delivery.getDeliveryItems().stream()
-                .map(item -> {
-                    BigDecimal quantity = item.getDeliveredQuantity() != null ? item.getDeliveredQuantity() : BigDecimal.ZERO;
-                    BigDecimal price = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
-                    return quantity.multiply(price);
-                })
-                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        log.info("Поставка {}: загружаем {} элементов поставки", 
+                delivery.getDeliveryNumber(), 
+                delivery.getDeliveryItems() != null ? delivery.getDeliveryItems().size() : 0);
+        
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        if (delivery.getDeliveryItems() != null && !delivery.getDeliveryItems().isEmpty()) {
+            totalAmount = delivery.getDeliveryItems().stream()
+                    .map(item -> {
+                        BigDecimal quantity = item.getOrderedQuantity() != null ? item.getOrderedQuantity() : BigDecimal.ZERO;
+                        BigDecimal price = item.getUnitPrice() != null ? item.getUnitPrice() : BigDecimal.ZERO;
+                        BigDecimal itemTotal = quantity.multiply(price);
+                        log.info("Элемент поставки {}: количество={}, цена={}, сумма={}", 
+                                item.getMaterial() != null ? item.getMaterial().getName() : "неизвестно",
+                                quantity, price, itemTotal);
+                        return itemTotal;
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
         dto.setTotalAmount(totalAmount);
         
         log.info("Поставка {}: количество элементов: {}, общая сумма: {}", 
                 delivery.getDeliveryNumber(), 
-                delivery.getDeliveryItems().size(), 
+                delivery.getDeliveryItems() != null ? delivery.getDeliveryItems().size() : 0, 
                 totalAmount);
+
+        // Загружаем элементы поставки
+        List<RequestProcessDto.DeliveryItemDto> deliveryItems = delivery.getDeliveryItems().stream()
+                .map(this::mapDeliveryItemToDto)
+                .collect(Collectors.toList());
+        dto.setDeliveryItems(deliveryItems);
 
         // Загружаем поступления для этой поставки
         List<Receipt> receipts = receiptRepository.findByDeliveryId(delivery.getId());
         dto.setReceipts(receipts.stream().map(this::mapReceiptToDto).collect(Collectors.toList()));
 
+        return dto;
+    }
+
+    private RequestProcessDto.DeliveryItemDto mapDeliveryItemToDto(DeliveryItem deliveryItem) {
+        RequestProcessDto.DeliveryItemDto dto = new RequestProcessDto.DeliveryItemDto();
+        dto.setId(deliveryItem.getId());
+        dto.setMaterialName(deliveryItem.getMaterial() != null ? deliveryItem.getMaterial().getName() : 
+                           (deliveryItem.getDescription() != null ? deliveryItem.getDescription() : "Материал не указан"));
+        dto.setOrderedQuantity(deliveryItem.getOrderedQuantity() != null ? deliveryItem.getOrderedQuantity() : BigDecimal.ZERO);
+        dto.setDeliveredQuantity(deliveryItem.getDeliveredQuantity());
+        dto.setAcceptedQuantity(deliveryItem.getAcceptedQuantity());
+        dto.setRejectedQuantity(deliveryItem.getRejectedQuantity());
+        dto.setUnitName(deliveryItem.getUnit() != null ? deliveryItem.getUnit().getName() : "");
+        dto.setUnitPrice(deliveryItem.getUnitPrice() != null ? deliveryItem.getUnitPrice() : BigDecimal.ZERO);
+        dto.setTotalPrice(deliveryItem.getTotalPrice() != null ? deliveryItem.getTotalPrice() : BigDecimal.ZERO);
+        dto.setAcceptanceStatus(deliveryItem.getAcceptanceStatus() != null ? deliveryItem.getAcceptanceStatus().name() : "PENDING");
+        
+        log.info("Маппинг элемента поставки: ID={}, материал={}, количество={}, цена={}, сумма={}", 
+                deliveryItem.getId(),
+                dto.getMaterialName(),
+                dto.getOrderedQuantity(),
+                dto.getUnitPrice(),
+                dto.getTotalPrice());
+        
         return dto;
     }
 
