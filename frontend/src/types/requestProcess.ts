@@ -111,31 +111,13 @@ export interface InvoiceItem {
 export interface DeliveryProcess {
   deliveryId: string;
   deliveryNumber: string;
-  plannedDate: string;
-  actualDate?: string;
+  deliveryDate: string;
   contractId?: string;
   contractNumber?: string;
   supplierName: string;
-  warehouseName?: string;
   status: string;
   totalAmount: number;
-  trackingNumber?: string;
-  notes?: string;
-  deliveryItems?: DeliveryItem[];
   receipts?: ReceiptProcess[];
-}
-
-export interface DeliveryItem {
-  id: string;
-  materialName: string;
-  orderedQuantity: number;
-  deliveredQuantity?: number;
-  acceptedQuantity?: number;
-  rejectedQuantity?: number;
-  unitName: string;
-  unitPrice: number;
-  totalPrice: number;
-  acceptanceStatus?: string;
 }
 
 export interface ReceiptProcess {
