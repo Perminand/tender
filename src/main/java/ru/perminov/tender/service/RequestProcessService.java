@@ -8,6 +8,7 @@ import ru.perminov.tender.dto.RequestProcessDto;
 import ru.perminov.tender.model.*;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.*;
+import ru.perminov.tender.model.ProposalItem;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -231,6 +232,25 @@ public class RequestProcessService {
         dto.setStatus(proposal.getStatus().name());
         dto.setTotalPrice(BigDecimal.valueOf(proposal.getTotalPrice() != null ? proposal.getTotalPrice() : 0.0));
         dto.setCurrency(proposal.getCurrency());
+        
+        // Загружаем элементы предложения
+        List<RequestProcessDto.ProposalItemDto> proposalItems = proposal.getProposalItems().stream()
+                .map(this::mapProposalItemToDto)
+                .collect(Collectors.toList());
+        dto.setProposalItems(proposalItems);
+        
+        return dto;
+    }
+    
+    private RequestProcessDto.ProposalItemDto mapProposalItemToDto(ProposalItem proposalItem) {
+        RequestProcessDto.ProposalItemDto dto = new RequestProcessDto.ProposalItemDto();
+        dto.setId(proposalItem.getId());
+        dto.setDescription(proposalItem.getDescription());
+        dto.setQuantity(proposalItem.getQuantity());
+        dto.setUnitName(proposalItem.getUnit() != null ? proposalItem.getUnit().getName() : "");
+        dto.setUnitPrice(proposalItem.getUnitPrice() != null ? BigDecimal.valueOf(proposalItem.getUnitPrice()) : BigDecimal.ZERO);
+        dto.setTotalPrice(proposalItem.getTotalPrice() != null ? BigDecimal.valueOf(proposalItem.getTotalPrice()) : BigDecimal.ZERO);
+        dto.setDeliveryPeriod(proposalItem.getDeliveryPeriod());
         return dto;
     }
 

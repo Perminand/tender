@@ -74,6 +74,18 @@ public class RequestProcessDto {
         private String status;
         private BigDecimal totalPrice;
         private String currency;
+        private List<ProposalItemDto> proposalItems;
+    }
+    
+    @Data
+    public static class ProposalItemDto {
+        private UUID id;
+        private String description;
+        private Double quantity;
+        private String unitName;
+        private BigDecimal unitPrice;
+        private BigDecimal totalPrice;
+        private String deliveryPeriod;
     }
     
     @Data

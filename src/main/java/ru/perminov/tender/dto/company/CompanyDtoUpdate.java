@@ -2,7 +2,6 @@ package ru.perminov.tender.dto.company;
 
 import jakarta.validation.constraints.Pattern;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
-import ru.perminov.tender.model.company.CompanyType;
 
 import java.util.List;
 import java.util.UUID;

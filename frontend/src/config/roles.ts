@@ -60,7 +60,8 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       '/api/contact-types/*',
       '/api/price-analysis/*',
       '/api/settings/*',
-      '/api/users/*'
+      '/api/users/*',
+      '/api/reports/*'
     ],
     features: [
       'dashboard',
@@ -125,7 +126,8 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       '/api/projects/*',
       '/api/contact-types/*',
       '/api/price-analysis/*',
-      '/api/settings/*'
+      '/api/settings/*',
+      '/api/reports/*'
     ],
     features: [
       'dashboard',
@@ -216,7 +218,8 @@ export const ROLE_PERMISSIONS: RolePermissions = {
       '/api/deliveries/*',
       '/api/invoices/*',
       '/api/documents/*',
-      '/api/notifications/*'
+      '/api/notifications/*',
+      '/api/reports/*'
     ],
     features: [
       'dashboard',

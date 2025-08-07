@@ -62,7 +62,8 @@ public final class SecurityPaths {
         "/contact-types",
         "/contact-types/**",
         "/register",
-        "/login"
+        "/login",
+        "/api/reports/**"
     };
 
     /**

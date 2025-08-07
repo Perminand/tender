@@ -41,7 +41,8 @@ import {
   Email as EmailIcon,
   AttachMoney as MoneyIcon,
   CalendarToday as CalendarIcon,
-  ArrowForward as ArrowForwardIcon
+  ArrowForward as ArrowForwardIcon,
+  FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { RequestProcess, TenderProcess, DeliveryProcess, SupplierProposal } from '../types/requestProcess';
@@ -332,6 +333,34 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
     window.open(`/requests/${requestId}`, '_blank');
   };
 
+  const handleDownloadExcelReport = async (requestId: string) => {
+    try {
+      const response = await fetch(`/api/reports/tender/${requestId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка при загрузке отчета');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `Тендерная_таблица_заявка_${request.requestNumber}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Ошибка при скачивании отчета:', error);
+      alert('Ошибка при скачивании отчета');
+    }
+  };
+
   const handleContractClick = (contractId: string) => {
     setExpandedContracts(prev => 
       prev.includes(contractId) 
@@ -417,6 +446,29 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
               }}
             >
               Просмотр
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<FileDownloadIcon />}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDownloadExcelReport(request.requestId);
+              }}
+              sx={{ 
+                minWidth: 'auto', 
+                px: 1, 
+                py: 0.5,
+                fontSize: '0.75rem',
+                borderColor: 'success.main',
+                color: 'success.main',
+                '&:hover': {
+                  borderColor: 'success.dark',
+                  bgcolor: 'success.50'
+                }
+              }}
+            >
+              Excel
             </Button>
             <IconButton size="small">
               {expandedRequest ? <ExpandLessIcon /> : <ExpandMoreIcon />}
