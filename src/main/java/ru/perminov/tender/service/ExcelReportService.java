@@ -7,8 +7,6 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import ru.perminov.tender.dto.RequestProcessDto;
-import ru.perminov.tender.dto.tender.SupplierProposalDto;
-import ru.perminov.tender.dto.tender.ProposalItemDto;
 import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.model.company.ContactPerson;
 import ru.perminov.tender.model.company.Contact;
@@ -20,9 +18,7 @@ import ru.perminov.tender.repository.company.ContactTypeRepository;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -81,7 +77,7 @@ public class ExcelReportService {
         titleCell.setCellStyle(headerStyle);
         
         // Объединяем ячейки для заголовка
-        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 19));
+        sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 6));
     }
     
     private List<SupplierInfo> collectSupplierInfo(RequestProcessDto requestProcess) {
@@ -147,37 +143,44 @@ public class ExcelReportService {
         
         for (int i = 0; i < labels.length; i++) {
             Row row = sheet.createRow(i + 2);
-            Cell labelCell = row.createCell(0);
+            Cell labelCell = row.createCell(3);
             labelCell.setCellValue(labels[i]);
             labelCell.setCellStyle(headerStyle);
             
             // Заполняем данные поставщиков
             for (int j = 0; j < suppliers.size(); j++) {
                 SupplierInfo supplier = suppliers.get(j);
-                Cell dataCell = row.createCell(j * 2 + 1);
+                Cell dataCell = row.createCell(j * 2 + 4);
+                dataStyle.setAlignment(HorizontalAlignment.CENTER);
                 dataCell.setCellStyle(dataStyle);
+
                 
                 switch (i) {
                     case 0: // Поставщик
                         dataCell.setCellValue(supplier.supplierName);
-                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 1, j * 2 + 2));
+                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 4, j * 2 + 5));
+                        row.createCell(j * 2 + 5).setCellStyle(dataStyle);
                         break;
                     case 1: // Комментарий
                         dataCell.setCellValue(""); // Пока оставляем пустым
-                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 1, j * 2 + 2));
+                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 4, j * 2 + 5));
+                        row.createCell(j * 2 + 5).setCellStyle(dataStyle);
                         break;
                     case 2: // Контакт
                         dataCell.setCellValue(supplier.contactName != null ? supplier.contactName : "");
-                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 1, j * 2 + 2));
+                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 4, j * 2 + 5));
+                        row.createCell(j * 2 + 5).setCellStyle(dataStyle);
                         break;
                     case 3: // Телефон
                         String phone = supplier.contactPhone != null ? supplier.contactPhone : supplier.phone;
-                        dataCell.setCellValue(phone != null ? phone : "");
-                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 1, j * 2 + 2));
+                        dataCell.setCellValue(phone != null ? phone.length()==10 ? "+7" + phone : phone : "");
+                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 4, j * 2 + 5));
+                        row.createCell(j * 2 + 5).setCellStyle(dataStyle);
                         break;
                     case 4: // Сайт
                         dataCell.setCellValue(""); // Пока оставляем пустым
-                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 1, j * 2 + 2));
+                        sheet.addMergedRegion(new CellRangeAddress(i + 2, i + 2, j * 2 + 4, j * 2 + 5));
+                        row.createCell(j * 2 + 5).setCellStyle(dataStyle);
                         break;
                 }
             }
@@ -187,7 +190,7 @@ public class ExcelReportService {
     private int createMaterialsTable(Sheet sheet, RequestProcessDto requestProcess, 
                                    List<SupplierInfo> suppliers, CellStyle headerStyle, 
                                    CellStyle dataStyle, CellStyle totalStyle, CellStyle highlightedStyle) {
-        int currentRow = 8; // Начинаем после информации о поставщиках
+        int currentRow = 7; // Начинаем после информации о поставщиках
         
         // Заголовки таблицы
         Row headerRow = sheet.createRow(currentRow++);
