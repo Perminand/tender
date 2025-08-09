@@ -39,7 +39,8 @@ import {
   Phone as PhoneIcon,
   Email as EmailIcon,
   AttachMoney as MoneyIcon,
-  CalendarToday as CalendarIcon
+  CalendarToday as CalendarIcon,
+  LocalShipping as DeliveryIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 
@@ -223,18 +224,11 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      // Статусы заявок
       case 'DRAFT':
         return 'Черновик';
-      case 'PUBLISHED':
-        return 'Опубликован';
-      case 'BIDDING':
-        return 'Прием предложений';
-      case 'EVALUATION':
-        return 'Оценка';
-      case 'AWARDED':
-        return 'Присужден';
-      case 'CANCELLED':
-        return 'Отменен';
+      case 'SAVED':
+        return 'Сохранено';
       case 'SUBMITTED':
         return 'Подана';
       case 'APPROVED':
@@ -243,6 +237,20 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
         return 'В работе';
       case 'COMPLETED':
         return 'Завершена';
+      case 'CANCELLED':
+        return 'Отменена';
+      
+      // Статусы тендеров
+      case 'PUBLISHED':
+        return 'Опубликован';
+      case 'BIDDING':
+        return 'Прием предложений';
+      case 'EVALUATION':
+        return 'Оценка предложений';
+      case 'AWARDED':
+        return 'Присужден';
+      
+      // Статусы предложений поставщиков
       case 'UNDER_REVIEW':
         return 'На рассмотрении';
       case 'ACCEPTED':
@@ -251,6 +259,37 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
         return 'Отклонено';
       case 'WITHDRAWN':
         return 'Отозвано';
+      
+      // Статусы счетов
+      case 'SENT':
+        return 'Отправлен';
+      case 'CONFIRMED':
+        return 'Подтвержден';
+      case 'PARTIALLY_PAID':
+        return 'Частично оплачен';
+      case 'PAID':
+        return 'Оплачен';
+      case 'OVERDUE':
+        return 'Просрочен';
+      
+      // Статусы поставок
+      case 'PLANNED':
+        return 'Запланирована';
+      case 'IN_TRANSIT':
+        return 'В пути';
+      case 'ARRIVED':
+        return 'Прибыла на склад';
+      case 'DELIVERED':
+        return 'Доставлена';
+      case 'PARTIALLY_ACCEPTED':
+        return 'Частично принята';
+      
+      // Статусы поступлений
+      case 'PARTIALLY_RECEIVED':
+        return 'Частично получен';
+      case 'RECEIVED':
+        return 'Получен';
+      
       default:
         return status;
     }
@@ -617,6 +656,118 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
               Создайте счет для заявки №{request.requestNumber}
+            </Typography>
+          </Box>
+        )}
+      </ProcessSection>
+
+      {/* Поставки */}
+      <ProcessSection>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6">
+            <DeliveryIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+            Поставки ({request.deliveriesCount || 0})
+          </Typography>
+          {(!request.deliveries || request.deliveries.length === 0) && (
+            <Button
+              variant="contained"
+              startIcon={<DeliveryIcon />}
+              onClick={() => window.open(`/deliveries/new?requestId=${request.requestId}&requestNumber=${encodeURIComponent(request.requestNumber)}`, '_blank')}
+              sx={{
+                bgcolor: 'primary.main',
+                color: 'white',
+                '&:hover': {
+                  bgcolor: 'primary.dark'
+                }
+              }}
+            >
+              Создать поставку
+            </Button>
+          )}
+        </Box>
+        
+        {request.deliveries && request.deliveries.length > 0 ? (
+          request.deliveries.map((delivery) => (
+            <Card key={delivery.deliveryId} sx={{ mb: 2 }}>
+              <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                  <Box>
+                    <Typography variant="h6">
+                      Поставка {delivery.deliveryNumber}
+                    </Typography>
+                    <Typography variant="body2" color="textSecondary">
+                      {formatDate(delivery.deliveryDate)} • {delivery.supplierName}
+                    </Typography>
+                  </Box>
+                  <Box display="flex" alignItems="center" gap={1}>
+                    <StatusChip
+                      label={getStatusLabel(delivery.status)}
+                      status={delivery.status}
+                      icon={<DeliveryIcon />}
+                    />
+                  </Box>
+                </Box>
+
+                <Typography variant="body1" color="primary" gutterBottom>
+                  {formatCurrency(delivery.totalAmount)}
+                </Typography>
+
+                {delivery.receipts && delivery.receipts.length > 0 && (
+                  <Box mt={2}>
+                    <Typography variant="subtitle1" gutterBottom>
+                      Поступления по поставке
+                    </Typography>
+                    <TableContainer component={Paper} variant="outlined">
+                      <Table size="small">
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Номер поступления</TableCell>
+                            <TableCell>Дата</TableCell>
+                            <TableCell>Статус</TableCell>
+                            <TableCell align="right">Сумма</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {delivery.receipts.map((receipt) => (
+                            <TableRow key={receipt.receiptId}>
+                              <TableCell>{receipt.receiptNumber}</TableCell>
+                              <TableCell>{formatDate(receipt.receiptDate)}</TableCell>
+                              <TableCell>
+                                <StatusChip
+                                  label={getStatusLabel(receipt.status)}
+                                  status={receipt.status}
+                                  size="small"
+                                />
+                              </TableCell>
+                              <TableCell align="right">
+                                {formatCurrency(receipt.totalAmount)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <Box 
+            sx={{ 
+              p: 3, 
+              border: '2px dashed #ccc', 
+              borderRadius: 1, 
+              textAlign: 'center',
+              bgcolor: 'grey.50'
+            }}
+          >
+            <DeliveryIcon sx={{ fontSize: 48, color: 'text.secondary', mb: 2 }} />
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              Поставки не созданы
+            </Typography>
+            <Typography variant="body1" color="text.secondary" sx={{ mb: 2 }}>
+              Создайте поставку для заявки №{request.requestNumber}
             </Typography>
           </Box>
         )}

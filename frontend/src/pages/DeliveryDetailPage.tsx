@@ -245,6 +245,17 @@ const DeliveryDetailPage: React.FC = () => {
     return texts[status] || status;
   };
 
+  const getPaymentStatusText = (status: string) => {
+    const texts: { [key: string]: string } = {
+      PENDING: 'Ожидает оплаты',
+      APPROVED: 'Одобрен',
+      PAID: 'Оплачен',
+      OVERDUE: 'Просрочен',
+      CANCELLED: 'Отменен',
+    };
+    return texts[status] || status;
+  };
+
   if (loading) {
     return (
       <Box sx={{ p: 3 }}>
@@ -412,7 +423,7 @@ const DeliveryDetailPage: React.FC = () => {
                     <TableRow key={p.id}>
                       <TableCell>{p.paymentNumber}</TableCell>
                       <TableCell>{p.amount?.toLocaleString()} ₽</TableCell>
-                      <TableCell>{p.status}</TableCell>
+                      <TableCell>{getPaymentStatusText(p.status)}</TableCell>
                       <TableCell>{p.dueDate ? dayjs(p.dueDate).format('DD.MM.YYYY') : '-'}</TableCell>
                       <TableCell>
                         <Button component={Link} to={`/payments/${p.id}`} size="small">Подробнее</Button>

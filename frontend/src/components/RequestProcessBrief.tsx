@@ -118,8 +118,11 @@ export default function RequestProcessBrief({ request, onExpand, expanded = fals
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      // Статусы заявок
       case 'DRAFT':
         return 'Черновик';
+      case 'SAVED':
+        return 'Сохранено';
       case 'SUBMITTED':
         return 'Подана';
       case 'APPROVED':
@@ -130,6 +133,59 @@ export default function RequestProcessBrief({ request, onExpand, expanded = fals
         return 'Завершена';
       case 'CANCELLED':
         return 'Отменена';
+      
+      // Статусы тендеров
+      case 'PUBLISHED':
+        return 'Опубликован';
+      case 'BIDDING':
+        return 'Прием предложений';
+      case 'EVALUATION':
+        return 'Оценка предложений';
+      case 'AWARDED':
+        return 'Присужден';
+      
+      // Статусы предложений поставщиков
+      case 'UNDER_REVIEW':
+        return 'На рассмотрении';
+      case 'ACCEPTED':
+        return 'Принято';
+      case 'REJECTED':
+        return 'Отклонено';
+      case 'WITHDRAWN':
+        return 'Отозвано';
+      
+      // Статусы счетов
+      case 'SENT':
+        return 'Отправлен';
+      case 'CONFIRMED':
+        return 'Подтверждено';
+      case 'PARTIALLY_PAID':
+        return 'Частично оплачен';
+      case 'PAID':
+        return 'Оплачен';
+      case 'OVERDUE':
+        return 'Просрочен';
+      
+      // Статусы поставок
+      case 'PLANNED':
+        return 'Запланирована';
+      case 'IN_TRANSIT':
+        return 'В пути';
+      case 'ARRIVED':
+        return 'Прибыла на склад';
+      case 'DELIVERED':
+        return 'Доставлена';
+      case 'PARTIALLY_ACCEPTED':
+        return 'Частично принята';
+      
+      // Статусы поступлений
+      case 'PENDING':
+        return 'Ожидает приемки';
+      case 'PARTIALLY_RECEIVED':
+        return 'Частично получен';
+      case 'RECEIVED':
+        return 'Получен';
+      
       default:
         return status;
     }

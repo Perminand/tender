@@ -23,7 +23,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Button
+  Button,
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -46,6 +52,7 @@ import {
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { RequestProcess, TenderProcess, DeliveryProcess, SupplierProposal } from '../types/requestProcess';
+import { api } from '../utils/api';
 
 interface RequestProcessMatryoshkaProps {
   request: RequestProcess;
@@ -142,6 +149,8 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   const [expandedContracts, setExpandedContracts] = useState<string[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
   const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
+  const [createTenderLoading, setCreateTenderLoading] = useState(false);
+  const [confirmCreateTender, setConfirmCreateTender] = useState(false);
 
 
   // Логируем данные заявки для отладки
@@ -151,6 +160,25 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   console.log('Склад (location):', request.location);
   console.log('Полная заявка:', request);
   console.log('===================================');
+
+  // Отладочная информация для кнопки "Создать тендер"
+  console.log(`Кнопка "Создать тендер": статус=${request.status}, тендеров=${request.tenders?.length || 0}, показывать=true (всегда)`);
+  
+  // Детальная информация о тендерах для отладки
+  if (request.tenders && request.tenders.length > 0) {
+    console.log('Детали существующих тендеров:');
+    request.tenders.forEach((tender, index) => {
+      console.log(`Тендер ${index + 1}:`, {
+        tenderId: tender.tenderId,
+        status: tender.status,
+        proposalsCount: tender.proposalsCount,
+        totalAmount: tender.totalAmount
+      });
+    });
+    
+    const allDraft = request.tenders.every(tender => tender.status === 'DRAFT');
+    console.log(`Все тендеры в статусе DRAFT: ${allDraft}`);
+  }
 
   // Отладочная информация
   console.log('RequestProcessMatryoshka - request:', request);
@@ -201,43 +229,56 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
 
   const formatPhone = (phone: string) => {
     if (!phone) return '';
-    
-    // Убираем все нецифровые символы
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Если 10 цифр, добавляем префикс +7
-    if (digitsOnly.length === 10) {
-      return `+7${digitsOnly}`;
+    return phone.replace(/(\d{1})(\d{3})(\d{3})(\d{2})(\d{2})/, '+$1 ($2) $3-$4-$5');
+  };
+
+  // Функция для проверки наличия победителя тендера у заявки
+  const hasTenderWinner = (): boolean => {
+    if (!request.tenders || request.tenders.length === 0) {
+      console.log(`Заявка ${request.requestNumber}: нет тендеров`);
+      return false;
     }
-    
-    // Если 11 цифр и начинается с 8, заменяем на +7
-    if (digitsOnly.length === 11 && digitsOnly.startsWith('8')) {
-      return `+7${digitsOnly.substring(1)}`;
-    }
-    
-    // Если уже начинается с +7, возвращаем как есть
-    if (phone.startsWith('+7')) {
-      return phone;
-    }
-    
-    // В остальных случаях возвращаем исходный номер
-    return phone;
+
+    console.log(`Заявка ${request.requestNumber}: анализируем ${request.tenders.length} тендеров`);
+
+    // Проверяем, есть ли тендер со статусом AWARDED и принятыми предложениями
+    const hasWinner = request.tenders.some(tender => {
+      console.log(`Тендер ${tender.tenderId}: статус = ${tender.status}, предложений = ${tender.proposals?.length || 0}`);
+      
+      // Тендер должен быть присужден
+      if (tender.status !== 'AWARDED') {
+        console.log(`Тендер ${tender.tenderId}: статус не AWARDED, пропускаем`);
+        return false;
+      }
+
+      // Должны быть предложения со статусом ACCEPTED
+      if (!tender.proposals || tender.proposals.length === 0) {
+        console.log(`Тендер ${tender.tenderId}: нет предложений, пропускаем`);
+        return false;
+      }
+
+      const acceptedProposals = tender.proposals.filter(proposal => proposal.status === 'ACCEPTED');
+      console.log(`Тендер ${tender.tenderId}: найдено ${acceptedProposals.length} принятых предложений`);
+      
+      if (acceptedProposals.length > 0) {
+        console.log(`Тендер ${tender.tenderId}: ПОБЕДИТЕЛЬ НАЙДЕН!`);
+        return true;
+      }
+      
+      return false;
+    });
+
+    console.log(`Заявка ${request.requestNumber}: наличие победителя тендера: ${hasWinner}`);
+    return hasWinner;
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
+      // Статусы заявок
       case 'DRAFT':
         return 'Черновик';
-      case 'PUBLISHED':
-        return 'Опубликован';
-      case 'BIDDING':
-        return 'Прием предложений';
-      case 'EVALUATION':
-        return 'Оценка';
-      case 'AWARDED':
-        return 'Присужден';
-      case 'CANCELLED':
-        return 'Отменен';
+      case 'SAVED':
+        return 'Сохранено';
       case 'SUBMITTED':
         return 'Подана';
       case 'APPROVED':
@@ -246,6 +287,16 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
         return 'В работе';
       case 'COMPLETED':
         return 'Завершена';
+      case 'CANCELLED':
+        return 'Отменена';
+      case 'PUBLISHED':
+        return 'Опубликован';
+      case 'BIDDING':
+        return 'Прием предложений';
+      case 'EVALUATION':
+        return 'Оценка предложений';
+      case 'AWARDED':
+        return 'Присужден';
       case 'UNDER_REVIEW':
         return 'На рассмотрении';
       case 'ACCEPTED':
@@ -254,22 +305,38 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
         return 'Отклонено';
       case 'WITHDRAWN':
         return 'Отозвано';
-      // Статусы поставок
+      case 'ACTIVE':
+        return 'Активен';
+      case 'EXPIRED':
+        return 'Истек';
+      case 'TERMINATED':
+        return 'Расторгнут';
+      case 'SENT':
+        return 'Отправлен';
+      case 'CONFIRMED':
+        return 'Подтверждено';
+      case 'PARTIALLY_PAID':
+        return 'Частично оплачен';
+      case 'PAID':
+        return 'Оплачен';
+      case 'OVERDUE':
+        return 'Просрочен';
       case 'PLANNED':
         return 'Запланирована';
-      case 'CONFIRMED':
-        return 'Подтверждена';
       case 'IN_TRANSIT':
         return 'В пути';
       case 'ARRIVED':
-        return 'Прибыла';
+        return 'Прибыла на склад';
       case 'DELIVERED':
         return 'Доставлена';
       case 'PARTIALLY_ACCEPTED':
         return 'Частично принята';
-      // Статусы приемки
-      case 'PENDING':
+       case 'PENDING':
         return 'Ожидает приемки';
+      case 'PARTIALLY_RECEIVED':
+        return 'Частично получен';
+      case 'RECEIVED':
+        return 'Получен';
       default:
         return status;
     }
@@ -361,6 +428,57 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
     }
   };
 
+  const handleCreateTender = (requestId: string) => {
+    // Логируем действие создания тендера
+    console.log(`Открытие диалога подтверждения для создания тендера по заявке ${request.requestNumber} (ID: ${requestId})`);
+    console.log(`Статус заявки: ${request.status}`);
+    console.log(`Количество существующих тендеров: ${request.tenders?.length || 0}`);
+    
+    // Открываем диалог подтверждения
+    setConfirmCreateTender(true);
+  };
+
+  const handleConfirmCreateTender = async () => {
+    if (!request.requestId) return;
+    
+    // Логируем подтверждение создания тендера
+    console.log(`Подтверждено создание тендера для заявки ${request.requestNumber} (ID: ${request.requestId})`);
+    
+    setCreateTenderLoading(true);
+    
+    try {
+      console.log(`Отправляем POST-запрос на /api/requests/${request.requestId}/create-tender`);
+      const response = await api.post(`/api/requests/${request.requestId}/create-tender`);
+      console.log('Ответ от сервера:', response);
+      
+      const tender = response.data;
+      console.log('Данные созданного тендера:', tender);
+      
+      // Закрываем диалог
+      setConfirmCreateTender(false);
+      
+      // После создания тендера открываем его в новом окне
+      window.open(`/tenders/${tender.id}`, '_blank');
+      
+      // Показываем сообщение об успехе
+      console.log(`Тендер успешно создан для заявки ${request.requestNumber}`);
+      
+    } catch (error: any) {
+      console.error('Ошибка при создании тендера:', error);
+      console.error('Детали ошибки:', {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        message: error.message
+      });
+      
+      const errorMessage = error.response?.data?.message || error.message || 'Неизвестная ошибка';
+      alert('Ошибка при создании тендера: ' + errorMessage);
+    } finally {
+      setCreateTenderLoading(false);
+    }
+  };
+
   const handleContractClick = (contractId: string) => {
     setExpandedContracts(prev => 
       prev.includes(contractId) 
@@ -420,56 +538,11 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
             <Typography variant="h6" color="primary.main" fontWeight="bold">
               {formatCurrency(request.requestTotalAmount)}
             </Typography>
-                                    <StatusChip
-                          label={getStatusLabel(request.status)}
-                          status={request.status}
-                          size="small"
-                        />
-            <Button
-              variant="outlined"
+            <StatusChip
+              label={getStatusLabel(request.status)}
+              status={request.status}
               size="small"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleViewRequestDetail(request.requestId);
-              }}
-              sx={{ 
-                minWidth: 'auto', 
-                px: 1, 
-                py: 0.5,
-                fontSize: '0.75rem',
-                borderColor: 'primary.main',
-                color: 'primary.main',
-                '&:hover': {
-                  borderColor: 'primary.dark',
-                  bgcolor: 'primary.50'
-                }
-              }}
-            >
-              Просмотр
-            </Button>
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={<FileDownloadIcon />}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDownloadExcelReport(request.requestId);
-              }}
-              sx={{ 
-                minWidth: 'auto', 
-                px: 1, 
-                py: 0.5,
-                fontSize: '0.75rem',
-                borderColor: 'success.main',
-                color: 'success.main',
-                '&:hover': {
-                  borderColor: 'success.dark',
-                  bgcolor: 'success.50'
-                }
-              }}
-            >
-              Excel
-            </Button>
+            />
             <IconButton size="small">
               {expandedRequest ? <ExpandLessIcon /> : <ExpandMoreIcon />}
             </IconButton>
@@ -479,6 +552,73 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
         {/* Детали заявки */}
         <Collapse in={expandedRequest}>
           <Box ml={3} mb={2}>
+            {/* Кнопки действий */}
+            <Box display="flex" gap={1} mb={2} flexWrap="wrap">
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={() => handleViewRequestDetail(request.requestId)}
+                sx={{ 
+                  minWidth: 'auto', 
+                  px: 1, 
+                  py: 0.5,
+                  fontSize: '0.75rem',
+                  borderColor: 'primary.main',
+                  color: 'primary.main',
+                  '&:hover': {
+                    borderColor: 'primary.dark',
+                    bgcolor: 'primary.50'
+                  }
+                }}
+              >
+                Просмотр
+              </Button>
+              {(
+                <Button
+                  variant="contained"
+                  size="small"
+                  startIcon={createTenderLoading ? <CircularProgress size={16} color="inherit" /> : <GavelIcon />}
+                  onClick={() => handleCreateTender(request.requestId)}
+                  disabled={createTenderLoading}
+                  sx={{ 
+                    minWidth: 'auto', 
+                    px: 1, 
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    bgcolor: 'success.main',
+                    color: 'white',
+                    '&:hover': {
+                      bgcolor: 'success.dark'
+                    }
+                  }}
+                >
+                  {createTenderLoading ? 'Создание...' : 'Создать тендер'}
+                </Button>
+              )}
+              {hasTenderWinner() && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<FileDownloadIcon />}
+                  onClick={() => handleDownloadExcelReport(request.requestId)}
+                  sx={{ 
+                    minWidth: 'auto', 
+                    px: 1, 
+                    py: 0.5,
+                    fontSize: '0.75rem',
+                    borderColor: 'success.main',
+                    color: 'success.main',
+                    '&:hover': {
+                      borderColor: 'success.dark',
+                      bgcolor: 'success.50'
+                    }
+                  }}
+                >
+                  Excel
+                </Button>
+              )}
+            </Box>
+
             {/* Материалы и номенклатура */}
             <Box p={2} bgcolor="grey.50" borderRadius={1} mb={2}>
               <Typography variant="subtitle2" gutterBottom>
@@ -1459,6 +1599,33 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
 
 
       </CardContent>
+      
+      {/* Диалог подтверждения создания тендера */}
+      <Dialog open={confirmCreateTender} onClose={() => setConfirmCreateTender(false)}>
+        <DialogTitle>
+          Создать тендер?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Вы уверены, что хотите создать тендер по заявке №{request.requestNumber}? 
+            После создания статус заявки изменится на "Тендер".
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmCreateTender(false)} disabled={createTenderLoading}>
+            Отмена
+          </Button>
+          <Button 
+            onClick={handleConfirmCreateTender} 
+            color="primary" 
+            variant="contained"
+            disabled={createTenderLoading}
+            startIcon={createTenderLoading ? <CircularProgress size={16} /> : null}
+          >
+            {createTenderLoading ? 'Создание...' : 'Создать'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </StyledCard>
   );
 } 
