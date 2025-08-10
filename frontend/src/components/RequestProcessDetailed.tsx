@@ -43,6 +43,7 @@ import {
   LocalShipping as DeliveryIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
+import { formatPhone } from '../utils/phoneUtils';
 
 interface RequestProcessDetailedProps {
   request: {
@@ -197,30 +198,7 @@ export default function RequestProcessDetailed({ request }: RequestProcessDetail
     }).format(amount);
   };
 
-  const formatPhone = (phone: string) => {
-    if (!phone) return '';
-    
-    // Убираем все нецифровые символы
-    const digitsOnly = phone.replace(/\D/g, '');
-    
-    // Если 10 цифр, добавляем префикс +7
-    if (digitsOnly.length === 10) {
-      return `+7${digitsOnly}`;
-    }
-    
-    // Если 11 цифр и начинается с 8, заменяем на +7
-    if (digitsOnly.length === 11 && digitsOnly.startsWith('8')) {
-      return `+7${digitsOnly.substring(1)}`;
-    }
-    
-    // Если уже начинается с +7, возвращаем как есть
-    if (phone.startsWith('+7')) {
-      return phone;
-    }
-    
-    // В остальных случаях возвращаем исходный номер
-    return phone;
-  };
+
 
   const getStatusLabel = (status: string) => {
     switch (status) {

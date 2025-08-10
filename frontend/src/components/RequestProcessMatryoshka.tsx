@@ -29,7 +29,8 @@ import {
   DialogTitle,
   DialogContent,
   DialogContentText,
-  DialogActions
+  DialogActions,
+  Alert
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -48,11 +49,14 @@ import {
   AttachMoney as MoneyIcon,
   CalendarToday as CalendarIcon,
   ArrowForward as ArrowForwardIcon,
-  FileDownload as FileDownloadIcon
+  FileDownload as FileDownloadIcon,
+  PlayArrow as PlayArrowIcon,
+  Stop as StopIcon
 } from '@mui/icons-material';
 import { styled } from '@mui/material/styles';
 import { RequestProcess, TenderProcess, DeliveryProcess, SupplierProposal } from '../types/requestProcess';
 import { api } from '../utils/api';
+import { formatPhone } from '../utils/phoneUtils';
 
 interface RequestProcessMatryoshkaProps {
   request: RequestProcess;
@@ -151,6 +155,22 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
   const [createTenderLoading, setCreateTenderLoading] = useState(false);
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
+  const [statusDialog, setStatusDialog] = useState<{
+    open: boolean;
+    tenderId: string | null;
+    action: 'start-bidding' | 'close' | 'submit-proposal' | null;
+    title: string;
+    description: string;
+    onConfirm: (() => void) | null;
+  }>({
+    open: false,
+    tenderId: null,
+    action: null,
+    title: '',
+    description: '',
+    onConfirm: null
+  });
+  const [error, setError] = useState<string | null>(null);
 
 
   // Логируем данные заявки для отладки
@@ -227,10 +247,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
     }).format(amount);
   };
 
-  const formatPhone = (phone: string) => {
-    if (!phone) return '';
-    return phone.replace(/(\d{1})(\d{3})(\d{3})(\d{2})(\d{2})/, '+$1 ($2) $3-$4-$5');
-  };
+
 
   // Функция для проверки наличия победителя тендера у заявки
   const hasTenderWinner = (): boolean => {
@@ -515,6 +532,65 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
     );
   };
 
+  const openStatusDialog = (tenderId: string, action: 'start-bidding' | 'close' | 'submit-proposal') => {
+    let title = '';
+    let description = '';
+    let onConfirm: (() => void) | null = null;
+    
+    switch (action) {
+      case 'start-bidding':
+        title = 'Начать прием предложений';
+        description = 'Вы уверены, что хотите начать прием предложений? После этого поставщики смогут подавать предложения.';
+        onConfirm = () => handleStartBidding(tenderId);
+        break;
+      case 'close':
+        title = 'Закрыть прием предложений';
+        description = 'Вы уверены, что хотите закрыть прием предложений? После этого новые предложения приниматься не будут.';
+        onConfirm = () => handleClose(tenderId);
+        break;
+      case 'submit-proposal':
+        title = 'Подать предложение';
+        description = 'Вы уверены, что хотите подать предложение по этому тендеру? После подачи вы будете перенаправлены на страницу создания предложения.';
+        onConfirm = () => handleSubmitProposal(tenderId);
+        break;
+    }
+    
+    setStatusDialog({ open: true, tenderId, action, title, description, onConfirm });
+  };
+
+  const handleStartBidding = async (tenderId: string) => {
+    try {
+      await api.post(`/api/tenders/${tenderId}/start-bidding`);
+      setStatusDialog(prev => ({ ...prev, open: false }));
+      setError(null);
+      // Здесь можно добавить обновление данных, если нужно
+    } catch (error: any) {
+      console.error('Error starting bidding:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка начала приема предложений';
+      setError(errorMessage);
+    }
+  };
+
+  const handleClose = async (tenderId: string) => {
+    try {
+      await api.post(`/api/tenders/${tenderId}/close`);
+      setStatusDialog(prev => ({ ...prev, open: false }));
+      setError(null);
+      // Здесь можно добавить обновление данных, если нужно
+    } catch (error: any) {
+      console.error('Error closing bidding:', error);
+      const errorMessage = error.response?.data?.message || 'Ошибка закрытия приема предложений';
+      setError(errorMessage);
+    }
+  };
+
+  const handleSubmitProposal = (tenderId: string) => {
+    setStatusDialog(prev => ({ ...prev, open: false }));
+    setError(null);
+    // Перенаправляем на страницу создания предложения
+    window.open(`/tenders/${tenderId}/proposals/new`, '_blank');
+  };
+
   return (
     <StyledCard>
       <CardContent>
@@ -739,28 +815,6 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                           status={tender.status}
                           size="small"
                         />
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewTenderDetail(tender.tenderId);
-                          }}
-                          sx={{ 
-                            minWidth: 'auto', 
-                            px: 1, 
-                            py: 0.5,
-                            fontSize: '0.75rem',
-                            borderColor: 'primary.main',
-                            color: 'primary.main',
-                            '&:hover': {
-                              borderColor: 'primary.dark',
-                              bgcolor: 'primary.50'
-                            }
-                          }}
-                        >
-                          Просмотр
-                        </Button>
                         <IconButton size="small">
                           {expandedTenders.includes(tender.tenderId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
                         </IconButton>
@@ -770,6 +824,61 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                     {/* Предложения в тендере */}
                     <Collapse in={expandedTenders.includes(tender.tenderId)}>
                       <Box ml={3}>
+                        {/* Кнопки управления приемом предложений */}
+                        <Box sx={{ mb: 2 }}>
+                          <Typography variant="subtitle2" gutterBottom>
+                            Управление тендером
+                          </Typography>
+                          <Box display="flex" gap={1} flexWrap="wrap">
+                            <Button
+                              variant="outlined"
+                              size="small"
+                              onClick={() => handleViewTenderDetail(tender.tenderId)}
+                              sx={{ 
+                                borderColor: 'primary.main',
+                                color: 'primary.main',
+                                '&:hover': {
+                                  borderColor: 'primary.dark',
+                                  bgcolor: 'primary.50'
+                                }
+                              }}
+                            >
+                              Просмотр тендера
+                            </Button>
+                            {(tender.status === 'DRAFT' || tender.status === 'PUBLISHED') && (
+                              <Button
+                                variant="contained"
+                                color="warning"
+                                size="small"
+                                startIcon={<PlayArrowIcon />}
+                                onClick={() => openStatusDialog(tender.tenderId, 'start-bidding')}
+                              >
+                                Начать прием предложений
+                              </Button>
+                            )}
+                            {tender.status === 'BIDDING' && (
+                              <>
+                                <Button
+                                  variant="contained"
+                                  color="success"
+                                  size="small"
+                                  onClick={() => openStatusDialog(tender.tenderId, 'submit-proposal')}
+                                >
+                                  Подать предложение
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  color="error"
+                                  size="small"
+                                  startIcon={<StopIcon />}
+                                  onClick={() => openStatusDialog(tender.tenderId, 'close')}
+                                >
+                                  Закрыть прием предложений
+                                </Button>
+                              </>
+                            )}
+                          </Box>
+                        </Box>
                         {tender.status === 'AWARDED' ? (
                           // Для присужденных тендеров показываем только победившее предложение (с лучшей ценой)
                           (() => {
@@ -1623,6 +1732,37 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
             startIcon={createTenderLoading ? <CircularProgress size={16} /> : null}
           >
             {createTenderLoading ? 'Создание...' : 'Создать'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Диалог подтверждения управления статусом тендера */}
+      <Dialog
+        open={statusDialog.open}
+        onClose={() => setStatusDialog(prev => ({ ...prev, open: false }))}
+        aria-labelledby="status-dialog-title"
+        aria-describedby="status-dialog-description"
+      >
+        <DialogTitle id="status-dialog-title">
+          {statusDialog.title}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="status-dialog-description">
+            {statusDialog.description}
+          </DialogContentText>
+          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setStatusDialog(prev => ({ ...prev, open: false }))} color="primary">
+            Отмена
+          </Button>
+          <Button
+            onClick={statusDialog.onConfirm}
+            color="primary"
+            variant="contained"
+            autoFocus
+          >
+            Подтвердить
           </Button>
         </DialogActions>
       </Dialog>
