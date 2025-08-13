@@ -827,7 +827,7 @@ const TenderListPage: React.FC = () => {
 
                       {tender.bestSupplierName && (
                         <Typography variant="body2" color="success.main" sx={{ mb: 2 }}>
-                          Лучшее предложение: {tender.bestSupplierName}
+                          Лучшее полное предложение: {tender.bestSupplierName}
                         </Typography>
                       )}
                     </>

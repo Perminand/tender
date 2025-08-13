@@ -1,14 +1,22 @@
 package ru.perminov.tender.service;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.UUID;
 
 public interface PriceAnalysisExportService {
+    
     /**
-     * Генерирует Excel-отчет по анализу цен для тендера
+     * Экспортирует анализ цен тендера в Excel файл
+     * 
      * @param tenderId ID тендера
-     * @return ByteArrayOutputStream с Excel-файлом
+     * @return ByteArrayOutputStream с Excel файлом
      */
-    ByteArrayOutputStream exportPriceAnalysisToExcel(UUID tenderId) throws IOException;
+    ByteArrayOutputStream exportPriceAnalysisToExcel(UUID tenderId);
+
+    /**
+     * Экспорт объединенного отчета по всем тендерам указанной заявки
+     * в формате Excel (одна таблица, строки — позиции всех тендеров заявки,
+     * колонки поставщиков — объединенные по всем тендерам).
+     */
+    ByteArrayOutputStream exportRequestTendersToExcel(UUID requestId);
 } 

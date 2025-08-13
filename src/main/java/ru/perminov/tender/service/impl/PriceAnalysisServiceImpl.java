@@ -26,7 +26,7 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
     private final TenderItemRepository tenderItemRepository;
     private final SupplierProposalRepository supplierProposalRepository;
     private final ProposalItemRepository proposalItemRepository;
-    private final SupplierProposalService supplierProposalService;
+    private final SupplierProposalService supplierProposalService; // TODO: consider removal if remains unused
 
     @Override
     public PriceAnalysisDto getPriceAnalysis(UUID tenderId) {
@@ -234,7 +234,7 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
     private PriceAnalysisItemDto analyzeTenderItem(TenderItem tenderItem, List<SupplierProposal> proposals) {
         List<SupplierPriceDto> supplierPrices = new ArrayList<>();
         SupplierPriceDto bestPrice = null;
-        double minPrice = Double.MAX_VALUE;
+        double minTotalPrice = Double.MAX_VALUE;
         
         for (SupplierProposal proposal : proposals) {
             List<ProposalItem> proposalItems = proposalItemRepository.findBySupplierProposalId(proposal.getId());
@@ -247,18 +247,21 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
                     SupplierPriceDto priceDto = createSupplierPriceDto(proposal, proposalItem, false);
                     supplierPrices.add(priceDto);
                     
-                    if (priceDto.unitPrice() < minPrice) {
-                        minPrice = priceDto.unitPrice();
+                    // Определяем лучшую цену по общей стоимости с учетом НДС и доставки
+                    if (priceDto.totalPriceWithVatAndDelivery() != null && 
+                        priceDto.totalPriceWithVatAndDelivery() < minTotalPrice) {
+                        minTotalPrice = priceDto.totalPriceWithVatAndDelivery();
                         bestPrice = createSupplierPriceDto(proposal, proposalItem, true);
                     }
                 }
             }
         }
         
-        // Рассчитываем отклонение цены от сметной
+        // Рассчитываем отклонение цены от сметной с учетом НДС и доставки
         double priceDeviation = 0.0;
-        if (tenderItem.getEstimatedPrice() != null && bestPrice != null && bestPrice.unitPrice() != null) {
-            priceDeviation = ((bestPrice.unitPrice() - tenderItem.getEstimatedPrice()) / tenderItem.getEstimatedPrice()) * 100;
+        if (tenderItem.getEstimatedPrice() != null && bestPrice != null && bestPrice.totalPriceWithVatAndDelivery() != null) {
+            double estimatedTotal = tenderItem.getEstimatedPrice() * (tenderItem.getQuantity() != null ? tenderItem.getQuantity() : 0.0);
+            priceDeviation = ((bestPrice.totalPriceWithVatAndDelivery() - estimatedTotal) / estimatedTotal) * 100;
         }
         
         return new PriceAnalysisItemDto(
@@ -277,7 +280,7 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
 
     private SupplierPriceDto findBestPriceForItem(TenderItem tenderItem, List<SupplierProposal> proposals) {
         SupplierPriceDto bestPrice = null;
-        double minPrice = Double.MAX_VALUE;
+        double minTotalPrice = Double.MAX_VALUE;
         
         for (SupplierProposal proposal : proposals) {
             List<ProposalItem> proposalItems = proposalItemRepository.findBySupplierProposalId(proposal.getId());
@@ -287,8 +290,13 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
                 if (proposalItem.getTenderItem() != null && 
                     proposalItem.getTenderItem().getId().equals(tenderItem.getId()) &&
                     proposalItem.getUnitPrice() != null) {
-                    if (proposalItem.getUnitPrice() < minPrice) {
-                        minPrice = proposalItem.getUnitPrice();
+                    
+                    SupplierPriceDto priceDto = createSupplierPriceDto(proposal, proposalItem, false);
+                    
+                    // Определяем лучшую цену по общей стоимости с учетом НДС и доставки
+                    if (priceDto.totalPriceWithVatAndDelivery() != null && 
+                        priceDto.totalPriceWithVatAndDelivery() < minTotalPrice) {
+                        minTotalPrice = priceDto.totalPriceWithVatAndDelivery();
                         bestPrice = createSupplierPriceDto(proposal, proposalItem, true);
                     }
                 }
@@ -299,6 +307,23 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
     }
 
     private SupplierPriceDto createSupplierPriceDto(SupplierProposal proposal, ProposalItem item, boolean isBestPrice) {
+        // Базовые расчеты
+        double unitPrice = item.getUnitPrice() != null ? item.getUnitPrice() : 0.0;
+        double quantity = item.getQuantity() != null ? item.getQuantity() : 0.0;
+        double totalPrice = unitPrice * quantity;
+        
+        // Правило НДС: если есть явная unitPriceWithVat — используем её; иначе считаем, что компания без НДС
+        double vatRate = 0.0;
+        Double explicitUnitWithVat = item.getUnitPriceWithVat();
+        double unitPriceWithVat = explicitUnitWithVat != null ? explicitUnitWithVat : unitPrice;
+        double totalPriceWithVat = unitPriceWithVat * quantity;
+        double vatAmount = explicitUnitWithVat != null ? (totalPriceWithVat - totalPrice) : 0.0;
+        
+        // Расчет доставки
+        double deliveryCost = item.getDeliveryCost() != null ? item.getDeliveryCost() : 0.0;
+        double totalPriceWithDelivery = totalPrice + deliveryCost;
+        double totalPriceWithVatAndDelivery = totalPriceWithVat + deliveryCost;
+        
         return new SupplierPriceDto(
                 proposal.getSupplier().getId(),
                 proposal.getSupplier().getShortName() != null ? proposal.getSupplier().getShortName() : proposal.getSupplier().getName(),
@@ -306,13 +331,23 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
                 proposal.getId(),
                 proposal.getProposalNumber(),
                 item.getTenderItem() != null ? item.getTenderItem().getId() : null,
-                item.getUnitPrice(),
-                item.getTotalPrice(),
+                unitPrice,
+                totalPrice,
                 proposal.getCurrency(),
                 item.getDeliveryPeriod(),
                 item.getWarranty() != null ? item.getWarranty().getName() : null,
                 item.getAdditionalInfo(),
-                isBestPrice
+                isBestPrice,
+                false, // isSecondPrice
+                unitPriceWithVat,
+                totalPriceWithVat,
+                deliveryCost,
+                totalPriceWithDelivery,
+                totalPriceWithVatAndDelivery,
+                vatRate,
+                vatAmount,
+                0.0, // savings
+                0.0  // savingsPercentage
         );
     }
 

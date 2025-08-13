@@ -24,7 +24,9 @@ import {
   MenuItem,
   Select,
   FormControl,
-  CircularProgress
+  CircularProgress,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -45,6 +47,7 @@ import DialogContentText from '@mui/material/DialogContentText';
 import DialogActions from '@mui/material/DialogActions';
 import PriceAnalysisSummary from '../components/PriceAnalysisSummary';
 import TenderSplitDialog from '../components/TenderSplitDialog';
+import TenderWinnersDisplay from '../components/TenderWinnersDisplay';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import GavelIcon from '@mui/icons-material/Gavel';
 
@@ -144,6 +147,7 @@ const TenderDetailPage: React.FC = () => {
   const [manualAwardSupplier, setManualAwardSupplier] = useState<{id: string, name: string} | null>(null);
   const [resetAwardDialogOpen, setResetAwardDialogOpen] = useState(false);
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'details' | 'winners' | 'analysis'>('details');
 
   useEffect(() => {
     if (id) {
@@ -537,7 +541,34 @@ const TenderDetailPage: React.FC = () => {
         </Card>
       )}
 
-      <Grid container spacing={3}>
+      {/* Вкладки для навигации */}
+      {(tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+        <Card sx={{ mb: 3 }}>
+          <CardContent sx={{ p: 0 }}>
+            <Tabs
+              value={activeTab}
+              onChange={(_, newValue) => setActiveTab(newValue)}
+              sx={{ borderBottom: 1, borderColor: 'divider' }}
+            >
+              <Tab label="Детали тендера" value="details" />
+              <Tab label="Победители" value="winners" />
+              <Tab label="Анализ цен" value="analysis" />
+            </Tabs>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Контент вкладок */}
+      {activeTab === 'winners' && (tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+        <TenderWinnersDisplay tenderId={tender.id} />
+      )}
+
+      {activeTab === 'analysis' && (tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+        <PriceAnalysisSummary tenderId={tender.id} />
+      )}
+
+      {activeTab === 'details' && (
+        <Grid container spacing={3}>
         {/* Основная информация */}
         <Grid item xs={12} md={8}>
           <Card>
@@ -581,13 +612,16 @@ const TenderDetailPage: React.FC = () => {
                 </Alert>
               )}
 
-              {/* Лучшее предложение - скрыто для поставщика */}
+              {/* Лучшее полное предложение - скрыто для поставщика */}
               {!isSupplier && tender.bestPrice && (
                 <Alert severity="success" sx={{ mb: 2 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <TrendingUpIcon sx={{ mr: 1 }} />
                     <Typography>
-                      Лучшее предложение: {tender.bestSupplierName} - {formatPrice(tender.bestPrice)}
+                      Лучшее полное предложение: {tender.bestSupplierName} - {formatPrice(tender.bestPrice)}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                      (содержит все позиции тендера)
                     </Typography>
                     {/* Кнопка для перехода к предложению */}
                     {(() => {
@@ -607,6 +641,17 @@ const TenderDetailPage: React.FC = () => {
                         </Button>
                       ) : null;
                     })()}
+                  </Box>
+                </Alert>
+              )}
+              
+              {/* Информация о том, что нет полных предложений */}
+              {!isSupplier && !tender.bestPrice && tender.supplierProposals.length > 0 && (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Typography>
+                      Нет полных предложений. Все предложения содержат не все позиции тендера.
+                    </Typography>
                   </Box>
                 </Alert>
               )}
@@ -971,6 +1016,7 @@ const TenderDetailPage: React.FC = () => {
           </Grid>
         )}
       </Grid>
+      )}
 
       <Dialog
         open={closeDialogOpen}

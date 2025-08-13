@@ -15,5 +15,15 @@ public record SupplierPriceDto(
     String deliveryPeriod,
     String warranty,
     String additionalInfo,
-    boolean isBestPrice
+    boolean isBestPrice,
+    boolean isSecondPrice,
+    Double unitPriceWithVat,
+    Double totalPriceWithVat,
+    Double deliveryCost,
+    Double totalPriceWithDelivery,
+    Double totalPriceWithVatAndDelivery,
+    Double vatRate,
+    Double vatAmount,
+    Double savings,
+    Double savingsPercentage
 ) {} 

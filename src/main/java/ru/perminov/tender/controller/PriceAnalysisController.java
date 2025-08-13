@@ -74,15 +74,47 @@ public class PriceAnalysisController {
 
     @GetMapping("/tender/{tenderId}/export")
     public ResponseEntity<byte[]> exportPriceAnalysisToExcel(@PathVariable UUID tenderId) {
+        log.info("Получен GET-запрос: экспорт анализа цен в Excel для тендера id={}", tenderId);
         try {
             var out = priceAnalysisExportService.exportPriceAnalysisToExcel(tenderId);
             String filename = "price-analysis-" + tenderId + ".xlsx";
+            log.info("Excel файл успешно создан для тендера: {}", tenderId);
             return ResponseEntity.ok()
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
                     .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                     .body(out.toByteArray());
         } catch (Exception e) {
+            log.error("Ошибка при экспорте анализа цен в Excel для тендера: {}", tenderId, e);
             return ResponseEntity.internalServerError().body(null);
+        }
+    }
+
+    @GetMapping("/request/{requestId}/export")
+    public ResponseEntity<byte[]> exportRequestTendersToExcel(@PathVariable UUID requestId) {
+        log.info("Получен GET-запрос: экспорт анализа цен в Excel для всех тендеров заявки id={}", requestId);
+        try {
+            var out = priceAnalysisExportService.exportRequestTendersToExcel(requestId);
+            String filename = "price-analysis-request-" + requestId + ".xlsx";
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                    .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                    .body(out.toByteArray());
+        } catch (Exception e) {
+            log.error("Ошибка при экспорте анализа цен по заявке: {}", requestId, e);
+            return ResponseEntity.internalServerError().body(null);
+        }
+    }
+
+    @GetMapping("/tender/{tenderId}/export-test")
+    public ResponseEntity<String> testExport(@PathVariable UUID tenderId) {
+        log.info("Тестовый запрос для тендера: {}", tenderId);
+        try {
+            // Проверяем существование тендера
+            var tender = priceAnalysisService.getPriceAnalysis(tenderId);
+            return ResponseEntity.ok("Тендер найден: " + tender.tenderTitle() + ", позиций: " + tender.items().size());
+        } catch (Exception e) {
+            log.error("Ошибка при тестировании для тендера: {}", tenderId, e);
+            return ResponseEntity.internalServerError().body("Ошибка: " + e.getMessage());
         }
     }
 } 

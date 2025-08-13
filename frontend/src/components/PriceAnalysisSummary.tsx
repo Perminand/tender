@@ -14,7 +14,8 @@ import {
   TrendingUp as TrendingUpIcon,
   TrendingDown as TrendingDownIcon,
   Assessment as AssessmentIcon,
-  CurrencyRuble as CurrencyRubleIcon
+  CurrencyRuble as CurrencyRubleIcon,
+  FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -82,6 +83,43 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
     return 'warning';
   };
 
+  const handleExportToExcel = async () => {
+    try {
+      console.log('Начинаем экспорт Excel для тендера:', tenderId);
+      const response = await api.get(`/api/price-analysis/tender/${tenderId}/export`, {
+        responseType: 'blob'
+      });
+      
+      console.log('Excel файл получен, размер:', response.data.size);
+      
+      // Создаем ссылку для скачивания
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `price-analysis-${tenderNumber}.xlsx`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
+      console.log('Excel файл успешно скачан');
+    } catch (error: any) {
+      console.error('Ошибка при экспорте в Excel:', error);
+      
+      // Пытаемся получить текст ошибки
+      if (error.response && error.response.data) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          console.error('Детали ошибки:', reader.result);
+          alert(`Ошибка при экспорте отчета в Excel: ${reader.result}`);
+        };
+        reader.readAsText(error.response.data);
+      } else {
+        alert(`Ошибка при экспорте отчета в Excel: ${error.message}`);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -118,6 +156,30 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
       <CardContent>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
           <Typography variant="h6">Анализ цен</Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<FileDownloadIcon />}
+              onClick={handleExportToExcel}
+              size="small"
+            >
+              Экспорт в Excel
+            </Button>
+            <Button
+              variant="text"
+              onClick={async () => {
+                try {
+                  const response = await api.get(`/api/price-analysis/tender/${tenderId}/export-test`);
+                  alert('Тест успешен: ' + response.data);
+                } catch (error: any) {
+                  alert('Тест не прошел: ' + error.response?.data || error.message);
+                }
+              }}
+              size="small"
+            >
+              Тест
+            </Button>
+          </Box>
         </Box>
 
         <Grid container spacing={2}>

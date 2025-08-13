@@ -419,22 +419,15 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
 
   const handleDownloadExcelReport = async (requestId: string) => {
     try {
-      const response = await fetch(`/api/reports/tender/${requestId}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await api.get(`/api/price-analysis/request/${requestId}/export`, {
+        responseType: 'blob',
       });
 
-      if (!response.ok) {
-        throw new Error('Ошибка при загрузке отчета');
-      }
-
-      const blob = await response.blob();
+      const blob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `Тендерная_таблица_заявка_${request.requestNumber}.xlsx`;
+      a.download = `Анализ_цен_по_заявке_${request.requestNumber}.xlsx`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -671,8 +664,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                   {createTenderLoading ? 'Создание...' : 'Создать тендер'}
                 </Button>
               )}
-              {hasTenderWinner() && (
-                <Button
+              <Button
                   variant="outlined"
                   size="small"
                   startIcon={<FileDownloadIcon />}
@@ -692,7 +684,6 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                 >
                   Excel
                 </Button>
-              )}
             </Box>
 
             {/* Материалы и номенклатура */}

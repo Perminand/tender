@@ -32,6 +32,7 @@ import ru.perminov.tender.model.User;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.Map;
@@ -398,6 +399,8 @@ public class TenderServiceImpl implements TenderService {
     @Override
     @Transactional(readOnly = true)
     public TenderDto getTenderWithBestOffers(UUID tenderId) {
+        log.info("Получен запрос на тендер с лучшими предложениями: {}", tenderId);
+        
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new RuntimeException("Тендер не найден"));
         
@@ -414,8 +417,24 @@ public class TenderServiceImpl implements TenderService {
         
         tenderDto.setSupplierProposals(proposals);
         
-        // Находим лучшее предложение по общей цене
-        SupplierProposalDto bestProposal = proposals.stream()
+        // Получаем все позиции тендера
+        List<TenderItem> tenderItems = tenderItemRepository.findByTenderId(tenderId);
+        Set<UUID> tenderItemIds = tenderItems.stream()
+                .map(TenderItem::getId)
+                .collect(Collectors.toSet());
+        
+        // Фильтруем предложения, которые содержат все позиции тендера
+        List<SupplierProposalDto> completeProposals = proposals.stream()
+                .filter(proposal -> {
+                    Set<UUID> proposalItemIds = proposal.getProposalItems().stream()
+                            .map(ProposalItemDto::getTenderItemId)
+                            .collect(Collectors.toSet());
+                    return proposalItemIds.equals(tenderItemIds);
+                })
+                .collect(Collectors.toList());
+        
+        // Находим лучшее предложение среди полных предложений по общей цене
+        SupplierProposalDto bestProposal = completeProposals.stream()
                 .filter(p -> p.getTotalPrice() != null)
                 .min((p1, p2) -> Double.compare(p1.getTotalPrice(), p2.getTotalPrice()))
                 .orElse(null);
@@ -423,6 +442,10 @@ public class TenderServiceImpl implements TenderService {
         if (bestProposal != null) {
             tenderDto.setBestPrice(bestProposal.getTotalPrice());
             tenderDto.setBestSupplierName(bestProposal.getSupplierName());
+            log.info("Найдено лучшее полное предложение: {} от поставщика {} с ценой {}", 
+                    bestProposal.getProposalNumber(), bestProposal.getSupplierName(), bestProposal.getTotalPrice());
+        } else {
+            log.info("Не найдено полных предложений для тендера: {}", tenderId);
         }
         
         tenderDto.setProposalsCount(proposals.size());

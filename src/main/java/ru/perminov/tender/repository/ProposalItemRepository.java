@@ -15,6 +15,9 @@ public interface ProposalItemRepository extends JpaRepository<ProposalItem, UUID
     @Query("SELECT pi FROM ProposalItem pi LEFT JOIN FETCH pi.unit WHERE pi.supplierProposal.id = :supplierProposalId")
     List<ProposalItem> findBySupplierProposalIdWithUnit(UUID supplierProposalId);
 
+    @Query("SELECT pi FROM ProposalItem pi LEFT JOIN FETCH pi.tenderItem WHERE pi.supplierProposal.id = :supplierProposalId")
+    List<ProposalItem> findBySupplierProposalIdWithTenderItem(UUID supplierProposalId);
+
     List<ProposalItem> findByTenderItemId(UUID tenderItemId);
 
     boolean existsBySupplierProposalIdAndTenderItemId(UUID supplierProposalId, UUID tenderItemId);
