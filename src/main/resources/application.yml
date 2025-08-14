@@ -1,9 +1,11 @@
 spring:
+  liquibase:
+    enabled: true
   datasource:
     driverClassName: org.postgresql.Driver
     url: jdbc:postgresql://localhost:5432/tender
-    username: tender
-    password: tender
+    username: tender_user
+    password: tender_password
     hikari:
       maximum-pool-size: 10
       minimum-idle: 5

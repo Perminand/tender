@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.apache.poi.ss.util.RegionUtil;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,18 +68,20 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             CellStyle linkStyle = createHyperlinkStyle(workbook);
             
             // Базовые колонки слева по примеру
+            // Переносим столбец "Ссылка на Материал" перед "Сметное наименование"
             final String[] baseHeaders = new String[] {
                 "№ п/п",
                 "Наименование материала, услуги по Заявке",
                 "Кол-во",
                 "Ед. изм.",
+                "Ссылка на Материал",
                 "Сметное наименование",
                 "Сметная цена",
                 "Сметная Стоимость",
                 "Лучшая цена",
+                "Лучшая стоимость",
                 "Поставщик (лучший)",
-                "Экономия",
-                "Ссылка на Материал"
+                "Экономия"
             };
 
             int baseCols = baseHeaders.length;
@@ -91,9 +94,11 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             titleCell.setCellValue("Тендер по заявке № " + (requestNumber != null ? requestNumber : "-") + "  от  " + requestDate);
             titleCell.setCellStyle(titleStyle);
             // merge 0.. last column
-            int lastCol = baseCols + 1 + (proposals.size() * 2) - 1; // +1 за столбец "№ Тендера"
+            int lastCol = baseCols + 1 + (proposals.size() * 3) - 1; // +1 за столбец "№ Тендера", по 3 на поставщика (срок, тип, стоимость)
             if (lastCol < 0) lastCol = baseCols - 1;
-            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, Math.max(lastCol, 0)));
+            CellRangeAddress titleRegion = new CellRangeAddress(0, 0, 0, Math.max(lastCol, 0));
+            sheet.addMergedRegion(titleRegion);
+            addBordersToRegion(sheet, titleRegion);
 
             Row infoRow1 = sheet.createRow(1);
             infoRow1.createCell(0).setCellValue("Заказчик:");
@@ -116,13 +121,15 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 String comment = Optional.ofNullable(proposals.get(i).getCommercialTerms())
                         .filter(s -> !s.isBlank())
                         .orElse(Optional.ofNullable(proposals.get(i).getCoverLetter()).orElse(""));
-                int cFrom = commentsStartCol + i * 2;
-                int cTo = cFrom + 1;
+                int cFrom = commentsStartCol + i * 3;
+                int cTo = cFrom + 2;
                 Cell c = commentsRow.createCell(cFrom);
                 c.setCellValue(comment);
                 c.setCellStyle(dataStyle);
                 commentsRow.createCell(cTo).setCellStyle(dataStyle);
-                sheet.addMergedRegion(new CellRangeAddress(3, 3, cFrom, cTo));
+                CellRangeAddress region = new CellRangeAddress(3, 3, cFrom, cTo);
+                sheet.addMergedRegion(region);
+                addBordersToRegion(sheet, region);
             }
 
             // Пятая строка: названия поставщиков над парами колонок
@@ -131,29 +138,38 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             // Первый столбец после базовых — № Тендера (не мерджим)
             Cell tenderNumTop = suppliersGroupRow.createCell(startSupplierCol);
             tenderNumTop.setCellValue("");
+            tenderNumTop.setCellStyle(createSupplierHeaderStyle(workbook));
             // Лейбл слева от блока поставщиков
             Cell supplierLabelCell = suppliersGroupRow.createCell(labelCol);
             supplierLabelCell.setCellValue("Поставщик:");
+            supplierLabelCell.setCellStyle(createHeaderStyle(workbook));
             // Далее по 2 колонки на поставщика: Срок + Стоимость
             for (int i = 0; i < proposals.size(); i++) {
                 String supplierName = proposals.get(i).getSupplier() != null ? proposals.get(i).getSupplier().getName() : "";
-                int fromCol = startSupplierCol + 1 + i * 2;
-                int toCol = fromCol + 1;
+                int fromCol = startSupplierCol + 1 + i * 3;
+                int toCol = fromCol + 2;
                 Cell cell = suppliersGroupRow.createCell(fromCol);
                 cell.setCellValue(supplierName);
                 cell.setCellStyle(supplierHeaderStyle);
                 // вторая ячейка группы для корреткного merge
                 Cell filler = suppliersGroupRow.createCell(toCol);
                 filler.setCellStyle(supplierHeaderStyle);
-                sheet.addMergedRegion(new CellRangeAddress(4, 4, fromCol, toCol));
+                CellRangeAddress region = new CellRangeAddress(4, 4, fromCol, toCol);
+                sheet.addMergedRegion(region);
+                addBordersToRegion(sheet, region);
             }
             
-            // Шестая строка: заголовки таблицы (левая часть + подзаголовки для групп поставщиков)
-            Row columnHeaderRow = sheet.createRow(5);
+            // Третья строка: заголовки таблицы (левая часть + подзаголовки для групп поставщиков)
+            Row columnHeaderRow = sheet.createRow(3);
             for (int i = 0; i < baseHeaders.length; i++) {
                 Cell cell = columnHeaderRow.createCell(i);
                 cell.setCellValue(baseHeaders[i]);
-                cell.setCellStyle(headerStyle);
+                // Выделяем заголовок столбцов "Лучшая цена" и "Лучшая стоимость" цветом
+                if ("Лучшая стоимость".equals(baseHeaders[i]) || "Лучшая цена".equals(baseHeaders[i])) {
+                    cell.setCellStyle(createBestHeaderStyle(workbook));
+                } else {
+                    cell.setCellStyle(headerStyle);
+                }
             }
             // Добавляем общий столбец "№ Тендера"
             int colIndex = startSupplierCol;
@@ -161,14 +177,18 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             tenderNumHeader.setCellValue("№ Тендера");
             tenderNumHeader.setCellStyle(headerStyle);
 
-            // Для каждого поставщика: Срок + Стоимость с НДС
+            // Для каждого поставщика: Срок + Тип + Стоимость
             for (int i = 0; i < proposals.size(); i++) {
                 Cell deliveryHeader = columnHeaderRow.createCell(colIndex++);
                 deliveryHeader.setCellValue("Срок (дней)");
                 deliveryHeader.setCellStyle(headerStyle);
 
+                Cell typeHeader = columnHeaderRow.createCell(colIndex++);
+                typeHeader.setCellValue("Тип");
+                typeHeader.setCellStyle(headerStyle);
+
                 Cell priceHeader = columnHeaderRow.createCell(colIndex++);
-                priceHeader.setCellValue("Стоимость с НДС (руб.)");
+                priceHeader.setCellValue("Общая стоимость (руб.)");
                 priceHeader.setCellStyle(headerStyle);
             }
             
@@ -207,65 +227,9 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 Cell unitCell = dataRow.createCell(3);
                 unitCell.setCellValue(item.getUnit() != null && item.getUnit().getName() != null ? item.getUnit().getName() : "");
                 unitCell.setCellStyle(dataStyle);
-                
-                // Сметное наименование
-                String estimateName = (item.getRequestMaterial() != null && item.getRequestMaterial().getEstimateMaterialName() != null)
-                        ? item.getRequestMaterial().getEstimateMaterialName() : "";
-                Cell estimateNameCell = dataRow.createCell(4);
-                estimateNameCell.setCellValue(estimateName);
-                estimateNameCell.setCellStyle(dataStyle);
 
-                // Сметная цена
-                Double estimatePrice = (item.getRequestMaterial() != null) ? item.getRequestMaterial().getEstimatePrice() : null;
-                Cell priceCell = dataRow.createCell(5);
-                priceCell.setCellValue(estimatePrice != null ? estimatePrice : (item.getEstimatedPrice() != null ? item.getEstimatedPrice() : 0));
-                priceCell.setCellStyle(priceStyle);
-                
-                double estimatedTotal = 0;
-                Double estimateQty = (item.getRequestMaterial() != null) ? item.getRequestMaterial().getEstimateQuantity() : null;
-                Double totalQty = estimateQty != null ? estimateQty : item.getQuantity();
-                Double unitPrice = estimatePrice != null ? estimatePrice : item.getEstimatedPrice();
-                if (unitPrice != null && totalQty != null) {
-                    estimatedTotal = unitPrice * totalQty;
-                }
-                // Сметная стоимость
-                Cell totalCell = dataRow.createCell(6);
-                totalCell.setCellValue(estimatedTotal);
-                totalCell.setCellStyle(priceStyle);
-
-                // Лучшая цена за единицу по правилу 3>2>1 и лучший поставщик
-                double bestPrice = Double.MAX_VALUE; // эффективная за единицу
-                String bestSupplierName = "";
-                for (int i = 0; i < proposals.size(); i++) {
-                    SupplierProposal p = proposals.get(i);
-                    ProposalItem pi = findProposalItem(p, item);
-                    if (pi != null) {
-                        double v = calculateEffectiveUnitForBest(pi);
-                        if (v < bestPrice) {
-                            bestPrice = v;
-                            bestSupplierName = (p.getSupplier() != null && p.getSupplier().getName() != null) ? p.getSupplier().getName() : "";
-                        }
-                    }
-                }
-                if (bestPrice == Double.MAX_VALUE) bestPrice = 0.0;
-                Cell bestPriceCell = dataRow.createCell(7);
-                bestPriceCell.setCellValue(bestPrice);
-                bestPriceCell.setCellStyle(priceStyle);
-
-                // Поставщик (лучший)
-                Cell bestSupplierCell = dataRow.createCell(8);
-                bestSupplierCell.setCellValue(bestSupplierName);
-                bestSupplierCell.setCellStyle(dataStyle);
-
-                // Экономия
-                double bestTotalForQty = (totalQty != null ? totalQty : 0.0) * bestPrice;
-                double saving = Math.max(0, estimatedTotal - bestTotalForQty);
-                Cell savingCell = dataRow.createCell(9);
-                savingCell.setCellValue(saving);
-                savingCell.setCellStyle(priceStyle);
-
-                // Ссылка на материал
-                Cell linkCell = dataRow.createCell(10);
+                // Ссылка на материал (перенесена в колонку 4)
+                Cell linkCell = dataRow.createCell(4);
                 String link = (item.getRequestMaterial() != null) ? item.getRequestMaterial().getMaterialLink() : null;
                 if (link != null && !link.isBlank()) {
                     CreationHelper createHelper = workbook.getCreationHelper();
@@ -278,6 +242,80 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                     linkCell.setCellValue("");
                     linkCell.setCellStyle(dataStyle);
                 }
+
+                // Сметное наименование
+                String estimateName = (item.getRequestMaterial() != null && item.getRequestMaterial().getEstimateMaterialName() != null)
+                        ? item.getRequestMaterial().getEstimateMaterialName() : "";
+                Cell estimateNameCell = dataRow.createCell(5);
+                estimateNameCell.setCellValue(estimateName);
+                estimateNameCell.setCellStyle(dataStyle);
+
+                // Сметная цена
+                Double estimatePrice = (item.getRequestMaterial() != null) ? item.getRequestMaterial().getEstimatePrice() : null;
+                Cell priceCell = dataRow.createCell(6);
+                priceCell.setCellValue(estimatePrice != null ? estimatePrice : (item.getEstimatedPrice() != null ? item.getEstimatedPrice() : 0));
+                priceCell.setCellStyle(priceStyle);
+                
+                double estimatedTotal = 0;
+                Double estimateQty = (item.getRequestMaterial() != null) ? item.getRequestMaterial().getEstimateQuantity() : null;
+                Double totalQty = estimateQty != null ? estimateQty : item.getQuantity();
+                Double unitPrice = estimatePrice != null ? estimatePrice : item.getEstimatedPrice();
+                if (unitPrice != null && totalQty != null) {
+                    estimatedTotal = unitPrice * totalQty;
+                }
+                // Сметная стоимость
+                Cell totalCell = dataRow.createCell(7);
+                totalCell.setCellValue(estimatedTotal);
+                totalCell.setCellStyle(priceStyle);
+
+                // Лучшая цена за единицу по правилу 3>2>1 и лучший поставщик
+                double bestPrice = Double.MAX_VALUE; // эффективная за единицу
+                String bestSupplierName = "";
+                UUID bestSupplierId = null;
+                double secondBestPrice = Double.MAX_VALUE;
+                UUID secondBestSupplierId = null;
+                for (int i = 0; i < proposals.size(); i++) {
+                    SupplierProposal p = proposals.get(i);
+                    ProposalItem pi = findProposalItem(p, item);
+                    if (pi != null) {
+                        double v = calculateEffectiveUnitForBest(pi);
+                        if (v < bestPrice) {
+                            // сдвигаем текущий лучший во второй лучший
+                            secondBestPrice = bestPrice;
+                            secondBestSupplierId = bestSupplierId;
+                            bestPrice = v;
+                            bestSupplierId = (p.getSupplier() != null) ? p.getSupplier().getId() : null;
+                            bestSupplierName = (p.getSupplier() != null && p.getSupplier().getName() != null) ? p.getSupplier().getName() : "";
+                        } else if (v < secondBestPrice) {
+                            secondBestPrice = v;
+                            secondBestSupplierId = (p.getSupplier() != null) ? p.getSupplier().getId() : null;
+                        }
+                    }
+                }
+                if (bestPrice == Double.MAX_VALUE) bestPrice = 0.0;
+                
+                // Лучшая стоимость = лучшая цена * количество
+                double bestTotal = bestPrice * (totalQty != null ? totalQty : 0.0);
+                
+                // Выводим лучшую цену (ед.) и лучшую стоимость
+                Cell bestUnitCell = dataRow.createCell(8);
+                bestUnitCell.setCellValue(bestPrice);
+                bestUnitCell.setCellStyle(createBestUnitStyle(workbook));
+                
+                Cell bestPriceCell = dataRow.createCell(9);
+                bestPriceCell.setCellValue(bestTotal);
+                bestPriceCell.setCellStyle(createBestPriceStyle(workbook));
+
+                // Поставщик (лучший)
+                Cell bestSupplierCell = dataRow.createCell(10);
+                bestSupplierCell.setCellValue(bestSupplierName);
+                bestSupplierCell.setCellStyle(dataStyle);
+
+                // Экономия
+                double saving = Math.max(0, estimatedTotal - bestTotal);
+                Cell savingCell = dataRow.createCell(11);
+                savingCell.setCellValue(saving);
+                savingCell.setCellStyle(priceStyle);
                 
                 // Заполняем данные поставщиков
                 colIndex = startSupplierCol;
@@ -288,27 +326,34 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 for (SupplierProposal proposal : proposals) {
                     ProposalItem proposalItem = findProposalItem(proposal, item);
 
-                    // Срок (дней) и Стоимость с НДС
+                    // Срок (дней), тип и Стоимость
                     if (proposalItem != null) {
                         Cell deliveryCell = dataRow.createCell(colIndex++);
                         deliveryCell.setCellValue(extractDaysFromPeriod(proposalItem.getDeliveryPeriod()));
                         deliveryCell.setCellStyle(dataStyle);
 
-                        double delivery = proposalItem.getDeliveryCost() != null ? proposalItem.getDeliveryCost() : 0.0;
+                        Cell typeCell = dataRow.createCell(colIndex++);
+                        typeCell.setCellValue(resolvePriceType(proposalItem));
+                        typeCell.setCellStyle(createTypeStyle(workbook));
+
+                        Double deliveryObj = proposalItem.getDeliveryCost();
+                        double delivery = deliveryObj != null ? deliveryObj.doubleValue() : 0.0;
+                        // Берем стоимость из тендера по правилу 3-2-1 (исходное тендерное количество)
                         double priceWithVat = (delivery > 0.0)
                                 ? calculateTotalWithVatAndDelivery(proposalItem)
                                 : calculatePreferredTotalNoDelivery(proposalItem);
                         Cell supplierPriceCell = dataRow.createCell(colIndex++);
                         supplierPriceCell.setCellValue(priceWithVat);
-                        CellStyle supplierStyle = createSupplierStyle(workbook);
-                        // Подсветка лучшей цены (вариант B): если совпало с эффективной ценой за единицу
+                        // Подсветка: лучшая — как "Лучшая стоимость", вторая — бледнее, остальные — без заливки
                         double effectiveUnit = calculateEffectiveUnitForBest(proposalItem);
-                        if (Math.abs(effectiveUnit - bestPrice) < 0.0001) {
-                            Font boldFont = workbook.createFont();
-                            boldFont.setBold(true);
-                            supplierStyle.setFont(boldFont);
+                        UUID sid = (proposal.getSupplier() != null) ? proposal.getSupplier().getId() : null;
+                        if (sid != null && sid.equals(bestSupplierId) && Math.abs(effectiveUnit - bestPrice) < 0.0001) {
+                            supplierPriceCell.setCellStyle(createBestPriceStyle(workbook));
+                        } else if (sid != null && sid.equals(secondBestSupplierId) && Math.abs(effectiveUnit - secondBestPrice) < 0.0001) {
+                            supplierPriceCell.setCellStyle(createSecondBestPriceStyle(workbook));
+                        } else {
+                            supplierPriceCell.setCellStyle(priceStyle);
                         }
-                        supplierPriceCell.setCellStyle(supplierStyle);
 
                         // Комментарий с визуализацией расчета (правило 3>2>1)
                         try {
@@ -327,9 +372,13 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                         emptyDeliveryCell.setCellValue("");
                         emptyDeliveryCell.setCellStyle(dataStyle);
 
+                        Cell emptyTypeCell = dataRow.createCell(colIndex++);
+                        emptyTypeCell.setCellValue("");
+                        emptyTypeCell.setCellStyle(createTypeStyle(workbook));
+
                         Cell emptyPriceCell = dataRow.createCell(colIndex++);
                         emptyPriceCell.setCellValue("");
-                        emptyPriceCell.setCellStyle(createSupplierStyle(workbook));
+                        emptyPriceCell.setCellStyle(priceStyle);
                     }
                 }
             }
@@ -351,8 +400,8 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                     .mapToDouble(Double::doubleValue)
                     .sum();
 
-            // сметная стоимость теперь в колонке 6
-            Cell totalEstimatedCell = totalRow.createCell(6);
+            // сметная стоимость теперь в колонке 7 (после переноса ссылки)
+            Cell totalEstimatedCell = totalRow.createCell(7);
             totalEstimatedCell.setCellValue(totalEstimated);
             totalEstimatedCell.setCellStyle(priceStyle);
 
@@ -360,7 +409,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             int totalCol = startSupplierCol;
             totalCol++; // пропустить колонку № Тендера
             for (SupplierProposal proposal : proposals) {
-                totalCol++; // срок
+                totalCol += 2; // срок + тип
                 double supplierSum = proposalItemRepository.findBySupplierProposalIdWithTenderItem(proposal.getId())
                         .stream()
                         .mapToDouble(this::calculateTotalWithVatAndDelivery)
@@ -399,12 +448,23 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         }
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Анализ цен (заявка)");
-
+            // Лист с детализацией итоговой стоимости по каждой ячейке
+            Sheet detailsSheet = workbook.createSheet("Подробности");
             CellStyle titleStyle = createTitleStyle(workbook);
             CellStyle headerStyle = createHeaderStyle(workbook);
             CellStyle supplierHeaderStyle = createSupplierHeaderStyle(workbook);
             CellStyle dataStyle = createDataStyle(workbook);
             CellStyle priceStyle = createPriceStyle(workbook);
+
+            // Теперь, когда стили готовы, создаём шапку листа "Подробности"
+            Row detailsHeader = detailsSheet.createRow(0);
+            String[] detailsCols = new String[] {"Поставщик", "Материал", "Кол-во (часть)", "Базовая цена", "Цена с НДС", "Доставка", "Эффективная ед.", "Итого", "Правило"};
+            for (int i = 0; i < detailsCols.length; i++) {
+                Cell hc = detailsHeader.createCell(i);
+                hc.setCellValue(detailsCols[i]);
+                hc.setCellStyle(headerStyle);
+            }
+            int detailsRowIdx = 1;
 
             // Собираем уникальных поставщиков и их лучшую цену (min эффективной цены за ед.)
             Map<UUID, String> supplierIdToName = new LinkedHashMap<>();
@@ -412,6 +472,21 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             Map<UUID, String> supplierIdToComment = new HashMap<>();
 
             class SupplierAgg { double totalPrice = 0.0; Integer minDays = null; String proposalNumber = null; }
+            class Offer {
+                UUID supplierId;
+                String supplierName;
+                String tenderNumber;
+                String proposalNumber;
+                int minDays;
+                double effectiveUnit;
+                double availableQty;
+                String priceType;
+                Double baseUnit;
+                Double vatUnit;
+                Double deliveryCost;
+                Double proposalQty;
+            }
+
             class GroupRow {
                 String displayName = "";
                 String estimateName = "";
@@ -421,7 +496,9 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 String link = "";
                 double bestUnit = Double.MAX_VALUE;
                 String bestSupplierName = "";
-                Map<UUID, SupplierAgg> perSupplier = new HashMap<>();
+                Map<UUID, SupplierAgg> perSupplier = new HashMap<>(); // kept for compatibility, not used for splitting
+                Map<UUID, Double> perSupplierQty = new HashMap<>();   // kept for compatibility, not used for splitting
+                java.util.List<Offer> offers = new java.util.ArrayList<>();
                 java.util.Set<String> tenderNumbers = new java.util.LinkedHashSet<>();
             }
 
@@ -456,18 +533,22 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                     }
 
                     double qty = item.getQuantity() != null ? item.getQuantity() : 0.0;
-                    g.totalQty += qty;
+                    if (g.totalQty == 0.0) {
+                        g.totalQty = qty;
+                    }
                     Double estQty = (item.getRequestMaterial() != null) ? item.getRequestMaterial().getEstimateQuantity() : null;
                     Double estPrice = (item.getRequestMaterial() != null) ? item.getRequestMaterial().getEstimatePrice() : null;
                     Double q = estQty != null ? estQty : item.getQuantity();
                     Double p = estPrice != null ? estPrice : item.getEstimatedPrice();
-                    if (q != null && p != null) g.estimatedTotal += q * p;
+                    if (g.estimatedTotal == 0.0 && q != null && p != null) {
+                        g.estimatedTotal = q * p;
+                    }
                     // Номер текущего тендера для группы
                     if (tender.getTenderNumber() != null && !tender.getTenderNumber().isBlank()) {
                         g.tenderNumbers.add(tender.getTenderNumber());
                     }
 
-                    // обходим поставщиков этого тендера
+                    // обходим поставщиков этого тендера — собираем офферы (предложения) по позиции
                     for (SupplierProposal psp : proposals) {
                         if (psp.getSupplier() == null) continue;
                         UUID supplierId = psp.getSupplier().getId();
@@ -479,17 +560,19 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                             g.bestUnit = effUnit;
                             g.bestSupplierName = psp.getSupplier().getName();
                         }
-
-                        SupplierAgg agg = g.perSupplier.computeIfAbsent(supplierId, id -> new SupplierAgg());
-                        double total = (pi.getDeliveryCost() != null && pi.getDeliveryCost() > 0)
-                                ? calculateTotalWithVatAndDelivery(pi)
-                                : calculatePreferredTotalNoDelivery(pi);
-                        agg.totalPrice += total;
-                        int days = extractDaysFromPeriod(pi.getDeliveryPeriod());
-                        agg.minDays = agg.minDays == null ? days : Math.min(agg.minDays, days);
-                        if (agg.proposalNumber == null || (psp.getProposalNumber() != null && !psp.getProposalNumber().isBlank())) {
-                            agg.proposalNumber = psp.getProposalNumber();
-                        }
+                        Offer off = new Offer();
+                        off.supplierId = supplierId;
+                        off.supplierName = psp.getSupplier().getName();
+                        off.tenderNumber = tender.getTenderNumber();
+                        off.proposalNumber = psp.getProposalNumber();
+                        off.minDays = extractDaysFromPeriod(pi.getDeliveryPeriod());
+                        off.effectiveUnit = effUnit;
+                        off.availableQty = (pi.getQuantity() != null ? pi.getQuantity() : 0.0);
+                        off.baseUnit = pi.getUnitPrice();
+                        off.vatUnit = pi.getUnitPriceWithVat();
+                        off.deliveryCost = pi.getDeliveryCost();
+                        off.proposalQty = pi.getQuantity();
+                        g.offers.add(off);
                     }
                 }
             }
@@ -513,7 +596,9 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
 
             int baseCols = 11;
             int lastCol = baseCols + 1 + (orderedSuppliers.size() * 3) - 1;
-            sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, Math.max(lastCol, 0)));
+            CellRangeAddress titleRegion2 = new CellRangeAddress(0, 0, 0, Math.max(lastCol, 0));
+            sheet.addMergedRegion(titleRegion2);
+            addBordersToRegion(sheet, titleRegion2);
 
             // Строка 1: комментарии (оставим пустыми)
             Row commentsRow = sheet.createRow(2);
@@ -536,7 +621,10 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 c.setCellStyle(dataStyle);
                 commentsRow.createCell(from + 1).setCellStyle(dataStyle);
                 commentsRow.createCell(to).setCellStyle(dataStyle);
-                sheet.addMergedRegion(new CellRangeAddress(3, 3, from, to));
+                // merge на той же строке, где созданы комментарии (row 2)
+                CellRangeAddress r2 = new CellRangeAddress(2, 2, from, to);
+                sheet.addMergedRegion(r2);
+                addBordersToRegion(sheet, r2);
             }
 
             // Строка 4: поставщики
@@ -560,7 +648,10 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 // заполняем 2 ячейки для корректного merge
                 supplierRow.createCell(from + 1).setCellStyle(supplierHeaderStyle);
                 supplierRow.createCell(to).setCellStyle(supplierHeaderStyle);
-                sheet.addMergedRegion(new CellRangeAddress(4, 4, from, to));
+                // merge на строке заголовков поставщиков (row 1)
+                CellRangeAddress r = new CellRangeAddress(1, 1, from, to);
+                sheet.addMergedRegion(r);
+                addBordersToRegion(sheet, r);
             }
 
 
@@ -568,14 +659,19 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             // Строка заголовков колонок
             final String[] baseHeaders = new String[] {
                     "№ п/п", "Наименование материала, услуги по Заявке", "Кол-во", "Ед. изм.",
-                    "Сметное наименование", "Сметная цена", "Сметная Стоимость",
-                    "Лучшая цена", "Поставщик (лучший)", "Экономия", "Ссылка на Материал"
+                    "Ссылка на Материал", "Сметное наименование", "Сметная цена", "Сметная Стоимость",
+                    "Лучшая цена", "Лучшая стоимость", "Поставщик (лучший)", "Экономия"
             };
-            Row headerRow = sheet.createRow(5);
+            // Строка заголовков таблицы (сразу после комментариев)
+            Row headerRow = sheet.createRow(3);
             for (int i = 0; i < baseHeaders.length; i++) {
                 Cell c = headerRow.createCell(i);
                 c.setCellValue(baseHeaders[i]);
-                c.setCellStyle(headerStyle);
+                if ("Лучшая стоимость".equals(baseHeaders[i]) || "Лучшая цена".equals(baseHeaders[i])) {
+                    c.setCellStyle(createBestHeaderStyle(workbook));
+                } else {
+                    c.setCellStyle(headerStyle);
+                }
             }
             int startSupplierCol = baseCols;
             Cell tenderNumHeader = headerRow.createCell(startSupplierCol++);
@@ -589,56 +685,171 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 d.setCellValue("Срок (дней)");
                 d.setCellStyle(headerStyle);
                 Cell p = headerRow.createCell(startSupplierCol++);
-                p.setCellValue("Стоимость с НДС (руб.)");
+                p.setCellValue("Стоимость");
                 p.setCellStyle(headerStyle);
             }
 
             // Данные по сгруппированным материалам
-            int rowIndex = 6;
+            // Данные начинаются сразу после заголовков
+            int rowIndex = 4;
             int idx = 1;
             for (GroupRow g : keyToGroup.values()) {
-                Row row = sheet.createRow(rowIndex++);
-                row.createCell(0).setCellValue(idx++);
-                row.createCell(1).setCellValue(g.displayName);
-                row.createCell(2).setCellValue(g.totalQty);
-                row.createCell(3).setCellValue(g.unitName);
-                row.createCell(4).setCellValue(g.estimateName);
-                // Сметная цена (оставим пустой если разная; используем средневзвешенную)
+                double remaining = g.totalQty;
                 double unitEstimate = g.totalQty > 0 ? (g.estimatedTotal / g.totalQty) : 0.0;
-                Cell estPriceCell = row.createCell(5);
-                estPriceCell.setCellValue(unitEstimate);
-                estPriceCell.setCellStyle(priceStyle);
-                Cell estTotalCell = row.createCell(6);
-                estTotalCell.setCellValue(g.estimatedTotal);
-                estTotalCell.setCellStyle(priceStyle);
+                // офферы по возрастанию эффективной цены
+                g.offers.sort(Comparator.comparingDouble((Offer o) -> o.effectiveUnit));
+                for (Offer off : g.offers) {
+                    if (remaining <= 0) break;
+                    if (off.availableQty <= 0) continue;
+                    double chunk = Math.min(off.availableQty, remaining);
+                    remaining -= chunk;
 
-                double bestUnit = g.bestUnit == Double.MAX_VALUE ? 0.0 : g.bestUnit;
-                Cell bestPriceCell = row.createCell(7);
-                bestPriceCell.setCellValue(bestUnit);
-                bestPriceCell.setCellStyle(priceStyle);
-                row.createCell(8).setCellValue(g.bestSupplierName);
-                double saving = Math.max(0, g.estimatedTotal - (bestUnit * g.totalQty));
-                Cell savingCell = row.createCell(9);
-                savingCell.setCellValue(saving);
-                savingCell.setCellStyle(priceStyle);
-                row.createCell(10).setCellValue(g.link);
+                    Row row = sheet.createRow(rowIndex++);
+                    Cell c0 = row.createCell(0); c0.setCellValue(idx++); c0.setCellStyle(dataStyle);
+                    Cell c1 = row.createCell(1); c1.setCellValue(g.displayName); c1.setCellStyle(dataStyle);
+                    Cell c2 = row.createCell(2); c2.setCellValue(chunk); c2.setCellStyle(dataStyle);
+                    Cell c3 = row.createCell(3); c3.setCellValue(g.unitName); c3.setCellStyle(dataStyle);
+                    Cell c4 = row.createCell(4); c4.setCellValue(g.link); c4.setCellStyle(dataStyle);
+                    Cell c5 = row.createCell(5); c5.setCellValue(g.estimateName); c5.setCellStyle(dataStyle);
 
-                int col = baseCols;
-                // № Тендера — перечислим все номера тендеров, участвующих в группе
-                String joinedTenders = String.join(", ", g.tenderNumbers);
-                row.createCell(col++).setCellValue(joinedTenders);
-                for (UUID supplierId : orderedSuppliers) {
-                    SupplierAgg agg = g.perSupplier.get(supplierId);
-                    if (agg != null) {
-                        row.createCell(col++).setCellValue(agg.proposalNumber != null ? agg.proposalNumber : "");
-                        row.createCell(col++).setCellValue(agg.minDays != null ? agg.minDays : 0);
-                        Cell supTotalCell = row.createCell(col++);
-                        supTotalCell.setCellValue(agg.totalPrice);
-                        supTotalCell.setCellStyle(priceStyle);
-                    } else {
-                        row.createCell(col++).setCellValue("");
-                        row.createCell(col++).setCellValue("");
-                        row.createCell(col++).setCellValue("");
+                    Cell estPriceCell = row.createCell(6);
+                    estPriceCell.setCellValue(unitEstimate);
+                    estPriceCell.setCellStyle(priceStyle);
+                    Cell estTotalCell = row.createCell(7);
+                    estTotalCell.setCellValue(unitEstimate * chunk);
+                    estTotalCell.setCellStyle(priceStyle);
+
+                    double bestUnit = off.effectiveUnit;
+                    Cell bestUnitOut = row.createCell(8);
+                    bestUnitOut.setCellValue(bestUnit);
+                    bestUnitOut.setCellStyle(createBestUnitStyle(workbook));
+                    Cell bestTotalOut = row.createCell(9);
+                    bestTotalOut.setCellValue(bestUnit * chunk);
+                    bestTotalOut.setCellStyle(createBestPriceStyle(workbook));
+                    Cell bestSupCell = row.createCell(10); bestSupCell.setCellValue(off.supplierName); bestSupCell.setCellStyle(dataStyle);
+                    double saving = Math.max(0, unitEstimate * chunk - (bestUnit * chunk));
+                    Cell savingCell = row.createCell(11);
+                    savingCell.setCellValue(saving);
+                    savingCell.setCellStyle(priceStyle);
+
+                    int col = baseCols;
+                    Cell tenderNoCell = row.createCell(col++);
+                    tenderNoCell.setCellValue(off.tenderNumber != null ? off.tenderNumber : "");
+                    tenderNoCell.setCellStyle(dataStyle);
+
+                    // Подготовим лучший оффер на группу для каждого поставщика
+                    Map<UUID, Offer> bestOfferPerSupplier = new HashMap<>();
+                    for (Offer ofg : g.offers) {
+                        Offer cur = bestOfferPerSupplier.get(ofg.supplierId);
+                        if (cur == null || ofg.effectiveUnit < cur.effectiveUnit) {
+                            bestOfferPerSupplier.put(ofg.supplierId, ofg);
+                        }
+                    }
+
+                    // Посчитаем тоталы (за текущий chunk) для ранжирования лучшей/второй цены
+                    UUID bestSid = null;
+                    double bestVal = Double.MAX_VALUE;
+                    UUID secondSid = null;
+                    double secondVal = Double.MAX_VALUE;
+                    for (UUID sid : orderedSuppliers) {
+                        Offer oo = bestOfferPerSupplier.get(sid);
+                        if (oo == null) continue;
+                        double total = oo.effectiveUnit * chunk;
+                        if (total < bestVal) {
+                            secondVal = bestVal; secondSid = bestSid;
+                            bestVal = total; bestSid = sid;
+                        } else if (total < secondVal) {
+                            secondVal = total; secondSid = sid;
+                        }
+                    }
+
+                    // Выводим данные для всех поставщиков: счет, срок, стоимость
+                    for (UUID sid : orderedSuppliers) {
+                        Offer oo = bestOfferPerSupplier.get(sid);
+                        if (oo != null) {
+                            // Счет
+                            Cell accCell = row.createCell(col++);
+                            accCell.setCellValue(oo.proposalNumber != null ? oo.proposalNumber : "");
+                            accCell.setCellStyle(dataStyle);
+                            // Срок
+                            Cell daysCell = row.createCell(col++);
+                            daysCell.setCellValue(oo.minDays);
+                            daysCell.setCellStyle(dataStyle);
+                            // Стоимость
+                            Cell supTotalCell = row.createCell(col++);
+                            double supTotal = oo.effectiveUnit * chunk;
+                            supTotalCell.setCellValue(supTotal);
+                            // Создаём строку на листе "Подробности" и ставим ссылку напрямую на неё
+                            Row dr = detailsSheet.createRow(detailsRowIdx);
+                            Cell d0 = dr.createCell(0); d0.setCellValue(oo.supplierName); d0.setCellStyle(dataStyle);
+                            Cell d1 = dr.createCell(1); d1.setCellValue(g.displayName); d1.setCellStyle(dataStyle);
+                            Cell d2 = dr.createCell(2); d2.setCellValue(chunk); d2.setCellStyle(dataStyle);
+                            Cell d3 = dr.createCell(3); d3.setCellValue(oo.baseUnit != null ? oo.baseUnit : 0.0); d3.setCellStyle(priceStyle);
+                            Cell d4 = dr.createCell(4); d4.setCellValue(oo.vatUnit != null ? oo.vatUnit : 0.0); d4.setCellStyle(priceStyle);
+                            Cell d5 = dr.createCell(5); d5.setCellValue(oo.deliveryCost != null ? oo.deliveryCost : 0.0); d5.setCellStyle(priceStyle);
+                            Cell d6 = dr.createCell(6); d6.setCellValue(oo.effectiveUnit); d6.setCellStyle(priceStyle);
+                            Cell d7 = dr.createCell(7); d7.setCellValue(supTotal); d7.setCellStyle(priceStyle);
+                            String ruleText;
+                            boolean hasDelivery = oo.deliveryCost != null && oo.deliveryCost > 0.0;
+                            boolean hasVat = oo.vatUnit != null;
+                            if (hasDelivery) ruleText = "Правило 3: цена + доставка";
+                            else if (hasVat) ruleText = "Правило 2: цена с НДС";
+                            else ruleText = "Правило 1: базовая цена";
+                            Cell d8 = dr.createCell(8); d8.setCellValue(ruleText); d8.setCellStyle(dataStyle);
+                            try {
+                                CreationHelper helper = workbook.getCreationHelper();
+                                org.apache.poi.ss.usermodel.Hyperlink link = helper.createHyperlink(org.apache.poi.common.usermodel.HyperlinkType.DOCUMENT);
+                                String target = "#Подробности!A" + (detailsRowIdx + 1); // 1-based
+                                link.setAddress(target);
+                                supTotalCell.setHyperlink(link);
+                            } catch (Exception ignore) {}
+                            detailsRowIdx++;
+                            if (sid.equals(bestSid)) {
+                                supTotalCell.setCellStyle(createBestPriceStyle(workbook));
+                            } else if (secondSid != null && sid.equals(secondSid)) {
+                                supTotalCell.setCellStyle(createSecondBestPriceStyle(workbook));
+                            } else {
+                                supTotalCell.setCellStyle(priceStyle);
+                            }
+                        } else {
+                            // Нет оффера у поставщика — пустые ячейки с рамками
+                            Cell empty1 = row.createCell(col++); empty1.setCellValue(""); empty1.setCellStyle(dataStyle);
+                            Cell empty2 = row.createCell(col++); empty2.setCellValue(""); empty2.setCellStyle(dataStyle);
+                            Cell empty3 = row.createCell(col++); empty3.setCellValue(""); empty3.setCellStyle(priceStyle);
+                        }
+                    }
+                }
+                // если остались не покрытые количества — выведем строку без поставщика с лучшей следующей ценой (как заглушка)
+                if (remaining > 0) {
+                    Row row = sheet.createRow(rowIndex++);
+                    Cell r0 = row.createCell(0); r0.setCellValue(idx++); r0.setCellStyle(dataStyle);
+                    Cell r1 = row.createCell(1); r1.setCellValue(g.displayName); r1.setCellStyle(dataStyle);
+                    Cell r2 = row.createCell(2); r2.setCellValue(remaining); r2.setCellStyle(dataStyle);
+                    Cell r3 = row.createCell(3); r3.setCellValue(g.unitName); r3.setCellStyle(dataStyle);
+                    Cell r4 = row.createCell(4); r4.setCellValue(g.link); r4.setCellStyle(dataStyle);
+                    Cell r5 = row.createCell(5); r5.setCellValue(g.estimateName); r5.setCellStyle(dataStyle);
+                    Cell estPriceCell = row.createCell(6);
+                    estPriceCell.setCellValue(unitEstimate);
+                    estPriceCell.setCellStyle(priceStyle);
+                    Cell estTotalCell = row.createCell(7);
+                    estTotalCell.setCellValue(unitEstimate * remaining);
+                    estTotalCell.setCellStyle(priceStyle);
+                    Cell bestUnitOut = row.createCell(8);
+                    bestUnitOut.setCellValue(0.0);
+                    Cell bestTotalOut = row.createCell(9);
+                    bestTotalOut.setCellValue(0.0);
+                    Cell r10 = row.createCell(10); r10.setCellValue(""); r10.setCellStyle(dataStyle);
+                    Cell savingCell = row.createCell(11);
+                    savingCell.setCellValue(0.0);
+                    savingCell.setCellStyle(priceStyle);
+
+                    // Пустые ячейки справа, чтобы сохранить границы таблицы: № тендера + блоки поставщиков
+                    int col = baseCols;
+                    Cell tnc = row.createCell(col++); tnc.setCellValue(""); tnc.setCellStyle(dataStyle);
+                    for (UUID sid : orderedSuppliers) {
+                        Cell cA = row.createCell(col++); cA.setCellValue(""); cA.setCellStyle(dataStyle);
+                        Cell cB = row.createCell(col++); cB.setCellValue(""); cB.setCellStyle(dataStyle);
+                        Cell cC = row.createCell(col++); cC.setCellValue(""); cC.setCellStyle(priceStyle);
                     }
                 }
             }
@@ -744,7 +955,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             
             // Стоимость с НДС (руб.)
             Cell cell3 = headerRow.createCell(colIndex++);
-            cell3.setCellValue("Стоимость с НДС (руб.)");
+            cell3.setCellValue("Стоимость");
             cell3.setCellStyle(headerStyle);
         }
         
@@ -900,11 +1111,10 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
     }
     
     private double calculatePriceWithVat(ProposalItem item) {
-        if (item.getQuantity() == null) {
-            return 0.0;
-        }
+        Double quantity = item.getQuantity();
+        double qty = quantity != null ? quantity.doubleValue() : 0.0;
         double unitWithVat = calculateUnitPriceWithVat(item);
-        return unitWithVat * item.getQuantity();
+        return unitWithVat * qty;
     }
 
     // Возвращает предпочтительную общую стоимость БЕЗ доставки: если есть явная цена с НДС — берем её * qty, иначе БАЗА*1.2 * qty
@@ -921,7 +1131,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
     private double calculateUnitPriceWithVat(ProposalItem item) {
         Double explicitVatUnit = item.getUnitPriceWithVat();
         if (explicitVatUnit != null) {
-            return explicitVatUnit;
+            return explicitVatUnit.doubleValue();
         }
         if (item.getUnitPrice() == null) {
             return 0.0;
@@ -938,15 +1148,22 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         double base = item.getUnitPrice() != null ? item.getUnitPrice() : 0.0;
         Double explicitVatUnit = item.getUnitPriceWithVat();
         Double delivery = item.getDeliveryCost();
+        double deliverySafe = delivery != null ? delivery.doubleValue() : 0.0;
 
-        boolean hasDelivery = delivery != null && delivery > 0.0;
+        boolean hasDelivery = deliverySafe > 0.0;
         if (hasDelivery) {
-            double chosenUnit = explicitVatUnit != null ? explicitVatUnit : base;
-            double perUnitDelivery = (quantity != null && quantity > 0.0) ? (delivery / quantity) : delivery != null ? delivery : 0.0;
+            double chosenUnit = explicitVatUnit != null ? explicitVatUnit.doubleValue() : base;
+            double deliveryVal = deliverySafe;
+            double perUnitDelivery;
+            if (quantity != null && quantity > 0.0) {
+                perUnitDelivery = deliveryVal / quantity.doubleValue();
+            } else {
+                perUnitDelivery = deliveryVal;
+            }
             return chosenUnit + perUnitDelivery;
         }
         if (explicitVatUnit != null) {
-            return explicitVatUnit;
+            return explicitVatUnit.doubleValue();
         }
         return base;
     }
@@ -956,7 +1173,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         double base = item.getUnitPrice() != null ? item.getUnitPrice() : 0.0;
         Double explicitVatUnit = item.getUnitPriceWithVat();
         Double delivery = item.getDeliveryCost();
-        boolean hasDelivery = delivery != null && delivery > 0.0;
+        boolean hasDelivery = delivery != null && delivery.doubleValue() > 0.0;
 
         String rule;
         double effective = calculateEffectiveUnitForBest(item);
@@ -967,9 +1184,11 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         } else {
             rule = "Правило 1: базовая цена";
         }
-        String vatPart = explicitVatUnit != null ? String.format("С НДС (явная): %.2f", explicitVatUnit) : "Без НДС (явная отсутствует)";
-        double perUnitDelivery = (quantity != null && quantity > 0.0 && delivery != null) ? (delivery / quantity) : (delivery != null ? delivery : 0.0);
-        return String.format("База: %.2f; %s; Доставка: %.2f; Эффективная (за ед.): %.2f; %s", base, vatPart, (delivery != null ? delivery : 0.0), effective, rule);
+        String vatPart = explicitVatUnit != null ? String.format("С НДС (явная): %.2f", explicitVatUnit.doubleValue()) : "Без НДС (явная отсутствует)";
+        double perUnitDelivery = (quantity != null && quantity > 0.0 && delivery != null)
+                ? (delivery.doubleValue() / quantity.doubleValue())
+                : (delivery != null ? delivery.doubleValue() : 0.0);
+        return String.format("База: %.2f; %s; Доставка: %.2f; Эффективная (за ед.): %.2f; %s", base, vatPart, perUnitDelivery, effective, rule);
     }
     
     private double calculateTotalSupplierPrice(SupplierProposal proposal, List<TenderItem> tenderItems) {
@@ -985,7 +1204,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         double unitWithVat = calculateUnitPriceWithVat(item);
         double qty = item.getQuantity() != null ? item.getQuantity() : 0.0;
         double totalWithVat = unitWithVat * qty;
-        double delivery = item.getDeliveryCost() != null ? item.getDeliveryCost() : 0.0;
+        double delivery = item.getDeliveryCost() != null ? item.getDeliveryCost().doubleValue() : 0.0;
         return totalWithVat + delivery;
     }
     
@@ -1024,6 +1243,10 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         style.setAlignment(HorizontalAlignment.LEFT);
         style.setFillForegroundColor(IndexedColors.LIGHT_BLUE.getIndex());
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        style.setBorderTop(BorderStyle.THIN);
+        style.setBorderBottom(BorderStyle.THIN);
+        style.setBorderLeft(BorderStyle.THIN);
+        style.setBorderRight(BorderStyle.THIN);
         return style;
     }
     
@@ -1052,6 +1275,25 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         return style;
     }
 
+    // Тип цены для визуализации: НДС/без НДС/с доставкой
+    private String resolvePriceType(ProposalItem item) {
+        boolean hasDelivery = item.getDeliveryCost() != null && item.getDeliveryCost().doubleValue() > 0.0;
+        boolean hasVatUnit = item.getUnitPriceWithVat() != null;
+        if (hasDelivery && hasVatUnit) return "НДС+Дост";
+        if (hasDelivery) return "Дост";
+        if (hasVatUnit) return "НДС";
+        return "Баз";
+    }
+
+    private CellStyle createTypeStyle(Workbook workbook) {
+        CellStyle style = createDataStyle(workbook);
+        Font f = workbook.createFont();
+        f.setColor(IndexedColors.GREY_80_PERCENT.getIndex());
+        style.setFont(f);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        return style;
+    }
+
     private CellStyle createHyperlinkStyle(Workbook workbook) {
         CellStyle style = createDataStyle(workbook);
         Font linkFont = workbook.createFont();
@@ -1059,6 +1301,56 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
         linkFont.setColor(IndexedColors.BLUE.getIndex());
         style.setFont(linkFont);
         return style;
+    }
+
+    // Специальные стили для лучшей цены
+    private CellStyle createBestHeaderStyle(Workbook workbook) {
+        CellStyle style = createHeaderStyle(workbook);
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        return style;
+    }
+
+    private CellStyle createBestPriceStyle(Workbook workbook) {
+        CellStyle style = createPriceStyle(workbook);
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        return style;
+    }
+    
+    // Стиль для второй лучшей цены (более бледная заливка, без жирного шрифта)
+    private CellStyle createSecondBestPriceStyle(Workbook workbook) {
+        CellStyle style = createPriceStyle(workbook);
+        style.setFillForegroundColor(IndexedColors.LIGHT_CORNFLOWER_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        return style;
+    }
+
+    private CellStyle createBestSupplierStyle(Workbook workbook) {
+        CellStyle style = createPriceStyle(workbook);
+        style.setFillForegroundColor(IndexedColors.LIGHT_ORANGE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        Font font = workbook.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        return style;
+    }
+
+    private CellStyle createBestUnitStyle(Workbook workbook) {
+        CellStyle style = createPriceStyle(workbook);
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        return style;
+    }
+
+    private void addBordersToRegion(Sheet sheet, CellRangeAddress region) {
+        RegionUtil.setBorderTop(BorderStyle.THIN, region, sheet);
+        RegionUtil.setBorderBottom(BorderStyle.THIN, region, sheet);
+        RegionUtil.setBorderLeft(BorderStyle.THIN, region, sheet);
+        RegionUtil.setBorderRight(BorderStyle.THIN, region, sheet);
     }
     
     private void autoSizeColumns(Sheet sheet, int baseCols, int supplierCount) {

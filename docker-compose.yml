@@ -14,11 +14,11 @@ services:
     depends_on:
       - db
     restart: unless-stopped
-    networks:
-      - tender-network
 
   db:
     image: postgres:15
+    ports:
+      - "5432:5432"
     environment:
       - POSTGRES_DB=tender
       - POSTGRES_USER=tender_user
@@ -26,12 +26,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
-    networks:
-      - tender-network
 
 volumes:
   postgres_data:
 
-networks:
-  tender-network:
-    driver: bridge
