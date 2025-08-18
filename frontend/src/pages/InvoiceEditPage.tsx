@@ -387,7 +387,16 @@ const InvoiceEditPage: React.FC = () => {
         await api.put(`/api/invoices/${id}`, invoice);
         showSnackbar('Счет успешно обновлен', 'success');
       } else {
-        await api.post('/api/invoices', invoice);
+        const createRes = await api.post('/api/invoices', invoice);
+        // После создания счета переводим связанный контракт в статус ACTIVE
+        try {
+          const cid = (invoice.contractId || contractId) as string;
+          if (cid) {
+            await api.patch(`/api/contracts/${cid}/status?status=ACTIVE`);
+          }
+        } catch (e) {
+          console.warn('Не удалось обновить статус контракта до ACTIVE после создания счета', e);
+        }
         showSnackbar('Счет успешно создан', 'success');
       }
       

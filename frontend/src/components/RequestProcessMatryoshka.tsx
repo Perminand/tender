@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '@mui/material/styles';
 import {
@@ -30,7 +30,8 @@ import {
   DialogContent,
   DialogContentText,
   DialogActions,
-  Alert
+  Alert,
+  LinearProgress
 } from '@mui/material';
 import {
   ExpandMore as ExpandMoreIcon,
@@ -153,6 +154,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   const [expandedContracts, setExpandedContracts] = useState<string[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
   const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
+  const [awardingItems, setAwardingItems] = useState<Record<string, boolean>>({});
   const [createTenderLoading, setCreateTenderLoading] = useState(false);
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
   const [statusDialog, setStatusDialog] = useState<{
@@ -171,7 +173,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
     onConfirm: null
   });
   const [error, setError] = useState<string | null>(null);
-
+  const [tenderWinners, setTenderWinners] = useState<Record<string, any>>({});
 
   // Логируем данные заявки для отладки
   console.log('=== ДАННЫЕ ЗАЯВКИ НА ФРОНТЕНДЕ ===');
@@ -233,6 +235,32 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   console.log('RequestProcessMatryoshka - contractsCount:', request.contractsCount);
   console.log('RequestProcessMatryoshka - deliveries:', request.deliveries);
   console.log('RequestProcessMatryoshka - deliveriesCount:', request.deliveriesCount);
+
+  // Логируем детали предложений для отладки
+  if (request.tenders) {
+    request.tenders.forEach(tender => {
+      if (tender.proposals && tender.proposals.length > 0) {
+        console.log(`Тендер ${tender.tenderId} - предложения:`, tender.proposals.map(p => ({
+          proposalId: p.proposalId,
+          supplierName: p.supplierName,
+          status: p.status,
+          totalPrice: p.totalPrice,
+          // Проверяем наличие поля winningPositionsTotal
+          hasWinningPositionsTotal: 'winningPositionsTotal' in p,
+          winningPositionsTotal: (p as any).winningPositionsTotal,
+          // Проверяем все доступные поля
+          allFields: Object.keys(p),
+          // Проверяем наличие полей, которые могут указывать на победителей
+          isWinner: (p as any).isWinner,
+          isBestPrice: (p as any).isBestPrice,
+          winnerPositions: (p as any).winnerPositions,
+          awardedPositions: (p as any).awardedPositions,
+          // Полный объект для анализа
+          fullObject: p
+        })));
+      }
+    });
+  }
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -391,6 +419,10 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
         ? prev.filter(id => id !== tenderId)
         : [...prev, tenderId]
     );
+    const tender = request.tenders?.find(t => t.tenderId === tenderId);
+    if (tender && tender.status === 'AWARDED' && !tenderWinners[tenderId]) {
+      loadTenderWinners(tenderId);
+    }
   };
 
   const handleProposalClick = (proposalId: string) => {
@@ -405,8 +437,9 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
     window.open(`/proposals/${proposalId}`, '_blank');
   };
 
-  const handleViewTenderDetail = (tenderId: string) => {
-    window.open(`/tenders/${tenderId}`, '_blank');
+  const handleViewTenderDetail = (tenderId: string, status?: string) => {
+    const url = status === 'EVALUATION' ? `/tenders/${tenderId}?tab=winners` : `/tenders/${tenderId}`;
+    window.open(url, '_blank');
   };
 
   const handleViewDeliveryDetail = (deliveryId: string) => {
@@ -583,6 +616,26 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
     // Перенаправляем на страницу создания предложения
     window.open(`/tenders/${tenderId}/proposals/new`, '_blank');
   };
+
+  // Функция для загрузки победителей тендера
+  const loadTenderWinners = async (tenderId: string) => {
+    try {
+      const response = await api.get(`/api/tenders/${tenderId}/winners`);
+      setTenderWinners(prev => ({ ...prev, [tenderId]: response.data }));
+    } catch (err) {
+      console.error('Error loading tender winners:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (request.tenders && request.tenders.length > 0) {
+      request.tenders.forEach(t => {
+        if (t.status === 'AWARDED' && !tenderWinners[t.tenderId]) {
+          loadTenderWinners(t.tenderId);
+        }
+      });
+    }
+  }, [request.tenders]);
 
   return (
     <StyledCard>
@@ -775,10 +828,20 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
         </Collapse>
 
             {/* Тендеры */}
-            {request.tenders && request.tenders.length > 0 && (
+            {expandedRequest && request.tenders && request.tenders.length > 0 && (
               <Box mb={2}>
                 <Typography variant="subtitle2" gutterBottom>
                   Тендеры ({request.tenders.length})
+                  {(() => {
+                    const total = request.tenders.length;
+                    const completed = request.tenders.filter(t => t.status === 'AWARDED').length; // завершимый тендер — присужден
+                    const pct = total ? Math.round((completed / total) * 100) : 0;
+                    return (
+                      <Typography component="span" variant="caption" color="text.secondary" sx={{ ml: 1 }}>
+                        Завершено: {pct}%
+                      </Typography>
+                    );
+                  })()}
                 </Typography>
                 {request.tenders.map((tender) => (
                   <Box key={tender.tenderId}>
@@ -801,6 +864,20 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                         <Typography variant="body2">
                           {formatCurrency(tender.totalAmount)}
                         </Typography>
+                        {(() => {
+                          // Индикатор завершенности тендера по контрактам: считаем контракты, привязанные к этому тендеру, завершенные COMPLETED
+                          const relatedContracts = (request.contracts || []).filter(c => (c as any).tenderId === tender.tenderId);
+                          const totalC = relatedContracts.length;
+                          const completedC = relatedContracts.filter(c => c.status === 'COMPLETED').length;
+                          const pctC = totalC ? Math.round((completedC / totalC) * 100) : 0;
+                          return (
+                            <Box sx={{ minWidth: 120, mx: 1 }}>
+                              <Typography variant="caption" color="text.secondary">Контракты завершены</Typography>
+                              <Typography variant="caption" sx={{ display: 'block', fontWeight: 500 }}>{pctC}%</Typography>
+                              <LinearProgress variant="determinate" value={pctC} sx={{ height: 6, borderRadius: 1, mt: 0.25 }} />
+                            </Box>
+                          );
+                        })()}
                         <StatusChip
                           label={getStatusLabel(tender.status)}
                           status={tender.status}
@@ -824,7 +901,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                             <Button
                               variant="outlined"
                               size="small"
-                              onClick={() => handleViewTenderDetail(tender.tenderId)}
+                              onClick={() => handleViewTenderDetail(tender.tenderId, tender.status)}
                               sx={{ 
                                 borderColor: 'primary.main',
                                 color: 'primary.main',
@@ -872,18 +949,58 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                           </Box>
                         </Box>
                         {tender.status === 'AWARDED' ? (
-                          // Для присужденных тендеров показываем только победившее предложение (с лучшей ценой)
+                          // Для присужденных тендеров показываем победителей с правильного эндпоинта
                           (() => {
-                            const acceptedProposals = tender.proposals?.filter(proposal => proposal.status === 'ACCEPTED') || [];
-                            console.log(`Тендер ${tender.tenderId}: найдено ${acceptedProposals.length} принятых предложений:`, acceptedProposals);
+                            const winnersData = tenderWinners[tender.tenderId];
+                            if (winnersData && winnersData.itemWinners) {
+                              // Получаем уникальных победителей из данных winners
+                              const uniqueWinners = new Map();
+                              winnersData.itemWinners.forEach((item: any) => {
+                                if (item.winner) {
+                                  uniqueWinners.set(item.winner.supplierId, {
+                                    proposalId: item.winner.proposalId,
+                                    supplierId: item.winner.supplierId,
+                                    supplierName: item.winner.supplierName,
+                                    totalPrice: item.totalWinnerPrice,
+                                    status: 'ACCEPTED',
+                                    // Добавляем информацию о выигранных позициях
+                                    winningPositions: [item.itemNumber]
+                                  });
+                                }
+                              });
+                              
+                              // Объединяем позиции для одного поставщика
+                              const finalWinners = Array.from(uniqueWinners.values()).map(winner => {
+                                const allPositions = winnersData.itemWinners
+                                  .filter((item: any) => item.winner?.supplierId === winner.supplierId)
+                                  .map((item: any) => item.itemNumber);
+                                
+                                return {
+                                  ...winner,
+                                  winningPositions: allPositions,
+                                  totalPrice: winnersData.itemWinners
+                                    .filter((item: any) => item.winner?.supplierId === winner.supplierId)
+                                    .reduce((sum: number, item: any) => sum + (item.totalWinnerPrice || 0), 0)
+                                };
+                              });
+                              
+                              return finalWinners;
+                            }
                             
-                            // Сортируем по цене (самая низкая цена - победитель) и берем первое
-                            const winnerProposal = acceptedProposals
-                              .sort((a, b) => (a.totalPrice || 0) - (b.totalPrice || 0))
-                              .slice(0, 1)[0];
-                            
-                            console.log(`Тендер ${tender.tenderId}: победитель:`, winnerProposal);
-                            return winnerProposal ? [winnerProposal] : [];
+                            // Fallback: показываем предложения с признаками победителей
+                            return tender.proposals?.filter(proposal => {
+                              const isWinner = (proposal as any).isWinner;
+                              const isBestPrice = (proposal as any).isBestPrice;
+                              const hasWinningPositions = (proposal as any).winningPositionsTotal > 0;
+                              const hasAwardedPositions = (proposal as any).awardedPositions?.length > 0;
+                              
+                              return proposal.status === 'ACCEPTED' && (
+                                isWinner || 
+                                isBestPrice || 
+                                hasWinningPositions || 
+                                hasAwardedPositions
+                              );
+                            }) || [];
                           })()
                             .map((proposal) => (
                               <Box key={proposal.proposalId}>
@@ -896,6 +1013,14 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                     <Box>
                                       <Typography variant="body2" fontWeight="bold" color="success.main">
                                         🏆 {proposal.supplierName} (ПОБЕДИТЕЛЬ)
+                                        {proposal.winningPositions && (
+                                          <Typography variant="caption" display="block" color="text.secondary">
+                                            Наименования: {(tenderWinners[tender.tenderId]?.itemWinners || [])
+                                              .filter((it: any) => it.winner?.supplierId === proposal.supplierId)
+                                              .map((it: any) => it.description)
+                                              .join(', ')}
+                                          </Typography>
+                                        )}
                                       </Typography>
                                       <Typography variant="caption">
                                         {proposal.supplierContact} • {formatPhone(proposal.supplierPhone)}
@@ -1060,7 +1185,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
             )}
 
             {/* Контракты */}
-            {request.contracts && request.contracts.length > 0 && (
+            {expandedRequest && expandedTenders.length > 0 && request.contracts && request.contracts.length > 0 && (
               <Box mb={2}>
                 <Typography variant="subtitle2" gutterBottom>
                   Контракты ({request.contracts.length})
@@ -1089,6 +1214,32 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                         <Typography variant="body2">
                           {formatCurrency(contract.totalAmount)}
                         </Typography>
+                        {(() => {
+                          const relatedDeliveries = (request.deliveries || []).filter(d => d.contractId === contract.contractId);
+                          let acceptedSum = 0;
+                          if (relatedDeliveries.length > 0) {
+                            acceptedSum = relatedDeliveries.reduce((sum, d) => {
+                              if (d.deliveryItems && d.deliveryItems.length > 0) {
+                                const itemsSum = d.deliveryItems.reduce((s, it) => s + (Number((it as any).acceptedQuantity || 0) * Number((it as any).unitPrice || 0)), 0);
+                                return sum + itemsSum;
+                              }
+                              if (['RECEIVED', 'ACCEPTED', 'DELIVERED'].includes(d.status)) {
+                                return sum + (Number((d as any).totalAmount) || 0);
+                              }
+                              return sum;
+                            }, 0);
+                          }
+                          const pct = contract.totalAmount ? Math.min(100, Math.round((acceptedSum / contract.totalAmount) * 100)) : 0;
+                          return (
+                            <Box sx={{ minWidth: 140, mx: 1 }}>
+                              <Typography variant="caption" color="text.secondary">Принято</Typography>
+                              <Typography variant="caption" sx={{ display: 'block', fontWeight: 500 }}>
+                                {formatCurrency(acceptedSum)} ({pct}%)
+                              </Typography>
+                              <LinearProgress variant="determinate" value={pct} sx={{ height: 6, borderRadius: 1, mt: 0.25 }} />
+                            </Box>
+                          );
+                        })()}
                         <StatusChip
                           label={getStatusLabel(contract.status)}
                           status={contract.status}
@@ -1153,6 +1304,61 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                               <Typography variant="caption" color="textSecondary">
                                 Статус: {getStatusLabel(contract.status)}
                               </Typography>
+                              {/* Прогресс оплаты и поставки */}
+                              <Box sx={{ mt: 1 }}>
+                                {/* Оплата */}
+                                {(() => {
+                                  const relatedInvoices = (request.invoices || []).filter(inv => inv.contractId === contract.contractId);
+                                  const totalPaid = relatedInvoices.reduce((s, inv) => s + (Number(inv.paidAmount) || 0), 0);
+                                  const totalInvoiced = relatedInvoices.reduce((s, inv) => s + (Number(inv.totalAmount) || 0), 0);
+                                  const paidPct = contract.totalAmount ? Math.min(100, Math.round((totalPaid / contract.totalAmount) * 100)) : 0;
+                                  const invoicedPct = contract.totalAmount ? Math.min(100, Math.round((totalInvoiced / contract.totalAmount) * 100)) : 0;
+                                  return (
+                                    <Box sx={{ mb: 1 }}>
+                                      <Typography variant="caption" color="textSecondary">
+                                        Оплата: {formatCurrency(totalPaid)} из {formatCurrency(contract.totalAmount)} ({paidPct}%)
+                                      </Typography>
+                                      <LinearProgress variant="determinate" value={paidPct} sx={{ height: 8, borderRadius: 1, mb: 0.5 }} />
+                                      <Typography variant="caption" color="textSecondary">
+                                        Выставлено счетов: {formatCurrency(totalInvoiced)} ({invoicedPct}%)
+                                      </Typography>
+                                      <LinearProgress variant="determinate" value={invoicedPct} color="secondary" sx={{ height: 6, borderRadius: 1 }} />
+                                    </Box>
+                                  );
+                                })()}
+                                {/* Поставка */}
+                                {(() => {
+                                  const relatedDeliveries = (request.deliveries || []).filter(d => d.contractId === contract.contractId);
+                                  // Процент рассчитываем от принятого объема (acceptedQuantity), либо 100% по статусу, либо по сумме как фолбэк
+                                  const byQuantityPossible = (contract.contractItems && contract.contractItems.length > 0);
+                                  let deliveredPct = 0;
+                                  if (byQuantityPossible) {
+                                    const totalQty = contract.contractItems.reduce((s, it) => s + (Number(it.quantity) || 0), 0);
+                                    const acceptedQty = relatedDeliveries.reduce((sum, del) => sum + (del.deliveryItems || []).reduce((s, di) => s + (Number((di as any).acceptedQuantity || 0)), 0), 0);
+                                    deliveredPct = totalQty ? Math.min(100, Math.round((acceptedQty / totalQty) * 100)) : 0;
+                                  } else {
+                                    const acceptedSum = relatedDeliveries.reduce((s, d) => {
+                                      if (d.deliveryItems && d.deliveryItems.length > 0) {
+                                        const itemsSum = d.deliveryItems.reduce((si: number, it: any) => si + (Number(it.acceptedQuantity || 0) * Number(it.unitPrice || 0)), 0);
+                                        return s + itemsSum;
+                                      }
+                                      if (['RECEIVED','ACCEPTED','DELIVERED'].includes(d.status)) {
+                                        return s + (Number((d as any).totalAmount) || 0);
+                                      }
+                                      return s;
+                                    }, 0);
+                                    deliveredPct = contract.totalAmount ? Math.min(100, Math.round((acceptedSum / contract.totalAmount) * 100)) : 0;
+                                  }
+                                  return (
+                                    <Box>
+                                      <Typography variant="caption" color="textSecondary">
+                                        Поставка: {deliveredPct}%
+                                      </Typography>
+                                      <LinearProgress variant="determinate" value={deliveredPct} color="success" sx={{ height: 8, borderRadius: 1 }} />
+                                    </Box>
+                                  );
+                                })()}
+                              </Box>
                             </Grid>
                             <Grid item xs={12}>
                               <Typography variant="caption" color="textSecondary">
@@ -1198,6 +1404,300 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                               </Grid>
                             )}
                             
+                            {/* Счета по контракту */}
+                            {(() => {
+                              const contractInvoices = (request.invoices || []).filter(inv => inv.contractId === contract.contractId);
+                              if (contractInvoices.length === 0) return null;
+                              return (
+                                <Grid item xs={12}>
+                                  <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
+                                    Счета по контракту
+                                  </Typography>
+                                  <TableContainer component={Paper} variant="outlined">
+                                    <Table size="small">
+                                      <TableHead>
+                                        <TableRow>
+                                          <TableCell>Номер</TableCell>
+                                          <TableCell>Дата</TableCell>
+                                          <TableCell>Поставщик</TableCell>
+                                          <TableCell align="right">Сумма</TableCell>
+                                          <TableCell>Статус</TableCell>
+                                          <TableCell align="right">Действия</TableCell>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {contractInvoices.map((invoice) => (
+                                          <React.Fragment key={invoice.invoiceId}>
+                                            <TableRow hover onClick={() => {
+                                              setExpandedInvoices(prev => prev.includes(invoice.invoiceId) ? prev.filter(id => id !== invoice.invoiceId) : [...prev, invoice.invoiceId]);
+                                            }}>
+                                              <TableCell>{invoice.invoiceNumber}</TableCell>
+                                              <TableCell>{formatDate(invoice.invoiceDate)}</TableCell>
+                                              <TableCell>{invoice.supplierName}</TableCell>
+                                              <TableCell align="right">{formatCurrency(invoice.totalAmount)}</TableCell>
+                                              <TableCell>
+                                                <StatusChip label={getStatusLabel(invoice.status)} status={invoice.status} size="small" />
+                                              </TableCell>
+                                              <TableCell align="right">
+                                                <Button size="small" variant="outlined" sx={{ mr: 1 }} onClick={(e) => { e.stopPropagation(); handleViewInvoiceDetail(invoice.invoiceId); }}>Просмотр</Button>
+                                              </TableCell>
+                                            </TableRow>
+                                            {expandedInvoices.includes(invoice.invoiceId) && (
+                                              <TableRow>
+                                                <TableCell colSpan={6} sx={{ p: 0 }}>
+                                                  <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
+                                                    <Grid container spacing={2}>
+                                                      <Grid item xs={6}>
+                                                        <Typography variant="caption" color="textSecondary">Поставщик</Typography>
+                                                        <Typography variant="body2">{invoice.supplierName}</Typography>
+                                                        <Typography variant="caption" color="textSecondary">Контакт: {invoice.supplierContact} • {formatPhone(invoice.supplierPhone)}</Typography>
+                                                      </Grid>
+                                                      <Grid item xs={6}>
+                                                        <Typography variant="caption" color="textSecondary">Финансы</Typography>
+                                                        <Typography variant="body2">Общая сумма: {formatCurrency(invoice.totalAmount)}</Typography>
+                                                        <Typography variant="body2">Оплачено: {formatCurrency(invoice.paidAmount)}</Typography>
+                                                        <Typography variant="body2">Остаток: {formatCurrency(invoice.remainingAmount)}</Typography>
+                                                        <Typography variant="caption" color="textSecondary">Статус: {getStatusLabel(invoice.status)}</Typography>
+                                                      </Grid>
+                                                      <Grid item xs={12}>
+                                                        <Typography variant="caption" color="textSecondary">Срок оплаты</Typography>
+                                                        <Typography variant="body2">{formatDate(invoice.dueDate)}</Typography>
+                                                      </Grid>
+                                                      {invoice.paymentTerms && (
+                                                        <Grid item xs={12}>
+                                                          <Typography variant="caption" color="textSecondary">Условия оплаты</Typography>
+                                                          <Typography variant="body2">{invoice.paymentTerms}</Typography>
+                                                        </Grid>
+                                                      )}
+                                                      {invoice.notes && (
+                                                        <Grid item xs={12}>
+                                                          <Typography variant="caption" color="textSecondary">Примечания</Typography>
+                                                          <Typography variant="body2">{invoice.notes}</Typography>
+                                                        </Grid>
+                                                      )}
+                                                      {(invoice.invoiceItems || []).length > 0 && (
+                                                        <Grid item xs={12}>
+                                                          <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                                            Материалы счета ({invoice.invoiceItems?.length || 0})
+                                                          </Typography>
+                                                          <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1 }}>
+                                                            <Table size="small">
+                                                              <TableHead>
+                                                                <TableRow>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>№</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Материал</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Кол-во</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Ед.</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Цена</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Сумма</TableCell>
+                                                                </TableRow>
+                                                              </TableHead>
+                                                              <TableBody>
+                                                                {(invoice.invoiceItems || []).map((item, index) => (
+                                                                  <TableRow key={item.id || index}>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{index + 1}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.materialName}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.quantity}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.unitName}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.unitPrice)}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.totalPrice)}</TableCell>
+                                                                  </TableRow>
+                                                                ))}
+                                                              </TableBody>
+                                                            </Table>
+                                                          </Box>
+                                                        </Grid>
+                                                      )}
+                                                      <Grid item xs={12}>
+                                                        <Box display="flex" justifyContent="flex-end" mt={2}>
+                                                          <Button
+                                                            variant="contained"
+                                                            startIcon={<DeliveryIcon />}
+                                                            onClick={() => {
+                                                              const params = new URLSearchParams({
+                                                                invoiceId: invoice.invoiceId,
+                                                                supplierName: encodeURIComponent(invoice.supplierName),
+                                                                totalAmount: invoice.totalAmount.toString(),
+                                                                supplierContact: encodeURIComponent(invoice.supplierContact || ''),
+                                                                supplierPhone: encodeURIComponent(invoice.supplierPhone || ''),
+                                                                source: 'matryoshka',
+                                                                requestId: request.requestId,
+                                                                requestNumber: encodeURIComponent(request.requestNumber)
+                                                              });
+                                                              if (invoice.contractId) {
+                                                                params.append('contractId', invoice.contractId);
+                                                              }
+                                                              window.open(`/deliveries/new?${params.toString()}`, '_blank');
+                                                            }}
+                                                            sx={{ bgcolor: 'info.main', color: 'white', '&:hover': { bgcolor: 'info.dark' } }}
+                                                          >
+                                                            Создать поставку
+                                                          </Button>
+                                                        </Box>
+                                                      </Grid>
+                                                    </Grid>
+                                                  </Box>
+                                                </TableCell>
+                                              </TableRow>
+                                            )}
+                                          </React.Fragment>
+                                        ))}
+                                      </TableBody>
+                                    </Table>
+                                  </TableContainer>
+                                </Grid>
+                              );
+                            })()}
+
+                            {/* Поставки по контракту */}
+                            {(() => {
+                              const contractDeliveries = (request.deliveries || []).filter(d => d.contractId === contract.contractId);
+                              if (contractDeliveries.length === 0) return null;
+                              return (
+                                <Grid item xs={12}>
+                                  <Typography variant="subtitle2" sx={{ mt: 3, mb: 1 }}>
+                                    Поставки по контракту
+                                  </Typography>
+                                  <TableContainer component={Paper} variant="outlined">
+                                    <Table size="small">
+                                      <TableHead>
+                                        <TableRow>
+                                          <TableCell>Номер</TableCell>
+                                          <TableCell>Дата</TableCell>
+                                          <TableCell>Поставщик</TableCell>
+                                          <TableCell align="right">Сумма</TableCell>
+                                          <TableCell align="right">Принято</TableCell>
+                                          <TableCell>Статус</TableCell>
+                                          <TableCell align="right">Действия</TableCell>
+                                        </TableRow>
+                                      </TableHead>
+                                      <TableBody>
+                                        {contractDeliveries.map((delivery) => (
+                                          <React.Fragment key={delivery.deliveryId}>
+                                            <TableRow hover onClick={() => {
+                                              setExpandedDeliveries(prev => prev.includes(delivery.deliveryId) ? prev.filter(id => id !== delivery.deliveryId) : [...prev, delivery.deliveryId]);
+                                            }}>
+                                              <TableCell>{delivery.deliveryNumber}</TableCell>
+                                              <TableCell>{formatDate(delivery.deliveryDate)}</TableCell>
+                                              <TableCell>{delivery.supplierName}</TableCell>
+                                              <TableCell align="right">{formatCurrency(delivery.totalAmount)}</TableCell>
+                                              <TableCell align="right">
+                                                {(() => {
+                                                  let acceptedPct = 0;
+                                                  if (delivery.deliveryItems && delivery.deliveryItems.length > 0) {
+                                                    const totalOrdered = delivery.deliveryItems.reduce((s: number, it: any) => s + (Number(it.orderedQuantity || 0)), 0);
+                                                    const totalAccepted = delivery.deliveryItems.reduce((s: number, it: any) => s + (Number(it.acceptedQuantity || 0)), 0);
+                                                    acceptedPct = totalOrdered ? Math.round((totalAccepted / totalOrdered) * 100) : 0;
+                                                  } else if (['RECEIVED','ACCEPTED','DELIVERED'].includes(delivery.status)) {
+                                                    acceptedPct = 100;
+                                                  }
+                                                  return `${acceptedPct}%`;
+                                                })()}
+                                              </TableCell>
+                                              <TableCell>
+                                                <StatusChip label={getStatusLabel(delivery.status)} status={delivery.status} size="small" />
+                                              </TableCell>
+                                              <TableCell align="right">
+                                                <Button size="small" variant="outlined" sx={{ mr: 1 }} onClick={(e) => { e.stopPropagation(); handleViewDeliveryDetail(delivery.deliveryId); }}>Просмотр</Button>
+                                              </TableCell>
+                                            </TableRow>
+                                            {expandedDeliveries.includes(delivery.deliveryId) && (
+                                              <TableRow>
+                                                <TableCell colSpan={6} sx={{ p: 0 }}>
+                                                  <Box sx={{ p: 2, bgcolor: 'grey.50' }}>
+                                                    <Grid container spacing={2}>
+                                                      <Grid item xs={6}>
+                                                        <Typography variant="caption" color="textSecondary">Поставщик</Typography>
+                                                        <Typography variant="body2">{delivery.supplierName}</Typography>
+                                                        <Typography variant="caption" color="textSecondary">Контракт: {delivery.contractNumber}</Typography>
+                                                      </Grid>
+                                                      <Grid item xs={6}>
+                                                        <Typography variant="caption" color="textSecondary">Финансы</Typography>
+                                                        <Typography variant="body2">Общая сумма: {formatCurrency(delivery.totalAmount)}</Typography>
+                                                        <Typography variant="caption" color="textSecondary">Статус: {getStatusLabel(delivery.status)}</Typography>
+                                                      </Grid>
+                                                      <Grid item xs={6}>
+                                                        <Typography variant="caption" color="textSecondary">Даты</Typography>
+                                                        <Typography variant="body2">Дата: {formatDate(delivery.deliveryDate)}</Typography>
+                                                      </Grid>
+                                                      {delivery.warehouseName && (
+                                                        <Grid item xs={6}>
+                                                          <Typography variant="caption" color="textSecondary">Склад</Typography>
+                                                          <Typography variant="body2">{delivery.warehouseName}</Typography>
+                                                          {delivery.trackingNumber && (
+                                                            <Typography variant="caption" color="textSecondary">Трек номер: {delivery.trackingNumber}</Typography>
+                                                          )}
+                                                        </Grid>
+                                                      )}
+                                                      {delivery.notes && (
+                                                        <Grid item xs={12}>
+                                                          <Typography variant="caption" color="textSecondary">Примечания</Typography>
+                                                          <Typography variant="body2">{delivery.notes}</Typography>
+                                                        </Grid>
+                                                      )}
+                                                      {(delivery.deliveryItems || []).length > 0 && (
+                                                        <Grid item xs={12}>
+                                                          <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
+                                                            Материалы поставки ({delivery.deliveryItems?.length || 0})
+                                                          </Typography>
+                                                          <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1 }}>
+                                                            <Table size="small">
+                                                              <TableHead>
+                                                                <TableRow>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>№</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Материал</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Заказано</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Доставлено</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Принято</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Ед.</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Цена</TableCell>
+                                                                  <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Сумма</TableCell>
+                                                                </TableRow>
+                                                              </TableHead>
+                                                              <TableBody>
+                                                                {(delivery.deliveryItems || []).map((item, index) => (
+                                                                  <TableRow key={item.id || index}>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{index + 1}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.materialName}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.orderedQuantity}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.deliveredQuantity || 0}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.acceptedQuantity || 0}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.unitName}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.unitPrice)}</TableCell>
+                                                                    <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.totalPrice)}</TableCell>
+                                                                  </TableRow>
+                                                                ))}
+                                                              </TableBody>
+                                                            </Table>
+                                                          </Box>
+                                                        </Grid>
+                                                      )}
+                                                      <Grid item xs={12}>
+                                                        <Box display="flex" justifyContent="flex-end" mt={2}>
+                                                          <Button
+                                                            variant="contained"
+                                                            startIcon={<CheckCircleIcon />}
+                                                            onClick={() => window.open(`/deliveries/${delivery.deliveryId}`, '_blank')}
+                                                            sx={{ bgcolor: 'success.main', color: 'white', '&:hover': { bgcolor: 'success.dark' } }}
+                                                          >
+                                                            Управление статусом
+                                                          </Button>
+                                                        </Box>
+                                                      </Grid>
+                                                    </Grid>
+                                                  </Box>
+                                                </TableCell>
+                                              </TableRow>
+                                            )}
+                                          </React.Fragment>
+                                         ))}
+                                      </TableBody>
+                                    </Table>
+                                  </TableContainer>
+                                </Grid>
+                              );
+                            })()}
+                            
                             <Grid item xs={12}>
                               <Box display="flex" justifyContent="flex-end" mt={2}>
                                 <Button
@@ -1207,6 +1707,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                     // Создание счета из контракта с подстановкой данных
                                     const params = new URLSearchParams({
                                       contractId: contract.contractId,
+                                      supplierId: (contract as any).supplierId || contract.tender?.awardedSupplierId || '',
                                       supplierName: encodeURIComponent(contract.supplierName),
                                       totalAmount: contract.totalAmount.toString(),
                                       supplierContact: encodeURIComponent(contract.supplierContact || ''),
@@ -1227,6 +1728,28 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                 >
                                   Создать счет
                                 </Button>
+                                <Button
+                                  variant="outlined"
+                                  startIcon={<DeliveryIcon />}
+                                  onClick={() => {
+                                    // Создание поставки из контракта с подстановкой данных
+                                    const params = new URLSearchParams({
+                                      contractId: contract.contractId,
+                                      supplierId: (contract as any).supplierId || contract.tender?.awardedSupplierId || '',
+                                      supplierName: encodeURIComponent(contract.supplierName),
+                                      totalAmount: contract.totalAmount.toString(),
+                                      supplierContact: encodeURIComponent(contract.supplierContact || ''),
+                                      supplierPhone: encodeURIComponent(contract.supplierPhone || ''),
+                                      source: 'matryoshka',
+                                      requestId: request.requestId,
+                                      requestNumber: encodeURIComponent(request.requestNumber)
+                                    });
+                                    window.open(`/deliveries/new?${params.toString()}`, '_blank');
+                                  }}
+                                  sx={{ ml: 1 }}
+                                >
+                                  Создать поставку
+                                </Button>
                               </Box>
                             </Grid>
 
@@ -1242,7 +1765,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
             )}
 
             {/* Счета */}
-            {request.invoices && request.invoices.length > 0 && (
+            {false && request.invoices && request.invoices.length > 0 && (
               <Box mb={2}>
                 <Typography variant="subtitle2" gutterBottom>
                   Счета ({request.invoices.length})
@@ -1410,17 +1933,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                       </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                                                             {(invoice.invoiceItems || []).map((item, index) => {
-                                        console.log('Рендеринг элемента счета:', {
-                                          index,
-                                          item,
-                                          materialName: item.materialName,
-                                          quantity: item.quantity,
-                                          unitName: item.unitName,
-                                          unitPrice: item.unitPrice,
-                                          totalPrice: item.totalPrice
-                                        });
-                                        return (
+                                      {(invoice.invoiceItems || []).map((item, index) => (
                                           <TableRow key={item.id || index}>
                                             <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{index + 1}</TableCell>
                                             <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.materialName}</TableCell>
@@ -1429,8 +1942,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                             <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.unitPrice)}</TableCell>
                                             <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.totalPrice)}</TableCell>
                                           </TableRow>
-                                        );
-                                      })}
+                                      ))}
                                     </TableBody>
                                   </Table>
                                 </Box>
@@ -1446,6 +1958,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                     // Создание поставки из счета
                                     const params = new URLSearchParams({
                                       invoiceId: invoice.invoiceId,
+                                      supplierId: (invoice as any).supplierId || '',
                                       supplierName: encodeURIComponent(invoice.supplierName),
                                       totalAmount: invoice.totalAmount.toString(),
                                       supplierContact: encodeURIComponent(invoice.supplierContact || ''),
@@ -1487,215 +2000,12 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
             )}
 
             {/* Поставки */}
-            {request.deliveries && request.deliveries.length > 0 && (
-              <Box mb={2}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Поставки ({request.deliveries.length})
-                </Typography>
-                {request.deliveries.map((delivery) => (
-                  <Box key={delivery.deliveryId}>
-                    <NestedStep 
-                      color={getStepColor('delivery', 1)}
-                      onClick={() => handleDeliveryClick(delivery.deliveryId)}
-                    >
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <DeliveryIcon />
-                        <Box>
-                          <Typography variant="body1">
-                            Поставка {delivery.deliveryNumber}
-                          </Typography>
-                          <Typography variant="body2">
-                            {formatDate(delivery.plannedDate)} • {request.project} • {request.location || 'Склад не указан'} • {delivery.supplierName}
-                          </Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            Контракт: {delivery.contractNumber}
-                          </Typography>
-                        </Box>
-                      </Box>
-                      <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="body2">
-                          {formatCurrency(delivery.totalAmount)}
-                        </Typography>
-                        <StatusChip
-                          label={getStatusLabel(delivery.status)}
-                          status={delivery.status}
-                          size="small"
-                        />
-                        <Button
-                          variant="outlined"
-                          size="small"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleViewDeliveryDetail(delivery.deliveryId);
-                          }}
-                          sx={{ 
-                            minWidth: 'auto', 
-                            px: 1, 
-                            py: 0.5,
-                            fontSize: '0.75rem',
-                            borderColor: 'primary.main',
-                            color: 'primary.main',
-                            '&:hover': {
-                              borderColor: 'primary.dark',
-                              bgcolor: 'primary.50'
-                            }
-                          }}
-                        >
-                          Просмотр
-                        </Button>
-
-                        <IconButton size="small">
-                          {expandedDeliveries.includes(delivery.deliveryId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        </IconButton>
-                      </Box>
-                    </NestedStep>
-
-                    {/* Детали поставки */}
-                    <Collapse in={expandedDeliveries.includes(delivery.deliveryId)}>
-                      <Box ml={3}>
-                        {/* Информация о поставке */}
-                        <Paper sx={{ p: 2, mb: 2, bgcolor: 'grey.50' }}>
-                          <Typography variant="subtitle2" gutterBottom>
-                            Детали поставки
-                          </Typography>
-                          <Grid container spacing={2}>
-                            <Grid item xs={6}>
-                              <Typography variant="caption" color="textSecondary">
-                                Поставщик
-                              </Typography>
-                              <Typography variant="body2">
-                                {delivery.supplierName}
-                              </Typography>
-                              <Typography variant="caption" color="textSecondary">
-                                Контракт: {delivery.contractNumber}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Typography variant="caption" color="textSecondary">
-                                Финансы
-                              </Typography>
-                              <Typography variant="body2">
-                                Общая сумма: {formatCurrency(delivery.totalAmount)}
-                              </Typography>
-                              <Typography variant="caption" color="textSecondary">
-                                Статус: {getStatusLabel(delivery.status)}
-                              </Typography>
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Typography variant="caption" color="textSecondary">
-                                Даты
-                              </Typography>
-                              <Typography variant="body2">
-                                Запланирована: {formatDate(delivery.plannedDate)}
-                              </Typography>
-                              {delivery.actualDate && (
-                                <Typography variant="body2">
-                                  Фактическая: {formatDate(delivery.actualDate)}
-                                </Typography>
-                              )}
-                            </Grid>
-                            <Grid item xs={6}>
-                              <Typography variant="caption" color="textSecondary">
-                                Склад
-                              </Typography>
-                              <Typography variant="body2">
-                                {delivery.warehouseName || 'Не указан'}
-                              </Typography>
-                              {delivery.trackingNumber && (
-                                <Typography variant="caption" color="textSecondary">
-                                  Трек номер: {delivery.trackingNumber}
-                                </Typography>
-                              )}
-                            </Grid>
-                            {delivery.notes && (
-                              <Grid item xs={12}>
-                                <Typography variant="caption" color="textSecondary">
-                                  Примечания
-                                </Typography>
-                                <Typography variant="body2">
-                                  {delivery.notes}
-                                </Typography>
-                              </Grid>
-                            )}
-                            
-                            {/* Материалы поставки */}
-                            {delivery.deliveryItems && delivery.deliveryItems.length > 0 && (
-                              <Grid item xs={12}>
-                                <Typography variant="caption" color="textSecondary" display="block" gutterBottom>
-                                  Материалы поставки ({delivery.deliveryItems.length})
-                                </Typography>
-                                <Box sx={{ maxHeight: 200, overflow: 'auto', border: '1px solid', borderColor: 'grey.300', borderRadius: 1, p: 1 }}>
-                                  <Table size="small">
-                                    <TableHead>
-                                      <TableRow>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>№</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Материал</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Заказано</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Доставлено</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Принято</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Ед.</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Цена</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Сумма</TableCell>
-                                        <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>Статус</TableCell>
-                                      </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                      {delivery.deliveryItems.map((item, index) => (
-                                        <TableRow key={item.id || index}>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{index + 1}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.materialName}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.orderedQuantity}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.deliveredQuantity || 0}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.acceptedQuantity || 0}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{item.unitName}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.unitPrice)}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>{formatCurrency(item.totalPrice)}</TableCell>
-                                          <TableCell size="small" sx={{ p: 0.5, fontSize: '0.75rem' }}>
-                                            <StatusChip
-                                              label={getStatusLabel(item.acceptanceStatus || 'PENDING')}
-                                              status={item.acceptanceStatus || 'PENDING'}
-                                              size="small"
-                                            />
-                                          </TableCell>
-                                        </TableRow>
-                                      ))}
-                                    </TableBody>
-                                  </Table>
-                                </Box>
-                              </Grid>
-                            )}
-                            
-                            <Grid item xs={12}>
-                              <Box display="flex" justifyContent="flex-end" mt={2}>
-                                <Button
-                                  variant="contained"
-                                  startIcon={<CheckCircleIcon />}
-                                  onClick={() => {
-                                    // Управление статусом поставки
-                                    window.open(`/deliveries/${delivery.deliveryId}`, '_blank');
-                                  }}
-                                  sx={{
-                                    bgcolor: 'success.main',
-                                    color: 'white',
-                                    '&:hover': {
-                                      bgcolor: 'success.dark'
-                                    }
-                                  }}
-                                >
-                                  Управление статусом
-                                </Button>
-                              </Box>
-                            </Grid>
-
-                          </Grid>
-                        </Paper>
-
-
-                      </Box>
-                    </Collapse>
-                  </Box>
-                ))}
-              </Box>
+            {false && request.deliveries && request.deliveries.length > 0 && (
+               <Box mb={2}>
+                 <Typography variant="subtitle2" gutterBottom>
+                   Поставки ({request.deliveries.length})
+                 </Typography>
+               </Box>
             )}
 
 

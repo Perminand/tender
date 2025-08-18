@@ -38,7 +38,7 @@ import {
   Clear as ClearIcon,
   Edit as EditIcon
 } from '@mui/icons-material';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../utils/api';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -129,6 +129,7 @@ interface TenderDto {
 const TenderDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [tender, setTender] = useState<TenderDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [closeDialogOpen, setCloseDialogOpen] = useState(false);
@@ -158,6 +159,13 @@ const TenderDetailPage: React.FC = () => {
   useEffect(() => {
     setSelectedWinner(tender?.awardedSupplierId || '');
   }, [tender?.awardedSupplierId]);
+
+  useEffect(() => {
+    const tabParam = searchParams.get('tab');
+    if (tabParam === 'details' || tabParam === 'winners' || tabParam === 'analysis') {
+      setActiveTab(tabParam as 'details' | 'winners' | 'analysis');
+    }
+  }, [searchParams]);
 
   const loadTender = async () => {
     try {

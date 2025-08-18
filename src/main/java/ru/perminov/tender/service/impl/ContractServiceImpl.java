@@ -31,6 +31,7 @@ import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.mapper.TenderMapper;
 import ru.perminov.tender.service.AuditLogService;
 import ru.perminov.tender.service.TenderWinnerService;
+import ru.perminov.tender.service.InvoiceService;
 import ru.perminov.tender.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
@@ -63,6 +64,8 @@ public class ContractServiceImpl implements ContractService {
     private final AuditLogService auditLogService;
     private final UserRepository userRepository;
     private final TenderWinnerService tenderWinnerService;
+    private final ru.perminov.tender.repository.InvoiceRepository invoiceRepository;
+    private final InvoiceService invoiceService;
 
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -525,7 +528,69 @@ public class ContractServiceImpl implements ContractService {
 
             saved.setTotalAmount(total);
             saved = contractRepository.save(saved);
+            // Переводим тендер в статус AWARDED (Присужден), если еще не переведен
+            try {
+                Tender t = tenderRepository.findById(dto.tenderId()).orElse(null);
+                if (t != null && t.getStatus() != Tender.TenderStatus.AWARDED) {
+                    t.setStatus(Tender.TenderStatus.AWARDED);
+                    tenderRepository.save(t);
+                    auditLogService.logSimple(getCurrentUser(), "TENDER_AWARDED", "Tender", t.getId().toString(), "Тендер присужден (созданы контракты)");
+                }
+            } catch (Exception ex) {
+                log.warn("Не удалось обновить статус тендера на AWARDED: {}", ex.getMessage());
+            }
             result.add(contractMapper.toDto(saved));
+
+            // Создаем черновой счет на основе выигрышных позиций предложения
+            try {
+                ru.perminov.tender.dto.InvoiceDtoNew invoiceNew = new ru.perminov.tender.dto.InvoiceDtoNew();
+                invoiceNew.setContractId(saved.getId());
+                invoiceNew.setSupplierId(supplierId);
+                invoiceNew.setInvoiceNumber("INV-" + System.currentTimeMillis());
+                invoiceNew.setInvoiceDate(java.time.LocalDate.now());
+                invoiceNew.setDueDate(java.time.LocalDate.now().plusDays(14));
+                invoiceNew.setCurrency(saved.getCurrency());
+                invoiceNew.setPaymentTerms("Оплата по контракту");
+
+                java.util.List<ru.perminov.tender.dto.InvoiceItemDtoNew> items = new java.util.ArrayList<>();
+                for (ContractItem ci : contractItemRepository.findByContractId(saved.getId())) {
+                    ru.perminov.tender.dto.InvoiceItemDtoNew ii = new ru.perminov.tender.dto.InvoiceItemDtoNew();
+                    if (ci.getMaterial() != null) ii.setMaterialId(ci.getMaterial().getId());
+                    ii.setDescription(ci.getDescription());
+                    if (ci.getUnit() != null) ii.setUnitId(ci.getUnit().getId());
+                    ii.setQuantity(ci.getQuantity());
+                    // Цена: если в выигрышной строке предложения есть цена с НДС — берем её, иначе базовую
+                    java.util.Optional<ProposalItem> optPi = proposalItemRepository.findByTenderItemIdAndSupplierId(
+                            ci.getTenderItem() != null ? ci.getTenderItem().getId() : null,
+                            supplierId
+                    );
+                    if (optPi.isPresent() && optPi.get().getUnitPriceWithVat() != null) {
+                        ii.setUnitPrice(java.math.BigDecimal.valueOf(optPi.get().getUnitPriceWithVat()));
+                        ii.setVatRate(java.math.BigDecimal.ZERO); // уже с НДС
+                    } else {
+                        ii.setUnitPrice(ci.getUnitPrice());
+                        // Попробуем вычислить ставку НДС, если в предложении есть unitPriceWithVat
+                        if (optPi.isPresent() && optPi.get().getUnitPriceWithVat() != null && ci.getUnitPrice() != null && ci.getUnitPrice().doubleValue() > 0) {
+                            double base = ci.getUnitPrice().doubleValue();
+                            double withVat = optPi.get().getUnitPriceWithVat();
+                            double rate = (withVat / base - 1.0) * 100.0;
+                            ii.setVatRate(java.math.BigDecimal.valueOf(rate));
+                        }
+                    }
+                    items.add(ii);
+                }
+                invoiceNew.setInvoiceItems(items);
+
+                java.math.BigDecimal invTotal = java.math.BigDecimal.ZERO;
+                for (ContractItem ci : contractItemRepository.findByContractId(saved.getId())) {
+                    if (ci.getTotalPrice() != null) invTotal = invTotal.add(ci.getTotalPrice());
+                }
+                invoiceNew.setTotalAmount(invTotal);
+
+                invoiceService.createInvoice(invoiceNew);
+            } catch (Exception e) {
+                log.warn("Не удалось автоматически создать счет по контракту {}: {}", saved.getId(), e.getMessage());
+            }
         }
 
         return result;

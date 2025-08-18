@@ -50,6 +50,7 @@ export interface SupplierProposal {
   status: string;
   totalPrice: number;
   currency: string;
+  winningPositionsTotal?: number; // Сумма выигравших позиций
 }
 
 export interface ContractProcess {

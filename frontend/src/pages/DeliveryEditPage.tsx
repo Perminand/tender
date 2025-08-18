@@ -60,6 +60,8 @@ const DeliveryEditPage: React.FC = () => {
   const params = new URLSearchParams(location.search);
   const contractId = params.get('contractId');
   const invoiceId = params.get('invoiceId');
+  const supplierIdFromQuery = params.get('supplierId') || '';
+  const supplierNameFromQuery = params.get('supplierName') || '';
   
   const isEditMode = !!id;
 
@@ -99,6 +101,40 @@ const DeliveryEditPage: React.FC = () => {
     
     loadBasicData();
   }, []);
+
+  // Предзаполнение поставщика из query string (supplierId/supplierName)
+  useEffect(() => {
+    // Не трогаем режим редактирования
+    if (isEditMode) return;
+
+    // Если уже выбран — выходим
+    if (selectedSupplierId) return;
+
+    // Приоритет: supplierId из query → supplierId из контракта → awardedSupplierId → supplierName из query
+    if (supplierIdFromQuery) {
+      setSelectedSupplierId(supplierIdFromQuery);
+      return;
+    }
+
+    if (!selectedSupplierId && contract && (contract as any).supplierId) {
+      setSelectedSupplierId((contract as any).supplierId);
+      return;
+    }
+    if (!selectedSupplierId && contract?.tender?.awardedSupplierId) {
+      setSelectedSupplierId(contract.tender.awardedSupplierId);
+      return;
+    }
+
+    if (supplierNameFromQuery && suppliers.length > 0) {
+      const decoded = decodeURIComponent(supplierNameFromQuery);
+      const matched = suppliers.find((s: any) =>
+        s.name === decoded || s.shortName === decoded
+      );
+      if (matched?.id) {
+        setSelectedSupplierId(matched.id);
+      }
+    }
+  }, [isEditMode, supplierIdFromQuery, supplierNameFromQuery, suppliers, selectedSupplierId, contract]);
 
   // Загрузка данных из счета, если передан invoiceId
   useEffect(() => {
@@ -359,7 +395,10 @@ const DeliveryEditPage: React.FC = () => {
           console.log('Contract data for new delivery:', res.data);
           setContract(res.data);
           
-          if (res.data.tender?.awardedSupplierId) {
+          // Предзаполняем поставщика: контрактный supplierId → победитель тендера → оставим для эффекта по имени
+          if ((res.data as any).supplierId) {
+            setSelectedSupplierId((res.data as any).supplierId);
+          } else if (res.data.tender?.awardedSupplierId) {
             setSelectedSupplierId(res.data.tender.awardedSupplierId);
           }
           if (res.data.warehouseId) {
@@ -467,7 +506,7 @@ const DeliveryEditPage: React.FC = () => {
       const submitData = {
         deliveryNumber: formData.get('deliveryNumber'),
         contractId: targetContractId,
-        supplierId: contract?.tender?.awardedSupplierId || delivery?.supplierId,
+        supplierId: selectedSupplierId || (contract as any)?.supplierId || contract?.tender?.awardedSupplierId || delivery?.supplierId,
         warehouseId: contract?.warehouseId || delivery?.warehouseId,
         plannedDate: plannedDate ? plannedDate.format('YYYY-MM-DD') : null,
         trackingNumber: formData.get('trackingNumber'),
@@ -491,6 +530,15 @@ const DeliveryEditPage: React.FC = () => {
       } else {
         // Создание новой поставки
         response = await api.post('/api/deliveries', submitData);
+        // После создания поставки переводим контракт в статус ACTIVE
+        try {
+          const cid = String(targetContractId);
+          if (cid) {
+            await api.patch(`/api/contracts/${cid}/status?status=ACTIVE`);
+          }
+        } catch (e) {
+          console.warn('Не удалось обновить статус контракта до ACTIVE после создания поставки', e);
+        }
         if (response.status === 200 || response.status === 201) {
           setSnackbar({ open: true, message: 'Поставка создана', severity: 'success' });
           setTimeout(() => {
@@ -601,22 +649,19 @@ const DeliveryEditPage: React.FC = () => {
               />
             </Grid>
             <Grid item xs={6}>
-              <TextField 
-                label="Поставщик" 
-                value={(() => {
-                  if (contract?.tender?.awardedSupplier?.shortName || contract?.tender?.awardedSupplier?.name) {
-                    const supplierName = contract.tender.awardedSupplier.shortName || contract.tender.awardedSupplier.name;
-                    console.log('Supplier name for display:', supplierName, 'Contract:', contract, 'Contract tender:', contract?.tender);
-                  return supplierName;
-                  } else if (delivery?.supplierId) {
-                    return `Поставщик ID: ${delivery.supplierId}`;
-                  } else {
-                    return 'Поставщик не определен';
-                  }
-                })()} 
-                fullWidth 
-                disabled 
-              />
+              <FormControl fullWidth>
+                <InputLabel id="supplier-label">Поставщик</InputLabel>
+                <Select
+                  labelId="supplier-label"
+                  label="Поставщик"
+                  value={selectedSupplierId}
+                  onChange={(e) => setSelectedSupplierId(String(e.target.value))}
+                >
+                  {suppliers.map((s: any) => (
+                    <MenuItem key={s.id} value={s.id}>{s.shortName || s.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={6}>
               <TextField 
