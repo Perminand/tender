@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import ru.perminov.tender.model.company.Company;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

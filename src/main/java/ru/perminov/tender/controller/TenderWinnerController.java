@@ -3,9 +3,12 @@ package ru.perminov.tender.controller;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.tender.*;
 import ru.perminov.tender.service.TenderWinnerService;
+import ru.perminov.tender.service.TenderWinnersExportService;
 
 import java.util.List;
 import java.util.UUID;
@@ -17,6 +20,7 @@ import java.util.UUID;
 public class TenderWinnerController {
 
     private final TenderWinnerService tenderWinnerService;
+    private final TenderWinnersExportService exportService;
 
     @GetMapping("/{tenderId}/winners")
     public ResponseEntity<TenderWinnerDto> getTenderWinners(@PathVariable UUID tenderId) {
@@ -29,6 +33,14 @@ public class TenderWinnerController {
             log.error("Ошибка при определении победителей для тендера {}: {}", tenderId, e.getMessage());
             return ResponseEntity.badRequest().build();
         }
+    }
+    @GetMapping("/{tenderId}/winners/export/excel")
+    public ResponseEntity<byte[]> exportWinnersExcel(@PathVariable UUID tenderId) {
+        byte[] data = exportService.exportWinnersToExcel(tenderId);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=winner-report-" + tenderId + ".xlsx");
+        return ResponseEntity.ok().headers(headers).body(data);
     }
 
     @GetMapping("/{tenderId}/winners/items/{itemId}")

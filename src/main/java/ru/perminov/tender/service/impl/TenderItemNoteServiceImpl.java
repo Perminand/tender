@@ -6,12 +6,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.tender.TenderItemNoteDto;
 import ru.perminov.tender.mapper.TenderItemNoteMapper;
-import ru.perminov.tender.model.Company;
 import ru.perminov.tender.model.TenderItem;
 import ru.perminov.tender.model.TenderItemNote;
-import ru.perminov.tender.repository.CompanyRepository;
+import ru.perminov.tender.model.company.Company;
 import ru.perminov.tender.repository.TenderItemNoteRepository;
 import ru.perminov.tender.repository.TenderItemRepository;
+import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.TenderItemNoteService;
 
 import java.time.LocalDateTime;

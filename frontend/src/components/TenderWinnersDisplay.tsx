@@ -372,6 +372,28 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
           >
             Заключить контракт с выбранными победителями
           </Button>
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<FileDownload />}
+            onClick={async () => {
+              try {
+                const res = await api.get(`/api/tenders/${tenderId}/winners/export/excel`, { responseType: 'blob' });
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `winner-report-${tenderId}.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+              } catch (e) {
+                console.error('Ошибка выгрузки Excel победителей', e);
+              }
+            }}
+            sx={{ mr: 2 }}
+          >
+            Выгрузить в Excel
+          </Button>
           <Typography variant="caption" color="text.secondary">
             Выбрано позиций: {selectedWinners.size} из {winners.itemWinners.length}
           </Typography>
