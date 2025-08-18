@@ -290,10 +290,11 @@ public class ContractServiceImpl implements ContractService {
         
         log.info("Найден тендер: {} - {}", tender.getTenderNumber(), tender.getTitle());
         
-        // Проверяем статус тендера
-        if (tender.getStatus() != Tender.TenderStatus.AWARDED) {
-            log.warn("Попытка создания контракта для тендера со статусом {} (требуется AWARDED)", tender.getStatus());
-            throw new RuntimeException("Контракт можно создать только для присужденного тендера");
+        // Разрешаем создание контракта в статусах AWARDED и EVALUATION (оценка)
+        if (tender.getStatus() != Tender.TenderStatus.AWARDED
+                && tender.getStatus() != Tender.TenderStatus.EVALUATION) {
+            log.warn("Попытка создания контракта для тендера со статусом {} (требуется AWARDED или EVALUATION)", tender.getStatus());
+            throw new RuntimeException("Контракт можно создать только для тендера в статусе 'Присужден' или 'Оценка'");
         }
         
         // Получаем предложение поставщика
@@ -327,7 +328,8 @@ public class ContractServiceImpl implements ContractService {
         contract.setStartDate(contractDtoNew.startDate());
         contract.setEndDate(contractDtoNew.endDate());
         contract.setStatus(Contract.ContractStatus.DRAFT);
-        contract.setTotalAmount(BigDecimal.valueOf(proposal.getTotalPrice()));
+        // Итоговую сумму рассчитаем после формирования позиций только по выигравшим позициям
+        contract.setTotalAmount(BigDecimal.ZERO);
         contract.setCurrency(proposal.getCurrency());
         
         // Устанавливаем условия из тендера и предложения
@@ -347,11 +349,18 @@ public class ContractServiceImpl implements ContractService {
         auditLogService.logSimple(getCurrentUser(), "CREATE_CONTRACT", "Contract", savedContract.getId().toString(), "Создан контракт");
         log.info("Контракт сохранен с ID: {}", savedContract.getId());
         
-        // Создаем позиции контракта на основе позиций предложения
-        List<ProposalItem> proposalItems = proposalItemRepository.findBySupplierProposalId(proposal.getId());
+        // Создаем позиции контракта ТОЛЬКО по тем тендерным позициям, где этот поставщик победил
+        List<ProposalItem> proposalItems = proposalItemRepository.findBySupplierProposalId(proposal.getId())
+                .stream()
+                .filter(pi -> {
+                    TenderItem ti = pi.getTenderItem();
+                    return ti != null && ti.getAwardedSupplierId() != null && ti.getAwardedSupplierId().equals(contractDtoNew.supplierId());
+                })
+                .collect(java.util.stream.Collectors.toList());
         log.info("Найдено {} позиций в предложении поставщика", proposalItems.size());
         
         int createdItemsCount = 0;
+        BigDecimal contractTotal = BigDecimal.ZERO;
         for (ProposalItem proposalItem : proposalItems) {
             ContractItem contractItem = new ContractItem();
             contractItem.setContract(savedContract);
@@ -387,13 +396,25 @@ public class ContractServiceImpl implements ContractService {
             
             contractItemRepository.save(contractItem);
             createdItemsCount++;
+            contractTotal = contractTotal.add(contractItem.getTotalPrice() != null ? contractItem.getTotalPrice() : BigDecimal.ZERO);
             
             log.debug("Создана позиция контракта: {} - {} (количество: {}, цена: {})", 
                      proposalItem.getItemNumber(), proposalItem.getDescription(), 
                      proposalItem.getQuantity(), proposalItem.getUnitPrice());
         }
         
-        log.info("Контракт создан успешно: {} с {} позициями", savedContract.getId(), createdItemsCount);
+        // Если не было ни одной выигравшей позиции — удаляем пустой контракт и тихо возвращаем null
+        if (createdItemsCount == 0) {
+            log.warn("Для поставщика {} нет выигравших позиций в тендере {}. Контракт не создаем.", supplier.getId(), tender.getId());
+            contractRepository.delete(savedContract);
+            return null;
+        }
+
+        // Обновляем итоговую сумму контракта суммой по выигравшим позициям
+        savedContract.setTotalAmount(contractTotal);
+        contractRepository.save(savedContract);
+
+        log.info("Контракт создан успешно: {} с {} позициями. Итого: {}", savedContract.getId(), createdItemsCount, contractTotal);
         
         // Возвращаем контракт с позициями
         return getContractById(savedContract.getId());

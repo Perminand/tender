@@ -89,6 +89,12 @@ public class ContractController {
         log.info("Создание контракта на основе тендера и поставщика через тело запроса: {}", contractDtoNew);
         try {
             ContractDto dto = contractService.createContractFromTender(contractDtoNew);
+            if (dto == null) {
+                // Нет выигравших позиций — считаем это мягким исходом
+                log.warn("Контракт не создан: нет выигравших позиций для supplierId={} в tenderId={}",
+                        contractDtoNew.supplierId(), contractDtoNew.tenderId());
+                return ResponseEntity.noContent().build();
+            }
             log.info("Контракт успешно создан из тендера. contractId={}, tenderId={}",
                     dto.getId(), contractDtoNew.tenderId());
             return ResponseEntity.ok(dto);

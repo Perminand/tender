@@ -168,7 +168,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 if ("Лучшая стоимость".equals(baseHeaders[i]) || "Лучшая цена".equals(baseHeaders[i])) {
                     cell.setCellStyle(createBestHeaderStyle(workbook));
                 } else {
-                    cell.setCellStyle(headerStyle);
+                cell.setCellStyle(headerStyle);
                 }
             }
             // Добавляем общий столбец "№ Тендера"
@@ -242,7 +242,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                     linkCell.setCellValue("");
                     linkCell.setCellStyle(dataStyle);
                 }
-
+                
                 // Сметное наименование
                 String estimateName = (item.getRequestMaterial() != null && item.getRequestMaterial().getEstimateMaterialName() != null)
                         ? item.getRequestMaterial().getEstimateMaterialName() : "";
@@ -670,7 +670,7 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                 if ("Лучшая стоимость".equals(baseHeaders[i]) || "Лучшая цена".equals(baseHeaders[i])) {
                     c.setCellStyle(createBestHeaderStyle(workbook));
                 } else {
-                    c.setCellStyle(headerStyle);
+                c.setCellStyle(headerStyle);
                 }
             }
             int startSupplierCol = baseCols;
@@ -693,6 +693,9 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             // Данные начинаются сразу после заголовков
             int rowIndex = 4;
             int idx = 1;
+            // Аккумулируем общие суммы по каждому поставщику для итоговой строки
+            Map<UUID, Double> supplierGrandTotals = new LinkedHashMap<>();
+            double grandEstimatedTotal = 0.0;
             for (GroupRow g : keyToGroup.values()) {
                 double remaining = g.totalQty;
                 double unitEstimate = g.totalQty > 0 ? (g.estimatedTotal / g.totalQty) : 0.0;
@@ -713,11 +716,13 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                     Cell c5 = row.createCell(5); c5.setCellValue(g.estimateName); c5.setCellStyle(dataStyle);
 
                     Cell estPriceCell = row.createCell(6);
-                    estPriceCell.setCellValue(unitEstimate);
-                    estPriceCell.setCellStyle(priceStyle);
+                estPriceCell.setCellValue(unitEstimate);
+                estPriceCell.setCellStyle(priceStyle);
                     Cell estTotalCell = row.createCell(7);
-                    estTotalCell.setCellValue(unitEstimate * chunk);
-                    estTotalCell.setCellStyle(priceStyle);
+                    double estTotalForChunk = unitEstimate * chunk;
+                    estTotalCell.setCellValue(estTotalForChunk);
+                estTotalCell.setCellStyle(priceStyle);
+                    grandEstimatedTotal += estTotalForChunk;
 
                     double bestUnit = off.effectiveUnit;
                     Cell bestUnitOut = row.createCell(8);
@@ -729,10 +734,10 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                     Cell bestSupCell = row.createCell(10); bestSupCell.setCellValue(off.supplierName); bestSupCell.setCellStyle(dataStyle);
                     double saving = Math.max(0, unitEstimate * chunk - (bestUnit * chunk));
                     Cell savingCell = row.createCell(11);
-                    savingCell.setCellValue(saving);
-                    savingCell.setCellStyle(priceStyle);
+                savingCell.setCellValue(saving);
+                savingCell.setCellStyle(priceStyle);
 
-                    int col = baseCols;
+                int col = baseCols;
                     Cell tenderNoCell = row.createCell(col++);
                     tenderNoCell.setCellValue(off.tenderNumber != null ? off.tenderNumber : "");
                     tenderNoCell.setCellStyle(dataStyle);
@@ -776,9 +781,11 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                             daysCell.setCellValue(oo.minDays);
                             daysCell.setCellStyle(dataStyle);
                             // Стоимость
-                            Cell supTotalCell = row.createCell(col++);
+                        Cell supTotalCell = row.createCell(col++);
                             double supTotal = oo.effectiveUnit * chunk;
                             supTotalCell.setCellValue(supTotal);
+                            // Накопим общую сумму по поставщику для итоговой строки
+                            supplierGrandTotals.merge(oo.supplierId, supTotal, Double::sum);
                             // Создаём строку на листе "Подробности" и ставим ссылку напрямую на неё
                             Row dr = detailsSheet.createRow(detailsRowIdx);
                             Cell d0 = dr.createCell(0); d0.setCellValue(oo.supplierName); d0.setCellStyle(dataStyle);
@@ -809,9 +816,9 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                             } else if (secondSid != null && sid.equals(secondSid)) {
                                 supTotalCell.setCellStyle(createSecondBestPriceStyle(workbook));
                             } else {
-                                supTotalCell.setCellStyle(priceStyle);
+                        supTotalCell.setCellStyle(priceStyle);
                             }
-                        } else {
+                    } else {
                             // Нет оффера у поставщика — пустые ячейки с рамками
                             Cell empty1 = row.createCell(col++); empty1.setCellValue(""); empty1.setCellStyle(dataStyle);
                             Cell empty2 = row.createCell(col++); empty2.setCellValue(""); empty2.setCellStyle(dataStyle);
@@ -832,8 +839,10 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                     estPriceCell.setCellValue(unitEstimate);
                     estPriceCell.setCellStyle(priceStyle);
                     Cell estTotalCell = row.createCell(7);
-                    estTotalCell.setCellValue(unitEstimate * remaining);
+                    double estRem = unitEstimate * remaining;
+                    estTotalCell.setCellValue(estRem);
                     estTotalCell.setCellStyle(priceStyle);
+                    grandEstimatedTotal += estRem;
                     Cell bestUnitOut = row.createCell(8);
                     bestUnitOut.setCellValue(0.0);
                     Cell bestTotalOut = row.createCell(9);
@@ -852,6 +861,31 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
                         Cell cC = row.createCell(col++); cC.setCellValue(""); cC.setCellStyle(priceStyle);
                     }
                 }
+            }
+
+            // Итоговая строка по всем поставщикам: суммы под столбцами "Стоимость"
+            Row totalsRow = sheet.createRow(rowIndex++);
+            Cell totalsLabel = totalsRow.createCell(0);
+            totalsLabel.setCellValue("Итого:");
+            totalsLabel.setCellStyle(headerStyle);
+            // Общая сметная стоимость в колонке 7
+            Cell grandEstCell = totalsRow.createCell(7);
+            grandEstCell.setCellValue(grandEstimatedTotal);
+            grandEstCell.setCellStyle(priceStyle);
+
+            int col = baseCols;
+            // Пустая ячейка под "№ Тендера"
+            Cell emptyTenderCell = totalsRow.createCell(col++);
+            emptyTenderCell.setCellValue("");
+            emptyTenderCell.setCellStyle(dataStyle);
+            for (UUID sid : orderedSuppliers) {
+                // Пустые под "Счет" и "Срок (дней)"
+                Cell emptyAcc = totalsRow.createCell(col++); emptyAcc.setCellValue(""); emptyAcc.setCellStyle(dataStyle);
+                Cell emptyDays = totalsRow.createCell(col++); emptyDays.setCellValue(""); emptyDays.setCellStyle(dataStyle);
+                // Сумма под "Стоимость"
+                Cell sumCell = totalsRow.createCell(col++);
+                sumCell.setCellValue(supplierGrandTotals.getOrDefault(sid, 0.0));
+                sumCell.setCellStyle(priceStyle);
             }
 
             ByteArrayOutputStream out = new ByteArrayOutputStream();
