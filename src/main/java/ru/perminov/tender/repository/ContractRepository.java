@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ru.perminov.tender.model.Contract;
+import java.util.Optional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -22,6 +23,9 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
      * Найти контракты по тендеру
      */
     List<Contract> findByTenderId(UUID tenderId);
+
+    @Query("SELECT c FROM Contract c WHERE c.tender.id = :tenderId AND c.supplierProposal.supplier.id = :supplierId AND c.status IN ('DRAFT','ACTIVE','IN_PROGRESS')")
+    Optional<Contract> findExistingByTenderAndSupplier(@Param("tenderId") UUID tenderId, @Param("supplierId") UUID supplierId);
     
     /**
      * Найти контракты по заявке (через тендер)

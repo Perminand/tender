@@ -62,6 +62,11 @@ public interface ContractService {
     ContractDto createContractFromWinners(ru.perminov.tender.dto.contract.ContractFromWinnersDto contractFromWinnersDto);
 
     /**
+     * Создать контракты по всем победителям тендера (по одному контракту на поставщика, включающему все его выигравшие позиции)
+     */
+    java.util.List<ContractDto> createContractsFromAllWinners(ru.perminov.tender.dto.contract.ContractsFromAllWinnersDto dto);
+
+    /**
      * Получить статистику по статусам контрактов
      */
     Map<String, Long> getStatusStats();

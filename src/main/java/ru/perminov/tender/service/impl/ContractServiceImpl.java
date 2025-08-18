@@ -30,6 +30,7 @@ import ru.perminov.tender.model.Material;
 import ru.perminov.tender.dto.tender.TenderDto;
 import ru.perminov.tender.mapper.TenderMapper;
 import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.service.TenderWinnerService;
 import ru.perminov.tender.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
@@ -61,6 +62,7 @@ public class ContractServiceImpl implements ContractService {
     private final TenderMapper tenderMapper;
     private final AuditLogService auditLogService;
     private final UserRepository userRepository;
+    private final TenderWinnerService tenderWinnerService;
 
     private User getCurrentUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
@@ -419,6 +421,114 @@ public class ContractServiceImpl implements ContractService {
         
         // Возвращаем контракт с позициями
         return getContractById(savedContract.getId());
+    }
+
+    @Override
+    public List<ContractDto> createContractsFromAllWinners(ru.perminov.tender.dto.contract.ContractsFromAllWinnersDto dto) {
+        log.info("Создание контрактов для всех победителей тендера: {}", dto.tenderId());
+        Tender tender = tenderRepository.findByIdWithCustomer(dto.tenderId())
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+
+        // Получаем победителей по позициям c учетом ручного выбора
+        var winnersDto = tenderWinnerService.determineWinners(dto.tenderId());
+
+        // Группируем позиции по поставщику-победителю
+        Map<UUID, java.util.List<java.util.UUID>> itemIdsBySupplier = new java.util.HashMap<>();
+        for (var iw : winnersDto.itemWinners()) {
+            if (iw.winner() != null && iw.winner().supplierId() != null) {
+                itemIdsBySupplier.computeIfAbsent(iw.winner().supplierId(), k -> new java.util.ArrayList<>())
+                        .add(iw.tenderItemId());
+            }
+        }
+
+        java.util.List<ContractDto> result = new java.util.ArrayList<>();
+        for (Map.Entry<UUID, java.util.List<java.util.UUID>> entry : itemIdsBySupplier.entrySet()) {
+            UUID supplierId = entry.getKey();
+            java.util.List<java.util.UUID> tenderItemIds = entry.getValue();
+
+            // Берем все предложения этого поставщика в тендере
+            List<SupplierProposal> proposals = supplierProposalRepository.findByTenderIdAndSupplierId(dto.tenderId(), supplierId);
+            SupplierProposal anyProposal = proposals.stream().findFirst()
+                    .orElseThrow(() -> new RuntimeException("Не найдено предложение поставщика для контракта"));
+
+            // Ищем уже существующий контракт по tender+supplier
+            Contract saved = contractRepository.findExistingByTenderAndSupplier(dto.tenderId(), supplierId)
+                    .orElseGet(() -> {
+                        Contract c = new Contract();
+                        c.setTender(tender);
+                        c.setSupplierProposal(anyProposal);
+                        c.setContractNumber("CON-" + System.currentTimeMillis());
+                        c.setTitle(dto.title() != null ? dto.title() : ("Контракт по тендеру " + tender.getTenderNumber()));
+                        java.time.LocalDate today = java.time.LocalDate.now();
+                        c.setContractDate(today);
+                        java.time.LocalDate start = dto.startDate() != null ? dto.startDate() : today;
+                        java.time.LocalDate end = dto.endDate() != null ? dto.endDate() : start.plusYears(1);
+                        c.setStartDate(start);
+                        c.setEndDate(end);
+                        c.setStatus(Contract.ContractStatus.DRAFT);
+                        c.setTotalAmount(java.math.BigDecimal.ZERO);
+                        c.setCurrency(anyProposal.getCurrency());
+                        c.setDescription(dto.description());
+                        c.setCreatedAt(java.time.LocalDateTime.now());
+                        c.setUpdatedAt(java.time.LocalDateTime.now());
+                        return contractRepository.save(c);
+                    });
+            // Если контракт уже существовал и даты не заданы — задаем дефолты/переданные
+            if (saved.getStartDate() == null || saved.getEndDate() == null) {
+                java.time.LocalDate today = java.time.LocalDate.now();
+                java.time.LocalDate start = dto.startDate() != null ? dto.startDate() : (saved.getStartDate() != null ? saved.getStartDate() : today);
+                java.time.LocalDate end = dto.endDate() != null ? dto.endDate() : (saved.getEndDate() != null ? saved.getEndDate() : start.plusYears(1));
+                saved.setStartDate(start);
+                saved.setEndDate(end);
+                saved = contractRepository.save(saved);
+            }
+            auditLogService.logSimple(getCurrentUser(), "CREATE_CONTRACT", "Contract", saved.getId().toString(), "Создан контракт из всех победителей");
+
+            java.math.BigDecimal total = java.math.BigDecimal.ZERO;
+
+            // Для каждого ID позиции подбираем строку ИЗ ВЫИГРЫШНОГО предложения этого поставщика
+            for (java.util.UUID itemId : tenderItemIds) {
+                // Находим ровно ту строку предложения победителя для этой позиции
+                ProposalItem found = proposalItemRepository.findByTenderItemIdAndSupplierId(itemId, supplierId).orElse(null);
+                if (found == null) continue;
+
+                TenderItem ti = found.getTenderItem();
+                ContractItem ci = new ContractItem();
+                ci.setContract(saved);
+                ci.setTenderItem(ti);
+                if (ti != null && ti.getRequestMaterial() != null) {
+                    ci.setMaterial(ti.getRequestMaterial().getMaterial());
+                }
+                ci.setItemNumber(found.getItemNumber());
+                ci.setDescription(found.getDescription());
+                ci.setQuantity(java.math.BigDecimal.valueOf(found.getQuantity() != null ? found.getQuantity() : (ti != null && ti.getQuantity() != null ? ti.getQuantity() : 0.0)));
+                if (found.getUnit() != null) {
+                    ci.setUnit(found.getUnit());
+                } else if (ti != null && ti.getUnit() != null) {
+                    ci.setUnit(ti.getUnit());
+                }
+                if (found.getUnitPrice() != null) ci.setUnitPrice(java.math.BigDecimal.valueOf(found.getUnitPrice()));
+                if (found.getTotalPrice() != null) ci.setTotalPrice(java.math.BigDecimal.valueOf(found.getTotalPrice()));
+                ci.setSpecifications(found.getSpecifications());
+                ci.setDeliveryPeriod(found.getDeliveryPeriod());
+                ci.setWarranty(found.getWarranty() != null ? found.getWarranty().getName() : null);
+                ci.setAdditionalInfo(found.getAdditionalInfo());
+
+                // Защита от дубликатов одной позиции
+                boolean exists = contractItemRepository.findByContractId(saved.getId()).stream()
+                        .anyMatch(x -> x.getTenderItem() != null && x.getTenderItem().getId().equals(itemId));
+                if (!exists) {
+                    contractItemRepository.save(ci);
+                    if (ci.getTotalPrice() != null) total = total.add(ci.getTotalPrice());
+                }
+            }
+
+            saved.setTotalAmount(total);
+            saved = contractRepository.save(saved);
+            result.add(contractMapper.toDto(saved));
+        }
+
+        return result;
     }
 
     @Override

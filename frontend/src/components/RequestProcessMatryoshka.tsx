@@ -836,35 +836,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                             >
                               Просмотр тендера
                             </Button>
-                             {tender.status && tender.status.toUpperCase() === 'EVALUATION' && (
-                               <Button
-                                 variant="contained"
-                                 color="success"
-                                 size="small"
-                                 onClick={async (e) => {
-                                   e.stopPropagation();
-                                   try {
-                                     const accepted = (tender.proposals || []).filter(p => (p.status || '').toUpperCase() === 'ACCEPTED');
-                                     let created = 0;
-                                     for (const p of accepted) {
-                                       const res = await api.post('/api/contracts/from-tender', {
-                                         tenderId: tender.tenderId,
-                                         supplierId: p.supplierId,
-                                         startDate: new Date().toISOString().slice(0,10),
-                                         endDate: new Date(new Date().setFullYear(new Date().getFullYear()+1)).toISOString().slice(0,10)
-                                       });
-                                       if (res.status === 200 && res.data?.id) created++;
-                                     }
-                                     alert(created > 0 ? `Создано контрактов: ${created}` : 'Выигравших позиций не найдено. Контракты не созданы.');
-                                   } catch (err: any) {
-                                     console.error('Ошибка создания контрактов из тендера', err);
-                                     alert('Ошибка создания контрактов: ' + (err.response?.data?.message || err.message));
-                                   }
-                                 }}
-                               >
-                                 Заключить контракты с победителями
-                               </Button>
-                             )}
+                             
                             {(tender.status === 'DRAFT' || tender.status === 'PUBLISHED') && (
                               <Button
                                 variant="contained"

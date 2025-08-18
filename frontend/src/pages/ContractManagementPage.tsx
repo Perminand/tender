@@ -658,7 +658,7 @@ const ContractManagementPage: React.FC = () => {
                 <Grid item xs={12} sm={6}>
                   <Typography color="textSecondary">Поставщик:</Typography>
                   <Typography>
-                    {contract.tender?.awardedSupplier?.shortName || contract.tender?.awardedSupplier?.name || contract.tender?.awardedSupplierId || 'Не указан'}
+                    {contract.supplierName || contract.tender?.awardedSupplier?.shortName || contract.tender?.awardedSupplier?.name || contract.tender?.awardedSupplierId || 'Не указан'}
                   </Typography>
                 </Grid>
                 <Grid item xs={12} sm={6}>

@@ -127,4 +127,17 @@ public class ContractController {
             return ResponseEntity.badRequest().build();
         }
     }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PostMapping("/create-from-all-winners")
+    public ResponseEntity<java.util.List<ContractDto>> createContractsFromAllWinners(@RequestBody ru.perminov.tender.dto.contract.ContractsFromAllWinnersDto dto) {
+        log.info("Создание контрактов для всех победителей тендера: {}", dto.tenderId());
+        try {
+            var list = contractService.createContractsFromAllWinners(dto);
+            return ResponseEntity.ok(list);
+        } catch (Exception e) {
+            log.error("Ошибка при создании контрактов из всех победителей: {}", e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
+    }
 } 

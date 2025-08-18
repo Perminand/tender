@@ -367,10 +367,24 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
             variant="contained"
             color="primary"
             startIcon={<Assignment />}
-            onClick={handleCreateContract}
+            onClick={async () => {
+              try {
+                await api.post('/api/contracts/create-from-all-winners', {
+                  tenderId,
+                  title: contractData.title || undefined,
+                  startDate: contractData.startDate || undefined,
+                  endDate: contractData.endDate || undefined,
+                  description: contractData.description || undefined
+                });
+                alert('Контракты созданы для всех победителей');
+              } catch (e) {
+                console.error('Ошибка создания контрактов по всем победителям', e);
+                alert('Ошибка создания контрактов');
+              }
+            }}
             sx={{ mr: 2 }}
           >
-            Заключить контракт с выбранными победителями
+            Заключить контракт с победителями (по всем позициям)
           </Button>
           <Button
             variant="outlined"
