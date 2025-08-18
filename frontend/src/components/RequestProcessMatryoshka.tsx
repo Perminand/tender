@@ -154,6 +154,8 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
   const [expandedContracts, setExpandedContracts] = useState<string[]>([]);
   const [expandedInvoices, setExpandedInvoices] = useState<string[]>([]);
   const [expandedDeliveries, setExpandedDeliveries] = useState<string[]>([]);
+  const [expandedWinners, setExpandedWinners] = useState<string[]>([]);
+  const [expandedWinnerGroups, setExpandedWinnerGroups] = useState<string[]>([]);
   const [awardingItems, setAwardingItems] = useState<Record<string, boolean>>({});
   const [createTenderLoading, setCreateTenderLoading] = useState(false);
   const [confirmCreateTender, setConfirmCreateTender] = useState(false);
@@ -949,11 +951,11 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                           </Box>
                         </Box>
                         {tender.status === 'AWARDED' ? (
-                          // Для присужденных тендеров показываем победителей с правильного эндпоинта
                           (() => {
+                            // Собираем массив победителей, как и раньше
+                            let winnersArray: any[] = [];
                             const winnersData = tenderWinners[tender.tenderId];
                             if (winnersData && winnersData.itemWinners) {
-                              // Получаем уникальных победителей из данных winners
                               const uniqueWinners = new Map();
                               winnersData.itemWinners.forEach((item: any) => {
                                 if (item.winner) {
@@ -963,152 +965,93 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                     supplierName: item.winner.supplierName,
                                     totalPrice: item.totalWinnerPrice,
                                     status: 'ACCEPTED',
-                                    // Добавляем информацию о выигранных позициях
                                     winningPositions: [item.itemNumber]
                                   });
                                 }
                               });
-                              
-                              // Объединяем позиции для одного поставщика
-                              const finalWinners = Array.from(uniqueWinners.values()).map(winner => {
-                                const allPositions = winnersData.itemWinners
-                                  .filter((item: any) => item.winner?.supplierId === winner.supplierId)
-                                  .map((item: any) => item.itemNumber);
-                                
-                                return {
-                                  ...winner,
-                                  winningPositions: allPositions,
-                                  totalPrice: winnersData.itemWinners
-                                    .filter((item: any) => item.winner?.supplierId === winner.supplierId)
-                                    .reduce((sum: number, item: any) => sum + (item.totalWinnerPrice || 0), 0)
-                                };
+                              winnersArray = Array.from(uniqueWinners.values()).map(winner => ({
+                                ...winner,
+                                winningPositions: winnersData.itemWinners
+                                  .filter((it: any) => it.winner?.supplierId === winner.supplierId)
+                                  .map((it: any) => it.itemNumber),
+                                totalPrice: winnersData.itemWinners
+                                  .filter((it: any) => it.winner?.supplierId === winner.supplierId)
+                                  .reduce((sum: number, it: any) => sum + (it.totalWinnerPrice || 0), 0)
+                              }));
+                            } else {
+                              winnersArray = (tender.proposals || []).filter((proposal: any) => {
+                                const isWinner = (proposal as any).isWinner;
+                                const isBestPrice = (proposal as any).isBestPrice;
+                                const hasWinningPositions = (proposal as any).winningPositionsTotal > 0;
+                                const hasAwardedPositions = (proposal as any).awardedPositions?.length > 0;
+                                return proposal.status === 'ACCEPTED' && (isWinner || isBestPrice || hasWinningPositions || hasAwardedPositions);
                               });
-                              
-                              return finalWinners;
                             }
-                            
-                            // Fallback: показываем предложения с признаками победителей
-                            return tender.proposals?.filter(proposal => {
-                              const isWinner = (proposal as any).isWinner;
-                              const isBestPrice = (proposal as any).isBestPrice;
-                              const hasWinningPositions = (proposal as any).winningPositionsTotal > 0;
-                              const hasAwardedPositions = (proposal as any).awardedPositions?.length > 0;
-                              
-                              return proposal.status === 'ACCEPTED' && (
-                                isWinner || 
-                                isBestPrice || 
-                                hasWinningPositions || 
-                                hasAwardedPositions
-                              );
-                            }) || [];
-                          })()
-                            .map((proposal) => (
-                              <Box key={proposal.proposalId}>
-                                <NestedStep 
-                                  color={getStepColor('proposal', 1)}
-                                  onClick={() => handleProposalClick(proposal.proposalId)}
-                                >
+
+                            const groupKey = tender.tenderId;
+                            const isGroupExpanded = expandedWinnerGroups.includes(groupKey);
+                            const totalW = winnersArray.length;
+                            const relatedContracts = (request.contracts || []).filter(c => (c as any).tenderId === tender.tenderId);
+                            const completedW = winnersArray.filter(w => relatedContracts.some(c => (c as any).supplierId === w.supplierId || c.supplierName === w.supplierName)).length;
+                            const pctW = totalW ? Math.round((completedW / totalW) * 100) : 0;
+
+                            return (
+                              <>
+                                <NestedStep color={getStepColor('proposal', 1)} onClick={() => setExpandedWinnerGroups(prev => prev.includes(groupKey) ? prev.filter(id => id !== groupKey) : [...prev, groupKey])}>
                                   <Box display="flex" alignItems="center" gap={1}>
-                                    <BusinessIcon />
-                                    <Box>
-                                      <Typography variant="body2" fontWeight="bold" color="success.main">
-                                        🏆 {proposal.supplierName} (ПОБЕДИТЕЛЬ)
-                                        {proposal.winningPositions && (
-                                          <Typography variant="caption" display="block" color="text.secondary">
-                                            Наименования: {(tenderWinners[tender.tenderId]?.itemWinners || [])
-                                              .filter((it: any) => it.winner?.supplierId === proposal.supplierId)
-                                              .map((it: any) => it.description)
-                                              .join(', ')}
-                                          </Typography>
-                                        )}
-                                      </Typography>
-                                      <Typography variant="caption">
-                                        {proposal.supplierContact} • {formatPhone(proposal.supplierPhone)}
-                                      </Typography>
-                                    </Box>
+                                    <GavelIcon />
+                                    <Typography variant="body1">Победители ({totalW})</Typography>
                                   </Box>
                                   <Box display="flex" alignItems="center" gap={1}>
-                                    <Typography variant="body2" fontWeight="bold">
-                                      {formatCurrency(proposal.totalPrice)}
-                                    </Typography>
-                                    <StatusChip
-                                      label={getStatusLabel(proposal.status)}
-                                      status={proposal.status}
-                                      size="small"
-                                    />
-                                    <Button
-                                      variant="outlined"
-                                      size="small"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleViewProposalDetail(proposal.proposalId);
-                                      }}
-                                      sx={{ 
-                                        minWidth: 'auto', 
-                                        px: 1, 
-                                        py: 0.5,
-                                        fontSize: '0.75rem',
-                                        borderColor: 'primary.main',
-                                        color: 'primary.main',
-                                        '&:hover': {
-                                          borderColor: 'primary.dark',
-                                          bgcolor: 'primary.50'
-                                        }
-                                      }}
-                                    >
-                                      Просмотр
-                                    </Button>
-                                    <IconButton size="small">
-                                      {expandedProposals.includes(proposal.proposalId) ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                                    </IconButton>
+                                    <Box sx={{ minWidth: 120 }}>
+                                      <Typography variant="caption" color="text.secondary">Контракты заключены</Typography>
+                                      <Typography variant="caption" sx={{ display: 'block', fontWeight: 500 }}>{pctW}%</Typography>
+                                      <LinearProgress variant="determinate" value={pctW} sx={{ height: 6, borderRadius: 1, mt: 0.25 }} />
+                                    </Box>
+                                    <IconButton size="small">{isGroupExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
                                   </Box>
                                 </NestedStep>
-
-                                {/* Действия для победившего предложения */}
-                                <Collapse in={expandedProposals.includes(proposal.proposalId)}>
+                                <Collapse in={isGroupExpanded}>
                                   <Box ml={3}>
-                                    <Paper sx={{ p: 2, mb: 2, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
-                                      <Typography variant="subtitle2" color="success.main" gutterBottom>
-                                        🎉 Победившее предложение
-                                      </Typography>
-                                      
-                                      {/* Проверяем, есть ли контракт */}
-                                      {request.contractsCount === 0 ? (
-                                        <Box>
-                                          <Typography variant="body2" color="text.secondary" gutterBottom>
-                                            Контракт еще не заключен
-                                          </Typography>
-                                          <Button
-                                            variant="contained"
-                                            color="success"
-                                            size="small"
-                                            onClick={() => window.open(`/tenders/${tender.tenderId}/contract/new/${proposal.supplierId}`, '_blank')}
-                                            sx={{ mt: 1 }}
-                                          >
-                                            Заключить контракт
-                                          </Button>
+                                    {winnersArray.map((proposal: any) => {
+                                      const winnerKey = `${tender.tenderId}:${proposal.supplierId}`;
+                                      const isExpanded = expandedWinners.includes(winnerKey);
+                                      return (
+                                        <Box key={proposal.proposalId}>
+                                          <NestedStep color={getStepColor('proposal', 1)} onClick={() => setExpandedWinners(prev => prev.includes(winnerKey) ? prev.filter(id => id !== winnerKey) : [...prev, winnerKey])}>
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                              <BusinessIcon />
+                                              <Box>
+                                                <Typography variant="body2" fontWeight="bold" color="success.main">🏆 {proposal.supplierName} (ПОБЕДИТЕЛЬ)</Typography>
+                                              </Box>
+                                            </Box>
+                                            <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
+                                          </NestedStep>
+                                          <Collapse in={isExpanded}>
+                                            <Box ml={3}>
+                                              <Paper sx={{ p: 2, mb: 2, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+                                                <Typography variant="subtitle2" color="success.main" gutterBottom>🎉 Победившее предложение</Typography>
+                                                {(request.contractsCount === 0) ? (
+                                                  <Box>
+                                                    <Typography variant="body2" color="text.secondary" gutterBottom>Контракт еще не заключен</Typography>
+                                                    <Button variant="contained" color="success" size="small" onClick={() => window.open(`/tenders/${tender.tenderId}/contract/new/${proposal.supplierId}`, '_blank')} sx={{ mt: 1 }}>Заключить контракт</Button>
+                                                  </Box>
+                                                ) : (
+                                                  <Box>
+                                                    <Typography variant="body2" color="text.secondary" gutterBottom>Контракт заключен</Typography>
+                                                  </Box>
+                                                )}
+                                              </Paper>
+                                            </Box>
+                                          </Collapse>
                                         </Box>
-                                      ) : (
-                                        <Box>
-                                          <Typography variant="body2" color="text.secondary" gutterBottom>
-                                            Контракт заключен
-                                          </Typography>
-                                          <Button
-                                            variant="contained"
-                                            color="primary"
-                                            size="small"
-                                            onClick={() => window.open(`/invoices/new?tenderId=${tender.tenderId}&supplierName=${encodeURIComponent(proposal.supplierName)}`, '_blank')}
-                                            sx={{ mt: 1 }}
-                                          >
-                                            Создать счет
-                                          </Button>
-                                        </Box>
-                                      )}
-                                    </Paper>
+                                      );
+                                    })}
                                   </Box>
                                 </Collapse>
-                              </Box>
-                            ))
+                              </>
+                            );
+                          })()
                         ) : (
                           // Для остальных статусов показываем все предложения
                           tender.proposals && tender.proposals.map((proposal) => (
@@ -2001,11 +1944,11 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
 
             {/* Поставки */}
             {false && request.deliveries && request.deliveries.length > 0 && (
-               <Box mb={2}>
-                 <Typography variant="subtitle2" gutterBottom>
-                   Поставки ({request.deliveries.length})
-                 </Typography>
-               </Box>
+              <Box mb={2}>
+                <Typography variant="subtitle2" gutterBottom>
+                  Поставки ({request.deliveries.length})
+                          </Typography>
+                        </Box>
             )}
 
 
