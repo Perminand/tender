@@ -4,6 +4,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import ru.perminov.tender.model.SupplierProposal;
+import ru.perminov.tender.dto.PaymentConditionDto;
+import ru.perminov.tender.dto.DeliveryConditionDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,6 +50,12 @@ public class SupplierProposalDto {
     private String deliveryTerms;
 
     private String warrantyTerms;
+
+    private UUID paymentConditionId;
+    private PaymentConditionDto paymentCondition;
+
+    private UUID deliveryConditionId;
+    private DeliveryConditionDto deliveryCondition;
 
     private List<ProposalItemDto> proposalItems;
 

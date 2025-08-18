@@ -84,14 +84,12 @@ const menuStructure = [
       { label: 'Уведомления', to: '/notifications', icon: <NotificationsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER', 'ROLE_VIEWER'] }
     ]
   },
-  {
-    title: 'Справочники',
-    items: []
-  },
+
   {
     title: 'Администрирование',
     items: [
       { label: 'Управление пользователями', to: '/users', icon: <PeopleIcon />, roles: ['ROLE_ADMIN'] },
+      { label: 'Справочники', to: '/reference', icon: <MenuBookIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
       { label: 'Настройки', to: '/settings', icon: <SettingsIcon />, roles: ['ROLE_ADMIN', 'ROLE_MANAGER'] },
       { label: 'Журнал аудита', to: '/audit-log', icon: <BarChartIcon />, roles: ['ROLE_ADMIN'] }
     ]
@@ -143,16 +141,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   };
 
   const handleSectionToggle = (sectionTitle: string) => {
-    // Для раздела "Справочники" - переход на страницу справочников
-    if (sectionTitle === 'Справочники') {
-      navigate('/reference');
-      if (isMobile) {
-        setMobileOpen(false);
-      }
-      return;
-    }
-    
-    // Для остальных разделов - стандартное поведение раскрытия
+    // Стандартное поведение раскрытия разделов
     const newExpandedSections = new Set(expandedSections);
     if (newExpandedSections.has(sectionTitle)) {
       newExpandedSections.delete(sectionTitle);

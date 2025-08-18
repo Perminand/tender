@@ -14,6 +14,8 @@ import MaterialTypeListPage from './pages/MaterialTypeListPage';
 import ContactTypesPage from './pages/ContactTypesPage';
 import ProjectListPage from './pages/ProjectListPage';
 import ReferenceBooksPage from './pages/ReferenceBooksPage';
+import PaymentConditionsPage from './pages/PaymentConditionsPage';
+import DeliveryConditionsPage from './pages/DeliveryConditionsPage';
 import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
 import RequestRegistryPage from './pages/RequestRegistryPage';
@@ -149,6 +151,20 @@ const App: React.FC = () => (
         <ProtectedRoute>
           <Layout>
             <ReferenceBooksPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/payment-conditions" element={
+        <ProtectedRoute>
+          <Layout>
+            <PaymentConditionsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/delivery-conditions" element={
+        <ProtectedRoute>
+          <Layout>
+            <DeliveryConditionsPage />
           </Layout>
         </ProtectedRoute>
       } />

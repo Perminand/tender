@@ -26,7 +26,9 @@ import {
   Store as StoreIcon,
   Assignment as AssignmentIcon,
   Factory as FactoryIcon,
-  Security as SecurityIcon
+  Security as SecurityIcon,
+  Payment as PaymentIcon,
+  LocalShipping as DeliveryIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
@@ -91,6 +93,15 @@ const referenceGroups: ReferenceGroup[] = [
     description: 'Управление контактами и связями',
     books: [
       { id: 'contact-types', title: 'Типы контактов', description: 'Управление типами контактов', icon: <ContactPhoneIcon sx={{ fontSize: 40 }} />, color: '#7b1fa2', path: '/reference/contact-types' }
+    ]
+  },
+  {
+    id: 'business-conditions',
+    title: 'Бизнес-условия',
+    description: 'Управление условиями оплаты и доставки',
+    books: [
+      { id: 'payment-conditions', title: 'Условия оплаты', description: 'Управление схемами оплаты', icon: <PaymentIcon sx={{ fontSize: 40 }} />, color: '#4caf50', path: '/reference/payment-conditions' },
+      { id: 'delivery-conditions', title: 'Условия доставки', description: 'Управление условиями доставки', icon: <DeliveryIcon sx={{ fontSize: 40 }} />, color: '#2196f3', path: '/reference/delivery-conditions' }
     ]
   }
 ];

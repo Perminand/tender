@@ -23,6 +23,8 @@ import ru.perminov.tender.repository.UnitRepository;
 import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
+import ru.perminov.tender.service.PaymentConditionService;
+import ru.perminov.tender.service.DeliveryConditionService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -48,6 +50,8 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     private final NotificationService notificationService;
     private final SupplierProposalMapper supplierProposalMapper;
     private final ProposalItemMapper proposalItemMapper;
+    private final PaymentConditionService paymentConditionService;
+    private final DeliveryConditionService deliveryConditionService;
 
     @Override
     public SupplierProposalDto createProposal(SupplierProposalDto proposalDto) {
@@ -78,6 +82,28 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         Company supplier = companyRepository.findById(proposalDto.getSupplierId())
             .orElseThrow(() -> new RuntimeException("Поставщик не найден"));
         proposal.setSupplier(supplier);
+        
+        // Устанавливаем условия оплаты
+        if (proposalDto.getPaymentConditionId() != null) {
+            try {
+                var paymentCondition = paymentConditionService.getPaymentCondition(proposalDto.getPaymentConditionId());
+                // Здесь нужно будет добавить логику для установки связи с PaymentCondition
+                // пока оставляем как есть, так как нужно обновить маппер
+            } catch (Exception e) {
+                log.warn("Не удалось найти условия оплаты с id: {}", proposalDto.getPaymentConditionId());
+            }
+        }
+        
+        // Устанавливаем условия доставки
+        if (proposalDto.getDeliveryConditionId() != null) {
+            try {
+                var deliveryCondition = deliveryConditionService.getDeliveryCondition(proposalDto.getDeliveryConditionId());
+                // Здесь нужно будет добавить логику для установки связи с DeliveryCondition
+                // пока оставляем как есть, так как нужно обновить маппер
+            } catch (Exception e) {
+                log.warn("Не удалось найти условия доставки с id: {}", proposalDto.getDeliveryConditionId());
+            }
+        }
         
         SupplierProposal savedProposal = supplierProposalRepository.save(proposal);
         

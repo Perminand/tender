@@ -35,6 +35,8 @@ import {
   Save as SaveIcon,
   Send as SendIcon
 } from '@mui/icons-material';
+import PaymentConditionForm from '../components/PaymentConditionForm';
+import DeliveryConditionForm from '../components/DeliveryConditionForm';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../utils/api';
 
@@ -86,6 +88,8 @@ interface ProposalFormData {
   warrantyTerms: string;
   validUntil: string;
   proposalItems: ProposalItemForm[];
+  paymentCondition?: any;
+  deliveryCondition?: any;
 }
 
 interface Company {
@@ -1151,22 +1155,24 @@ const ProposalEditPage: React.FC = () => {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Условия оплаты"
+                label="Условия оплаты (текст)"
                 value={formData.paymentTerms}
                 onChange={(e) => handleInputChange('paymentTerms', e.target.value)}
                 multiline
                 rows={2}
+                placeholder="Дополнительная информация об условиях оплаты"
               />
             </Grid>
 
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Условия поставки"
+                label="Условия поставки (текст)"
                 value={formData.deliveryTerms}
                 onChange={(e) => handleInputChange('deliveryTerms', e.target.value)}
                 multiline
                 rows={2}
+                placeholder="Дополнительная информация об условиях поставки"
               />
             </Grid>
 
@@ -1181,6 +1187,30 @@ const ProposalEditPage: React.FC = () => {
               />
             </Grid>
           </Grid>
+        </CardContent>
+      </Card>
+
+      {/* Условия оплаты */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <PaymentConditionForm
+            value={formData.paymentCondition}
+            onChange={(condition) => {
+              setFormData(prev => ({ ...prev, paymentCondition: condition }));
+            }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Условия доставки */}
+      <Card sx={{ mb: 2 }}>
+        <CardContent>
+          <DeliveryConditionForm
+            value={formData.deliveryCondition}
+            onChange={(condition) => {
+              setFormData(prev => ({ ...prev, deliveryCondition: condition }));
+            }}
+          />
         </CardContent>
       </Card>
 

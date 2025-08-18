@@ -58,6 +58,14 @@ public class SupplierProposal {
 
     private String warrantyTerms;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "payment_condition_id")
+    private PaymentCondition paymentCondition;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivery_condition_id")
+    private DeliveryCondition deliveryCondition;
+
     @OneToMany(mappedBy = "supplierProposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProposalItem> proposalItems = new ArrayList<>();
 
