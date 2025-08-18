@@ -1521,7 +1521,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                               setExpandedDeliveries(prev => prev.includes(delivery.deliveryId) ? prev.filter(id => id !== delivery.deliveryId) : [...prev, delivery.deliveryId]);
                                             }}>
                                               <TableCell>{delivery.deliveryNumber}</TableCell>
-                                              <TableCell>{formatDate(delivery.deliveryDate)}</TableCell>
+                                              <TableCell>{formatDate((delivery as any).deliveryDate || (delivery as any).plannedDate || (delivery as any).actualDate || '')}</TableCell>
                                               <TableCell>{delivery.supplierName}</TableCell>
                                               <TableCell align="right">{formatCurrency(delivery.totalAmount)}</TableCell>
                                               <TableCell align="right">
