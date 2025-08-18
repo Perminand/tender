@@ -662,6 +662,46 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
             <Typography variant="h6" color="primary.main" fontWeight="bold">
               {formatCurrency(request.requestTotalAmount)}
             </Typography>
+            {(() => {
+              const tenders = request.tenders || [];
+              const contracts = request.contracts || [];
+              const totalTenders = tenders.length;
+              const completedTenders = tenders.filter(t => t.status === 'AWARDED').length;
+              const allTendersCompleted = totalTenders > 0 && completedTenders === totalTenders;
+
+              const totalContracts = contracts.length;
+              const completedContracts = contracts.filter(c => c.status === 'COMPLETED').length;
+              const allContractsCompleted = totalContracts > 0 && completedContracts === totalContracts;
+
+              // Основная логика: если тендеры завершены — показываем прогресс по контрактам,
+              // если контракты завершены — показываем прогресс по тендерам,
+              // иначе показываем комбинированный прогресс: среднее двух процентов.
+              const pctT = totalTenders ? Math.round((completedTenders / totalTenders) * 100) : 0;
+              const pctC = totalContracts ? Math.round((completedContracts / totalContracts) * 100) : 0;
+
+              let label = 'Прогресс';
+              let pct = 0;
+              if (allTendersCompleted && totalContracts > 0) {
+                label = 'Контракты завершены';
+                pct = pctC;
+              } else if (allContractsCompleted && totalTenders > 0) {
+                label = 'Тендеры завершены';
+                pct = pctT;
+              } else {
+                label = 'Тендеры/Контракты';
+                // среднее, но если один из массивов пустой — берем другой
+                if (totalTenders && totalContracts) pct = Math.round((pctT + pctC) / 2);
+                else pct = totalTenders ? pctT : pctC;
+              }
+
+              return (
+                <Box sx={{ minWidth: 160 }}>
+                  <Typography variant="caption" color="text.secondary">{label}</Typography>
+                  <Typography variant="caption" sx={{ display: 'block', fontWeight: 500 }}>{pct}%</Typography>
+                  <LinearProgress variant="determinate" value={pct} sx={{ height: 6, borderRadius: 1, mt: 0.25 }} />
+                </Box>
+              );
+            })()}
             <StatusChip
               label={getStatusLabel(request.status)}
               status={request.status}
@@ -1017,34 +1057,34 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                                       const winnerKey = `${tender.tenderId}:${proposal.supplierId}`;
                                       const isExpanded = expandedWinners.includes(winnerKey);
                                       return (
-                                        <Box key={proposal.proposalId}>
+                              <Box key={proposal.proposalId}>
                                           <NestedStep color={getStepColor('proposal', 1)} onClick={() => setExpandedWinners(prev => prev.includes(winnerKey) ? prev.filter(id => id !== winnerKey) : [...prev, winnerKey])}>
-                                            <Box display="flex" alignItems="center" gap={1}>
-                                              <BusinessIcon />
-                                              <Box>
+                                  <Box display="flex" alignItems="center" gap={1}>
+                                    <BusinessIcon />
+                                    <Box>
                                                 <Typography variant="body2" fontWeight="bold" color="success.main">🏆 {proposal.supplierName} (ПОБЕДИТЕЛЬ)</Typography>
-                                              </Box>
-                                            </Box>
+                                    </Box>
+                                  </Box>
                                             <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
-                                          </NestedStep>
+                                </NestedStep>
                                           <Collapse in={isExpanded}>
-                                            <Box ml={3}>
-                                              <Paper sx={{ p: 2, mb: 2, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
+                                  <Box ml={3}>
+                                    <Paper sx={{ p: 2, mb: 2, bgcolor: 'success.50', border: '1px solid', borderColor: 'success.200' }}>
                                                 <Typography variant="subtitle2" color="success.main" gutterBottom>🎉 Победившее предложение</Typography>
                                                 {(request.contractsCount === 0) ? (
-                                                  <Box>
+                                        <Box>
                                                     <Typography variant="body2" color="text.secondary" gutterBottom>Контракт еще не заключен</Typography>
                                                     <Button variant="contained" color="success" size="small" onClick={() => window.open(`/tenders/${tender.tenderId}/contract/new/${proposal.supplierId}`, '_blank')} sx={{ mt: 1 }}>Заключить контракт</Button>
-                                                  </Box>
-                                                ) : (
-                                                  <Box>
-                                                    <Typography variant="body2" color="text.secondary" gutterBottom>Контракт заключен</Typography>
-                                                  </Box>
-                                                )}
-                                              </Paper>
-                                            </Box>
-                                          </Collapse>
                                         </Box>
+                                      ) : (
+                                        <Box>
+                                                    <Typography variant="body2" color="text.secondary" gutterBottom>Контракт заключен</Typography>
+                                        </Box>
+                                      )}
+                                    </Paper>
+                                  </Box>
+                                </Collapse>
+                              </Box>
                                       );
                                     })}
                                   </Box>
