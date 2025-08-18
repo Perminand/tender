@@ -12,6 +12,7 @@ import ru.perminov.tender.repository.SupplierProposalRepository;
 import ru.perminov.tender.repository.ProposalItemRepository;
 import ru.perminov.tender.service.PriceAnalysisService;
 import ru.perminov.tender.service.SupplierProposalService;
+import ru.perminov.tender.service.AdditionalExpenseService;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -27,6 +28,7 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
     private final SupplierProposalRepository supplierProposalRepository;
     private final ProposalItemRepository proposalItemRepository;
     private final SupplierProposalService supplierProposalService; // TODO: consider removal if remains unused
+    private final AdditionalExpenseService additionalExpenseService;
 
     @Override
     public PriceAnalysisDto getPriceAnalysis(UUID tenderId) {
@@ -247,10 +249,16 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
                     SupplierPriceDto priceDto = createSupplierPriceDto(proposal, proposalItem, false);
                     supplierPrices.add(priceDto);
                     
-                    // Определяем лучшую цену по общей стоимости с учетом НДС и доставки
-                    if (priceDto.totalPriceWithVatAndDelivery() != null && 
-                        priceDto.totalPriceWithVatAndDelivery() < minTotalPrice) {
-                        minTotalPrice = priceDto.totalPriceWithVatAndDelivery();
+                    // Определяем лучшую цену по общей стоимости с учетом НДС, доставки и дополнительных расходов
+                    double totalCostWithExpenses = priceDto.totalPriceWithVatAndDelivery() != null ? 
+                        priceDto.totalPriceWithVatAndDelivery() : 0.0;
+                    
+                    // Добавляем дополнительные расходы
+                    double additionalExpenses = additionalExpenseService.getTotalApprovedAmountByProposal(proposal.getId());
+                    totalCostWithExpenses += additionalExpenses;
+                    
+                    if (totalCostWithExpenses < minTotalPrice) {
+                        minTotalPrice = totalCostWithExpenses;
                         bestPrice = createSupplierPriceDto(proposal, proposalItem, true);
                     }
                 }
@@ -293,10 +301,16 @@ public class PriceAnalysisServiceImpl implements PriceAnalysisService {
                     
                     SupplierPriceDto priceDto = createSupplierPriceDto(proposal, proposalItem, false);
                     
-                    // Определяем лучшую цену по общей стоимости с учетом НДС и доставки
-                    if (priceDto.totalPriceWithVatAndDelivery() != null && 
-                        priceDto.totalPriceWithVatAndDelivery() < minTotalPrice) {
-                        minTotalPrice = priceDto.totalPriceWithVatAndDelivery();
+                    // Определяем лучшую цену по общей стоимости с учетом НДС, доставки и дополнительных расходов
+                    double totalCostWithExpenses = priceDto.totalPriceWithVatAndDelivery() != null ? 
+                        priceDto.totalPriceWithVatAndDelivery() : 0.0;
+                    
+                    // Добавляем дополнительные расходы
+                    double additionalExpenses = additionalExpenseService.getTotalApprovedAmountByProposal(proposal.getId());
+                    totalCostWithExpenses += additionalExpenses;
+                    
+                    if (totalCostWithExpenses < minTotalPrice) {
+                        minTotalPrice = totalCostWithExpenses;
                         bestPrice = createSupplierPriceDto(proposal, proposalItem, true);
                     }
                 }

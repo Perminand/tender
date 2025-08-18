@@ -186,7 +186,7 @@ public class TenderWinnerServiceImpl implements TenderWinnerService {
         
         if (!allPrices.isEmpty()) {
             SupplierPriceDto originalWinner = allPrices.get(0);
-            winner = new SupplierPriceDto(
+            SupplierPriceDto autoWinner = new SupplierPriceDto(
                     originalWinner.supplierId(),
                     originalWinner.supplierName(),
                     originalWinner.supplierEmail(),
@@ -211,6 +211,9 @@ public class TenderWinnerServiceImpl implements TenderWinnerService {
                     originalWinner.savings(),
                     originalWinner.savingsPercentage()
             );
+            
+            // По умолчанию авто-победитель
+            winner = autoWinner;
             
             if (allPrices.size() > 1) {
                 SupplierPriceDto originalSecond = allPrices.get(1);
@@ -239,6 +242,73 @@ public class TenderWinnerServiceImpl implements TenderWinnerService {
                         originalSecond.savings(),
                         originalSecond.savingsPercentage()
                 );
+            }
+
+            // Если вручную назначен победитель по позиции, используем его
+            if (tenderItem.getAwardedSupplierId() != null) {
+                UUID awarded = tenderItem.getAwardedSupplierId();
+                Optional<SupplierPriceDto> selectedOpt = allPrices.stream()
+                        .filter(p -> awarded.equals(p.supplierId()))
+                        .findFirst();
+                if (selectedOpt.isPresent()) {
+                    SupplierPriceDto selected = selectedOpt.get();
+                    SupplierPriceDto enforcedWinner = new SupplierPriceDto(
+                            selected.supplierId(),
+                            selected.supplierName(),
+                            selected.supplierEmail(),
+                            selected.proposalId(),
+                            selected.proposalNumber(),
+                            selected.tenderItemId(),
+                            selected.unitPrice(),
+                            selected.totalPrice(),
+                            selected.currency(),
+                            selected.deliveryPeriod(),
+                            selected.warranty(),
+                            selected.additionalInfo(),
+                            true, // isBestPrice (отмечаем выбранного как победителя)
+                            false,
+                            selected.unitPriceWithVat(),
+                            selected.totalPriceWithVat(),
+                            selected.deliveryCost(),
+                            selected.totalPriceWithDelivery(),
+                            selected.totalPriceWithVatAndDelivery(),
+                            selected.vatRate(),
+                            selected.vatAmount(),
+                            selected.savings(),
+                            selected.savingsPercentage()
+                    );
+                    // Переносим авто-победителя во вторую цену, если это другой поставщик
+                    if (winner != null && !awarded.equals(winner.supplierId())) {
+                        SupplierPriceDto autoAsSecond = new SupplierPriceDto(
+                                winner.supplierId(),
+                                winner.supplierName(),
+                                winner.supplierEmail(),
+                                winner.proposalId(),
+                                winner.proposalNumber(),
+                                winner.tenderItemId(),
+                                winner.unitPrice(),
+                                winner.totalPrice(),
+                                winner.currency(),
+                                winner.deliveryPeriod(),
+                                winner.warranty(),
+                                winner.additionalInfo(),
+                                false,
+                                true,
+                                winner.unitPriceWithVat(),
+                                winner.totalPriceWithVat(),
+                                winner.deliveryCost(),
+                                winner.totalPriceWithDelivery(),
+                                winner.totalPriceWithVatAndDelivery(),
+                                winner.vatRate(),
+                                winner.vatAmount(),
+                                winner.savings(),
+                                winner.savingsPercentage()
+                        );
+                        secondPrice = autoAsSecond;
+                    }
+                    winner = enforcedWinner;
+                    log.info("Победитель по позиции {} принудительно установлен на поставщика {}", tenderItem.getId(), awarded);
+                }
             }
         }
         

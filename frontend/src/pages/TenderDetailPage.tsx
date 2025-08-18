@@ -252,6 +252,21 @@ const TenderDetailPage: React.FC = () => {
       ? proposal.proposalItems.reduce((sum: number, item: any) => sum + (item.totalPrice || 0), 0)
       : 0;
 
+  // Функция для расчета полной стоимости предложения с учетом дополнительных расходов
+  const calculateTotalProposalCost = (proposal: any) => {
+    // Базовая стоимость предложения
+    const baseCost = proposal.totalPrice || 0;
+    
+    // Дополнительные расходы (если есть)
+    const additionalExpenses = proposal.additionalExpenses 
+      ? proposal.additionalExpenses
+          .filter((expense: any) => expense.status === 'APPROVED')
+          .reduce((sum: number, expense: any) => sum + (expense.amount || 0), 0)
+      : 0;
+    
+    return baseCost + additionalExpenses;
+  };
+
   const handleAwardSupplier = useCallback(async (itemId: string, supplierId: string) => {
     if (!tender) return;
     setAwarding(prev => ({ ...prev, [itemId]: true }));
@@ -298,9 +313,18 @@ const TenderDetailPage: React.FC = () => {
 
   const handleAutoAwardClick = () => {
     if (!tender || tender.supplierProposals.length === 0) return;
-    const best = tender.supplierProposals.reduce((min, p) =>
-      min == null || (p.totalPrice != null && p.totalPrice < min.totalPrice) ? p : min
-    );
+    
+    // Находим лучшее предложение с учетом дополнительных расходов
+    const best = tender.supplierProposals.reduce((min, p) => {
+      if (!min) return p;
+      
+      // Получаем полную стоимость с учетом дополнительных расходов
+      const totalCost1 = calculateTotalProposalCost(min);
+      const totalCost2 = calculateTotalProposalCost(p);
+      
+      return totalCost1 < totalCost2 ? min : p;
+    });
+    
     if (best) {
       setAutoAwardSupplier({ id: best.supplierId, name: best.supplierName });
       setAutoAwardDialogOpen(true);
@@ -890,7 +914,15 @@ const TenderDetailPage: React.FC = () => {
                     <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                       <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
                         <Typography sx={{ flex: 1 }}>
-                          {proposal.supplierName} - {formatPrice(proposal.totalPrice != null ? proposal.totalPrice : getProposalTotal(proposal))}
+                          {proposal.supplierName} - {formatPrice(calculateTotalProposalCost(proposal))}
+                          {proposal.additionalExpenses && proposal.additionalExpenses.length > 0 && (
+                            <Typography variant="caption" color="text.secondary" display="block">
+                              + {formatPrice(proposal.additionalExpenses
+                                .filter((expense: any) => expense.status === 'APPROVED')
+                                .reduce((sum: number, expense: any) => sum + (expense.amount || 0), 0)
+                              )} доп. расходы
+                            </Typography>
+                          )}
                         </Typography>
                         {proposal.isBestOffer && (
                           <Tooltip title="Лучшее предложение">

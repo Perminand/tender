@@ -8,6 +8,7 @@ import ru.perminov.tender.dto.contract.ContractDto;
 import ru.perminov.tender.dto.contract.ContractDtoNew;
 import ru.perminov.tender.dto.contract.ContractDtoUpdate;
 import ru.perminov.tender.dto.contract.ContractItemDto;
+import ru.perminov.tender.dto.contract.ContractFromWinnersDto;
 import ru.perminov.tender.mapper.ContractMapper;
 import ru.perminov.tender.mapper.company.CompanyMapper;
 import ru.perminov.tender.model.Contract;
@@ -417,6 +418,112 @@ public class ContractServiceImpl implements ContractService {
         log.info("Контракт создан успешно: {} с {} позициями. Итого: {}", savedContract.getId(), createdItemsCount, contractTotal);
         
         // Возвращаем контракт с позициями
+        return getContractById(savedContract.getId());
+    }
+
+    @Override
+    public ContractDto createContractFromWinners(ContractFromWinnersDto contractFromWinnersDto) {
+        log.info("Создание контракта из выбранных победителей для тендера: {}", contractFromWinnersDto.tenderId());
+        
+        // Получаем тендер
+        Tender tender = tenderRepository.findById(contractFromWinnersDto.tenderId())
+                .orElseThrow(() -> new RuntimeException("Тендер не найден"));
+        
+        // Получаем заказчика
+        Company customer = tender.getCustomer();
+        if (customer == null) {
+            throw new RuntimeException("У тендера не найден заказчик");
+        }
+        
+        // Создаем контракт
+        Contract contract = new Contract();
+        contract.setTender(tender);
+        contract.setContractNumber("CON-" + System.currentTimeMillis());
+        contract.setTitle(contractFromWinnersDto.title());
+        contract.setContractDate(LocalDate.now());
+        contract.setStartDate(contractFromWinnersDto.startDate());
+        contract.setEndDate(contractFromWinnersDto.endDate());
+        contract.setStatus(Contract.ContractStatus.DRAFT);
+        contract.setTotalAmount(BigDecimal.ZERO);
+        contract.setCurrency("RUB");
+        contract.setDescription(contractFromWinnersDto.description());
+        contract.setTerms(tender.getTermsAndConditions());
+        contract.setSpecialConditions(tender.getRequirements());
+        contract.setCreatedAt(LocalDateTime.now());
+        contract.setUpdatedAt(LocalDateTime.now());
+        
+        Contract savedContract = contractRepository.save(contract);
+        auditLogService.logSimple(getCurrentUser(), "CREATE_CONTRACT_FROM_WINNERS", "Contract", savedContract.getId().toString(), "Создан контракт из выбранных победителей");
+        log.info("Контракт сохранен с ID: {}", savedContract.getId());
+        
+        // Создаем позиции контракта для выбранных победителей
+        int createdItemsCount = 0;
+        BigDecimal contractTotal = BigDecimal.ZERO;
+        
+        for (ContractFromWinnersDto.SelectedWinnerItemDto selectedItem : contractFromWinnersDto.selectedItems()) {
+            // Получаем тендерную позицию
+            TenderItem tenderItem = tenderItemRepository.findById(selectedItem.tenderItemId())
+                    .orElseThrow(() -> new RuntimeException("Тендерная позиция не найдена: " + selectedItem.tenderItemId()));
+            
+            // Получаем предложение поставщика
+            SupplierProposal supplierProposal = supplierProposalRepository.findByTenderIdAndSupplierId(
+                    contractFromWinnersDto.tenderId(), selectedItem.supplierId())
+                    .stream()
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Предложение поставщика не найдено"));
+            
+            // Получаем позицию предложения
+            ProposalItem proposalItem = proposalItemRepository.findBySupplierProposalId(supplierProposal.getId())
+                    .stream()
+                    .filter(pi -> pi.getTenderItem() != null && pi.getTenderItem().getId().equals(selectedItem.tenderItemId()))
+                    .findFirst()
+                    .orElseThrow(() -> new RuntimeException("Позиция предложения не найдена"));
+            
+            // Создаем позицию контракта
+            ContractItem contractItem = new ContractItem();
+            contractItem.setContract(savedContract);
+            contractItem.setTenderItem(tenderItem);
+            
+            // Получаем материал через RequestMaterial
+            Material material = null;
+            if (tenderItem.getRequestMaterial() != null) {
+                material = tenderItem.getRequestMaterial().getMaterial();
+            }
+            contractItem.setMaterial(material);
+            
+            contractItem.setItemNumber(proposalItem.getItemNumber());
+            contractItem.setDescription(proposalItem.getDescription());
+            contractItem.setQuantity(BigDecimal.valueOf(proposalItem.getQuantity()));
+            
+            // Приоритет единицы измерения: сначала из предложения, потом из тендерной позиции
+            if (proposalItem.getUnit() != null) {
+                contractItem.setUnit(proposalItem.getUnit());
+            } else if (tenderItem.getUnit() != null) {
+                contractItem.setUnit(tenderItem.getUnit());
+            }
+            
+            contractItem.setUnitPrice(BigDecimal.valueOf(proposalItem.getUnitPrice()));
+            contractItem.setTotalPrice(BigDecimal.valueOf(proposalItem.getTotalPrice()));
+            contractItem.setSpecifications(proposalItem.getSpecifications());
+            contractItem.setDeliveryPeriod(proposalItem.getDeliveryPeriod());
+            contractItem.setWarranty(proposalItem.getWarranty() != null ? proposalItem.getWarranty().getName() : null);
+            contractItem.setAdditionalInfo(proposalItem.getAdditionalInfo());
+            
+            contractItemRepository.save(contractItem);
+            createdItemsCount++;
+            contractTotal = contractTotal.add(contractItem.getTotalPrice() != null ? contractItem.getTotalPrice() : BigDecimal.ZERO);
+            
+            log.debug("Создана позиция контракта: {} - {} (поставщик: {}, количество: {}, цена: {})", 
+                     proposalItem.getItemNumber(), proposalItem.getDescription(), 
+                     supplierProposal.getSupplier().getName(), proposalItem.getQuantity(), proposalItem.getUnitPrice());
+        }
+        
+        // Обновляем итоговую сумму контракта
+        savedContract.setTotalAmount(contractTotal);
+        contractRepository.save(savedContract);
+        
+        log.info("Контракт создан успешно: {} с {} позициями. Итого: {}", savedContract.getId(), createdItemsCount, contractTotal);
+        
         return getContractById(savedContract.getId());
     }
 

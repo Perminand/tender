@@ -135,4 +135,10 @@ databaseChangeLog:
       file: db/changelog/changes/V052_create_payment_and_delivery_conditions.sql
   - include:
       file: db/changelog/changes/V053_add_additional_payment_delivery_data.sql
+  - include:
+      file: db/changelog/changes/V064_create_additional_expenses_table.sql
+  - include:
+      file: db/changelog/changes/V065_remove_test_additional_expenses.sql
+  - include:
+      file: db/changelog/changes/V066_create_tender_item_notes.sql
 

@@ -37,6 +37,7 @@ import {
 } from '@mui/icons-material';
 import PaymentConditionForm from '../components/PaymentConditionForm';
 import DeliveryConditionForm from '../components/DeliveryConditionForm';
+import AdditionalExpensesManager from '../components/AdditionalExpensesManager';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../utils/api';
 
@@ -78,6 +79,7 @@ interface ProposalItemForm {
 }
 
 interface ProposalFormData {
+  id?: string;
   tenderId: string;
   supplierId: string;
   coverLetter: string;
@@ -1213,6 +1215,20 @@ const ProposalEditPage: React.FC = () => {
           />
         </CardContent>
       </Card>
+
+      {/* Дополнительные расходы */}
+      {formData.id && (
+        <Card sx={{ mb: 2 }}>
+          <CardContent>
+            <AdditionalExpensesManager
+              supplierProposalId={formData.id}
+              onExpensesChange={(expenses) => {
+                console.log('Дополнительные расходы обновлены:', expenses);
+              }}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {duplicateItems.size > 0 && (
         <Alert 

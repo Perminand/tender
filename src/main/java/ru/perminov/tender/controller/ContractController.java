@@ -8,6 +8,7 @@ import ru.perminov.tender.dto.contract.ContractDto;
 import ru.perminov.tender.dto.contract.ContractDtoNew;
 import ru.perminov.tender.dto.contract.ContractDtoUpdate;
 import ru.perminov.tender.dto.contract.ContractItemDto;
+import ru.perminov.tender.dto.contract.ContractFromWinnersDto;
 import ru.perminov.tender.service.ContractService;
 import org.springframework.security.access.prepost.PreAuthorize;
 
@@ -109,5 +110,21 @@ public class ContractController {
     @GetMapping("/status-stats")
     public ResponseEntity<Map<String, Long>> getStatusStats() {
         return ResponseEntity.ok(contractService.getStatusStats());
+    }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER')")
+    @PostMapping("/create-from-winners")
+    public ResponseEntity<ContractDto> createContractFromWinners(@RequestBody ContractFromWinnersDto contractFromWinnersDto) {
+        log.info("Создание контракта из выбранных победителей: {}", contractFromWinnersDto);
+        try {
+            ContractDto dto = contractService.createContractFromWinners(contractFromWinnersDto);
+            log.info("Контракт успешно создан из выбранных победителей. contractId={}, tenderId={}",
+                    dto.getId(), contractFromWinnersDto.tenderId());
+            return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            log.error("Ошибка при создании контракта из выбранных победителей: tenderId={}, ошибка: {}",
+                    contractFromWinnersDto.tenderId(), e.getMessage(), e);
+            return ResponseEntity.badRequest().build();
+        }
     }
 } 

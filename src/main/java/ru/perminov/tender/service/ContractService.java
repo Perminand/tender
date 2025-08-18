@@ -57,6 +57,11 @@ public interface ContractService {
     ContractDto createContractFromTender(ContractDtoNew contractDtoNew);
 
     /**
+     * Создать контракт из выбранных победителей по позициям
+     */
+    ContractDto createContractFromWinners(ru.perminov.tender.dto.contract.ContractFromWinnersDto contractFromWinnersDto);
+
+    /**
      * Получить статистику по статусам контрактов
      */
     Map<String, Long> getStatusStats();

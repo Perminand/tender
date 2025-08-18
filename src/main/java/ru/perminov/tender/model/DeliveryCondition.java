@@ -53,7 +53,10 @@ public class DeliveryCondition {
         CIP("CIP - Фрахт и страхование оплачены до"),
         DAP("DAP - Поставка в месте назначения"),
         DPU("DPU - Поставка в месте назначения разгружено"),
-        DDP("DDP - Поставка с оплатой пошлин");
+        DDP("DDP - Поставка с оплатой пошлин"),
+        INCLUDED_IN_PRICE("Доставка включена в стоимость"),
+        SEPARATE_LINE("Доставка отдельной строкой"),
+        THIRD_PARTY_INVOICE("Сторонний счет на доставку");
 
         private final String displayName;
 

@@ -19,9 +19,28 @@ import {
   Divider,
   Alert,
   CircularProgress,
-  Button
+  Button,
+  Checkbox,
+  FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
-import { ExpandMore, TrendingUp, LocalShipping, Receipt, FileDownload } from '@mui/icons-material';
+import { 
+  ExpandMore, 
+  TrendingUp, 
+  LocalShipping, 
+  Receipt, 
+  FileDownload,
+  Assignment,
+  CheckCircle
+} from '@mui/icons-material';
 import { api } from '../utils/api';
 
 interface SupplierPriceDto {
@@ -96,6 +115,112 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
   const [winners, setWinners] = useState<TenderWinnerDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Состояние для выбора победителей
+  const [selectedWinners, setSelectedWinners] = useState<Map<string, string>>(new Map());
+  const [contractDialogOpen, setContractDialogOpen] = useState(false);
+  const [contractData, setContractData] = useState({
+    title: '',
+    startDate: '',
+    endDate: '',
+    description: ''
+  });
+  const [awardingItems, setAwardingItems] = useState<Record<string, boolean>>({});
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const noteKey = (tenderItemId: string, supplierId: string) => `${tenderItemId}:${supplierId}`;
+
+  const loadNotesForItems = async (data: TenderWinnerDto) => {
+    try {
+      const entries = await Promise.all(
+        data.itemWinners.flatMap(item =>
+          item.allPrices.map(async (p) => {
+            const res = await api.get(`/api/tender-item-notes/${item.tenderItemId}/${p.supplierId}`);
+            return [noteKey(item.tenderItemId, p.supplierId), res.data?.note || ''] as [string, string];
+          })
+        )
+      );
+      const notesObj: Record<string, string> = {};
+      entries.forEach(([k, v]) => { notesObj[k] = v; });
+      setNotes(notesObj);
+    } catch (e) {
+      // тихо игнорируем, примечаний может не быть
+    }
+  };
+
+  // Локальные хелперы для пересчета без перезагрузки
+  const effectiveTotalForComparison = (sp: SupplierPriceDto) => {
+    const delivery = sp.deliveryCost || 0;
+    if (delivery > 0) {
+      const withVat = sp.totalPriceWithVat ?? sp.totalPrice ?? 0;
+      return withVat + delivery;
+    }
+    if (sp.totalPriceWithVat != null) return sp.totalPriceWithVat;
+    return sp.totalPrice ?? 0;
+  };
+
+  const recomputeItemAfterSelection = (item: TenderItemWinnerDto, selectedSupplierId: string): TenderItemWinnerDto => {
+    const allPrices = item.allPrices.map(p => ({ ...p }));
+    // Найти выбранную цену
+    const selected = allPrices.find(p => p.supplierId === selectedSupplierId);
+    if (!selected) return item;
+
+    // Сбросить флаги
+    allPrices.forEach(p => {
+      (p as any).isBestPrice = false;
+      (p as any).isSecondPrice = false;
+    });
+
+    // Определить вторую лучшую среди остальных
+    const others = allPrices.filter(p => p.supplierId !== selectedSupplierId);
+    const second = others.length > 0
+      ? others.slice().sort((a, b) => effectiveTotalForComparison(a) - effectiveTotalForComparison(b))[0]
+      : null;
+
+    (selected as any).isBestPrice = true;
+    if (second) (second as any).isSecondPrice = true;
+
+    const totalEstimatedPrice = (item.estimatedPrice || 0) * (item.quantity || 0);
+    const totalWinnerPrice = effectiveTotalForComparison(selected);
+    const totalSavings = totalEstimatedPrice - totalWinnerPrice;
+    const savingsPercentage = totalEstimatedPrice > 0 ? (totalSavings / totalEstimatedPrice) * 100 : 0;
+
+    return {
+      ...item,
+      winner: selected,
+      secondPrice: second,
+      allPrices,
+      totalEstimatedPrice,
+      totalWinnerPrice,
+      totalSavings,
+      savingsPercentage,
+    } as TenderItemWinnerDto;
+  };
+
+  const recomputeSummary = (items: TenderItemWinnerDto[], baseTotalProposals: number) => {
+    const totalEstimatedPrice = items.reduce((s, it) => s + (it.totalEstimatedPrice || 0), 0);
+    const totalWinnerPrice = items.reduce((s, it) => s + (it.totalWinnerPrice || 0), 0);
+    const totalSavings = totalEstimatedPrice - totalWinnerPrice;
+    const savingsPercentage = totalEstimatedPrice > 0 ? (totalSavings / totalEstimatedPrice) * 100 : 0;
+    const winnerSuppliers = Array.from(new Set(items.map(it => it.winner?.supplierId).filter(Boolean) as string[]));
+    const secondPriceSuppliers = Array.from(new Set(items.map(it => it.secondPrice?.supplierId).filter(Boolean) as string[]));
+    const averagePriceDeviation = items.length > 0 ? items.reduce((s, it) => s + (it.savingsPercentage || 0), 0) / items.length : 0;
+    const totalVatAmount = items.reduce((s, it) => s + (it.winner?.vatAmount || 0), 0);
+    const totalDeliveryCost = items.reduce((s, it) => s + (it.winner?.deliveryCost || 0), 0);
+
+    return {
+      totalEstimatedPrice,
+      totalWinnerPrice,
+      totalSavings,
+      savingsPercentage,
+      totalProposals: baseTotalProposals,
+      uniqueWinners: winnerSuppliers.length,
+      winnerSuppliers,
+      secondPriceSuppliers,
+      averagePriceDeviation,
+      totalVatAmount,
+      totalDeliveryCost,
+    } as TenderWinnerSummaryDto;
+  };
 
   useEffect(() => {
     loadWinners();
@@ -104,13 +229,90 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
   const loadWinners = async () => {
     try {
       setLoading(true);
-      setError(null);
       const response = await api.get(`/api/tenders/${tenderId}/winners`);
       setWinners(response.data);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Ошибка загрузки победителей');
+      await loadNotesForItems(response.data);
+      
+      // Инициализируем выбранных победителей
+      const initialWinners = new Map();
+      response.data.itemWinners.forEach((item: TenderItemWinnerDto) => {
+        if (item.winner) {
+          initialWinners.set(item.tenderItemId, item.winner.supplierId);
+        }
+      });
+      setSelectedWinners(initialWinners);
+      
+      setError(null);
+    } catch (err) {
+      setError('Ошибка при загрузке победителей');
+      console.error('Error loading winners:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleWinnerSelection = async (tenderItemId: string, supplierId: string) => {
+    // Оптимистичное обновление UI без перезагрузки
+    setSelectedWinners(prev => {
+      const newMap = new Map(prev);
+      newMap.set(tenderItemId, supplierId);
+      return newMap;
+    });
+
+    // Сохраним предыдущее состояние для отката при ошибке
+    const prevWinnersState = winners ? JSON.parse(JSON.stringify(winners)) as TenderWinnerDto : null;
+
+    if (winners) {
+      const newItems = winners.itemWinners.map(it =>
+        it.tenderItemId === tenderItemId ? recomputeItemAfterSelection(it, supplierId) : it
+      );
+      const newSummary = recomputeSummary(newItems, winners.summary.totalProposals);
+      setWinners({ ...winners, itemWinners: newItems, summary: newSummary });
+    }
+
+    // Запрос на бэк в фоне
+    try {
+      setAwardingItems(prev => ({ ...prev, [tenderItemId]: true }));
+      await api.post(`/api/tenders/${tenderId}/items/${tenderItemId}/award`, { supplierId });
+    } catch (err) {
+      console.error('Error awarding tender item', err);
+      alert('Ошибка назначения победителя по позиции');
+      // Откатить локальные изменения при ошибке
+      if (prevWinnersState) setWinners(prevWinnersState);
+    } finally {
+      setAwardingItems(prev => ({ ...prev, [tenderItemId]: false }));
+    }
+  };
+
+  const handleCreateContract = () => {
+    setContractDialogOpen(true);
+  };
+
+  const handleContractSubmit = async () => {
+    try {
+      const selectedItems = Array.from(selectedWinners.entries()).map(([tenderItemId, supplierId]) => ({
+        tenderItemId,
+        supplierId
+      }));
+
+      const contractRequest = {
+        tenderId,
+        title: contractData.title,
+        startDate: contractData.startDate,
+        endDate: contractData.endDate,
+        description: contractData.description,
+        selectedItems
+      };
+
+      await api.post('/api/contracts/create-from-winners', contractRequest);
+      setContractDialogOpen(false);
+      setContractData({ title: '', startDate: '', endDate: '', description: '' });
+      
+      // Показать уведомление об успехе
+      alert('Контракт успешно создан!');
+    } catch (err) {
+      console.error('Error creating contract:', err);
+      alert('Ошибка при создании контракта');
     }
   };
 
@@ -123,33 +325,12 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
   };
 
   const formatPercentage = (percentage: number) => {
-    return `${percentage.toFixed(2)}%`;
-  };
-
-  const handleExportToExcel = async () => {
-    try {
-      const response = await api.get(`/api/price-analysis/tender/${tenderId}/export`, {
-        responseType: 'blob'
-      });
-      
-      // Создаем ссылку для скачивания
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `tender-winners-${tenderId}.xlsx`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Ошибка при экспорте в Excel:', error);
-      alert('Ошибка при экспорте отчета в Excel');
-    }
+    return `${percentage.toFixed(1)}%`;
   };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" p={3}>
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
         <CircularProgress />
       </Box>
     );
@@ -166,60 +347,47 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
   if (!winners) {
     return (
       <Alert severity="info">
-        Нет данных о победителях
+        Данные о победителях не найдены
       </Alert>
     );
   }
 
+  const hasSelectedWinners = selectedWinners.size > 0;
+
   return (
     <Box>
-      {/* Заголовок */}
-      <Card sx={{ mb: 3 }}>
-        <CardContent>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Box>
-              <Typography variant="h5" gutterBottom>
-                Победители тендера: {winners.tenderTitle}
-              </Typography>
-              <Typography variant="subtitle1" color="text.secondary">
-                Номер тендера: {winners.tenderNumber}
-              </Typography>
-            </Box>
-            <Button
-              variant="outlined"
-              startIcon={<FileDownload />}
-              onClick={handleExportToExcel}
-              size="small"
-            >
-              Экспорт в Excel
-            </Button>
-          </Box>
-        </CardContent>
-      </Card>
+      <Typography variant="h5" gutterBottom>
+        Победители тендера: {winners.tenderTitle}
+      </Typography>
 
-      {/* Сводная статистика */}
+      {/* Кнопка создания контракта */}
+      {hasSelectedWinners && (
+        <Box sx={{ mb: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<Assignment />}
+            onClick={handleCreateContract}
+            sx={{ mr: 2 }}
+          >
+            Заключить контракт с выбранными победителями
+          </Button>
+          <Typography variant="caption" color="text.secondary">
+            Выбрано позиций: {selectedWinners.size} из {winners.itemWinners.length}
+          </Typography>
+        </Box>
+      )}
+
+      {/* Общая сводка */}
       <Card sx={{ mb: 3 }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            Сводная статистика
+            Общая сводка
           </Typography>
           <Grid container spacing={3}>
             <Grid item xs={12} md={3}>
               <Box textAlign="center">
-                <Typography variant="h4" color="primary">
-                  {formatPrice(winners.summary.totalSavings)}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Общая экономия
-                </Typography>
-                <Typography variant="caption" color="success.main">
-                  {formatPercentage(winners.summary.savingsPercentage)}
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={3}>
-              <Box textAlign="center">
-                <Typography variant="h4" color="text.primary">
+                <Typography variant="h4" color="primary" gutterBottom>
                   {formatPrice(winners.summary.totalEstimatedPrice)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -229,7 +397,7 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
             </Grid>
             <Grid item xs={12} md={3}>
               <Box textAlign="center">
-                <Typography variant="h4" color="success.main">
+                <Typography variant="h4" color="success.main" gutterBottom>
                   {formatPrice(winners.summary.totalWinnerPrice)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
@@ -239,40 +407,21 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
             </Grid>
             <Grid item xs={12} md={3}>
               <Box textAlign="center">
-                <Typography variant="h4" color="info.main">
-                  {winners.summary.uniqueWinners}
+                <Typography variant="h4" color="success.main" gutterBottom>
+                  {formatPrice(winners.summary.totalSavings)}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Уникальных победителей
+                  Экономия
                 </Typography>
               </Box>
             </Grid>
-          </Grid>
-          
-          <Divider sx={{ my: 2 }} />
-          
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
-              <Box display="flex" alignItems="center" gap={1}>
-                <Receipt color="primary" />
-                <Typography variant="body2">
-                  НДС: {formatPrice(winners.summary.totalVatAmount)}
+            <Grid item xs={12} md={3}>
+              <Box textAlign="center">
+                <Typography variant="h4" color="success.main" gutterBottom>
+                  {formatPercentage(winners.summary.savingsPercentage)}
                 </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box display="flex" alignItems="center" gap={1}>
-                <LocalShipping color="primary" />
-                <Typography variant="body2">
-                  Доставка: {formatPrice(winners.summary.totalDeliveryCost)}
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <Box display="flex" alignItems="center" gap={1}>
-                <TrendingUp color="primary" />
-                <Typography variant="body2">
-                  Предложений: {winners.summary.totalProposals}
+                <Typography variant="body2" color="text.secondary">
+                  Процент экономии
                 </Typography>
               </Box>
             </Grid>
@@ -335,7 +484,7 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
                 </Grid>
               </Grid>
 
-              {/* Таблица всех предложений */}
+              {/* Таблица всех предложений с галочками */}
               <TableContainer component={Paper} variant="outlined">
                 <Table size="small">
                   <TableHead>
@@ -347,6 +496,8 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
                       <TableCell align="right">Итого с НДС и доставкой</TableCell>
                       <TableCell align="right">Экономия</TableCell>
                       <TableCell>Статус</TableCell>
+                      <TableCell>Примечание</TableCell>
+                      <TableCell padding="checkbox">Выбрать</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -393,6 +544,36 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
                             <Chip label="Вторая цена" color="warning" size="small" />
                           )}
                         </TableCell>
+                        <TableCell>
+                          <TextField
+                            fullWidth
+                            size="small"
+                            placeholder="Введите примечание"
+                            value={notes[noteKey(itemWinner.tenderItemId, price.supplierId)] || ''}
+                            onChange={(e) =>
+                              setNotes(prev => ({
+                                ...prev,
+                                [noteKey(itemWinner.tenderItemId, price.supplierId)]: e.target.value
+                              }))
+                            }
+                            onBlur={async (e) => {
+                              const value = e.target.value || '';
+                              try {
+                                await api.post(`/api/tender-item-notes/${itemWinner.tenderItemId}/${price.supplierId}`, { note: value });
+                              } catch (err) {
+                                console.error('Ошибка сохранения примечания', err);
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={selectedWinners.get(itemWinner.tenderItemId) === price.supplierId}
+                            onChange={() => handleWinnerSelection(itemWinner.tenderItemId, price.supplierId)}
+                            color="primary"
+                            disabled={!!awardingItems[itemWinner.tenderItemId]}
+                          />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -402,6 +583,87 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
           </AccordionDetails>
         </Accordion>
       ))}
+
+      {/* Диалог создания контракта */}
+      <Dialog open={contractDialogOpen} onClose={() => setContractDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Создание контракта с выбранными победителями
+        </DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Название контракта"
+                value={contractData.title}
+                onChange={(e) => setContractData({ ...contractData, title: e.target.value })}
+                placeholder="Контракт по тендеру..."
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Дата начала"
+                type="date"
+                value={contractData.startDate}
+                onChange={(e) => setContractData({ ...contractData, startDate: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <TextField
+                fullWidth
+                label="Дата окончания"
+                type="date"
+                value={contractData.endDate}
+                onChange={(e) => setContractData({ ...contractData, endDate: e.target.value })}
+                InputLabelProps={{ shrink: true }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <TextField
+                fullWidth
+                label="Описание"
+                multiline
+                rows={3}
+                value={contractData.description}
+                onChange={(e) => setContractData({ ...contractData, description: e.target.value })}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <Typography variant="subtitle2" gutterBottom>
+                Выбранные позиции для контракта:
+              </Typography>
+              {Array.from(selectedWinners.entries()).map(([tenderItemId, supplierId]) => {
+                const item = winners.itemWinners.find(i => i.tenderItemId === tenderItemId);
+                const supplier = item?.allPrices.find(p => p.supplierId === supplierId);
+                return (
+                  <Box key={tenderItemId} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Typography variant="body2">
+                      <strong>Позиция {item?.itemNumber}:</strong> {item?.description}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Поставщик: {supplier?.supplierName} - {formatPrice(supplier?.totalPriceWithVatAndDelivery || 0)}
+                    </Typography>
+                  </Box>
+                );
+              })}
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setContractDialogOpen(false)}>
+            Отмена
+          </Button>
+          <Button 
+            onClick={handleContractSubmit} 
+            variant="contained"
+            disabled={!contractData.title || !contractData.startDate || !contractData.endDate}
+          >
+            Создать контракт
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

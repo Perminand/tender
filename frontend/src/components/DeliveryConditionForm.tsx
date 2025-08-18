@@ -71,6 +71,9 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
       case 'DAP': return 'DAP - Поставка в месте назначения';
       case 'DPU': return 'DPU - Поставка в месте назначения разгружено';
       case 'DDP': return 'DDP - Поставка с оплатой пошлин';
+      case 'INCLUDED_IN_PRICE': return 'Доставка включена в стоимость';
+      case 'SEPARATE_LINE': return 'Доставка отдельной строкой';
+      case 'THIRD_PARTY_INVOICE': return 'Сторонний счет на доставку';
       default: return type;
     }
   };
@@ -130,6 +133,9 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
                   <MenuItem value="DAP">DAP - Поставка в месте назначения</MenuItem>
                   <MenuItem value="DPU">DPU - Поставка в месте назначения разгружено</MenuItem>
                   <MenuItem value="DDP">DDP - Поставка с оплатой пошлин</MenuItem>
+                  <MenuItem value="INCLUDED_IN_PRICE">Доставка включена в стоимость</MenuItem>
+                  <MenuItem value="SEPARATE_LINE">Доставка отдельной строкой</MenuItem>
+                  <MenuItem value="THIRD_PARTY_INVOICE">Сторонний счет на доставку</MenuItem>
                 </Select>
               </FormControl>
             </Grid>

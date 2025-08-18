@@ -69,6 +69,9 @@ public class SupplierProposal {
     @OneToMany(mappedBy = "supplierProposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProposalItem> proposalItems = new ArrayList<>();
 
+    @OneToMany(mappedBy = "supplierProposal", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AdditionalExpense> additionalExpenses = new ArrayList<>();
+
     public enum ProposalStatus {
         DRAFT,          // Черновик
         SUBMITTED,      // Подано

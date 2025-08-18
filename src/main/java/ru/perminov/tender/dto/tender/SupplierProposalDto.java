@@ -6,6 +6,7 @@ import lombok.Data;
 import ru.perminov.tender.model.SupplierProposal;
 import ru.perminov.tender.dto.PaymentConditionDto;
 import ru.perminov.tender.dto.DeliveryConditionDto;
+import ru.perminov.tender.dto.AdditionalExpenseDto;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -58,6 +59,8 @@ public class SupplierProposalDto {
     private DeliveryConditionDto deliveryCondition;
 
     private List<ProposalItemDto> proposalItems;
+
+    private List<AdditionalExpenseDto> additionalExpenses;
 
     private Boolean isBestOffer;
 

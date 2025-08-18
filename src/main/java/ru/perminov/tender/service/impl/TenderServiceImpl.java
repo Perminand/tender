@@ -24,6 +24,7 @@ import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
 import ru.perminov.tender.service.PriceAnalysisService;
 import ru.perminov.tender.service.AuditLogService;
+import ru.perminov.tender.service.AdditionalExpenseService;
 import ru.perminov.tender.repository.UserRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.Authentication;
@@ -60,6 +61,7 @@ public class TenderServiceImpl implements TenderService {
     private final ProposalItemRepository proposalItemRepository;
     private final CompanyMapper companyMapper;
     private final AuditLogService auditLogService;
+    private final AdditionalExpenseService additionalExpenseService;
     private final UserRepository userRepository;
 
     private User getCurrentUser() {
@@ -433,10 +435,15 @@ public class TenderServiceImpl implements TenderService {
                 })
                 .collect(Collectors.toList());
         
-        // Находим лучшее предложение среди полных предложений по общей цене
+        // Находим лучшее предложение среди полных предложений по общей цене с учетом дополнительных расходов
         SupplierProposalDto bestProposal = completeProposals.stream()
                 .filter(p -> p.getTotalPrice() != null)
-                .min((p1, p2) -> Double.compare(p1.getTotalPrice(), p2.getTotalPrice()))
+                .min((p1, p2) -> {
+                    // Получаем полную стоимость с учетом дополнительных расходов
+                    double totalCost1 = calculateTotalProposalCost(p1);
+                    double totalCost2 = calculateTotalProposalCost(p2);
+                    return Double.compare(totalCost1, totalCost2);
+                })
                 .orElse(null);
         
         if (bestProposal != null) {
@@ -802,6 +809,24 @@ public class TenderServiceImpl implements TenderService {
         log.info("Тендер успешно разделен. Новый тендер: {}", savedNewTender.getId());
         
         return response;
+    }
+    
+    /**
+     * Рассчитать полную стоимость предложения с учетом дополнительных расходов
+     */
+    private double calculateTotalProposalCost(SupplierProposalDto proposal) {
+        // Базовая стоимость предложения
+        double baseCost = proposal.getTotalPrice() != null ? proposal.getTotalPrice() : 0.0;
+        
+        // Дополнительные расходы
+        double additionalExpenses = additionalExpenseService.getTotalApprovedAmountByProposal(proposal.getId());
+        
+        double totalCost = baseCost + additionalExpenses;
+        
+        log.debug("Расчет полной стоимости предложения {}: базовая стоимость: {}, дополнительные расходы: {}, итого: {}", 
+                proposal.getId(), baseCost, additionalExpenses, totalCost);
+        
+        return totalCost;
     }
     
 } 

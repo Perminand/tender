@@ -25,6 +25,7 @@ import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
 import ru.perminov.tender.service.PaymentConditionService;
 import ru.perminov.tender.service.DeliveryConditionService;
+import ru.perminov.tender.service.AdditionalExpenseService;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -52,6 +53,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     private final ProposalItemMapper proposalItemMapper;
     private final PaymentConditionService paymentConditionService;
     private final DeliveryConditionService deliveryConditionService;
+    private final AdditionalExpenseService additionalExpenseService;
 
     @Override
     public SupplierProposalDto createProposal(SupplierProposalDto proposalDto) {
@@ -199,8 +201,22 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         // Рассчитать и сохранить totalPrice
         List<ProposalItem> items = proposalItemRepository.findBySupplierProposalIdWithUnit(savedProposal.getId());
         double total = items.stream().filter(i -> i.getTotalPrice() != null).mapToDouble(ProposalItem::getTotalPrice).sum();
-        savedProposal.setTotalPrice(total);
+        
+        // Добавляем стоимость доставки из позиций если она указана
+        double deliveryCost = items.stream()
+                .filter(i -> i.getDeliveryCost() != null)
+                .mapToDouble(ProposalItem::getDeliveryCost)
+                .sum();
+        
+        // Добавляем дополнительные расходы
+        double additionalExpenses = additionalExpenseService.getTotalApprovedAmountByProposal(savedProposal.getId());
+        
+        double totalWithDelivery = total + deliveryCost + additionalExpenses;
+        savedProposal.setTotalPrice(totalWithDelivery);
         supplierProposalRepository.save(savedProposal);
+        
+        log.info("Расчет стоимости предложения: базовая стоимость: {}, доставка: {}, дополнительные расходы: {}, итого: {}", 
+                total, deliveryCost, additionalExpenses, totalWithDelivery);
         
         return supplierProposalMapper.toDto(savedProposal);
     }
