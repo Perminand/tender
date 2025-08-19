@@ -210,8 +210,12 @@ export default function RequestRegistryPage() {
     switch (status) {
       case 'DRAFT': return 'Черновик';
       case 'SAVED': return 'Сохранен';
+      case 'SUBMITTED': return 'Подана';
+      case 'APPROVED': return 'Одобрена';
+      case 'IN_PROGRESS': return 'В работе';
       case 'TENDER': return 'Тендер';
-      case 'COMPLETED': return 'Исполнена';
+      case 'COMPLETED': return 'Завершена';
+      case 'CANCELLED': return 'Отменена';
       default: return status;
     }
   };
@@ -220,8 +224,12 @@ export default function RequestRegistryPage() {
     switch (status) {
       case 'DRAFT': return 'default';
       case 'SAVED': return 'primary';
+      case 'SUBMITTED': return 'info';
+      case 'APPROVED': return 'success';
+      case 'IN_PROGRESS': return 'warning';
       case 'TENDER': return 'warning';
       case 'COMPLETED': return 'success';
+      case 'CANCELLED': return 'error';
       default: return 'default';
     }
   };

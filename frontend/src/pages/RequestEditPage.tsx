@@ -60,8 +60,11 @@ interface Characteristic { id: string; name: string; description?: string; }
 const statusOptions = [
   { value: 'DRAFT', label: 'Черновик' },
   { value: 'SAVED', label: 'Сохранен' },
+  { value: 'SUBMITTED', label: 'Подана' },
+  { value: 'APPROVED', label: 'Одобрена' },
+  { value: 'IN_PROGRESS', label: 'В работе' },
   { value: 'TENDER', label: 'Тендер' },
-  { value: 'COMPLETED', label: 'Исполнена' },
+  { value: 'COMPLETED', label: 'Завершена' },
   { value: 'CANCELLED', label: 'Отменена' },
 ];
 
@@ -1392,16 +1395,6 @@ export default function RequestEditPage() {
       <Toolbar sx={{ justifyContent: 'space-between' }}>
         <Typography variant="h6">{isEdit ? 'Редактирование заявки' : 'Создание заявки'}</Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          <Button 
-            variant="outlined" 
-            onClick={() => {
-              const optimalWidths = calculateOptimalColumnWidths();
-              setColWidths(optimalWidths);
-            }}
-            title="Автоматически подогнать ширину столбцов под содержимое"
-          >
-            Подогнать столбцы
-          </Button>
         <Button variant="outlined" component="label" disabled={importLoading}>
           {importLoading ? (
             <>
@@ -1902,38 +1895,43 @@ export default function RequestEditPage() {
             </TableBody>
           </Table>
         </TableContainer>
-          <Button onClick={handleAddMaterial} variant="outlined" size="small" sx={{ alignSelf: 'flex-end' }}>
+          <Button onClick={handleAddMaterial} variant="outlined" size="small">
             Добавить материал
           </Button>
         </Box>
       <Box mt={3} display="flex" justifyContent="flex-end" gap={2}>
-        <Button variant="outlined" color="secondary" onClick={() => navigate('/requests/registry')}>Отмена</Button>
-        <Button variant="contained" color="primary" onClick={handleSave} sx={{ ml: 1 }}>
+        <Button variant="outlined" color="secondary" onClick={() => navigate('/requests/registry')}>
+          Отмена
+        </Button>
+        <Button variant="contained" color="primary" onClick={handleSave}>
           Сохранить
         </Button>
         {isEdit && (
           <>
             {request.status && request.status.toUpperCase() !== 'DRAFT' && (
-            <Button variant="outlined" color="success" onClick={() => setConfirmCreateTender(true)} sx={{ ml: 1 }}>
-              Создать тендер
-            </Button>
+              <Button variant="outlined" color="success" onClick={() => setConfirmCreateTender(true)}>
+                Создать тендер
+              </Button>
             )}
-            <IconButton 
+            <Button 
+              variant="outlined" 
               color="error" 
-              onClick={() => setConfirmDelete(true)} 
-              sx={{ ml: 1 }}
-              title="Удалить заявку"
+              onClick={() => setConfirmDelete(true)}
             >
-              <DeleteIcon />
-            </IconButton>
+              Удалить
+            </Button>
           </>
         )}
       </Box>
       <Dialog open={confirmDelete} onClose={() => setConfirmDelete(false)}>
         <DialogTitle>Удалить заявку?</DialogTitle>
         <DialogActions>
-          <Button onClick={() => setConfirmDelete(false)}>Отмена</Button>
-          <Button color="error" onClick={handleDelete} startIcon={<DeleteIcon />}>Удалить</Button>
+          <Button variant="outlined" onClick={() => setConfirmDelete(false)}>
+            Отмена
+          </Button>
+          <Button variant="outlined" color="error" onClick={handleDelete}>
+            Удалить
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -1952,13 +1950,13 @@ export default function RequestEditPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
+          <Button variant="outlined" onClick={() => {
             setOpenWorkTypeDialog(false);
             setNewWorkType('');
           }}>
             Отмена
           </Button>
-          <Button onClick={async () => {
+          <Button variant="contained" onClick={async () => {
             if (newWorkType.trim()) {
               try {
                 const res = await api.post('/api/work-types', { name: newWorkType });
@@ -1993,13 +1991,13 @@ export default function RequestEditPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
+          <Button variant="outlined" onClick={() => {
             setOpenProjectDialog(false);
             setNewProject('');
           }}>
             Отмена
           </Button>
-          <Button onClick={async () => {
+          <Button variant="contained" onClick={async () => {
             if (newProject.trim()) {
               try {
                 const res = await api.post('/api/projects', { name: newProject });
@@ -2034,13 +2032,13 @@ export default function RequestEditPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
+          <Button variant="outlined" onClick={() => {
             setOpenCompanyDialog(false);
             setNewCompany('');
           }}>
             Отмена
           </Button>
-          <Button onClick={() => {
+          <Button variant="contained" onClick={() => {
             if (newCompany.trim()) {
               window.open(`/reference/counterparties/new?shortName=${encodeURIComponent(newCompany)}`, '_blank');
               setOpenCompanyDialog(false);
@@ -2083,8 +2081,12 @@ export default function RequestEditPage() {
           <DialogContentText>Вы уверены, что хотите удалить этот материал из заявки?</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenRemoveMaterialDialog(false)}>Отмена</Button>
-          <Button color="error" onClick={handleConfirmRemoveMaterial} startIcon={<DeleteIcon />}>Удалить</Button>
+          <Button variant="outlined" onClick={() => setOpenRemoveMaterialDialog(false)}>
+            Отмена
+          </Button>
+          <Button variant="outlined" color="error" onClick={handleConfirmRemoveMaterial}>
+            Удалить
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -2103,13 +2105,13 @@ export default function RequestEditPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
+          <Button variant="outlined" onClick={() => {
             setOpenWarehouseDialog(false);
             setNewWarehouse('');
           }}>
             Отмена
           </Button>
-          <Button onClick={async () => {
+          <Button variant="contained" onClick={async () => {
             if (newWarehouse.trim() && request.project?.id) {
               try {
                 const res = await api.post('/api/warehouses', { 
@@ -2147,13 +2149,13 @@ export default function RequestEditPage() {
           />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => {
+          <Button variant="outlined" onClick={() => {
             setOpenCharacteristicDialog(false);
             setNewCharacteristic('');
           }}>
             Отмена
           </Button>
-          <Button onClick={async () => {
+          <Button variant="contained" onClick={async () => {
             if (newCharacteristic.trim()) {
               try {
                 const res = await api.post('/api/characteristics', { 
@@ -2214,11 +2216,12 @@ export default function RequestEditPage() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenImportDialog(false)} disabled={importConfirmLoading}>Отмена</Button>
+          <Button variant="outlined" onClick={() => setOpenImportDialog(false)} disabled={importConfirmLoading}>
+            Отмена
+          </Button>
           <Button
             onClick={() => setShowHeaderMappingDialog(true)} 
             variant="outlined"
-            sx={{ mr: 1 }}
             disabled={importConfirmLoading}
           >
             Соответствия
@@ -2241,8 +2244,12 @@ export default function RequestEditPage() {
           <DialogContentText>Вы уверены, что хотите создать тендер по этой заявке? После создания статус заявки изменится на "Тендер".</DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setConfirmCreateTender(false)}>Отмена</Button>
-          <Button color="success" onClick={() => { setConfirmCreateTender(false); handleCreateTender(); }}>Создать</Button>
+          <Button variant="outlined" onClick={() => setConfirmCreateTender(false)}>
+            Отмена
+          </Button>
+          <Button variant="contained" color="success" onClick={() => { setConfirmCreateTender(false); handleCreateTender(); }}>
+            Создать
+          </Button>
         </DialogActions>
       </Dialog>
 
@@ -2255,7 +2262,9 @@ export default function RequestEditPage() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setMissingCompanyName(null)}>Отмена</Button>
+          <Button variant="outlined" onClick={() => setMissingCompanyName(null)}>
+            Отмена
+          </Button>
           <Button
             onClick={() => {
               window.open(`/reference/counterparties/new?shortName=${encodeURIComponent(missingCompanyName || '')}`, '_blank');

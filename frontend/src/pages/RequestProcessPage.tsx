@@ -16,7 +16,12 @@ import {
   CardContent,
   Chip,
   IconButton,
-  Tooltip
+  Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
 import {
   ViewList as ViewListIcon,
@@ -24,7 +29,8 @@ import {
   ExpandMore as ExpandMoreIcon,
   Refresh as RefreshIcon,
   FilterList as FilterIcon,
-  Search as SearchIcon
+  Search as SearchIcon,
+  Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -51,6 +57,7 @@ export default function RequestProcessPage() {
     toDate: ''
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [confirmCreateRequest, setConfirmCreateRequest] = useState(false);
 
   const fetchRequests = async (detailed: boolean = false) => {
     setLoading(true);
@@ -331,6 +338,54 @@ export default function RequestProcessPage() {
           ))
         )}
       </Box>
+      
+      {/* Кнопка добавления новой заявки */}
+      <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+        <Button
+          variant="outlined"
+          color="primary"
+          onClick={() => setConfirmCreateRequest(true)}
+          startIcon={<AssignmentIcon />}
+          sx={{
+            borderWidth: 2,
+            '&:hover': {
+              borderWidth: 2,
+              transform: 'scale(1.05)',
+              transition: 'all 0.2s ease-in-out'
+            }
+          }}
+        >
+          Добавить заявку
+        </Button>
+      </Box>
+
+      {/* Диалог подтверждения создания новой заявки */}
+      <Dialog open={confirmCreateRequest} onClose={() => setConfirmCreateRequest(false)}>
+        <DialogTitle>
+          Создать новую заявку?
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Вы уверены, что хотите создать новую заявку? 
+            Вы будете перенаправлены на страницу создания заявки.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmCreateRequest(false)}>
+            Отмена
+          </Button>
+          <Button 
+            onClick={() => {
+              setConfirmCreateRequest(false);
+              navigate('/requests/new');
+            }}
+            color="primary" 
+            variant="contained"
+          >
+            Создать
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 } 

@@ -71,12 +71,17 @@ const getStatusLabel = (status?: string) => {
   const upperStatus = status.toUpperCase();
   switch (upperStatus) {
     case 'DRAFT': return 'Черновик';
+    case 'SAVED': return 'Сохранен';
+    case 'SUBMITTED': return 'Подана';
+    case 'APPROVED': return 'Одобрена';
+    case 'IN_PROGRESS': return 'В работе';
     case 'PUBLISHED': return 'Опубликован';
     case 'BIDDING': return 'Прием предложений';
     case 'EVALUATION': return 'Оценка';
     case 'AWARDED': return 'Присужден';
     case 'CANCELLED': return 'Отменен';
     case 'TENDER': return 'Тендер';
+    case 'COMPLETED': return 'Завершена';
     default: return status;
   }
 };
@@ -444,18 +449,6 @@ const RequestDetailPage: React.FC = () => {
       
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">Материалы заявки</Typography>
-        <Button 
-          variant="outlined" 
-          size="small"
-          onClick={() => {
-            const optimalWidths = calculateOptimalColumnWidths();
-            setColWidths(optimalWidths);
-            console.log('Оптимальные ширины столбцов:', optimalWidths);
-          }}
-          title="Автоматически подогнать ширину столбцов под содержимое"
-        >
-          Подогнать столбцы
-        </Button>
       </Box>
       <TableContainer component={Paper} sx={{ mb: 3, overflowX: 'auto', width: '100%', maxWidth: '100%', maxHeight: '600px', overflowY: 'auto' }}>
         <Table size="small" sx={{ minWidth: 2000, width: 'max-content' }}>

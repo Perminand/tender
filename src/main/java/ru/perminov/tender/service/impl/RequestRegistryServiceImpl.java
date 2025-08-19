@@ -105,6 +105,7 @@ public class RequestRegistryServiceImpl implements RequestRegistryService {
             case "EVALUATION" -> "Оценка";
             case "AWARDED" -> "Выбран";
             case "CANCELLED" -> "Отменён";
+            case "IN_PROGRESS" -> "В работе";
             default -> status;
         };
     }
