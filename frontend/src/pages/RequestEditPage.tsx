@@ -53,6 +53,7 @@ interface RequestDto {
   warehouse?: Warehouse | null;
   requestNumber?: string;
   applicant?: string;
+  executor?: string;
 }
 
 interface Characteristic { id: string; name: string; description?: string; }
@@ -632,6 +633,7 @@ export default function RequestEditPage() {
           requestNumber: request.requestNumber,
           warehouse: request.warehouse,
           applicant: request.applicant,
+          executor: request.executor,
           status: statusToSave,
           requestMaterials: (request.materials || []).map((mat, index) => ({
             id: mat.id,
@@ -764,9 +766,9 @@ export default function RequestEditPage() {
           return;
         }
 
-        // ШАГ 1: Парсим шапку (Организация, Проект, Склад, Заявитель, Дата, Заявка)
-        let org = '', project = '', sklad = '', applicant = '', date = '', requestNumber = '';
-        // Ищем только в первых двух строках для всех, кроме заявителя
+        // ШАГ 1: Парсим шапку (Организация, Проект, Склад, Заявитель, Исполнитель, Дата, Заявка)
+        let org = '', project = '', sklad = '', applicant = '', executor = '', date = '', requestNumber = '';
+        // Ищем только в первых двух строках для всех, кроме заявителя и исполнителя
         for (let i = 0; i < Math.min(jsonData.length, 2); i++) {
           const row = jsonData[i] as any[];
           for (let j = 0; j < row.length; j++) {
@@ -778,14 +780,16 @@ export default function RequestEditPage() {
             if (cell.includes('заявка')) requestNumber = row[j + 1] || '';
           }
         }
-        // Заявителя ищем только в первой строке
+        // Заявителя и исполнителя ищем только в первой строке
         if (jsonData.length > 0) {
           const row = jsonData[0] as any[];
           for (let j = 0; j < row.length; j++) {
             const cell = (row[j] || '').toString().toLowerCase();
             if (cell.includes('заявитель')) {
               applicant = row[j + 1] || '';
-              break;
+            }
+            if (cell.includes('исполнитель')) {
+              executor = row[j + 1] || '';
             }
           }
         }
@@ -1016,6 +1020,7 @@ export default function RequestEditPage() {
           projectName: project,
           sklad,
           applicant,
+          executor,
           date: parsedDate,
           requestNumber,
           materials: importedMaterials
@@ -1285,10 +1290,11 @@ export default function RequestEditPage() {
     setRequest(prev => {
       const newRequest = {
         ...prev,
-        organization: pendingImportData.organizationObj || prev.organization,
-        requestNumber: pendingImportData.requestNumber || prev.requestNumber,
-        date: pendingImportData.date || prev.date,
-        applicant: pendingImportData.applicant || prev.applicant,
+                  organization: pendingImportData.organizationObj || prev.organization,
+          requestNumber: pendingImportData.requestNumber || prev.requestNumber,
+          date: pendingImportData.date || prev.date,
+          applicant: pendingImportData.applicant || prev.applicant,
+          executor: pendingImportData.executor || prev.executor,
         project: projectObj || prev.project,
         warehouse: warehouseObj || prev.warehouse,
         materials: processedMaterials
@@ -1412,7 +1418,7 @@ export default function RequestEditPage() {
       </Toolbar>
       <Box component="form" sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 2 }}>
         <Grid container spacing={2} sx={{ mb: 2, maxWidth: 1200, alignItems: 'center' }}>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={2}>
         <TextField
               name="requestNumber"
               label="Номер заявки"
@@ -1421,7 +1427,7 @@ export default function RequestEditPage() {
               fullWidth
             />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={2}>
         <TextField
           name="date"
           label="Дата"
@@ -1433,7 +1439,7 @@ export default function RequestEditPage() {
           required
             />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={2}>
             <TextField
               name="applicant"
               label="Заявитель"
@@ -1443,7 +1449,16 @@ export default function RequestEditPage() {
               fullWidth
             />
           </Grid>
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} md={2}>
+            <TextField
+              name="executor"
+              label="Исполнитель"
+              value={request.executor || ''}
+              onChange={handleChange}
+              fullWidth
+            />
+          </Grid>
+          <Grid item xs={12} md={2}>
             <TextField
               select
               name="status"
@@ -2186,8 +2201,9 @@ export default function RequestEditPage() {
               <Typography variant="subtitle2">Организация: {pendingImportData.organizationName || 'Не указана'}</Typography>
               <Typography variant="subtitle2">Проект: {pendingImportData.projectName || 'Не указан'}</Typography>
               <Typography variant="subtitle2">Склад: {pendingImportData.sklad || 'Не указан'}</Typography>
-              <Typography variant="subtitle2">Заявитель: {pendingImportData.applicant || 'Не указан'}</Typography>
-              <Typography variant="subtitle2">Дата: {pendingImportData.date ? (new Date(pendingImportData.date).toLocaleDateString('ru-RU')) : 'Не указана'}</Typography>
+                          <Typography variant="subtitle2">Заявитель: {pendingImportData.applicant || 'Не указан'}</Typography>
+            <Typography variant="subtitle2">Исполнитель: {pendingImportData.executor || 'Не указан'}</Typography>
+            <Typography variant="subtitle2">Дата: {pendingImportData.date ? (new Date(pendingImportData.date).toLocaleDateString('ru-RU')) : 'Не указана'}</Typography>
               <Typography variant="subtitle2">Номер заявки: {pendingImportData.requestNumber || 'Не указан'}</Typography>
               <Typography variant="subtitle2">Материалов: {pendingImportData.materials?.length || 0}</Typography>
               {hasSavedMapping && (

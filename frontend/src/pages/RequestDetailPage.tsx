@@ -61,6 +61,7 @@ interface RequestDto {
   warehouse?: Warehouse | null;
   requestNumber?: string;
   applicant?: string;
+  executor?: string;
   description?: string;
 }
 
@@ -435,6 +436,7 @@ const RequestDetailPage: React.FC = () => {
             <Grid item xs={12} sm={6}><Typography color="textSecondary">Проект:</Typography><Typography>{request.project?.name || '-'}</Typography></Grid>
             <Grid item xs={12} sm={6}><Typography color="textSecondary">Склад:</Typography><Typography>{request.warehouse?.name || '-'}</Typography></Grid>
             <Grid item xs={12} sm={6}><Typography color="textSecondary">Заявитель:</Typography><Typography>{request.applicant || '-'}</Typography></Grid>
+            <Grid item xs={12} sm={6}><Typography color="textSecondary">Исполнитель:</Typography><Typography>{request.executor || '-'}</Typography></Grid>
             <Grid item xs={12}><Typography color="textSecondary">Описание:</Typography><Typography>{request.description || '-'}</Typography></Grid>
           </Grid>
         </CardContent>

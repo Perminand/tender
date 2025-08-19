@@ -143,4 +143,6 @@ databaseChangeLog:
       file: db/changelog/changes/V066_create_tender_item_notes.sql
   - include:
       file: db/changelog/changes/V067_unique_contract_item_per_tender_item.sql
+  - include:
+      file: db/changelog/changes/V068_add_executor_to_requests.sql
 

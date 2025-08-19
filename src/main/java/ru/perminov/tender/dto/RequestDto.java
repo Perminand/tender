@@ -25,6 +25,8 @@ public record RequestDto(
 
     String applicant,
 
+    String executor,
+
     String status
 
 ) {

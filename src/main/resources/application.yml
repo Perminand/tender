@@ -77,12 +77,12 @@ logging:
     file: UTF-8
   level:
     org.springframework.security.config.annotation.authentication.configuration.InitializeUserDetailsBeanManagerConfigurer: ERROR
-    # Добавляем логирование для отладки проблем
-    org.springframework.web: DEBUG
-    org.springframework.security: DEBUG
-    ru.perminov.tender: DEBUG
-    ru.perminov.tender.config.SecurityPaths: DEBUG
-    ru.perminov.tender.config.JwtAuthenticationFilter: DEBUG
+    # production defaults
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    ru.perminov.tender: INFO
+    ru.perminov.tender.config.SecurityPaths: INFO
+    ru.perminov.tender.config.JwtAuthenticationFilter: INFO
 
 # Notification settings
 notification:

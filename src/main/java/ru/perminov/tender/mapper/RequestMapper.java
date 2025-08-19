@@ -17,6 +17,9 @@ public interface RequestMapper {
     Request toEntity(RequestDto dto);
 
     @Mapping(target = "requestMaterials", ignore = true)
+    @Mapping(target = "tenders", ignore = true)
+    @Mapping(target = "invoices", ignore = true)
+    @Mapping(target = "executor", source = "executor")
     void updateRequestFromDto(RequestDto requestDtoForUpdate, @MappingTarget Request request);
 
 } 

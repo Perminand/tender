@@ -51,6 +51,8 @@ public class Request {
 
     private String applicant;
     
+    private String executor;
+    
     private String approver;
     
     private String performer;
