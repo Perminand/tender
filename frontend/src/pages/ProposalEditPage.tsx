@@ -36,7 +36,6 @@ import {
   Send as SendIcon
 } from '@mui/icons-material';
 import PaymentConditionForm from '../components/PaymentConditionForm';
-import DeliveryConditionForm from '../components/DeliveryConditionForm';
 import AdditionalExpensesManager from '../components/AdditionalExpensesManager';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -57,6 +56,17 @@ interface DictionaryItem {
   description?: string;
   country?: string;
   code?: string;
+}
+
+interface DeliveryConditionDict {
+  id: string;
+  name: string;
+  description?: string;
+  deliveryType: string;
+  deliveryPeriod?: string;
+  deliveryResponsibility: string;
+  additionalTerms?: string;
+  calculateDelivery?: boolean;
 }
 
 interface ProposalItemForm {
@@ -92,6 +102,7 @@ interface ProposalFormData {
   proposalItems: ProposalItemForm[];
   paymentCondition?: any;
   deliveryCondition?: any;
+  deliveryCost?: number | null;
 }
 
 interface Company {
@@ -107,6 +118,7 @@ const ProposalEditPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [tenderItems, setTenderItems] = useState<TenderItem[]>([]);
+  const [tenderInfo, setTenderInfo] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [duplicateItems, setDuplicateItems] = useState<Set<number>>(new Set());
@@ -117,6 +129,7 @@ const ProposalEditPage: React.FC = () => {
   const [manufacturers, setManufacturers] = useState<DictionaryItem[]>([]);
   const [countries, setCountries] = useState<DictionaryItem[]>([]);
   const [warranties, setWarranties] = useState<DictionaryItem[]>([]);
+  const [deliveryConditions, setDeliveryConditions] = useState<DeliveryConditionDict[]>([]);
   
   // Состояния для модального окна позиции
   const [positionModalOpen, setPositionModalOpen] = useState(false);
@@ -145,7 +158,8 @@ const ProposalEditPage: React.FC = () => {
     deliveryTerms: '',
     warrantyTerms: '',
     validUntil: '',
-    proposalItems: []
+    proposalItems: [],
+    deliveryCost: null
   });
 
   // Состояние для автокомплета поставщика
@@ -315,6 +329,7 @@ const ProposalEditPage: React.FC = () => {
     if (isEditMode && id) {
       loadProposal();
     } else if (tenderId) {
+      loadTenderInfo();
       loadTenderItems();
     }
   }, [tenderId, id, isEditMode]);
@@ -382,32 +397,48 @@ const ProposalEditPage: React.FC = () => {
   const loadDictionaries = async () => {
     try {
       console.log('Загружаем справочники...');
-      const [brandsResponse, manufacturersResponse, countriesResponse, warrantiesResponse] = await Promise.all([
+      const [brandsResponse, manufacturersResponse, countriesResponse, warrantiesResponse, deliveryConditionsResponse] = await Promise.all([
         api.get('/api/dictionaries/brands'),
         api.get('/api/dictionaries/manufacturers'),
         api.get('/api/dictionaries/countries'),
-        api.get('/api/dictionaries/warranties')
+        api.get('/api/dictionaries/warranties'),
+        api.get('/api/delivery-conditions')
       ]);
       
       console.log('Справочники загружены:', {
         brands: brandsResponse.data.length,
         manufacturers: manufacturersResponse.data.length,
         countries: countriesResponse.data.length,
-        warranties: warrantiesResponse.data.length
+        warranties: warrantiesResponse.data.length,
+        deliveryConditions: deliveryConditionsResponse.data.length
       });
       console.log('Данные справочников:', {
         brands: brandsResponse.data,
         manufacturers: manufacturersResponse.data,
         countries: countriesResponse.data,
-        warranties: warrantiesResponse.data
+        warranties: warrantiesResponse.data,
+        deliveryConditions: deliveryConditionsResponse.data
       });
       
       setBrands(brandsResponse.data);
       setManufacturers(manufacturersResponse.data);
       setCountries(countriesResponse.data);
       setWarranties(warrantiesResponse.data);
+      setDeliveryConditions(deliveryConditionsResponse.data || []);
     } catch (error) {
       console.error('Error loading dictionaries:', error);
+    }
+  };
+
+  const loadTenderInfo = async () => {
+    if (!tenderId) return;
+    
+    try {
+      const response = await api.get(`/api/tenders/${tenderId}`);
+      setTenderInfo(response.data);
+      console.log('Загружена информация о тендере:', response.data);
+    } catch (error) {
+      console.error('Error loading tender info:', error);
     }
   };
 
@@ -466,6 +497,8 @@ const ProposalEditPage: React.FC = () => {
         deliveryTerms: proposal.deliveryTerms || '',
         warrantyTerms: proposal.warrantyTerms || '',
         validUntil: proposal.validUntil || '',
+        deliveryCost: proposal.deliveryCost ?? null,
+        deliveryCondition: proposal.deliveryCondition || undefined,
         proposalItems: proposal.proposalItems?.map((item: any) => ({
           tenderItemId: item.tenderItemId || '',
           description: item.description || '',
@@ -681,6 +714,12 @@ const ProposalEditPage: React.FC = () => {
       setLoading(false);
       return;
     }
+    if (!formData.deliveryCondition) {
+      setError('Выберите условие доставки из справочника');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
     
     // Проверяем, что все цены больше 0
     const invalidItems = formData.proposalItems.filter(item => 
@@ -699,17 +738,17 @@ const ProposalEditPage: React.FC = () => {
       return;
     }
     try {
-      const delivery: any = (formData as any).deliveryCondition || null;
+      const dc = formData.deliveryCondition as DeliveryConditionDict | undefined;
       const proposalData = {
         ...formData,
-        deliveryType: delivery?.deliveryType || null,
-        deliveryCost: delivery?.deliveryCost ?? null,
-        deliveryAddress: delivery?.deliveryAddress || null,
-        deliveryPeriod: delivery?.deliveryPeriod || null,
-        deliveryResponsibility: delivery?.deliveryResponsibility || null,
-        deliveryAdditionalTerms: delivery?.additionalTerms || null,
-        deliveryConditionName: delivery?.name || null,
-        deliveryConditionDescription: delivery?.description || null,
+        deliveryType: dc?.deliveryType || null,
+        deliveryAddress: null,
+        deliveryCost: formData.deliveryCost ?? null,
+        deliveryPeriod: dc?.deliveryPeriod || null,
+        deliveryResponsibility: dc?.deliveryResponsibility || null,
+        deliveryAdditionalTerms: dc?.additionalTerms || null,
+        deliveryConditionName: dc?.name || null,
+        deliveryConditionDescription: dc?.description || null,
         validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
         proposalItems: formData.proposalItems
           .filter(item => item.tenderItemId && item.tenderItemId !== '')
@@ -717,7 +756,7 @@ const ProposalEditPage: React.FC = () => {
           ...item,
           totalPrice: item.quantity * item.unitPrice
         }))
-      } as any;
+      };
       
       if (isEditMode && id) {
         // Режим редактирования - обновляем существующее предложение
@@ -759,6 +798,12 @@ const ProposalEditPage: React.FC = () => {
       setLoading(false);
       return;
     }
+    if (!formData.deliveryCondition) {
+      setError('Выберите условие доставки из справочника');
+      setErrorDialogOpen(true);
+      setLoading(false);
+      return;
+    }
     
     // Проверяем, что все цены больше 0
     const invalidItems = formData.proposalItems.filter(item => 
@@ -778,17 +823,17 @@ const ProposalEditPage: React.FC = () => {
     }
     try {
       // Сначала сохраняем предложение
-      const delivery: any = (formData as any).deliveryCondition || null;
+      const dc = formData.deliveryCondition as DeliveryConditionDict | undefined;
       const proposalData = {
         ...formData,
-        deliveryType: delivery?.deliveryType || null,
-        deliveryCost: delivery?.deliveryCost ?? null,
-        deliveryAddress: delivery?.deliveryAddress || null,
-        deliveryPeriod: delivery?.deliveryPeriod || null,
-        deliveryResponsibility: delivery?.deliveryResponsibility || null,
-        deliveryAdditionalTerms: delivery?.additionalTerms || null,
-        deliveryConditionName: delivery?.name || null,
-        deliveryConditionDescription: delivery?.description || null,
+        deliveryType: dc?.deliveryType || null,
+        deliveryAddress: null,
+        deliveryCost: formData.deliveryCost ?? null,
+        deliveryPeriod: dc?.deliveryPeriod || null,
+        deliveryResponsibility: dc?.deliveryResponsibility || null,
+        deliveryAdditionalTerms: dc?.additionalTerms || null,
+        deliveryConditionName: dc?.name || null,
+        deliveryConditionDescription: dc?.description || null,
         validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
         proposalItems: formData.proposalItems
           .filter(item => item.tenderItemId && item.tenderItemId !== '')
@@ -796,7 +841,7 @@ const ProposalEditPage: React.FC = () => {
           ...item,
           totalPrice: item.quantity * item.unitPrice
         }))
-      } as any;
+      };
       
       if (isEditMode && id) {
         // Режим редактирования - обновляем существующее предложение
@@ -1225,12 +1270,70 @@ const ProposalEditPage: React.FC = () => {
       {/* Условия доставки */}
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <DeliveryConditionForm
-            value={formData.deliveryCondition}
-            onChange={(condition) => {
-              setFormData(prev => ({ ...prev, deliveryCondition: condition }));
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Условия доставки
+          </Typography>
+          <Autocomplete
+            options={deliveryConditions}
+            getOptionLabel={(option) => option ? option.name : ''}
+            value={(formData.deliveryCondition as DeliveryConditionDict) || null}
+            onChange={(_, value) => {
+              setFormData(prev => ({ ...prev, deliveryCondition: value || undefined }));
             }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Условие доставки"
+                placeholder="Выберите из справочника"
+                required
+              />
+            )}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            noOptionsText="Условия доставки не найдены"
+            sx={{ mb: 2 }}
           />
+          <Grid container spacing={2} sx={{ mb: 1 }}>
+            <Grid item xs={12} md={4}>
+              <TextField
+                fullWidth
+                label="Стоимость доставки"
+                type="number"
+                value={formData.deliveryCost ?? ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, deliveryCost: e.target.value === '' ? null : Number(e.target.value) }))}
+                inputProps={{ min: 0, step: 0.01 }}
+                disabled={!((formData.deliveryCondition as DeliveryConditionDict)?.calculateDelivery)}
+              />
+            </Grid>
+          </Grid>
+          {!!formData.deliveryCondition && (
+            <Box sx={{ pl: 1 }}>
+              {(formData.deliveryCondition as DeliveryConditionDict).calculateDelivery && (
+                <Typography variant="body2" color="text.secondary">
+                  Сумма доставки указывается отдельно в позициях
+                </Typography>
+              )}
+              {(formData.deliveryCondition as DeliveryConditionDict).deliveryPeriod && (
+                <Typography variant="body2" color="text.secondary">
+                  Срок: {(formData.deliveryCondition as DeliveryConditionDict).deliveryPeriod}
+                </Typography>
+              )}
+              {(formData.deliveryCondition as DeliveryConditionDict).deliveryResponsibility && (
+                <Typography variant="body2" color="text.secondary">
+                  Ответственность: {(formData.deliveryCondition as DeliveryConditionDict).deliveryResponsibility}
+                </Typography>
+              )}
+              {(formData.deliveryCondition as DeliveryConditionDict).additionalTerms && (
+                <Typography variant="body2" color="text.secondary">
+                  Доп. условия: {(formData.deliveryCondition as DeliveryConditionDict).additionalTerms}
+                </Typography>
+              )}
+              {(formData.deliveryCondition as DeliveryConditionDict).description && (
+                <Typography variant="body2" color="text.secondary">
+                  Описание: {(formData.deliveryCondition as DeliveryConditionDict).description}
+                </Typography>
+              )}
+            </Box>
+          )}
         </CardContent>
       </Card>
 
@@ -1641,6 +1744,7 @@ const ProposalEditPage: React.FC = () => {
                           }}
                           inputProps={{ min: 0, step: 0.01 }}
                           fullWidth
+                          disabled={!((formData.deliveryCondition as DeliveryConditionDict)?.calculateDelivery)}
                         />
                       </TableCell>
                       <TableCell {...getCellStyles(12)}>

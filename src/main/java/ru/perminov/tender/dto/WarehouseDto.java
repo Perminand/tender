@@ -5,5 +5,6 @@ import java.util.UUID;
 public record WarehouseDto(
     UUID id,
     String name,
-    UUID projectId
+    UUID projectId,
+    String address
 ) {} 

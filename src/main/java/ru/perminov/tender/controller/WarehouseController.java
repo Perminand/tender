@@ -46,7 +46,7 @@ public class WarehouseController {
     @PutMapping("/{id}")
     public ResponseEntity<WarehouseDto> update(@PathVariable UUID id, @RequestBody WarehouseDto dto) {
         log.info("Получен PUT-запрос: обновить склад. id={}, данные: {}", id, dto);
-        WarehouseDto updatedDto = new WarehouseDto(id, dto.name(), dto.projectId());
+        WarehouseDto updatedDto = new WarehouseDto(id, dto.name(), dto.projectId(), dto.address());
         WarehouseDto updated = service.save(updatedDto);
         log.info("Обновлен склад с id={}", updated.id());
         return ResponseEntity.ok(updated);

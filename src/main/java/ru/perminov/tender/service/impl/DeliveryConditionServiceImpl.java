@@ -35,6 +35,7 @@ public class DeliveryConditionServiceImpl implements DeliveryConditionService {
         deliveryCondition.setDeliveryPeriod(deliveryConditionDto.getDeliveryPeriod());
         deliveryCondition.setDeliveryResponsibility(deliveryConditionDto.getDeliveryResponsibility());
         deliveryCondition.setAdditionalTerms(deliveryConditionDto.getAdditionalTerms());
+        deliveryCondition.setCalculateDelivery(Boolean.TRUE.equals(deliveryConditionDto.getCalculateDelivery()));
         
         DeliveryCondition savedCondition = deliveryConditionRepository.save(deliveryCondition);
         return convertToDto(savedCondition);
@@ -55,6 +56,7 @@ public class DeliveryConditionServiceImpl implements DeliveryConditionService {
         existingCondition.setDeliveryPeriod(deliveryConditionDto.getDeliveryPeriod());
         existingCondition.setDeliveryResponsibility(deliveryConditionDto.getDeliveryResponsibility());
         existingCondition.setAdditionalTerms(deliveryConditionDto.getAdditionalTerms());
+        existingCondition.setCalculateDelivery(Boolean.TRUE.equals(deliveryConditionDto.getCalculateDelivery()));
         
         DeliveryCondition savedCondition = deliveryConditionRepository.save(existingCondition);
         return convertToDto(savedCondition);
@@ -130,6 +132,7 @@ public class DeliveryConditionServiceImpl implements DeliveryConditionService {
         dto.setDeliveryPeriod(deliveryCondition.getDeliveryPeriod());
         dto.setDeliveryResponsibility(deliveryCondition.getDeliveryResponsibility());
         dto.setAdditionalTerms(deliveryCondition.getAdditionalTerms());
+        dto.setCalculateDelivery(deliveryCondition.isCalculateDelivery());
         return dto;
     }
 }

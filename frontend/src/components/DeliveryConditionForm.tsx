@@ -11,20 +11,31 @@ import {
   Select,
   MenuItem,
   Alert,
-  Button
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Autocomplete,
+  FormControlLabel,
+  Checkbox
 } from '@mui/material';
 import { api } from '../utils/api';
+
+interface DeliveryType {
+  id: string;
+  name: string;
+}
 
 interface DeliveryCondition {
   id?: string;
   name: string;
   description?: string;
   deliveryType: string;
-  deliveryCost?: number;
-  deliveryAddress?: string;
   deliveryPeriod?: string;
   deliveryResponsibility: string;
   additionalTerms?: string;
+  calculateDelivery?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -41,14 +52,16 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
     name: '',
     description: '',
     deliveryType: 'DELIVERY_TO_WAREHOUSE',
-    deliveryCost: 0,
-    deliveryAddress: '',
     deliveryPeriod: '',
     deliveryResponsibility: 'SUPPLIER',
-    additionalTerms: ''
+    additionalTerms: '',
+    calculateDelivery: false
   });
-  const [deliveryTypes, setDeliveryTypes] = useState<string[]>([]);
-  const [loadingTypes, setLoadingTypes] = useState(false);
+
+  const [deliveryTypes, setDeliveryTypes] = useState<DeliveryType[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [openDeliveryTypeDialog, setOpenDeliveryTypeDialog] = useState(false);
+  const [newDeliveryType, setNewDeliveryType] = useState('');
 
   useEffect(() => {
     if (value) {
@@ -57,40 +70,64 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
   }, [value]);
 
   useEffect(() => {
-    const loadDeliveryTypes = async () => {
-      setLoadingTypes(true);
-      try {
-        // сначала пробуем новый справочник типов доставки
-        const dict = await api.get('/api/delivery-types');
-        if (Array.isArray(dict.data)) {
-          setDeliveryTypes((dict.data as any[]).map(d => d.name));
-        } else {
-          const res = await api.get('/api/delivery-conditions/types');
-          setDeliveryTypes((res.data || []).map((t: any) => t.label));
-        }
-      } catch (e) {
-        // fallback: if API fails, keep existing hardcoded options as backup
-        setDeliveryTypes([
-          'Самовывоз',
-          'Доставка на склад',
-          'Доставка на объект',
-          'EXW - Франко завод',
-          'FCA - Франко перевозчик',
-          'CPT - Фрахт оплачен до',
-          'CIP - Фрахт и страхование оплачены до',
-          'DAP - Поставка в месте назначения',
-          'DPU - Поставка в месте назначения разгружено',
-          'DDP - Поставка с оплатой пошлин',
-          'Доставка включена в стоимость',
-          'Доставка отдельной строкой',
-          'Сторонний счет на доставку'
-        ]);
-      } finally {
-        setLoadingTypes(false);
-      }
-    };
     loadDeliveryTypes();
   }, []);
+
+  const loadDeliveryTypes = async () => {
+    try {
+      setLoading(true);
+      const response = await api.get('/api/delivery-types');
+      const apiTypes = response.data || [];
+      
+      // Добавляем старые хардкодные значения для обратной совместимости
+      const legacyTypes: DeliveryType[] = [
+        { id: 'PICKUP', name: 'Самовывоз' },
+        { id: 'DELIVERY_TO_WAREHOUSE', name: 'Доставка на склад' },
+        { id: 'DELIVERY_TO_SITE', name: 'Доставка на объект' },
+        { id: 'EX_WORKS', name: 'EXW - Франко завод' },
+        { id: 'FCA', name: 'FCA - Франко перевозчик' },
+        { id: 'CPT', name: 'CPT - Фрахт оплачен до' },
+        { id: 'CIP', name: 'CIP - Фрахт и страхование оплачены до' },
+        { id: 'DAP', name: 'DAP - Поставка в месте назначения' },
+        { id: 'DPU', name: 'DPU - Поставка в месте назначения разгружено' },
+        { id: 'DDP', name: 'DDP - Поставка с оплатой пошлин' },
+        { id: 'INCLUDED_IN_PRICE', name: 'Доставка включена в стоимость' },
+        { id: 'SEPARATE_LINE', name: 'Доставка отдельной строкой' },
+        { id: 'THIRD_PARTY_INVOICE', name: 'Сторонний счет на доставку' }
+      ];
+      
+      // Объединяем API типы с legacy типами, избегая дублирования
+      const allTypes = [...apiTypes];
+      legacyTypes.forEach(legacyType => {
+        if (!allTypes.find(type => type.id === legacyType.id)) {
+          allTypes.push(legacyType);
+        }
+      });
+      
+      setDeliveryTypes(allTypes);
+    } catch (error) {
+      console.error('Ошибка при загрузке типов доставки:', error);
+      // В случае ошибки загружаем только legacy типы
+      const legacyTypes: DeliveryType[] = [
+        { id: 'PICKUP', name: 'Самовывоз' },
+        { id: 'DELIVERY_TO_WAREHOUSE', name: 'Доставка на склад' },
+        { id: 'DELIVERY_TO_SITE', name: 'Доставка на объект' },
+        { id: 'EX_WORKS', name: 'EXW - Франко завод' },
+        { id: 'FCA', name: 'FCA - Франко перевозчик' },
+        { id: 'CPT', name: 'CPT - Фрахт оплачен до' },
+        { id: 'CIP', name: 'CIP - Фрахт и страхование оплачены до' },
+        { id: 'DAP', name: 'DAP - Поставка в месте назначения' },
+        { id: 'DPU', name: 'DPU - Поставка в месте назначения разгружено' },
+        { id: 'DDP', name: 'DDP - Поставка с оплатой пошлин' },
+        { id: 'INCLUDED_IN_PRICE', name: 'Доставка включена в стоимость' },
+        { id: 'SEPARATE_LINE', name: 'Доставка отдельной строкой' },
+        { id: 'THIRD_PARTY_INVOICE', name: 'Сторонний счет на доставку' }
+      ];
+      setDeliveryTypes(legacyTypes);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleChange = (field: keyof DeliveryCondition, value: any) => {
     const updated = { ...condition, [field]: value };
@@ -98,7 +135,31 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
     onChange(updated);
   };
 
-  const getDeliveryTypeLabel = (type: string) => type;
+  const getDeliveryTypeLabel = (type: string) => {
+    // Сначала ищем в загруженных типах доставки
+    const foundType = deliveryTypes.find(dt => dt.id === type || dt.name === type);
+    if (foundType) {
+      return foundType.name;
+    }
+
+    // Если не найдено, используем старые хардкодные значения
+    switch (type) {
+      case 'PICKUP': return 'Самовывоз';
+      case 'DELIVERY_TO_WAREHOUSE': return 'Доставка на склад';
+      case 'DELIVERY_TO_SITE': return 'Доставка на объект';
+      case 'EX_WORKS': return 'EXW - Франко завод';
+      case 'FCA': return 'FCA - Франко перевозчик';
+      case 'CPT': return 'CPT - Фрахт оплачен до';
+      case 'CIP': return 'CIP - Фрахт и страхование оплачены до';
+      case 'DAP': return 'DAP - Поставка в месте назначения';
+      case 'DPU': return 'DPU - Поставка в месте назначения разгружено';
+      case 'DDP': return 'DDP - Поставка с оплатой пошлин';
+      case 'INCLUDED_IN_PRICE': return 'Доставка включена в стоимость';
+      case 'SEPARATE_LINE': return 'Доставка отдельной строкой';
+      case 'THIRD_PARTY_INVOICE': return 'Сторонний счет на доставку';
+      default: return type;
+    }
+  };
 
   const getResponsibilityLabel = (responsibility: string) => {
     switch (responsibility) {
@@ -106,6 +167,36 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
       case 'CUSTOMER': return 'Заказчик';
       case 'SHARED': return 'Разделенная ответственность';
       default: return responsibility;
+    }
+  };
+
+  const handleDeliveryTypeChange = (_: any, value: DeliveryType | null) => {
+    if (value && value.id === 'CREATE_NEW') {
+      setNewDeliveryType(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
+      setOpenDeliveryTypeDialog(true);
+    } else {
+      handleChange('deliveryType', value ? value.id : '');
+    }
+  };
+
+  const handleCreateDeliveryType = async () => {
+    if (newDeliveryType.trim()) {
+      try {
+        const response = await api.post('/api/delivery-types', { name: newDeliveryType.trim() });
+        setDeliveryTypes(prev => [...prev, response.data]);
+        handleChange('deliveryType', response.data.id);
+        setNewDeliveryType('');
+        setOpenDeliveryTypeDialog(false);
+      } catch (error: any) {
+        console.error('Ошибка при создании типа доставки:', error);
+        let errorMessage = 'Ошибка при создании типа доставки';
+        if (error.response?.data?.name) {
+          errorMessage = error.response.data.name;
+        } else if (error.response?.data?.message) {
+          errorMessage = error.response.data.message;
+        }
+        alert(errorMessage);
+      }
     }
   };
 
@@ -119,18 +210,13 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Тип доставки</InputLabel>
-                <Select
-                  value={condition.deliveryType}
-                  onChange={(e) => handleChange('deliveryType', e.target.value)}
-                  disabled={loadingTypes}
-                >
-                  {deliveryTypes.map((name) => (
-                    <MenuItem key={name} value={name}>{name}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <TextField
+                fullWidth
+                label="Название условий доставки"
+                value={condition.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                margin="normal"
+              />
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
@@ -143,29 +229,52 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
                 rows={2}
               />
             </Grid>
-            
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Стоимость доставки"
-                type="number"
-                value={condition.deliveryCost || ''}
-                onChange={(e) => handleChange('deliveryCost', parseFloat(e.target.value) || 0)}
-                margin="normal"
-                InputProps={{
-                  endAdornment: '₽'
+              <Autocomplete
+                value={deliveryTypes.find(dt => dt.id === condition.deliveryType) || null}
+                onChange={handleDeliveryTypeChange}
+                options={deliveryTypes}
+                filterOptions={(options, state) => {
+                  const filtered = options.filter(option =>
+                    option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+                  );
+                  if (state.inputValue && filtered.length === 0) {
+                    return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` } as DeliveryType];
+                  }
+                  return filtered;
                 }}
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="Адрес доставки"
-                value={condition.deliveryAddress}
-                onChange={(e) => handleChange('deliveryAddress', e.target.value)}
-                margin="normal"
-                multiline
-                rows={2}
+                getOptionLabel={(option: DeliveryType) => option ? option.name : ''}
+                isOptionEqualToValue={(option: DeliveryType, value: DeliveryType) => option.id === value.id}
+                loading={loading}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Тип доставки"
+                    margin="normal"
+                    InputProps={{
+                      ...params.InputProps,
+                      endAdornment: (
+                        <>
+                          {loading ? <div>Загрузка...</div> : null}
+                          {params.InputProps.endAdornment}
+                        </>
+                      ),
+                    }}
+                  />
+                )}
+                renderOption={(props, option) => (
+                  <li {...props}>
+                    {option.id === 'CREATE_NEW' ? (
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <span style={{ color: '#1976d2', fontWeight: 'bold' }}>
+                          {option.name}
+                        </span>
+                      </Box>
+                    ) : (
+                      option.name
+                    )}
+                  </li>
+                )}
               />
             </Grid>
             <Grid item xs={12} md={6}>
@@ -191,6 +300,17 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
                 </Select>
               </FormControl>
             </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={Boolean(condition.calculateDelivery)}
+                    onChange={(e) => handleChange('calculateDelivery', e.target.checked)}
+                  />
+                }
+                label="Рассчитывать доставку (показывать сумму доставки при подаче предложения)"
+              />
+            </Grid>
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -213,9 +333,9 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
         <Typography variant="body2">
           <strong>Ответственность:</strong> {getResponsibilityLabel(condition.deliveryResponsibility)}
         </Typography>
-        {condition.deliveryCost && condition.deliveryCost > 0 && (
+        {condition.deliveryPeriod && (
           <Typography variant="body2">
-            <strong>Стоимость доставки:</strong> {condition.deliveryCost} ₽
+            <strong>Срок доставки:</strong> {condition.deliveryPeriod}
           </Typography>
         )}
       </Alert>
@@ -229,11 +349,46 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
           <Button 
             variant="contained" 
             onClick={() => onSave(condition)}
+            disabled={!condition.name}
           >
             Сохранить
           </Button>
         </Box>
       )}
+
+      <Dialog open={openDeliveryTypeDialog} onClose={() => setOpenDeliveryTypeDialog(false)}>
+        <DialogTitle>Создание нового типа доставки</DialogTitle>
+        <DialogContent>
+          <TextField
+            autoFocus
+            margin="dense"
+            label="Название нового типа доставки"
+            fullWidth
+            value={newDeliveryType}
+            onChange={(e) => setNewDeliveryType(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && newDeliveryType.trim()) {
+                handleCreateDeliveryType();
+              }
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => {
+            setOpenDeliveryTypeDialog(false);
+            setNewDeliveryType('');
+          }}>
+            Отмена
+          </Button>
+          <Button 
+            onClick={handleCreateDeliveryType} 
+            variant="contained"
+            disabled={!newDeliveryType.trim()}
+          >
+            Создать
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

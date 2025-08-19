@@ -32,29 +32,28 @@ import {
 import { api } from '../utils/api';
 import DeliveryConditionForm from '../components/DeliveryConditionForm';
 
-interface DeliveryCondition {
-  id: string;
+interface DeliveryConditionVm {
+  id?: string;
   name: string;
   description?: string;
   deliveryType: string;
-  deliveryCost?: number;
-  deliveryAddress?: string;
   deliveryPeriod?: string;
   deliveryResponsibility: string;
   additionalTerms?: string;
   createdAt: string;
   updatedAt: string;
+  calculateDelivery?: boolean;
 }
 
 const DeliveryConditionsPage: React.FC = () => {
-  const [conditions, setConditions] = useState<DeliveryCondition[]>([]);
+  const [conditions, setConditions] = useState<DeliveryConditionVm[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingCondition, setEditingCondition] = useState<DeliveryCondition | null>(null);
-  const [currentCondition, setCurrentCondition] = useState<DeliveryCondition | null>(null);
+  const [editingCondition, setEditingCondition] = useState<DeliveryConditionVm | null>(null);
+  const [currentCondition, setCurrentCondition] = useState<DeliveryConditionVm | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [viewingCondition, setViewingCondition] = useState<DeliveryCondition | null>(null);
+  const [viewingCondition, setViewingCondition] = useState<DeliveryConditionVm | null>(null);
 
   useEffect(() => {
     loadConditions();
@@ -81,24 +80,23 @@ const DeliveryConditionsPage: React.FC = () => {
       name: '',
       description: '',
       deliveryType: 'DELIVERY_TO_WAREHOUSE',
-      deliveryCost: 0,
-      deliveryAddress: '',
       deliveryPeriod: '',
       deliveryResponsibility: 'SUPPLIER',
       additionalTerms: '',
+      calculateDelivery: false,
       createdAt: '',
       updatedAt: ''
     });
     setDialogOpen(true);
   };
 
-  const handleEdit = (condition: DeliveryCondition) => {
+  const handleEdit = (condition: DeliveryConditionVm) => {
     setEditingCondition(condition);
     setCurrentCondition(condition);
     setDialogOpen(true);
   };
 
-  const handleView = (condition: DeliveryCondition) => {
+  const handleView = (condition: DeliveryConditionVm) => {
     setViewingCondition(condition);
     setViewDialogOpen(true);
   };
@@ -117,7 +115,7 @@ const DeliveryConditionsPage: React.FC = () => {
     }
   };
 
-  const handleSave = async (condition: DeliveryCondition) => {
+  const handleSave = async (condition: DeliveryConditionVm) => {
     try {
       if (editingCondition) {
         await api.put(`/api/delivery-conditions/${editingCondition.id}`, condition);
@@ -229,7 +227,7 @@ const DeliveryConditionsPage: React.FC = () => {
                         </IconButton>
                       </Tooltip>
                       <Tooltip title="Удалить">
-                        <IconButton size="small" color="error" onClick={() => handleDelete(condition.id)}>
+                        <IconButton size="small" color="error" onClick={() => condition.id && handleDelete(condition.id)}>
                           <DeleteIcon />
                         </IconButton>
                       </Tooltip>
@@ -263,18 +261,9 @@ const DeliveryConditionsPage: React.FC = () => {
                         Срок: {condition.deliveryPeriod}
                       </Typography>
                     )}
-                    {condition.deliveryCost && condition.deliveryCost > 0 && (
+                    {condition.calculateDelivery && (
                       <Typography variant="body2" color="text.secondary">
-                        Стоимость: {condition.deliveryCost} ₽
-                      </Typography>
-                    )}
-                    {condition.deliveryAddress && (
-                      <Typography variant="body2" color="text.secondary" sx={{ 
-                        overflow: 'hidden', 
-                        textOverflow: 'ellipsis', 
-                        whiteSpace: 'nowrap' 
-                      }}>
-                        Адрес: {condition.deliveryAddress}
+                        Рассчитывать доставку: Да
                       </Typography>
                     )}
                   </Box>
@@ -320,9 +309,9 @@ const DeliveryConditionsPage: React.FC = () => {
         </DialogTitle>
         <DialogContent>
           <DeliveryConditionForm
-            value={currentCondition || undefined}
-            onChange={(condition) => setCurrentCondition(condition)}
-            onSave={handleSave}
+            value={currentCondition || undefined as any}
+            onChange={(condition) => setCurrentCondition(condition as any)}
+            onSave={handleSave as any}
             hideButtons={true}
           />
         </DialogContent>
@@ -386,24 +375,12 @@ const DeliveryConditionsPage: React.FC = () => {
                       </Typography>
                     </Grid>
                   )}
-                  {viewingCondition.deliveryCost && viewingCondition.deliveryCost > 0 && (
+                  {viewingCondition.calculateDelivery && (
                     <Grid item xs={12} md={6}>
                       <Typography variant="subtitle2" color="text.secondary">
-                        Стоимость доставки
+                        Рассчитывать доставку
                       </Typography>
-                      <Typography variant="body1">
-                        {viewingCondition.deliveryCost} ₽
-                      </Typography>
-                    </Grid>
-                  )}
-                  {viewingCondition.deliveryAddress && (
-                    <Grid item xs={12}>
-                      <Typography variant="subtitle2" color="text.secondary">
-                        Адрес доставки
-                      </Typography>
-                      <Typography variant="body1">
-                        {viewingCondition.deliveryAddress}
-                      </Typography>
+                      <Typography variant="body1">Да</Typography>
                     </Grid>
                   )}
                   {viewingCondition.additionalTerms && (

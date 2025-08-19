@@ -39,4 +39,7 @@ public class DeliveryConditionDto {
 
     @Size(max = 1000, message = "Дополнительные условия не могут превышать 1000 символов")
     private String additionalTerms;
+
+    // Признак: рассчитывать доставку отдельно (показывать поле суммы доставки при подаче предложения)
+    private Boolean calculateDelivery;
 }

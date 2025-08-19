@@ -155,5 +155,11 @@ databaseChangeLog:
       file: db/changelog/changes/V073_drop_code_from_delivery_types.sql
   - include:
       file: db/changelog/changes/V074_drop_label_from_delivery_types.sql
+  - include:
+      file: db/changelog/changes/V075_add_address_to_warehouses.sql
+  - include:
+      file: db/changelog/changes/V076_add_calculate_delivery_flag.sql
+  - include:
+      file: db/changelog/changes/V077_seed_three_delivery_conditions.sql
 
 

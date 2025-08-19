@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Тест API типов доставки</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 3px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+<body>
+    <h1>Тест API типов доставки</h1>
+    
+    <div class="test-section">
+        <h3>1. Получить все типы доставки</h3>
+        <button onclick="getAllDeliveryTypes()">Получить все типы</button>
+        <div id="getAllResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>2. Создать новый тип доставки</h3>
+        <input type="text" id="newTypeName" placeholder="Название нового типа доставки" />
+        <button onclick="createDeliveryType()">Создать тип</button>
+        <div id="createResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h3>3. Удалить тип доставки</h3>
+        <input type="text" id="deleteTypeId" placeholder="ID типа для удаления" />
+        <button onclick="deleteDeliveryType()">Удалить тип</button>
+        <div id="deleteResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080';
+
+        async function getAllDeliveryTypes() {
+            const resultDiv = document.getElementById('getAllResult');
+            try {
+                const response = await fetch(`${API_BASE}/api/delivery-types`);
+                const data = await response.json();
+                resultDiv.className = 'result success';
+                resultDiv.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Ошибка: ${error.message}`;
+            }
+        }
+
+        async function createDeliveryType() {
+            const resultDiv = document.getElementById('createResult');
+            const nameInput = document.getElementById('newTypeName');
+            const name = nameInput.value.trim();
+            
+            if (!name) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Введите название типа доставки';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/delivery-types`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ name })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `Тип доставки создан:\n${JSON.stringify(data, null, 2)}`;
+                    nameInput.value = '';
+                } else {
+                    const errorData = await response.json();
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Ошибка создания: ${JSON.stringify(errorData, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Ошибка: ${error.message}`;
+            }
+        }
+
+        async function deleteDeliveryType() {
+            const resultDiv = document.getElementById('deleteResult');
+            const idInput = document.getElementById('deleteTypeId');
+            const id = idInput.value.trim();
+            
+            if (!id) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = 'Введите ID типа доставки';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api/delivery-types/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = 'Тип доставки успешно удален';
+                    idInput.value = '';
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `Ошибка удаления: ${response.status} ${response.statusText}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `Ошибка: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

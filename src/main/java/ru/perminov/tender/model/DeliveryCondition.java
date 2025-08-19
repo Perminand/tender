@@ -43,6 +43,10 @@ public class DeliveryCondition {
 
     private String additionalTerms;
 
+    // Признак: если true, на странице подачи предложения необходимо указывать сумму доставки отдельно
+    @Column(name = "calculate_delivery", nullable = false)
+    private boolean calculateDelivery = false;
+
     public enum DeliveryType {
         PICKUP("Самовывоз"),
         DELIVERY_TO_WAREHOUSE("Доставка на склад"),

@@ -527,7 +527,7 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
                     <TableRow>
                       <TableCell>Поставщик</TableCell>
                       <TableCell align="right">Цена за ед.</TableCell>
-                      <TableCell align="right">НДС</TableCell>
+                      <TableCell align="right">Цена с НДС</TableCell>
                       <TableCell align="right">Доставка</TableCell>
                       <TableCell align="right">Итого с НДС и доставкой</TableCell>
                       <TableCell align="right">Экономия</TableCell>
@@ -554,7 +554,7 @@ const TenderWinnersDisplay: React.FC<TenderWinnersDisplayProps> = ({ tenderId })
                           {formatPrice(price.unitPrice)}
                         </TableCell>
                         <TableCell align="right">
-                          {formatPrice(price.vatAmount)}
+                          {price.unitPriceWithVat != null ? formatPrice(price.unitPriceWithVat) : ''}
                         </TableCell>
                         <TableCell align="right">
                           {formatPrice(price.deliveryCost)}
