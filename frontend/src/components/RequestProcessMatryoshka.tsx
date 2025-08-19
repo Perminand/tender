@@ -759,7 +759,8 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                   {createTenderLoading ? 'Создание...' : 'Создать тендер'}
                 </Button>
               )}
-              <Button
+              {(request.tenders && request.tenders.length > 0) && (
+                <Button
                   variant="outlined"
                   size="small"
                   startIcon={<FileDownloadIcon />}
@@ -779,6 +780,7 @@ function RequestProcessMatryoshka({ request }: RequestProcessMatryoshkaProps) {
                 >
                   Excel
                 </Button>
+              )}
             </Box>
 
             {/* Материалы и номенклатура */}

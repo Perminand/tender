@@ -254,12 +254,10 @@ public class RequestServiceImpl implements RequestService {
         tenderDto.setDescription("Тендер создан на основе заявки " + request.getRequestNumber());
         tenderDto.setCustomerId(request.getOrganization().getId());
         tenderDto.setCustomerName(request.getOrganization().getName());
-        // Устанавливаем срок подачи: если есть дата заявки, то +7 дней, иначе текущая дата + 7 дней
-        if (request.getDate() != null) {
-            tenderDto.setSubmissionDeadline(request.getDate().atStartOfDay().plusDays(7));
-        } else {
-            tenderDto.setSubmissionDeadline(java.time.LocalDateTime.now().plusDays(7));
-        }
+        // Передаем исполнителя из заявки в тендер
+        tenderDto.setExecutor(request.getExecutor());
+        // Срок подачи всегда считаем от текущего дня: +7 дней
+        tenderDto.setSubmissionDeadline(java.time.LocalDateTime.now().plusDays(7));
         
         // Создаем тендер через сервис
         log.info("Вызов tenderService.createTender с DTO: {}", tenderDto);

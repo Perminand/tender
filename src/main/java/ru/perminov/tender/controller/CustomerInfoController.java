@@ -48,4 +48,11 @@ public class CustomerInfoController {
         log.info("Получен GET-запрос: получить информацию по заказчику через заявку requestNumber={}", requestNumber);
         return ResponseEntity.ok(customerInfoService.getCustomerInfoByRequestNumber(requestNumber));
     }
+
+    @PreAuthorize("hasAnyRole('ADMIN', 'MANAGER', 'CUSTOMER', 'VIEWER')")
+    @GetMapping("/request-id/{requestId}")
+    public ResponseEntity<CustomerInfoDto> getCustomerInfoByRequestId(@PathVariable UUID requestId) {
+        log.info("Получен GET-запрос: получить информацию по заказчику через заявку по ID requestId={}", requestId);
+        return ResponseEntity.ok(customerInfoService.getCustomerInfoByRequest(requestId));
+    }
 } 

@@ -145,4 +145,15 @@ databaseChangeLog:
       file: db/changelog/changes/V067_unique_contract_item_per_tender_item.sql
   - include:
       file: db/changelog/changes/V068_add_executor_to_requests.sql
+  - include:
+      file: db/changelog/changes/V069_add_executor_to_tenders.sql
+  - include:
+      file: db/changelog/changes/V070_inline_delivery_condition_on_proposals.sql
+  - include:
+      file: db/changelog/changes/V071_create_delivery_types_table.sql
+  - include:
+      file: db/changelog/changes/V073_drop_code_from_delivery_types.sql
+  - include:
+      file: db/changelog/changes/V074_drop_label_from_delivery_types.sql
+
 

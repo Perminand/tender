@@ -5,11 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.perminov.tender.dto.DeliveryConditionDto;
+import ru.perminov.tender.dto.EnumOptionDto;
 import ru.perminov.tender.model.DeliveryCondition;
 import ru.perminov.tender.repository.DeliveryConditionRepository;
 import ru.perminov.tender.service.DeliveryConditionService;
 
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -104,6 +104,19 @@ public class DeliveryConditionServiceImpl implements DeliveryConditionService {
         dto.setDeliveryPeriod("30 дней");
         
         return createDeliveryCondition(dto);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<EnumOptionDto> getAvailableDeliveryTypes() {
+        // Берем уникальные типы из таблицы delivery_conditions; если таблица пуста, вернем все значения енума
+        List<DeliveryCondition.DeliveryType> distinct = deliveryConditionRepository.findDistinctDeliveryTypes();
+        List<DeliveryCondition.DeliveryType> source = (distinct != null && !distinct.isEmpty())
+                ? distinct
+                : List.of(DeliveryCondition.DeliveryType.values());
+        return source.stream()
+                .map(t -> new EnumOptionDto(t.name(), t.getDisplayName()))
+                .collect(Collectors.toList());
     }
 
     private DeliveryConditionDto convertToDto(DeliveryCondition deliveryCondition) {

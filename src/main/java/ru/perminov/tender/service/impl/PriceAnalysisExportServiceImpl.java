@@ -106,6 +106,14 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
 
             Row infoRow2 = sheet.createRow(2);
             infoRow2.createCell(0).setCellValue("Исполнитель:");
+            // Подставляем исполнителя из тендера, если пусто — пробуем взять из заявки
+            String executor = tender.getExecutor();
+            if (executor == null || executor.isBlank()) {
+                executor = (tender.getRequest() != null && tender.getRequest().getExecutor() != null)
+                        ? tender.getRequest().getExecutor()
+                        : "";
+            }
+            infoRow2.createCell(1).setCellValue(executor);
             
             infoRow2.createCell(3).setCellValue("Проект:"); // Cолонка D (index 3)
             infoRow2.createCell(4).setCellValue(tender.getTitle() != null ? tender.getTitle() : "");
@@ -635,7 +643,13 @@ public class PriceAnalysisExportServiceImpl implements PriceAnalysisExportServic
             supplierRow.createCell(labelCol+2).setCellValue("от");
             supplierRow.createCell(labelCol+3).setCellValue(tenders.get(0).getRequest() != null ? tenders.get(0).getRequest().getDate().toString() : "");
             supplierRow.createCell(labelCol+4).setCellValue("Исполнитель");
-            supplierRow.createCell(labelCol+5).setCellValue(tenders.get(0).getRequest() != null ? tenders.get(0).getRequest().getPerformer() : "");
+            String exec = "";
+            if (tenders.get(0).getExecutor() != null && !tenders.get(0).getExecutor().isBlank()) {
+                exec = tenders.get(0).getExecutor();
+            } else if (tenders.get(0).getRequest() != null && tenders.get(0).getRequest().getExecutor() != null) {
+                exec = tenders.get(0).getRequest().getExecutor();
+            }
+            supplierRow.createCell(labelCol+5).setCellValue(exec);
 
             supplierRow.createCell(baseCols).setCellValue("Поставщик:");
             int supplierStart = baseCols + 1;

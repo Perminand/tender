@@ -16,7 +16,17 @@ public interface SupplierProposalMapper {
     @Mapping(target = "tenderId", source = "tender.id")
     @Mapping(target = "tenderNumber", source = "tender.tenderNumber")
     @Mapping(target = "tenderTitle", source = "tender.title")
+    @Mapping(target = "proposalItems", ignore = true)
+    @Mapping(target = "additionalExpenses", ignore = true)
+    @Mapping(target = "isBestOffer", ignore = true)
+    @Mapping(target = "paymentConditionId", ignore = true)
+    @Mapping(target = "priceDifference", ignore = true)
     SupplierProposalDto toDto(SupplierProposal entity);
 
+    @Mapping(target = "paymentCondition", ignore = true)
+    @Mapping(target = "proposalItems", ignore = true)
+    @Mapping(target = "additionalExpenses", ignore = true)
+    @Mapping(target = "supplier", ignore = true)
+    @Mapping(target = "tender", ignore = true)
     SupplierProposal toEntity(SupplierProposalDto dto);
 } 

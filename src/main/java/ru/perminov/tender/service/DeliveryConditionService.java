@@ -1,6 +1,7 @@
 package ru.perminov.tender.service;
 
 import ru.perminov.tender.dto.DeliveryConditionDto;
+import ru.perminov.tender.dto.EnumOptionDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -18,4 +19,6 @@ public interface DeliveryConditionService {
     void deleteDeliveryCondition(UUID id);
 
     DeliveryConditionDto createDefaultDeliveryCondition(String name, String description);
+
+    List<EnumOptionDto> getAvailableDeliveryTypes();
 }

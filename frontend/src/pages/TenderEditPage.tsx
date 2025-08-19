@@ -34,6 +34,7 @@ interface TenderFormData {
   submissionDeadline: string;
   requirements: string;
   termsAndConditions: string;
+  executor: string;
   requestId: string;
 }
 
@@ -87,6 +88,7 @@ const TenderEditPage: React.FC = () => {
     submissionDeadline: '',
     requirements: '',
     termsAndConditions: '',
+    executor: '',
     requestId: ''
   });
 
@@ -152,6 +154,7 @@ const TenderEditPage: React.FC = () => {
         submissionDeadline: tender.submissionDeadline ? tender.submissionDeadline.split('T')[0] : '',
         requirements: tender.requirements || '',
         termsAndConditions: tender.termsAndConditions || '',
+        executor: tender.executor || '',
         requestId: tender.requestId || ''
       });
     } catch (error) {
@@ -526,6 +529,16 @@ const TenderEditPage: React.FC = () => {
                 <Typography variant="h6" sx={{ mb: 2 }}>
                   Дополнительная информация
                 </Typography>
+              </Grid>
+
+              <Grid item xs={12} md={6}>
+                <TextField
+                  fullWidth
+                  label="Исполнитель"
+                  value={formData.executor}
+                  onChange={(e) => handleInputChange('executor', e.target.value)}
+                  disabled={!canEdit}
+                />
               </Grid>
 
               <Grid item xs={12}>

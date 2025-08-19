@@ -13,6 +13,7 @@ import {
   Alert,
   Button
 } from '@mui/material';
+import { api } from '../utils/api';
 
 interface DeliveryCondition {
   id?: string;
@@ -46,6 +47,8 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
     deliveryResponsibility: 'SUPPLIER',
     additionalTerms: ''
   });
+  const [deliveryTypes, setDeliveryTypes] = useState<string[]>([]);
+  const [loadingTypes, setLoadingTypes] = useState(false);
 
   useEffect(() => {
     if (value) {
@@ -53,30 +56,49 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
     }
   }, [value]);
 
+  useEffect(() => {
+    const loadDeliveryTypes = async () => {
+      setLoadingTypes(true);
+      try {
+        // сначала пробуем новый справочник типов доставки
+        const dict = await api.get('/api/delivery-types');
+        if (Array.isArray(dict.data)) {
+          setDeliveryTypes((dict.data as any[]).map(d => d.name));
+        } else {
+          const res = await api.get('/api/delivery-conditions/types');
+          setDeliveryTypes((res.data || []).map((t: any) => t.label));
+        }
+      } catch (e) {
+        // fallback: if API fails, keep existing hardcoded options as backup
+        setDeliveryTypes([
+          'Самовывоз',
+          'Доставка на склад',
+          'Доставка на объект',
+          'EXW - Франко завод',
+          'FCA - Франко перевозчик',
+          'CPT - Фрахт оплачен до',
+          'CIP - Фрахт и страхование оплачены до',
+          'DAP - Поставка в месте назначения',
+          'DPU - Поставка в месте назначения разгружено',
+          'DDP - Поставка с оплатой пошлин',
+          'Доставка включена в стоимость',
+          'Доставка отдельной строкой',
+          'Сторонний счет на доставку'
+        ]);
+      } finally {
+        setLoadingTypes(false);
+      }
+    };
+    loadDeliveryTypes();
+  }, []);
+
   const handleChange = (field: keyof DeliveryCondition, value: any) => {
     const updated = { ...condition, [field]: value };
     setCondition(updated);
     onChange(updated);
   };
 
-  const getDeliveryTypeLabel = (type: string) => {
-    switch (type) {
-      case 'PICKUP': return 'Самовывоз';
-      case 'DELIVERY_TO_WAREHOUSE': return 'Доставка на склад';
-      case 'DELIVERY_TO_SITE': return 'Доставка на объект';
-      case 'EX_WORKS': return 'EXW - Франко завод';
-      case 'FCA': return 'FCA - Франко перевозчик';
-      case 'CPT': return 'CPT - Фрахт оплачен до';
-      case 'CIP': return 'CIP - Фрахт и страхование оплачены до';
-      case 'DAP': return 'DAP - Поставка в месте назначения';
-      case 'DPU': return 'DPU - Поставка в месте назначения разгружено';
-      case 'DDP': return 'DDP - Поставка с оплатой пошлин';
-      case 'INCLUDED_IN_PRICE': return 'Доставка включена в стоимость';
-      case 'SEPARATE_LINE': return 'Доставка отдельной строкой';
-      case 'THIRD_PARTY_INVOICE': return 'Сторонний счет на доставку';
-      default: return type;
-    }
-  };
+  const getDeliveryTypeLabel = (type: string) => type;
 
   const getResponsibilityLabel = (responsibility: string) => {
     switch (responsibility) {
@@ -97,13 +119,18 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
         <CardContent>
           <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Название условий доставки"
-                value={condition.name}
-                onChange={(e) => handleChange('name', e.target.value)}
-                margin="normal"
-              />
+              <FormControl fullWidth margin="normal">
+                <InputLabel>Тип доставки</InputLabel>
+                <Select
+                  value={condition.deliveryType}
+                  onChange={(e) => handleChange('deliveryType', e.target.value)}
+                  disabled={loadingTypes}
+                >
+                  {deliveryTypes.map((name) => (
+                    <MenuItem key={name} value={name}>{name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
               <TextField
@@ -116,29 +143,7 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
                 rows={2}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel>Тип доставки</InputLabel>
-                <Select
-                  value={condition.deliveryType}
-                  onChange={(e) => handleChange('deliveryType', e.target.value)}
-                >
-                  <MenuItem value="PICKUP">Самовывоз</MenuItem>
-                  <MenuItem value="DELIVERY_TO_WAREHOUSE">Доставка на склад</MenuItem>
-                  <MenuItem value="DELIVERY_TO_SITE">Доставка на объект</MenuItem>
-                  <MenuItem value="EX_WORKS">EXW - Франко завод</MenuItem>
-                  <MenuItem value="FCA">FCA - Франко перевозчик</MenuItem>
-                  <MenuItem value="CPT">CPT - Фрахт оплачен до</MenuItem>
-                  <MenuItem value="CIP">CIP - Фрахт и страхование оплачены до</MenuItem>
-                  <MenuItem value="DAP">DAP - Поставка в месте назначения</MenuItem>
-                  <MenuItem value="DPU">DPU - Поставка в месте назначения разгружено</MenuItem>
-                  <MenuItem value="DDP">DDP - Поставка с оплатой пошлин</MenuItem>
-                  <MenuItem value="INCLUDED_IN_PRICE">Доставка включена в стоимость</MenuItem>
-                  <MenuItem value="SEPARATE_LINE">Доставка отдельной строкой</MenuItem>
-                  <MenuItem value="THIRD_PARTY_INVOICE">Сторонний счет на доставку</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
+            
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
@@ -224,7 +229,6 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
           <Button 
             variant="contained" 
             onClick={() => onSave(condition)}
-            disabled={!condition.name}
           >
             Сохранить
           </Button>

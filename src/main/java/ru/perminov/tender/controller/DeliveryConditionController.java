@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.perminov.tender.dto.DeliveryConditionDto;
+import ru.perminov.tender.dto.EnumOptionDto;
 import ru.perminov.tender.service.DeliveryConditionService;
 
 import jakarta.validation.Valid;
@@ -54,5 +55,11 @@ public class DeliveryConditionController {
     public ResponseEntity<DeliveryConditionDto> createDefaultDeliveryCondition(@RequestParam String name, @RequestParam(required = false) String description) {
         log.info("Получен POST-запрос: создать стандартные условия доставки. name={}, description={}", name, description);
         return ResponseEntity.ok(deliveryConditionService.createDefaultDeliveryCondition(name, description));
+    }
+
+    @GetMapping("/types")
+    public ResponseEntity<List<EnumOptionDto>> getDeliveryTypes() {
+        log.info("Получен GET-запрос: получить типы доставки (из БД)");
+        return ResponseEntity.ok(deliveryConditionService.getAvailableDeliveryTypes());
     }
 }

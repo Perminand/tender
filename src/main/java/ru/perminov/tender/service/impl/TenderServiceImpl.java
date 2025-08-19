@@ -79,6 +79,8 @@ public class TenderServiceImpl implements TenderService {
         
         // Устанавливаем статус по умолчанию
         tender.setStatus(Tender.TenderStatus.DRAFT);
+        // Копируем исполнителя, если указан
+        tender.setExecutor(tenderDto.getExecutor());
         
         // Генерируем номер тендера если не указан
         if (tender.getTenderNumber() == null || tender.getTenderNumber().isEmpty()) {
@@ -155,6 +157,7 @@ public class TenderServiceImpl implements TenderService {
         existingTender.setSubmissionDeadline(tenderDto.getSubmissionDeadline());
         existingTender.setRequirements(tenderDto.getRequirements());
         existingTender.setTermsAndConditions(tenderDto.getTermsAndConditions());
+        existingTender.setExecutor(tenderDto.getExecutor());
         
         Tender updatedTender = tenderRepository.save(existingTender);
         auditLogService.logSimple(getCurrentUser(), "UPDATE_TENDER", "Tender", updatedTender.getId().toString(), "Обновлен тендер");

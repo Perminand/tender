@@ -24,6 +24,7 @@ public class TenderDto {
     private Tender.TenderStatus status;
     private String requirements;
     private String termsAndConditions;
+    private String executor;
     private List<TenderItemDto> tenderItems;
     private List<SupplierProposalDto> supplierProposals;
     private Integer proposalsCount;

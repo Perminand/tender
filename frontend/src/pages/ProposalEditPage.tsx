@@ -418,7 +418,7 @@ const ProposalEditPage: React.FC = () => {
       const response = await api.get(`/api/tenders/${tenderId}/items`);
       setTenderItems(response.data);
       console.log('Загружены позиции тендера:', response.data.length, 'fillingStarted:', fillingStarted);
-      console.log('Детали позиций тендера:', response.data.map(item => ({
+      console.log('Детали позиций тендера:', response.data.map((item: any) => ({
         description: item.description,
         quantity: item.quantity,
         unitName: item.unitName
@@ -699,8 +699,17 @@ const ProposalEditPage: React.FC = () => {
       return;
     }
     try {
+      const delivery: any = (formData as any).deliveryCondition || null;
       const proposalData = {
         ...formData,
+        deliveryType: delivery?.deliveryType || null,
+        deliveryCost: delivery?.deliveryCost ?? null,
+        deliveryAddress: delivery?.deliveryAddress || null,
+        deliveryPeriod: delivery?.deliveryPeriod || null,
+        deliveryResponsibility: delivery?.deliveryResponsibility || null,
+        deliveryAdditionalTerms: delivery?.additionalTerms || null,
+        deliveryConditionName: delivery?.name || null,
+        deliveryConditionDescription: delivery?.description || null,
         validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
         proposalItems: formData.proposalItems
           .filter(item => item.tenderItemId && item.tenderItemId !== '')
@@ -708,7 +717,7 @@ const ProposalEditPage: React.FC = () => {
           ...item,
           totalPrice: item.quantity * item.unitPrice
         }))
-      };
+      } as any;
       
       if (isEditMode && id) {
         // Режим редактирования - обновляем существующее предложение
@@ -769,8 +778,17 @@ const ProposalEditPage: React.FC = () => {
     }
     try {
       // Сначала сохраняем предложение
+      const delivery: any = (formData as any).deliveryCondition || null;
       const proposalData = {
         ...formData,
+        deliveryType: delivery?.deliveryType || null,
+        deliveryCost: delivery?.deliveryCost ?? null,
+        deliveryAddress: delivery?.deliveryAddress || null,
+        deliveryPeriod: delivery?.deliveryPeriod || null,
+        deliveryResponsibility: delivery?.deliveryResponsibility || null,
+        deliveryAdditionalTerms: delivery?.additionalTerms || null,
+        deliveryConditionName: delivery?.name || null,
+        deliveryConditionDescription: delivery?.description || null,
         validUntil: formData.validUntil ? new Date(formData.validUntil).toISOString() : null,
         proposalItems: formData.proposalItems
           .filter(item => item.tenderItemId && item.tenderItemId !== '')
@@ -778,7 +796,7 @@ const ProposalEditPage: React.FC = () => {
           ...item,
           totalPrice: item.quantity * item.unitPrice
         }))
-      };
+      } as any;
       
       if (isEditMode && id) {
         // Режим редактирования - обновляем существующее предложение

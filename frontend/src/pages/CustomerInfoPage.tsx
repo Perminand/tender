@@ -139,16 +139,17 @@ const CustomerInfoPage: React.FC = () => {
   const fetchCustomerInfo = async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/api/customer-info/request/${requestId}`);
+      // Запрашиваем по ID заявки, чтобы избежать путаницы с номером
+      const response = await api.get(`/api/customer-info/request-id/${requestId}`);
       setCustomerInfo(response.data);
       setError(null);
     } catch (err: any) {
       console.error('Ошибка при загрузке информации о заказчике:', err);
       
       // Показываем понятное сообщение пользователю
-      if (err.response?.status === 400) {
-        const message = err.response.data?.message || 'Заявка не найдена';
-        setError(`Заявка с номером "${requestId}" не найдена в системе`);
+      if (err.response?.status === 400 || err.response?.status === 404) {
+        const message = err.response?.data?.message || 'Заявка не найдена';
+        setError(`Заявка с идентификатором "${requestId}" не найдена в системе`);
       } else {
         setError('Ошибка при загрузке данных. Попробуйте позже.');
       }

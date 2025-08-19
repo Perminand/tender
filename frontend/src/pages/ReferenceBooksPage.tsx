@@ -101,7 +101,8 @@ const referenceGroups: ReferenceGroup[] = [
     description: 'Управление условиями оплаты и доставки',
     books: [
       { id: 'payment-conditions', title: 'Условия оплаты', description: 'Управление схемами оплаты', icon: <PaymentIcon sx={{ fontSize: 40 }} />, color: '#4caf50', path: '/reference/payment-conditions' },
-      { id: 'delivery-conditions', title: 'Условия доставки', description: 'Управление условиями доставки', icon: <DeliveryIcon sx={{ fontSize: 40 }} />, color: '#2196f3', path: '/reference/delivery-conditions' }
+      { id: 'delivery-conditions', title: 'Условия доставки', description: 'Управление условиями доставки', icon: <DeliveryIcon sx={{ fontSize: 40 }} />, color: '#2196f3', path: '/reference/delivery-conditions' },
+      { id: 'delivery-types', title: 'Типы доставки', description: 'Справочник типов доставки', icon: <DeliveryIcon sx={{ fontSize: 40 }} />, color: '#1976d2', path: '/reference/delivery-types' }
     ]
   }
 ];

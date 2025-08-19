@@ -458,7 +458,7 @@ const RequestDetailPage: React.FC = () => {
             <TableRow>
               {columns.map((column, idx) => (
                 <TableCell 
-                  key={column}
+                  key={`header-${idx}-${column}`}
                   sx={{ 
                     width: colWidths[idx],
                     // Выделяем сметные столбцы
@@ -476,8 +476,12 @@ const RequestDetailPage: React.FC = () => {
           <TableBody>
             {Array.isArray(request.materials) && request.materials.length > 0 ? (
               request.materials.map((mat, idx) => (
-                  <TableRow key={mat.id || idx}>
-                  {columns.map((column) => renderCell(mat, idx, column))}
+                  <TableRow key={`row-${mat.id || idx}`}>
+                  {columns.map((column, colIdx) => (
+                    <React.Fragment key={`cell-${mat.id || idx}-${colIdx}-${column}`}>
+                      {renderCell(mat, idx, column)}
+                    </React.Fragment>
+                  ))}
                   </TableRow>
               ))
             ) : (

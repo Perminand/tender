@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import ru.perminov.tender.model.company.Company;
+import java.math.BigDecimal;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -62,9 +63,25 @@ public class SupplierProposal {
     @JoinColumn(name = "payment_condition_id")
     private PaymentCondition paymentCondition;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "delivery_condition_id")
-    private DeliveryCondition deliveryCondition;
+    // Инлайновые поля условий доставки (не отдельная сущность)
+    // Тип доставки хранится как свободное наименование из справочника
+    private String deliveryType;
+
+    @Column(precision = 10, scale = 2)
+    private BigDecimal deliveryCost;
+
+    private String deliveryAddress;
+
+    private String deliveryPeriod;
+
+    @Enumerated(EnumType.STRING)
+    private DeliveryCondition.DeliveryResponsibility deliveryResponsibility;
+
+    private String deliveryAdditionalTerms;
+
+    private String deliveryConditionName;
+
+    private String deliveryConditionDescription;
 
     @OneToMany(mappedBy = "supplierProposal", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProposalItem> proposalItems = new ArrayList<>();

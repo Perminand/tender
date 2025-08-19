@@ -54,6 +54,9 @@ public class Tender {
     @Column(name = "awarded_supplier_id")
     private UUID awardedSupplierId;
 
+    // Исполнитель тендера (ФИО или username)
+    private String executor;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_tender_id")
     private Tender parentTender;

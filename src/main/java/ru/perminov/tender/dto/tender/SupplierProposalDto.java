@@ -1,11 +1,11 @@
 package ru.perminov.tender.dto.tender;
 
-import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import lombok.Data;
 import ru.perminov.tender.model.SupplierProposal;
 import ru.perminov.tender.dto.PaymentConditionDto;
-import ru.perminov.tender.dto.DeliveryConditionDto;
+import ru.perminov.tender.model.DeliveryCondition;
+import java.math.BigDecimal;
 import ru.perminov.tender.dto.AdditionalExpenseDto;
 
 import java.time.LocalDateTime;
@@ -55,8 +55,15 @@ public class SupplierProposalDto {
     private UUID paymentConditionId;
     private PaymentConditionDto paymentCondition;
 
-    private UUID deliveryConditionId;
-    private DeliveryConditionDto deliveryCondition;
+    // Инлайновые поля условий доставки
+    private String deliveryType;
+    private BigDecimal deliveryCost;
+    private String deliveryAddress;
+    private String deliveryPeriod;
+    private DeliveryCondition.DeliveryResponsibility deliveryResponsibility;
+    private String deliveryAdditionalTerms;
+    private String deliveryConditionName;
+    private String deliveryConditionDescription;
 
     private List<ProposalItemDto> proposalItems;
 

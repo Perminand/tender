@@ -37,6 +37,7 @@ import {
   Assessment as AssessmentIcon,
   Clear as ClearIcon,
   Edit as EditIcon
+  , FileDownload as FileDownloadIcon
 } from '@mui/icons-material';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -408,6 +409,31 @@ const TenderDetailPage: React.FC = () => {
         <Typography variant="h4" component="h1" sx={{ flexGrow: 1 }}>
           Тендер №{tender.tenderNumber}
         </Typography>
+        {(tender.status === 'PUBLISHED' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
+          <Button
+            variant="outlined"
+            color="secondary"
+            startIcon={<FileDownloadIcon />}
+            onClick={async () => {
+              try {
+                const res = await api.get(`/api/price-analysis/tender/${id}/export`, { responseType: 'blob' });
+                const url = window.URL.createObjectURL(new Blob([res.data]));
+                const link = document.createElement('a');
+                const name = tender.tenderNumber ? `price-analysis-${tender.tenderNumber}.xlsx` : `price-analysis-${id}.xlsx`;
+                link.href = url;
+                link.setAttribute('download', name);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+              } catch (e) {
+                setError('Ошибка экспорта Excel');
+              }
+            }}
+            sx={{ mr: 1 }}
+          >
+            Экспорт в Excel
+          </Button>
+        )}
         <Button
           variant="outlined"
           color="primary"
@@ -614,6 +640,14 @@ const TenderDetailPage: React.FC = () => {
                   </Typography>
                   <Typography variant="body1">
                     {tender.customerName}
+                  </Typography>
+                </Grid>
+                <Grid item xs={6}>
+                  <Typography variant="body2" color="text.secondary">
+                    Исполнитель
+                  </Typography>
+                  <Typography variant="body1">
+                    {tender.executor || '-'}
                   </Typography>
                 </Grid>
                 <Grid item xs={6}>

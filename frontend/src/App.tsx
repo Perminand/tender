@@ -16,6 +16,7 @@ import ProjectListPage from './pages/ProjectListPage';
 import ReferenceBooksPage from './pages/ReferenceBooksPage';
 import PaymentConditionsPage from './pages/PaymentConditionsPage';
 import DeliveryConditionsPage from './pages/DeliveryConditionsPage';
+import DeliveryTypesPage from './pages/DeliveryTypesPage';
 import SettingsPage from './pages/SettingsPage';
 import Layout from './components/Layout';
 import RequestRegistryPage from './pages/RequestRegistryPage';
@@ -165,6 +166,13 @@ const App: React.FC = () => (
         <ProtectedRoute>
           <Layout>
             <DeliveryConditionsPage />
+          </Layout>
+        </ProtectedRoute>
+      } />
+      <Route path="/reference/delivery-types" element={
+        <ProtectedRoute>
+          <Layout>
+            <DeliveryTypesPage />
           </Layout>
         </ProtectedRoute>
       } />
