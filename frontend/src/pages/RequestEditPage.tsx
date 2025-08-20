@@ -121,9 +121,26 @@ export default function RequestEditPage() {
           <TableCell sx={{ width: colWidths[1], whiteSpace: 'nowrap' }} title={workTypes.find(w => w.id === mat.workType)?.name || ''}>
             <Autocomplete
               value={workTypes.find(w => w.id === mat.workType) || null}
-              onChange={(_, value) => handleMaterialChange(idx, 'workType', value ? value.id : '')}
+              onChange={(_, value) => {
+                if (value && (value as any).id === 'CREATE_WORK_TYPE') {
+                  setNewWorkType(((value as any).name || '').replace(/^Создать "/, '').replace(/"$/, ''));
+                  setWorkTypeMaterialIdx(idx);
+                  setOpenWorkTypeDialog(true);
+                } else {
+                  handleMaterialChange(idx, 'workType', value ? (value as any).id : '');
+                }
+              }}
               options={workTypes}
-              getOptionLabel={option => option ? option.name : ''}
+              filterOptions={(options, state) => {
+                const filtered = options.filter(option =>
+                  option.name.toLowerCase().includes((state.inputValue || '').toLowerCase())
+                );
+                if (state.inputValue && filtered.length === 0) {
+                  return [{ id: 'CREATE_WORK_TYPE', name: `Создать \"${state.inputValue}\"` } as any];
+                }
+                return filtered as any;
+              }}
+              getOptionLabel={option => option ? (option as any).name : ''}
               isOptionEqualToValue={(option, value) => option.id === value.id}
               renderInput={params => (
                 <TextField {...params} size="small" label="Вид работ" />
@@ -1589,9 +1606,26 @@ export default function RequestEditPage() {
                   <TableCell sx={{ width: colWidths[1], whiteSpace: 'nowrap' }} title={workTypes.find(w => w.id === mat.workType)?.name || ''}>
                   <Autocomplete
                     value={workTypes.find(w => w.id === mat.workType) || null}
-                    onChange={(_, value) => handleMaterialChange(idx, 'workType', value ? value.id : '')}
+                    onChange={(_, value) => {
+                      if (value && (value as any).id === 'CREATE_WORK_TYPE') {
+                        setNewWorkType(((value as any).name || '').replace(/^Создать "/, '').replace(/"$/, ''));
+                        setWorkTypeMaterialIdx(idx);
+                        setOpenWorkTypeDialog(true);
+                      } else {
+                        handleMaterialChange(idx, 'workType', value ? (value as any).id : '');
+                      }
+                    }}
                     options={workTypes}
-                    getOptionLabel={option => option ? option.name : ''}
+                    filterOptions={(options, state) => {
+                      const filtered = options.filter(option =>
+                        option.name.toLowerCase().includes((state.inputValue || '').toLowerCase())
+                      );
+                      if (state.inputValue && filtered.length === 0) {
+                        return [{ id: 'CREATE_WORK_TYPE', name: `Создать "${state.inputValue}"` } as any];
+                      }
+                      return filtered as any;
+                    }}
+                    getOptionLabel={option => option ? (option as any).name : ''}
                     isOptionEqualToValue={(option, value) => option.id === value.id}
                     renderInput={params => (
                         <TextField {...params} size="small" label="Вид работ" />
