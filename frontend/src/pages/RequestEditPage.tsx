@@ -186,19 +186,41 @@ export default function RequestEditPage() {
       case 'Ед. изм.':
         return (
           <TableCell sx={{ width: colWidths[4], maxWidth: colWidths[4] }} title={mat.unit?.shortName || ''}>
-            <TextField
-              select
-              size="small"
-              label="Ед. изм."
-              value={mat.unit?.id || ''}
-              onChange={e => handleMaterialChange(idx, 'unit', e.target.value)}
-              sx={{ width: '100%', maxWidth: colWidths[4] }}
+            <Autocomplete
+              value={mat.unit || null}
+              onChange={(_, value) => {
+                if (value && (value as any).id === 'CREATE_UNIT') {
+                  setNewUnitName(((value as any).shortName || '').replace(/^Создать \"/, '').replace(/\"$/, ''));
+                  setUnitMaterialIdx(idx);
+                  setUnitTarget('unit');
+                  setOpenUnitDialog(true);
+                } else {
+                  handleMaterialChange(idx, 'unit', value ? (value as any).id : '');
+                }
+              }}
+              options={units}
+              filterOptions={(options, state) => {
+                const input = (state.inputValue || '').trim();
+                const inputLower = input.toLowerCase();
+                const filtered = options.filter(option =>
+                  option.shortName.toLowerCase().includes(inputLower)
+                );
+                const hasExact = input && options.some(opt => opt.shortName.toLowerCase() === inputLower);
+                if (input && !hasExact) {
+                  return [
+                    ...filtered,
+                    { id: 'CREATE_UNIT', name: `Создать \"${input}\"`, shortName: input } as any,
+                  ];
+                }
+                return filtered as any;
+              }}
+              getOptionLabel={option => option ? (((option as any).id === 'CREATE_UNIT' ? (option as any).name : (option as any).shortName) || '') : ''}
+              isOptionEqualToValue={(option, value) => option.id === value.id}
+              renderInput={(params) => (
+                <TextField {...params} size="small" label="Ед. изм." />
+              )}
               disabled={!canEdit}
-            >
-              {units.map(u => (
-                <MenuItem key={u.id} value={u.id}>{u.shortName}</MenuItem>
-              ))}
-            </TextField>
+            />
           </TableCell>
         );
       case 'Ссылка':
@@ -403,6 +425,8 @@ export default function RequestEditPage() {
 
   const [newUnitName, setNewUnitName] = useState('');
   const [openUnitDialog, setOpenUnitDialog] = useState(false);
+  const [unitMaterialIdx, setUnitMaterialIdx] = useState<number | null>(null);
+  const [unitTarget, setUnitTarget] = useState<'unit' | 'estimateUnit'>('unit');
 
   const [openRemoveMaterialDialog, setOpenRemoveMaterialDialog] = useState(false);
   const [removeMaterialIdx, setRemoveMaterialIdx] = useState<number | null>(null);
@@ -559,6 +583,8 @@ export default function RequestEditPage() {
       // Убираем логику загрузки названий поставщиков, так как поле "Наименование материала (смета)" теперь просто текстовое
     } else if (field === 'unit') {
       newMaterials[idx].unit = units.find(u => u.id === value) || null;
+    } else if (field === 'estimateUnit') {
+      newMaterials[idx].estimateUnit = units.find(u => u.id === value) || null;
     } else if (field === 'characteristics') {
       // Для характеристик сохраняем строку (название характеристики)
       newMaterials[idx].characteristics = typeof value === 'object' && value?.name ? value.name : value;
@@ -1659,18 +1685,40 @@ export default function RequestEditPage() {
                    />
                  </TableCell>
                                      <TableCell sx={{ width: colWidths[4], maxWidth: colWidths[4] }} title={mat.unit?.shortName || ''}>
-                     <TextField
-                       select
-                       size="small"
-                       label="Ед. изм."
-                       value={mat.unit?.id || ''}
-                       onChange={e => handleMaterialChange(idx, 'unit', e.target.value)}
-                       sx={{ width: '100%', maxWidth: colWidths[4] }}
-                     >
-                       {units.map(u => (
-                         <MenuItem key={u.id} value={u.id}>{u.shortName}</MenuItem>
-                       ))}
-                     </TextField>
+                     <Autocomplete
+                       value={mat.unit || null}
+                       onChange={(_, value) => {
+                         if (value && (value as any).id === 'CREATE_UNIT') {
+                           setNewUnitName(((value as any).shortName || '').replace(/^Создать \"/, '').replace(/\"$/, ''));
+                           setUnitMaterialIdx(idx);
+                           setUnitTarget('unit');
+                           setOpenUnitDialog(true);
+                         } else {
+                           handleMaterialChange(idx, 'unit', value ? (value as any).id : '');
+                         }
+                       }}
+                       options={units}
+                       filterOptions={(options, state) => {
+                         const input = (state.inputValue || '').trim();
+                         const inputLower = input.toLowerCase();
+                         const filtered = options.filter(option =>
+                           option.shortName.toLowerCase().includes(inputLower)
+                         );
+                         const hasExact = input && options.some(opt => opt.shortName.toLowerCase() === inputLower);
+                         if (input && !hasExact) {
+                           return [
+                             ...filtered,
+                             { id: 'CREATE_UNIT', name: `Создать \"${input}\"`, shortName: input } as any,
+                           ];
+                         }
+                         return filtered as any;
+                       }}
+                       getOptionLabel={option => option ? (((option as any).id === 'CREATE_UNIT' ? (option as any).name : (option as any).shortName) || '') : ''}
+                       isOptionEqualToValue={(option, value) => option.id === value.id}
+                       renderInput={(params) => (
+                         <TextField {...params} size="small" label="Ед. изм." />
+                       )}
+                     />
                    </TableCell>
                   <TableCell sx={{ 
                     width: colWidths[5],
@@ -1737,14 +1785,14 @@ export default function RequestEditPage() {
                         />
                       )}
                       filterOptions={(options, state) => {
+                        const inputValue = (state.inputValue || '').trim().toLowerCase();
                         const filtered = options.filter(option => 
-                          option.name.toLowerCase().includes(state.inputValue.toLowerCase())
+                          option.name.toLowerCase().includes(inputValue)
                         );
-                        // Добавляем опцию создания нового материала
                         if (state.inputValue && !options.some(option => 
-                          option.name.toLowerCase() === state.inputValue.toLowerCase()
+                          option.name.toLowerCase() === inputValue
                         )) {
-                          filtered.push({ id: '', name: `Создать: ${state.inputValue}` } as any);
+                          filtered.unshift({ id: '', name: `Создать: ${state.inputValue}` } as any);
                         }
                         return filtered;
                       }}
@@ -1850,18 +1898,40 @@ export default function RequestEditPage() {
                   />
                   </TableCell>
                   <TableCell sx={{ width: colWidths[8], maxWidth: colWidths[8], backgroundColor: '#f0f8ff' }} title={mat.estimateUnit?.shortName || ''}>
-                  <TextField
-                    select
-                    size="small"
-                      label="Ед. изм.(смета)"
-                      value={mat.estimateUnit?.id || ''}
-                      onChange={e => handleMaterialChange(idx, 'estimateUnit', e.target.value)}
-                      sx={{ width: '100%', maxWidth: colWidths[8] }}
-                  >
-                    {units.map(u => (
-                      <MenuItem key={u.id} value={u.id}>{u.shortName}</MenuItem>
-                    ))}
-                  </TextField>
+                  <Autocomplete
+                    value={mat.estimateUnit || null}
+                    onChange={(_, value) => {
+                      if (value && (value as any).id === 'CREATE_UNIT') {
+                        setNewUnitName(((value as any).shortName || '').replace(/^Создать \"/, '').replace(/\"$/, ''));
+                        setUnitMaterialIdx(idx);
+                        setUnitTarget('estimateUnit');
+                        setOpenUnitDialog(true);
+                      } else {
+                        handleMaterialChange(idx, 'estimateUnit', value ? (value as any).id : '');
+                      }
+                    }}
+                    options={units}
+                    filterOptions={(options, state) => {
+                      const input = (state.inputValue || '').trim();
+                      const inputLower = input.toLowerCase();
+                      const filtered = options.filter(option =>
+                        option.shortName.toLowerCase().includes(inputLower)
+                      );
+                      const hasExact = input && options.some(opt => opt.shortName.toLowerCase() === inputLower);
+                      if (input && !hasExact) {
+                        return [
+                          ...filtered,
+                          { id: 'CREATE_UNIT', name: `Создать \"${input}\"`, shortName: input } as any,
+                        ];
+                      }
+                      return filtered as any;
+                    }}
+                    getOptionLabel={option => option ? (((option as any).id === 'CREATE_UNIT' ? (option as any).name : (option as any).shortName) || '') : ''}
+                    isOptionEqualToValue={(option, value) => option.id === value.id}
+                    renderInput={(params) => (
+                      <TextField {...params} size="small" label="Ед. изм.(смета)" />
+                    )}
+                  />
                   </TableCell>
                 <TableCell sx={{ width: colWidths[9], maxWidth: colWidths[9], backgroundColor: '#f0f8ff' }} title={mat.estimatePrice || ''}>
                   <TextField
@@ -2108,16 +2178,17 @@ export default function RequestEditPage() {
           <Button onClick={() => setOpenUnitDialog(false)}>Отмена</Button>
           <Button onClick={async () => {
             if (newUnitName.trim()) {
-            // Создать новую единицу через API
-            const res = await api.post('/api/units', { name: newUnitName, shortName: newUnitName });
-            if (res.data && res.data.id) {
-              // Обновить units
-              const unitsRes = await api.get('/api/units');
-              setUnits(unitsRes.data);
-              setOpenUnitDialog(false);
-              if (import.meta.env.DEV) {
-                console.log('[IMPORT][UNIT] Единица измерения создана:', newUnitName);
-              }
+              const res = await api.post('/api/units', { name: newUnitName, shortName: newUnitName });
+              if (res.data && res.data.id) {
+                const unitsRes = await api.get('/api/units');
+                setUnits(unitsRes.data);
+                if (unitMaterialIdx !== null) {
+                  handleMaterialChange(unitMaterialIdx, unitTarget, res.data.id);
+                }
+                setOpenUnitDialog(false);
+                if (import.meta.env.DEV) {
+                  console.log('[UNIT] Ед. изм. создана:', newUnitName);
+                }
               }
             }
           }} variant="contained">Создать</Button>

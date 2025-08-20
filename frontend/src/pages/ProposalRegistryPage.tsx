@@ -276,16 +276,18 @@ const ProposalRegistryPage: React.FC = () => {
           >
             <ViewIcon />
           </IconButton>
-          <IconButton
-            size="small"
-            onClick={(e) => {
-              e.stopPropagation();
-              navigate(`/proposals/${row.id}/edit`);
-            }}
-            color="primary"
-          >
-            <EditIcon />
-          </IconButton>
+          {row.status === 'DRAFT' && (
+            <IconButton
+              size="small"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/proposals/${row.id}/edit`);
+              }}
+              color="primary"
+            >
+              <EditIcon />
+            </IconButton>
+          )}
           {row.status === 'DRAFT' && (
             <IconButton
               size="small"
