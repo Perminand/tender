@@ -217,10 +217,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         SupplierProposal existingProposal = supplierProposalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Предложение не найдено"));
         
-        // Проверяем, что предложение можно редактировать
-        if (existingProposal.getStatus() != SupplierProposal.ProposalStatus.DRAFT) {
-            throw new RuntimeException("Можно редактировать только черновик предложения");
-        }
+        log.info("Обновление предложения id={}, текущий статус: {}", id, existingProposal.getStatus());
         
         // Обновляем только разрешенные поля
         existingProposal.setCoverLetter(proposalDto.getCoverLetter());
@@ -232,6 +229,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         existingProposal.setValidUntil(proposalDto.getValidUntil());
         
         SupplierProposal updatedProposal = supplierProposalRepository.save(existingProposal);
+        log.info("Предложение id={} успешно обновлено, статус остался: {}", id, updatedProposal.getStatus());
         return supplierProposalMapper.toDto(updatedProposal);
     }
 
@@ -300,12 +298,10 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         SupplierProposal proposal = supplierProposalRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Предложение не найдено"));
         
-        // Проверяем, что предложение можно удалить
-        if (proposal.getStatus() != SupplierProposal.ProposalStatus.DRAFT) {
-            throw new RuntimeException("Можно удалить только черновик предложения");
-        }
+        log.info("Удаление предложения id={}, статус: {}", id, proposal.getStatus());
         
         supplierProposalRepository.delete(proposal);
+        log.info("Предложение id={} успешно удалено", id);
     }
 
     @Override

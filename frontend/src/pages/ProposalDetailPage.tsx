@@ -191,16 +191,14 @@ const ProposalDetailPage: React.FC = () => {
           Предложение №{proposal.proposalNumber}
         </Typography>
         <Box sx={{ display: 'flex', gap: 1 }}>
-          {proposal.status === 'DRAFT' && (
-            <Button
-              variant="outlined"
-              color="primary"
-              startIcon={<EditIcon />}
-              onClick={() => navigate(`/proposals/${id}/edit`)}
-            >
-              Редактировать
-            </Button>
-          )}
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<EditIcon />}
+            onClick={() => navigate(`/proposals/${id}/edit`)}
+          >
+            Редактировать
+          </Button>
           {proposal.status === 'DRAFT' && (
             <Button
               variant="contained"

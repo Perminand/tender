@@ -844,10 +844,8 @@ const ProposalEditPage: React.FC = () => {
       };
       
       if (isEditMode && id) {
-        // Режим редактирования - обновляем существующее предложение
+        // Режим редактирования - только обновляем существующее предложение
         await api.put(`/api/proposals/${id}`, proposalData);
-        // Затем подаем предложение
-        await api.post(`/api/proposals/${id}/submit`);
         navigate(`/proposals/${id}`);
       } else {
         // Режим создания - создаем новое предложение
@@ -1865,7 +1863,7 @@ const ProposalEditPage: React.FC = () => {
           onClick={handleSubmitProposal}
           disabled={loading}
         >
-          {loading ? <CircularProgress size={20} /> : (isEditMode ? 'Обновить предложение' : 'Подать предложение')}
+          {loading ? <CircularProgress size={20} /> : (isEditMode ? 'Сохранить изменения' : 'Подать предложение')}
         </Button>
       </Box>
 
