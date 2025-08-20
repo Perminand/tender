@@ -161,5 +161,7 @@ databaseChangeLog:
       file: db/changelog/changes/V076_add_calculate_delivery_flag.sql
   - include:
       file: db/changelog/changes/V077_seed_three_delivery_conditions.sql
+  - include:
+      file: db/changelog/changes/V078_add_vat_fields_to_companies.sql
 
 

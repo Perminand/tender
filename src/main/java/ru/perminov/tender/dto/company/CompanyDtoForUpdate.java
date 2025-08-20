@@ -2,6 +2,7 @@ package ru.perminov.tender.dto.company;
 
 import ru.perminov.tender.dto.company.contact.ContactPersonDto;
 import ru.perminov.tender.dto.companyType.CompanyTypeDto;
+import java.math.BigDecimal;
 
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +36,10 @@ public record CompanyDtoForUpdate(
 
         String email,
 
-        List<BankAccountDto> bankDetails
+        List<BankAccountDto> bankDetails,
+
+        Boolean vatApplicable,
+
+        BigDecimal vatRate
 ) {
 }

@@ -2,6 +2,7 @@ package ru.perminov.tender.dto.company;
 
 import java.util.UUID;
 import java.util.List;
+import java.math.BigDecimal;
 
 public record CompanyDto(
         UUID id,
@@ -34,6 +35,10 @@ public record CompanyDto(
 
         List<BankAccountDto> bankDetails,
 
-        Boolean sendNotifications
+        Boolean sendNotifications,
+
+        Boolean vatApplicable,
+
+        BigDecimal vatRate
 ) {
 }

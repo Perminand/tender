@@ -3,6 +3,7 @@ package ru.perminov.tender.dto.company;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoNew;
+import java.math.BigDecimal;
 
 import java.util.List;
 import java.util.UUID;
@@ -48,7 +49,11 @@ public record CompanyDtoNew(
 
     String role,
 
-    Boolean sendNotifications
+    Boolean sendNotifications,
+
+    Boolean vatApplicable,
+
+    BigDecimal vatRate
 
 ) {
     public CompanyDtoNew {
@@ -57,6 +62,12 @@ public record CompanyDtoNew(
         }
         if (bankDetails == null) {
             bankDetails = List.of();
+        }
+        if (vatApplicable == null) {
+            vatApplicable = true;
+        }
+        if (vatRate == null) {
+            vatRate = new java.math.BigDecimal("20.00");
         }
     }
 } 

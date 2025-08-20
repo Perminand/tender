@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 import org.hibernate.validator.constraints.UniqueElements;
+import java.math.BigDecimal;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -58,6 +59,12 @@ public class Company {
 
     @Column(name = "send_notifications")
     private Boolean sendNotifications = true;
+
+    @Column(name = "vat_applicable")
+    private Boolean vatApplicable = true;
+
+    @Column(name = "vat_rate")
+    private BigDecimal vatRate = new BigDecimal("20.00");
 
     public void setBankAccounts(List<CompanyBankAccount> bankAccounts) {
         if (bankAccounts != null) {

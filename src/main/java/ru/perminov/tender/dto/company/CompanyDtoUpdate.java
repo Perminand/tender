@@ -2,6 +2,7 @@ package ru.perminov.tender.dto.company;
 
 import jakarta.validation.constraints.Pattern;
 import ru.perminov.tender.dto.company.contact.ContactPersonDtoUpdate;
+import java.math.BigDecimal;
 
 import java.util.List;
 import java.util.UUID;
@@ -41,7 +42,11 @@ public record CompanyDtoUpdate(
 
         String role,
 
-        Boolean sendNotifications
+        Boolean sendNotifications,
+
+        Boolean vatApplicable,
+
+        BigDecimal vatRate
 
 ) {
     public CompanyDtoUpdate {
@@ -50,6 +55,12 @@ public record CompanyDtoUpdate(
         }
         if (bankDetails == null) {
             bankDetails = List.of();
+        }
+        if (vatApplicable == null) {
+            vatApplicable = true;
+        }
+        if (vatRate == null) {
+            vatRate = new java.math.BigDecimal("20.00");
         }
     }
 }

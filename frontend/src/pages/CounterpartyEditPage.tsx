@@ -53,6 +53,8 @@ type FormData = {
   bankDetails: BankDetails[];
   contactPersons: ContactPerson[];
   sendNotifications: boolean;
+  vatApplicable: boolean;
+  vatRate: number;
 };
 
 const defaultValues: FormData = {
@@ -60,6 +62,8 @@ const defaultValues: FormData = {
   bankDetails: [],
   contactPersons: [],
   sendNotifications: false,
+  vatApplicable: true,
+  vatRate: 20,
 };
 
 const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
@@ -141,6 +145,8 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
               })) : []
             })) : [],
             sendNotifications: data.sendNotifications || true,
+            vatApplicable: data.vatApplicable !== undefined ? data.vatApplicable : true,
+            vatRate: data.vatRate ? Number(data.vatRate) : 20,
           };
           if (formData.bankDetails.length > 0) {
             setShowBankDetails(true);
@@ -461,6 +467,40 @@ const CounterpartyEditPage: React.FC<{ isEdit: boolean }> = ({ isEdit }) => {
                 <FormControlLabel
                   control={<Checkbox {...field} checked={field.value} />}
                   label="Отправлять уведомления"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="vatApplicable"
+              control={control}
+              render={({ field }) => (
+                <FormControlLabel
+                  control={<Checkbox {...field} checked={field.value} />}
+                  label="Применяется НДС"
+                />
+              )}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <Controller
+              name="vatRate"
+              control={control}
+              rules={{ 
+                required: 'Ставка НДС обязательна',
+                min: { value: 0, message: 'Ставка НДС не может быть отрицательной' },
+                max: { value: 100, message: 'Ставка НДС не может превышать 100%' }
+              }}
+              render={({ field, fieldState: { error } }) => (
+                <TextField
+                  {...field}
+                  type="number"
+                  label="Ставка НДС (%) *"
+                  fullWidth
+                  error={!!error}
+                  helperText={error?.message}
+                  inputProps={{ min: 0, max: 100, step: 0.01 }}
                 />
               )}
             />

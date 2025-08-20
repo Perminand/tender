@@ -21,20 +21,28 @@ public interface CompanyMapper {
     @Mapping(target = "contactPersons", ignore = true)
     @Mapping(target = "role", expression = "java(companyDtoNew.role() != null ? ru.perminov.tender.model.company.CompanyRole.valueOf(companyDtoNew.role()) : null)")
     @Mapping(target = "sendNotifications", source = "sendNotifications")
+    @Mapping(target = "vatApplicable", source = "vatApplicable")
+    @Mapping(target = "vatRate", source = "vatRate")
     Company toCompany(CompanyDtoNew companyDtoNew);
 
     @Mapping(target = "bankDetails", source = "bankAccounts")
     @Mapping(target = "role", source = "role")
     @Mapping(target = "sendNotifications", source = "sendNotifications")
+    @Mapping(target = "vatApplicable", source = "vatApplicable")
+    @Mapping(target = "vatRate", source = "vatRate")
     CompanyDto toCompanyDto(Company company);
 
     @Mapping(target = "bankAccounts", ignore = true)
     @Mapping(target = "contactPersons", ignore = true)
     @Mapping(target = "role", expression = "java(companyDtoUpdate.role() != null ? ru.perminov.tender.model.company.CompanyRole.valueOf(companyDtoUpdate.role()) : company.getRole())")
     @Mapping(target = "sendNotifications", source = "sendNotifications")
+    @Mapping(target = "vatApplicable", source = "vatApplicable")
+    @Mapping(target = "vatRate", source = "vatRate")
     void updateCompanyFromDto(CompanyDtoUpdate companyDtoUpdate, @MappingTarget Company company);
 
     @Mapping(target = "bankDetails", source = "bankAccounts")
+    @Mapping(target = "vatApplicable", source = "vatApplicable")
+    @Mapping(target = "vatRate", source = "vatRate")
     CompanyDtoForUpdate toCompanyDtoForUpdate(Company company);
 
     default List<BankAccountDto> toBankAccountDtoList(List<CompanyBankAccount> entityList) {
