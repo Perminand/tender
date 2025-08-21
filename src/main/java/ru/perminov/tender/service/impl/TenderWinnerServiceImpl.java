@@ -345,8 +345,17 @@ public class TenderWinnerServiceImpl implements TenderWinnerService {
         double quantity = item.getQuantity() != null ? item.getQuantity() : (tenderItem.getQuantity() != null ? tenderItem.getQuantity() : 0.0);
         double totalBase = unitBase * quantity;
 
-        // Явная цена с НДС (если задана)
+        // Настройки НДС поставщика
+        boolean supplierVatApplicable = proposal.getSupplier() != null && Boolean.TRUE.equals(proposal.getSupplier().getVatApplicable());
+        double supplierVatRate = proposal.getSupplier() != null && proposal.getSupplier().getVatRate() != null
+                ? proposal.getSupplier().getVatRate().doubleValue()
+                : DEFAULT_VAT_RATE;
+
+        // Явная цена с НДС (если задана). Если нет — рассчитываем по настройкам НДС поставщика
         Double explicitUnitWithVat = item.getUnitPriceWithVat();
+        if (explicitUnitWithVat == null) {
+            explicitUnitWithVat = supplierVatApplicable ? unitBase * (1.0 + supplierVatRate / 100.0) : unitBase;
+        }
         Double totalWithVat = (explicitUnitWithVat != null) ? explicitUnitWithVat * quantity : null;
 
         // Доставка
@@ -363,9 +372,9 @@ public class TenderWinnerServiceImpl implements TenderWinnerService {
         double savings = estimatedTotal - effectiveTotal;
         double savingsPercentage = estimatedTotal > 0 ? (savings / estimatedTotal) * 100 : 0.0;
 
-        // Попробуем оценить сумму НДС, если есть явная цена с НДС и база
+        // Сумма НДС и ставка
         Double vatAmount = (explicitUnitWithVat != null) ? (explicitUnitWithVat - unitBase) * quantity : 0.0;
-        Double vatRate = (explicitUnitWithVat != null && unitBase > 0) ? ((explicitUnitWithVat / unitBase) - 1) * 100.0 : 0.0; // без НДС, если явной цены с НДС нет
+        Double vatRate = supplierVatApplicable ? supplierVatRate : 0.0;
 
         return new SupplierPriceDto(
                 proposal.getSupplier().getId(),

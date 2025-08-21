@@ -602,7 +602,6 @@ const TenderDetailPage: React.FC = () => {
             >
               <Tab label="Детали тендера" value="details" />
               <Tab label="Победители" value="winners" />
-              <Tab label="Анализ цен" value="analysis" />
             </Tabs>
           </CardContent>
         </Card>
@@ -613,9 +612,7 @@ const TenderDetailPage: React.FC = () => {
         <TenderWinnersDisplay tenderId={tender.id} />
       )}
 
-      {activeTab === 'analysis' && (tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
-        <PriceAnalysisSummary tenderId={tender.id} />
-      )}
+      {/* Анализ цен скрыт по требованию */}
 
       {activeTab === 'details' && (
         <Grid container spacing={3}>
@@ -836,16 +833,7 @@ const TenderDetailPage: React.FC = () => {
           </Card>
         </Grid>
 
-        {/* Анализ цен */}
-        {!isSupplier && (tender.status === 'BIDDING' || tender.status === 'EVALUATION' || tender.status === 'AWARDED') && (
-          <Grid item xs={12}>
-            <PriceAnalysisSummary
-              tenderId={tender.id}
-              tenderTitle={tender.title}
-              tenderNumber={tender.tenderNumber}
-            />
-          </Grid>
-        )}
+        {/* Анализ цен скрыт по требованию */}
 
         {/* Позиции тендера */}
         <Grid item xs={12}>

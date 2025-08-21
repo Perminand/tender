@@ -22,13 +22,16 @@ import { api } from '../utils/api';
 
 interface PriceSummaryDto {
   totalEstimatedPrice: number;
-  totalBestPrice: number;
+  totalWinnerPrice: number;
   totalSavings: number;
   savingsPercentage: number;
   totalProposals: number;
-  activeSuppliers: number;
+  uniqueWinners: number;
   averagePriceDeviation: number;
-  suppliersWithBestPrices: string[];
+  winnerSuppliers: string[];
+  secondPriceSuppliers: string[];
+  totalVatAmount: number;
+  totalDeliveryCost: number;
 }
 
 interface PriceAnalysisSummaryProps {
@@ -54,7 +57,7 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
   const loadPriceSummary = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/api/tenders/${tenderId}/statistics`);
+      const response = await api.get(`/api/tenders/${tenderId}/winners/statistics`);
       setSummary(response.data);
       setError(null);
     } catch (error) {
@@ -210,10 +213,10 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
           <Grid item xs={12} sm={6} md={3}>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="h6">
-                {summary.activeSuppliers}
+                {summary.uniqueWinners}
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                Поставщиков
+                Победителей
               </Typography>
             </Box>
           </Grid>
@@ -233,13 +236,13 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
           </Grid>
         </Grid>
 
-        {summary.suppliersWithBestPrices.length > 0 && (
+        {(summary.winnerSuppliers || []).length > 0 && (
           <Box sx={{ mt: 2 }}>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Лучшие цены предлагают:
+              Победители по позициям:
             </Typography>
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-              {summary.suppliersWithBestPrices.slice(0, 3).map((supplier, index) => (
+              {(summary.winnerSuppliers || []).slice(0, 3).map((supplier, index) => (
                 <Chip
                   key={index}
                   label={supplier}
@@ -248,9 +251,9 @@ const PriceAnalysisSummary: React.FC<PriceAnalysisSummaryProps> = ({
                   variant="outlined"
                 />
               ))}
-              {summary.suppliersWithBestPrices.length > 3 && (
+              {(summary.winnerSuppliers || []).length > 3 && (
                 <Chip
-                  label={`+${summary.suppliersWithBestPrices.length - 3}`}
+                  label={`+${(summary.winnerSuppliers || []).length - 3}`}
                   size="small"
                   color="default"
                 />

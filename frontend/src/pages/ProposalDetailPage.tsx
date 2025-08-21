@@ -428,11 +428,15 @@ const ProposalDetailPage: React.FC = () => {
                       Тип доставки: {getDeliveryTypeLabel(proposal.deliveryCondition.deliveryType)}
                     </Typography>
                   )}
-                  {proposal.deliveryCondition.deliveryCost && (
-                    <Typography variant="body2" color="text.secondary">
-                      Стоимость доставки: {formatPrice(proposal.deliveryCondition.deliveryCost)}
-                    </Typography>
-                  )}
+                  {(() => {
+                    const dcCost = proposal.deliveryCost ?? proposal.deliveryCondition.deliveryCost;
+                    const hasCost = dcCost !== undefined && dcCost !== null;
+                    return hasCost ? (
+                      <Typography variant="body2" color="text.secondary">
+                        Стоимость доставки: {formatPrice(dcCost as number)}
+                      </Typography>
+                    ) : null;
+                  })()}
                   {proposal.deliveryCondition.deliveryAddress && (
                     <Typography variant="body2" color="text.secondary">
                       Адрес доставки: {proposal.deliveryCondition.deliveryAddress}
@@ -470,9 +474,9 @@ const ProposalDetailPage: React.FC = () => {
                       Тип доставки: {getDeliveryTypeLabel(proposal.deliveryType)}
                     </Typography>
                   )}
-                  {proposal.deliveryCost && (
+                  {(proposal.deliveryCost !== undefined && proposal.deliveryCost !== null) && (
                     <Typography variant="body2" color="text.secondary">
-                      Стоимость доставки: {formatPrice(proposal.deliveryCost)}
+                      Стоимость доставки: {formatPrice(proposal.deliveryCost as number)}
                     </Typography>
                   )}
                   {proposal.deliveryAddress && (
@@ -547,7 +551,7 @@ const ProposalDetailPage: React.FC = () => {
                         <TableCell>{formatPrice(item.unitPrice)}</TableCell>
                         <TableCell>{item.unitPriceWithVat ? formatPrice(item.unitPriceWithVat) : '-'}</TableCell>
                         <TableCell>{item.weight ? `${item.weight} кг` : '-'}</TableCell>
-                        <TableCell>{item.deliveryCost ? formatPrice(item.deliveryCost) : '-'}</TableCell>
+                        <TableCell>{(item.deliveryCost !== undefined && item.deliveryCost !== null) ? formatPrice(item.deliveryCost as number) : '-'}</TableCell>
                         <TableCell>{formatPrice(item.totalPrice)}</TableCell>
                         <TableCell>
                           {item.isBestPrice && (

@@ -167,5 +167,7 @@ databaseChangeLog:
       file: db/changelog/changes/V079_add_delivery_condition_to_proposals.sql
   - include:
       file: db/changelog/changes/V080_limit_delivery_types_to_three.sql
+  - include:
+      file: db/changelog/changes/V081_create_tender_item_delivery_overrides.sql
 
 
