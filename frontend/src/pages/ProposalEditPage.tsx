@@ -1222,6 +1222,24 @@ const ProposalEditPage: React.FC = () => {
     checkDuplicates();
   }, [formData.proposalItems]);
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('ru-RU', {
+      style: 'currency',
+      currency: 'RUB',
+      currencyDisplay: 'symbol'
+    }).format(price);
+  };
+
+  // Функция для перевода ответственности на русский
+  const getResponsibilityLabel = (responsibility: string) => {
+    switch (responsibility) {
+      case 'SUPPLIER': return 'Поставщик';
+      case 'CUSTOMER': return 'Заказчик';
+      case 'SHARED': return 'Разделенная ответственность';
+      default: return responsibility;
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <style>
@@ -1551,7 +1569,7 @@ const ProposalEditPage: React.FC = () => {
               )}
               {(formData.deliveryCondition as DeliveryConditionDict).deliveryResponsibility && (
                 <Typography variant="body2" color="text.secondary">
-                  Ответственность: {(formData.deliveryCondition as DeliveryConditionDict).deliveryResponsibility}
+                  Ответственность: {getResponsibilityLabel((formData.deliveryCondition as DeliveryConditionDict).deliveryResponsibility)}
                 </Typography>
               )}
               {(formData.deliveryCondition as DeliveryConditionDict).additionalTerms && (
@@ -1658,47 +1676,58 @@ const ProposalEditPage: React.FC = () => {
             <Table sx={{ minWidth: 2500, width: 'max-content', tableLayout: 'fixed' }} className="resizable-table">
               <TableHead>
                 <TableRow>
-                  {['№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 'Ед. изм.', 'Цена за ед.', 'Цена с НДС', 'Вес', 'Доставка', 'Срок поставки', 'Гарантия', 'Сумма', 'Действия'].map((label, idx) => (
-                    <TableCell
-                      key={label}
-                      sx={{ 
-                        position: 'relative', 
-                        width: colWidths[idx], 
-                        minWidth: 40, 
-                        maxWidth: 800, 
-                        userSelect: 'none', 
-                        whiteSpace: 'nowrap',
-                        flex: 'none',
-                        flexShrink: 0,
-                        flexGrow: 0
-                      }}
-                      style={{
-                        width: colWidths[idx],
-                        minWidth: colWidths[idx],
-                        maxWidth: colWidths[idx],
-                        '--cell-width': `${colWidths[idx]}px`
-                      } as React.CSSProperties}
-                    >
-                      {label}
-                      {idx !== 0 && idx !== 12 && (
-                        <span
-                          style={{
-                            position: 'absolute',
-                            right: -3,
-                            top: 0,
-                            height: '100%',
-                            width: 12,
-                            cursor: 'col-resize',
-                            zIndex: 10,
-                            userSelect: 'none',
-                            background: 'transparent',
-                          }}
-                          onMouseDown={e => handleMouseDown(idx, e)}
-                          title="Перетащите для изменения ширины столбца"
-                        />
-                      )}
-                    </TableCell>
-                  ))}
+                  {(() => {
+                    const isSupplierDelivery = (formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER';
+                    const headers = ['№', 'Описание', 'Бренд', 'Модель', 'Производитель', 'Страна', 'Количество', 'Ед. изм.', 'Цена за ед.', 'Цена с НДС', 'Вес'];
+                    
+                    if (!isSupplierDelivery) {
+                      headers.push('Доставка');
+                    }
+                    
+                    headers.push('Срок поставки', 'Гарантия', 'Сумма', 'Действия');
+                    
+                    return headers.map((label, idx) => (
+                      <TableCell
+                        key={label}
+                        sx={{ 
+                          position: 'relative', 
+                          width: colWidths[idx], 
+                          minWidth: 40, 
+                          maxWidth: 800, 
+                          userSelect: 'none', 
+                          whiteSpace: 'nowrap',
+                          flex: 'none',
+                          flexShrink: 0,
+                          flexGrow: 0
+                        }}
+                        style={{
+                          width: colWidths[idx],
+                          minWidth: colWidths[idx],
+                          maxWidth: colWidths[idx],
+                          '--cell-width': `${colWidths[idx]}px`
+                        } as React.CSSProperties}
+                      >
+                        {label}
+                        {idx !== 0 && idx !== (isSupplierDelivery ? 11 : 12) && (
+                          <span
+                            style={{
+                              position: 'absolute',
+                              right: -3,
+                              top: 0,
+                              height: '100%',
+                              width: 12,
+                              cursor: 'col-resize',
+                              zIndex: 10,
+                              userSelect: 'none',
+                              background: 'transparent',
+                            }}
+                            onMouseDown={e => handleMouseDown(idx, e)}
+                            title="Перетащите для изменения ширины столбца"
+                          />
+                        )}
+                      </TableCell>
+                    ));
+                  })()}
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -1965,21 +1994,23 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(11)}>
-                        <TextField
-                          size="small"
-                          type="number"
-                          value={item.deliveryCost || ''}
-                          onChange={e => {
-                            const value = Number(e.target.value);
-                            handleItemChange(index, 'deliveryCost', value);
-                          }}
-                          inputProps={{ min: 0, step: 0.01 }}
-                          fullWidth
-                          disabled={!((formData.deliveryCondition as DeliveryConditionDict)?.calculateDelivery)}
-                        />
-                      </TableCell>
-                      <TableCell {...getCellStyles(12)}>
+                      {!((formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER') && (
+                        <TableCell {...getCellStyles(11)}>
+                          <TextField
+                            size="small"
+                            type="number"
+                            value={item.deliveryCost || ''}
+                            onChange={e => {
+                              const value = Number(e.target.value);
+                              handleItemChange(index, 'deliveryCost', value);
+                            }}
+                            inputProps={{ min: 0, step: 0.01 }}
+                            fullWidth
+                            disabled={!((formData.deliveryCondition as DeliveryConditionDict)?.calculateDelivery)}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell {...getCellStyles((formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER' ? 11 : 12)}>
                         <TextField
                           size="small"
                           value={item.deliveryPeriod || ''}
@@ -1987,7 +2018,7 @@ const ProposalEditPage: React.FC = () => {
                           fullWidth
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(13)}>
+                      <TableCell {...getCellStyles((formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER' ? 12 : 13)}>
                         <Autocomplete
                           options={warranties}
                           getOptionLabel={(option) => typeof option === 'string' ? option : (option?.name || '')}
@@ -2039,10 +2070,10 @@ const ProposalEditPage: React.FC = () => {
                           size="small"
                         />
                       </TableCell>
-                      <TableCell {...getCellStyles(14)}>
-                        {(item.quantity * item.unitPrice).toLocaleString('ru-RU')} ₽
+                      <TableCell {...getCellStyles((formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER' ? 13 : 14)}>
+                        {formatPrice(item.quantity * item.unitPrice)}
                       </TableCell>
-                      <TableCell {...getCellStyles(15)}>
+                      <TableCell {...getCellStyles((formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER' ? 14 : 15)}>
                         <IconButton color="error" onClick={() => handleRemoveItem(index)} size="small">
                           <DeleteIcon />
                         </IconButton>
@@ -2051,14 +2082,14 @@ const ProposalEditPage: React.FC = () => {
                   );
                 })}
                 <TableRow>
-                  <TableCell colSpan={15} align="right">
+                  <TableCell colSpan={((formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER' ? 14 : 15)} align="right">
                     <Typography variant="h6">
                       Итого:
                     </Typography>
                   </TableCell>
                   <TableCell>
                     <Typography variant="h6">
-                      {calculateTotalPrice().toLocaleString('ru-RU')} ₽
+                      {formatPrice(calculateTotalPrice())}
                     </Typography>
                   </TableCell>
                 </TableRow>
@@ -2338,15 +2369,25 @@ const ProposalEditPage: React.FC = () => {
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  fullWidth
-                  label="Стоимость доставки"
-                  type="number"
-                  value={currentPositionData?.deliveryCost || ''}
-                  onChange={e => handleModalItemChange('deliveryCost', Number(e.target.value))}
-                  inputProps={{ min: 0, step: 0.01 }}
-                  size="small"
-                />
+                {((formData.deliveryCondition as DeliveryConditionDict)?.deliveryResponsibility === 'SUPPLIER') ? (
+                  <TextField
+                    fullWidth
+                    label="Стоимость доставки"
+                    value="За счет поставщика"
+                    disabled
+                    size="small"
+                  />
+                ) : (
+                  <TextField
+                    fullWidth
+                    label="Стоимость доставки"
+                    type="number"
+                    value={currentPositionData?.deliveryCost || ''}
+                    onChange={e => handleModalItemChange('deliveryCost', Number(e.target.value))}
+                    inputProps={{ min: 0, step: 0.01 }}
+                    size="small"
+                  />
+                )}
               </Grid>
               <Grid item xs={12} sm={6}>
                 <TextField

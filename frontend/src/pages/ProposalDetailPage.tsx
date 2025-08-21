@@ -123,6 +123,16 @@ const getStatusLabel = (status: string) => {
   }
 };
 
+// Функция для перевода типа доставки на русский
+const getDeliveryTypeLabel = (deliveryType: string) => {
+  switch (deliveryType) {
+    case 'PICKUP': return 'Самовывоз';
+    case 'DELIVERY_TO_WAREHOUSE': return 'Доставка на склад';
+    case 'DELIVERY_TO_SITE': return 'Доставка на объект';
+    default: return deliveryType;
+  }
+};
+
 const ProposalDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -415,7 +425,7 @@ const ProposalDetailPage: React.FC = () => {
                   )}
                   {proposal.deliveryCondition.deliveryType && (
                     <Typography variant="body2" color="text.secondary">
-                      Тип доставки: {proposal.deliveryCondition.deliveryType}
+                      Тип доставки: {getDeliveryTypeLabel(proposal.deliveryCondition.deliveryType)}
                     </Typography>
                   )}
                   {proposal.deliveryCondition.deliveryCost && (
@@ -457,7 +467,7 @@ const ProposalDetailPage: React.FC = () => {
                   )}
                   {proposal.deliveryType && (
                     <Typography variant="body2" color="text.secondary">
-                      Тип доставки: {proposal.deliveryType}
+                      Тип доставки: {getDeliveryTypeLabel(proposal.deliveryType)}
                     </Typography>
                   )}
                   {proposal.deliveryCost && (
