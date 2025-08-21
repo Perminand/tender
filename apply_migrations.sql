@@ -92,10 +92,7 @@ INSERT INTO payment_parts (payment_condition_id, name, payment_type, amount, pay
 INSERT INTO delivery_conditions (name, description, delivery_type, delivery_responsibility, delivery_period) VALUES 
 ('Самовывоз', 'Поставщик не несет ответственности за доставку', 'PICKUP', 'CUSTOMER', 'По согласованию'),
 ('Доставка на склад поставщика', 'Доставка на склад поставщика', 'DELIVERY_TO_WAREHOUSE', 'SUPPLIER', '30 дней'),
-('Доставка на объект заказчика', 'Доставка на объект заказчика', 'DELIVERY_TO_SITE', 'SUPPLIER', '45 дней'),
-('EXW - Франко завод', 'Поставка франко завод', 'EX_WORKS', 'CUSTOMER', 'По согласованию'),
-('FCA - Франко перевозчик', 'Поставка франко перевозчик', 'FCA', 'SHARED', '30 дней'),
-('DAP - Поставка в месте назначения', 'Поставка в месте назначения', 'DAP', 'SUPPLIER', '45 дней')
+('Доставка на объект заказчика', 'Доставка на объект заказчика', 'DELIVERY_TO_SITE', 'SUPPLIER', '45 дней')
 ON CONFLICT (name) DO NOTHING;
 
 -- Проверка создания таблиц

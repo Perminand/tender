@@ -24,6 +24,7 @@ import ru.perminov.tender.repository.company.CompanyRepository;
 import ru.perminov.tender.service.SupplierProposalService;
 import ru.perminov.tender.service.NotificationService;
 import ru.perminov.tender.service.PaymentConditionService;
+import ru.perminov.tender.service.DeliveryConditionService;
 import ru.perminov.tender.service.AdditionalExpenseService;
 
 import java.time.LocalDateTime;
@@ -50,6 +51,7 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     private final SupplierProposalMapper supplierProposalMapper;
     private final ProposalItemMapper proposalItemMapper;
     private final PaymentConditionService paymentConditionService;
+    private final DeliveryConditionService deliveryConditionService;
     private final AdditionalExpenseService additionalExpenseService;
 
     @Override
@@ -96,9 +98,38 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
             }
         }
 
-        // Условия доставки инлайном: поля уже замаплены маппером из DTO в сущность
+        // Устанавливаем условия доставки
+        if (proposalDto.getDeliveryConditionId() != null) {
+            try {
+                ru.perminov.tender.dto.DeliveryConditionDto deliveryConditionDto = deliveryConditionService.getDeliveryCondition(proposalDto.getDeliveryConditionId());
+                if (deliveryConditionDto != null) {
+                    var dc = new ru.perminov.tender.model.DeliveryCondition();
+                    dc.setId(deliveryConditionDto.getId());
+                    proposal.setDeliveryCondition(dc);
+                    
+                    // Копируем данные из справочника для обратной совместимости
+                    proposal.setDeliveryType(deliveryConditionDto.getDeliveryType() != null ? deliveryConditionDto.getDeliveryType().name() : null);
+                    // Приоритет отдаем стоимости доставки из DTO, если она указана
+                    proposal.setDeliveryCost(proposalDto.getDeliveryCost() != null ? proposalDto.getDeliveryCost() : deliveryConditionDto.getDeliveryCost());
+                    proposal.setDeliveryAddress(deliveryConditionDto.getDeliveryAddress());
+                    proposal.setDeliveryPeriod(deliveryConditionDto.getDeliveryPeriod());
+                    proposal.setDeliveryResponsibility(deliveryConditionDto.getDeliveryResponsibility());
+                    proposal.setDeliveryAdditionalTerms(deliveryConditionDto.getAdditionalTerms());
+                    proposal.setDeliveryConditionName(deliveryConditionDto.getName());
+                    proposal.setDeliveryConditionDescription(deliveryConditionDto.getDescription());
+                    
+                    log.info("Установлено условие доставки: {} (ID: {}), стоимость из DTO: {}, стоимость из справочника: {}", 
+                            deliveryConditionDto.getName(), deliveryConditionDto.getId(), 
+                            proposalDto.getDeliveryCost(), deliveryConditionDto.getDeliveryCost());
+                }
+            } catch (Exception e) {
+                log.warn("Не удалось найти условие доставки с id: {}", proposalDto.getDeliveryConditionId());
+            }
+        }
         
         SupplierProposal savedProposal = supplierProposalRepository.save(proposal);
+        log.info("Создано предложение id={}, deliveryConditionId: {}", savedProposal.getId(), 
+                savedProposal.getDeliveryCondition() != null ? savedProposal.getDeliveryCondition().getId() : "null");
         
         // Сохраняем позиции из DTO
         if (proposalDto.getProposalItems() != null) {
@@ -228,6 +259,66 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         existingProposal.setWarrantyTerms(proposalDto.getWarrantyTerms());
         existingProposal.setValidUntil(proposalDto.getValidUntil());
         
+        // Обновляем условия доставки
+        if (proposalDto.getDeliveryConditionId() != null) {
+            try {
+                ru.perminov.tender.dto.DeliveryConditionDto deliveryConditionDto = deliveryConditionService.getDeliveryCondition(proposalDto.getDeliveryConditionId());
+                if (deliveryConditionDto != null) {
+                    var dc = new ru.perminov.tender.model.DeliveryCondition();
+                    dc.setId(deliveryConditionDto.getId());
+                    existingProposal.setDeliveryCondition(dc);
+                    
+                    // Копируем данные из справочника для обратной совместимости
+                    existingProposal.setDeliveryType(deliveryConditionDto.getDeliveryType() != null ? deliveryConditionDto.getDeliveryType().name() : null);
+                    // Приоритет отдаем стоимости доставки из DTO, если она указана
+                    existingProposal.setDeliveryCost(proposalDto.getDeliveryCost() != null ? proposalDto.getDeliveryCost() : deliveryConditionDto.getDeliveryCost());
+                    existingProposal.setDeliveryAddress(deliveryConditionDto.getDeliveryAddress());
+                    existingProposal.setDeliveryPeriod(deliveryConditionDto.getDeliveryPeriod());
+                    existingProposal.setDeliveryResponsibility(deliveryConditionDto.getDeliveryResponsibility());
+                    existingProposal.setDeliveryAdditionalTerms(deliveryConditionDto.getAdditionalTerms());
+                    existingProposal.setDeliveryConditionName(deliveryConditionDto.getName());
+                    existingProposal.setDeliveryConditionDescription(deliveryConditionDto.getDescription());
+                    
+                    log.info("Обновлено условие доставки: {} (ID: {}), стоимость из DTO: {}, стоимость из справочника: {}", 
+                            deliveryConditionDto.getName(), deliveryConditionDto.getId(), 
+                            proposalDto.getDeliveryCost(), deliveryConditionDto.getDeliveryCost());
+                }
+            } catch (Exception e) {
+                log.warn("Не удалось найти условие доставки с id: {}", proposalDto.getDeliveryConditionId());
+            }
+        } else {
+            // Если условие доставки не указано, очищаем связь
+            existingProposal.setDeliveryCondition(null);
+            existingProposal.setDeliveryType(null);
+            existingProposal.setDeliveryCost(null);
+            existingProposal.setDeliveryAddress(null);
+            existingProposal.setDeliveryPeriod(null);
+            existingProposal.setDeliveryResponsibility(null);
+            existingProposal.setDeliveryAdditionalTerms(null);
+            existingProposal.setDeliveryConditionName(null);
+            existingProposal.setDeliveryConditionDescription(null);
+        }
+        
+        // Обновляем условия оплаты
+        if (proposalDto.getPaymentConditionId() != null) {
+            try {
+                var paymentConditionDto = paymentConditionService.getPaymentCondition(proposalDto.getPaymentConditionId());
+                if (paymentConditionDto != null) {
+                    var pc = new ru.perminov.tender.model.PaymentCondition();
+                    pc.setId(paymentConditionDto.getId());
+                    existingProposal.setPaymentCondition(pc);
+                    
+                    log.info("Обновлено условие оплаты: {} (ID: {})", 
+                            paymentConditionDto.getName(), paymentConditionDto.getId());
+                }
+            } catch (Exception e) {
+                log.warn("Не удалось найти условие оплаты с id: {}", proposalDto.getPaymentConditionId());
+            }
+        } else {
+            // Если условие оплаты не указано, очищаем связь
+            existingProposal.setPaymentCondition(null);
+        }
+        
         SupplierProposal updatedProposal = supplierProposalRepository.save(existingProposal);
         log.info("Предложение id={} успешно обновлено, статус остался: {}", id, updatedProposal.getStatus());
         return supplierProposalMapper.toDto(updatedProposal);
@@ -236,9 +327,19 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     @Override
     @Transactional(readOnly = true)
     public SupplierProposalDto getProposalById(UUID id) {
-        SupplierProposal proposal = supplierProposalRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Предложение не найдено"));
-        return supplierProposalMapper.toDto(proposal);
+        SupplierProposal proposal = supplierProposalRepository.findByIdWithConditions(id);
+        if (proposal == null) {
+            throw new RuntimeException("Предложение не найдено");
+        }
+        
+        log.info("Загрузка предложения id={}, deliveryCondition: {}, paymentCondition: {}", id, 
+                proposal.getDeliveryCondition() != null ? proposal.getDeliveryCondition().getId() : "null",
+                proposal.getPaymentCondition() != null ? proposal.getPaymentCondition().getId() : "null");
+        
+        SupplierProposalDto dto = supplierProposalMapper.toDto(proposal);
+        log.info("DTO предложения id={}, deliveryConditionId: {}, paymentConditionId: {}", id, dto.getDeliveryConditionId(), dto.getPaymentConditionId());
+        
+        return dto;
     }
 
     @Override
@@ -247,7 +348,10 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
         List<SupplierProposal> proposals = supplierProposalRepository.findByTenderId(tenderId);
         return proposals.stream()
                 .map(proposal -> {
-                    SupplierProposalDto dto = supplierProposalMapper.toDto(proposal);
+                    // Загружаем предложение с условиями
+                    SupplierProposal proposalWithConditions = supplierProposalRepository.findByIdWithConditions(proposal.getId());
+                    SupplierProposalDto dto = supplierProposalMapper.toDto(proposalWithConditions);
+                    
                     // Загружаем позиции предложения с единицами измерения
                     List<ProposalItem> items = proposalItemRepository.findBySupplierProposalIdWithUnit(proposal.getId());
                     
@@ -449,8 +553,14 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
     @Override
     @Transactional(readOnly = true)
     public SupplierProposalDto getProposalWithBestOffers(UUID proposalId) {
-        SupplierProposal proposal = supplierProposalRepository.findById(proposalId)
-                .orElseThrow(() -> new RuntimeException("Предложение не найдено"));
+        SupplierProposal proposal = supplierProposalRepository.findByIdWithConditions(proposalId);
+        if (proposal == null) {
+            throw new RuntimeException("Предложение не найдено");
+        }
+        
+        log.info("Загрузка предложения с лучшими ценами id={}, deliveryCondition: {}, paymentCondition: {}", proposalId, 
+                proposal.getDeliveryCondition() != null ? proposal.getDeliveryCondition().getId() : "null",
+                proposal.getPaymentCondition() != null ? proposal.getPaymentCondition().getId() : "null");
         
         SupplierProposalDto proposalDto = supplierProposalMapper.toDto(proposal);
         
@@ -465,6 +575,9 @@ public class SupplierProposalServiceImpl implements SupplierProposalService {
                 .sum();
         
         proposalDto.setTotalPrice(totalPrice);
+        
+        log.info("DTO предложения с лучшими ценами id={}, deliveryConditionId: {}, paymentConditionId: {}", proposalId, 
+                proposalDto.getDeliveryConditionId(), proposalDto.getPaymentConditionId());
         
         return proposalDto;
     }

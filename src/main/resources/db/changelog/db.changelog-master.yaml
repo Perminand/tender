@@ -163,5 +163,9 @@ databaseChangeLog:
       file: db/changelog/changes/V077_seed_three_delivery_conditions.sql
   - include:
       file: db/changelog/changes/V078_add_vat_fields_to_companies.sql
+  - include:
+      file: db/changelog/changes/V079_add_delivery_condition_to_proposals.sql
+  - include:
+      file: db/changelog/changes/V080_limit_delivery_types_to_three.sql
 
 

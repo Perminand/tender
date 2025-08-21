@@ -63,7 +63,11 @@ public class SupplierProposal {
     @JoinColumn(name = "payment_condition_id")
     private PaymentCondition paymentCondition;
 
-    // Инлайновые поля условий доставки (не отдельная сущность)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "delivery_condition_id")
+    private DeliveryCondition deliveryCondition;
+
+    // Инлайновые поля условий доставки (для обратной совместимости)
     // Тип доставки хранится как свободное наименование из справочника
     private String deliveryType;
 

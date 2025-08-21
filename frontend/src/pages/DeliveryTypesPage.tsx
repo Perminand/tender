@@ -79,3 +79,4 @@ const DeliveryTypesPage: React.FC = () => {
 export default DeliveryTypesPage;
 
 
+

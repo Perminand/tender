@@ -26,4 +26,29 @@ public interface SupplierProposalRepository extends JpaRepository<SupplierPropos
            "LEFT JOIN FETCH sp.tender " +
            "WHERE sp.tender.id = :tenderId AND sp.supplier.id = :supplierId")
     List<SupplierProposal> findByTenderIdAndSupplierIdWithRelations(@Param("tenderId") UUID tenderId, @Param("supplierId") UUID supplierId);
+    
+    /**
+     * Найти предложение по ID с загрузкой условия доставки
+     */
+    @Query("SELECT sp FROM SupplierProposal sp " +
+           "LEFT JOIN FETCH sp.deliveryCondition " +
+           "WHERE sp.id = :id")
+    SupplierProposal findByIdWithDeliveryCondition(@Param("id") UUID id);
+    
+    /**
+     * Найти предложение по ID с загрузкой условия оплаты
+     */
+    @Query("SELECT sp FROM SupplierProposal sp " +
+           "LEFT JOIN FETCH sp.paymentCondition " +
+           "WHERE sp.id = :id")
+    SupplierProposal findByIdWithPaymentCondition(@Param("id") UUID id);
+    
+    /**
+     * Найти предложение по ID с загрузкой условий доставки и оплаты
+     */
+    @Query("SELECT sp FROM SupplierProposal sp " +
+           "LEFT JOIN FETCH sp.deliveryCondition " +
+           "LEFT JOIN FETCH sp.paymentCondition " +
+           "WHERE sp.id = :id")
+    SupplierProposal findByIdWithConditions(@Param("id") UUID id);
 } 

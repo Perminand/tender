@@ -30,6 +30,7 @@ import {
   Visibility as ViewIcon
 } from '@mui/icons-material';
 import { api } from '../utils/api';
+import { useLocation } from 'react-router-dom';
 import DeliveryConditionForm from '../components/DeliveryConditionForm';
 
 interface DeliveryConditionVm {
@@ -55,9 +56,18 @@ const DeliveryConditionsPage: React.FC = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [viewingCondition, setViewingCondition] = useState<DeliveryConditionVm | null>(null);
 
+  const location = useLocation();
+
   useEffect(() => {
     loadConditions();
   }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('create') === '1') {
+      handleCreate();
+    }
+  }, [location.search]);
 
   const loadConditions = async () => {
     try {

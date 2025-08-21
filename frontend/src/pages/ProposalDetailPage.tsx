@@ -75,6 +75,34 @@ interface ProposalDto {
   isBestOffer: boolean;
   priceDifference: number;
   proposalItems: ProposalItemDto[];
+  // Условия из справочников
+  paymentConditionId?: string;
+  paymentCondition?: {
+    id: string;
+    name: string;
+    description?: string;
+  };
+  deliveryConditionId?: string;
+  deliveryCondition?: {
+    id: string;
+    name: string;
+    description?: string;
+    deliveryType?: string;
+    deliveryCost?: number;
+    deliveryAddress?: string;
+    deliveryPeriod?: string;
+    deliveryResponsibility?: string;
+    additionalTerms?: string;
+  };
+  // Инлайновые поля для обратной совместимости
+  deliveryType?: string;
+  deliveryCost?: number;
+  deliveryAddress?: string;
+  deliveryPeriod?: string;
+  deliveryResponsibility?: string;
+  deliveryAdditionalTerms?: string;
+  deliveryConditionName?: string;
+  deliveryConditionDescription?: string;
 }
 
 // Функция для перевода статуса на русский
@@ -345,6 +373,22 @@ const ProposalDetailPage: React.FC = () => {
                 </Box>
               )}
 
+              {proposal.paymentCondition && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Условие оплаты (справочник)
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    {proposal.paymentCondition.name}
+                  </Typography>
+                  {proposal.paymentCondition.description && (
+                    <Typography variant="body2" color="text.secondary">
+                      {proposal.paymentCondition.description}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+
               {proposal.deliveryTerms && (
                 <Box sx={{ mb: 2 }}>
                   <Typography variant="body2" color="text.secondary">
@@ -353,6 +397,89 @@ const ProposalDetailPage: React.FC = () => {
                   <Typography variant="body2">
                     {proposal.deliveryTerms}
                   </Typography>
+                </Box>
+              )}
+
+              {proposal.deliveryCondition && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Условие доставки (справочник)
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    {proposal.deliveryCondition.name}
+                  </Typography>
+                  {proposal.deliveryCondition.description && (
+                    <Typography variant="body2" color="text.secondary">
+                      {proposal.deliveryCondition.description}
+                    </Typography>
+                  )}
+                  {proposal.deliveryCondition.deliveryType && (
+                    <Typography variant="body2" color="text.secondary">
+                      Тип доставки: {proposal.deliveryCondition.deliveryType}
+                    </Typography>
+                  )}
+                  {proposal.deliveryCondition.deliveryCost && (
+                    <Typography variant="body2" color="text.secondary">
+                      Стоимость доставки: {formatPrice(proposal.deliveryCondition.deliveryCost)}
+                    </Typography>
+                  )}
+                  {proposal.deliveryCondition.deliveryAddress && (
+                    <Typography variant="body2" color="text.secondary">
+                      Адрес доставки: {proposal.deliveryCondition.deliveryAddress}
+                    </Typography>
+                  )}
+                  {proposal.deliveryCondition.deliveryPeriod && (
+                    <Typography variant="body2" color="text.secondary">
+                      Срок доставки: {proposal.deliveryCondition.deliveryPeriod}
+                    </Typography>
+                  )}
+                  {proposal.deliveryCondition.additionalTerms && (
+                    <Typography variant="body2" color="text.secondary">
+                      Дополнительные условия: {proposal.deliveryCondition.additionalTerms}
+                    </Typography>
+                  )}
+                </Box>
+              )}
+
+              {/* Отображение инлайновых полей для обратной совместимости */}
+              {!proposal.deliveryCondition && proposal.deliveryConditionName && (
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary">
+                    Условие доставки
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                    {proposal.deliveryConditionName}
+                  </Typography>
+                  {proposal.deliveryConditionDescription && (
+                    <Typography variant="body2" color="text.secondary">
+                      {proposal.deliveryConditionDescription}
+                    </Typography>
+                  )}
+                  {proposal.deliveryType && (
+                    <Typography variant="body2" color="text.secondary">
+                      Тип доставки: {proposal.deliveryType}
+                    </Typography>
+                  )}
+                  {proposal.deliveryCost && (
+                    <Typography variant="body2" color="text.secondary">
+                      Стоимость доставки: {formatPrice(proposal.deliveryCost)}
+                    </Typography>
+                  )}
+                  {proposal.deliveryAddress && (
+                    <Typography variant="body2" color="text.secondary">
+                      Адрес доставки: {proposal.deliveryAddress}
+                    </Typography>
+                  )}
+                  {proposal.deliveryPeriod && (
+                    <Typography variant="body2" color="text.secondary">
+                      Срок доставки: {proposal.deliveryPeriod}
+                    </Typography>
+                  )}
+                  {proposal.deliveryAdditionalTerms && (
+                    <Typography variant="body2" color="text.secondary">
+                      Дополнительные условия: {proposal.deliveryAdditionalTerms}
+                    </Typography>
+                  )}
                 </Box>
               )}
 

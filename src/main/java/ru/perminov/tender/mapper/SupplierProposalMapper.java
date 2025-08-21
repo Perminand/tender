@@ -19,11 +19,13 @@ public interface SupplierProposalMapper {
     @Mapping(target = "proposalItems", ignore = true)
     @Mapping(target = "additionalExpenses", ignore = true)
     @Mapping(target = "isBestOffer", ignore = true)
-    @Mapping(target = "paymentConditionId", ignore = true)
+    @Mapping(target = "paymentConditionId", source = "paymentCondition.id")
+    @Mapping(target = "deliveryConditionId", source = "deliveryCondition.id")
     @Mapping(target = "priceDifference", ignore = true)
     SupplierProposalDto toDto(SupplierProposal entity);
 
     @Mapping(target = "paymentCondition", ignore = true)
+    @Mapping(target = "deliveryCondition", ignore = true)
     @Mapping(target = "proposalItems", ignore = true)
     @Mapping(target = "additionalExpenses", ignore = true)
     @Mapping(target = "supplier", ignore = true)

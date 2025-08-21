@@ -35,7 +35,7 @@ import {
   Save as SaveIcon,
   Send as SendIcon
 } from '@mui/icons-material';
-import PaymentConditionForm from '../components/PaymentConditionForm';
+// import PaymentConditionForm from '../components/PaymentConditionForm';
 import AdditionalExpensesManager from '../components/AdditionalExpensesManager';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../utils/api';
@@ -69,6 +69,12 @@ interface DeliveryConditionDict {
   calculateDelivery?: boolean;
 }
 
+interface PaymentConditionDict {
+  id: string;
+  name: string;
+  description?: string;
+}
+
 interface ProposalItemForm {
   tenderItemId: string;
   description: string;
@@ -100,8 +106,10 @@ interface ProposalFormData {
   warrantyTerms: string;
   validUntil: string;
   proposalItems: ProposalItemForm[];
-  paymentCondition?: any;
+  paymentCondition?: any; // выбранный объект
+  paymentConditionId?: string; // id для бэкенда
   deliveryCondition?: any;
+  deliveryConditionId?: string;
   deliveryCost?: number | null;
 }
 
@@ -130,6 +138,8 @@ const ProposalEditPage: React.FC = () => {
   const [countries, setCountries] = useState<DictionaryItem[]>([]);
   const [warranties, setWarranties] = useState<DictionaryItem[]>([]);
   const [deliveryConditions, setDeliveryConditions] = useState<DeliveryConditionDict[]>([]);
+  const [paymentConditions, setPaymentConditions] = useState<PaymentConditionDict[]>([]);
+  const [dictionariesLoaded, setDictionariesLoaded] = useState(false);
   
   // Состояния для модального окна позиции
   const [positionModalOpen, setPositionModalOpen] = useState(false);
@@ -137,6 +147,21 @@ const ProposalEditPage: React.FC = () => {
   const [currentPositionData, setCurrentPositionData] = useState<ProposalItemForm | null>(null);
   const [fillingStarted, setFillingStarted] = useState(false);
   const [savingPosition, setSavingPosition] = useState(false);
+  
+  // Сброс состояния заполнения при загрузке в режиме редактирования
+  useEffect(() => {
+    if (isEditMode) {
+      console.log('Режим редактирования - сбрасываем состояние заполнения позиций');
+      setFillingStarted(false);
+      setCurrentPositionIndex(0);
+      setPositionModalOpen(false);
+      setCurrentPositionData(null);
+      // Очищаем localStorage для этого тендера
+      if (tenderId) {
+        localStorage.removeItem(`proposal_filling_${tenderId}`);
+      }
+    }
+  }, [isEditMode, tenderId]);
   
   // Логирование изменений состояния модального окна
   useEffect(() => {
@@ -159,7 +184,8 @@ const ProposalEditPage: React.FC = () => {
     warrantyTerms: '',
     validUntil: '',
     proposalItems: [],
-    deliveryCost: null
+    deliveryCost: null,
+    paymentConditionId: undefined
   });
 
   // Состояние для автокомплета поставщика
@@ -327,12 +353,50 @@ const ProposalEditPage: React.FC = () => {
     loadDictionaries();
     
     if (isEditMode && id) {
-      loadProposal();
+      // Загружаем предложение только после загрузки справочников
+      if (dictionariesLoaded) {
+        loadProposal();
+      }
     } else if (tenderId) {
       loadTenderInfo();
       loadTenderItems();
     }
-  }, [tenderId, id, isEditMode]);
+  }, [tenderId, id, isEditMode, dictionariesLoaded]);
+
+  // Загрузка предложения после загрузки справочников
+  useEffect(() => {
+    if (isEditMode && id && dictionariesLoaded) {
+      loadProposal();
+    }
+  }, [dictionariesLoaded, isEditMode, id]);
+
+  // Обновление условия доставки после загрузки справочников
+  useEffect(() => {
+    if (isEditMode && dictionariesLoaded && deliveryConditions.length > 0 && formData.deliveryConditionId && !formData.deliveryCondition) {
+      const foundCondition = deliveryConditions.find(dc => dc.id === formData.deliveryConditionId);
+      if (foundCondition) {
+        console.log('Обновляем условие доставки после загрузки справочников:', foundCondition);
+        setFormData(prev => ({
+          ...prev,
+          deliveryCondition: foundCondition
+        }));
+      }
+    }
+  }, [dictionariesLoaded, deliveryConditions, isEditMode, formData.deliveryConditionId, formData.deliveryCondition]);
+
+  // Обновление условия оплаты после загрузки справочников
+  useEffect(() => {
+    if (isEditMode && dictionariesLoaded && paymentConditions.length > 0 && formData.paymentConditionId && !formData.paymentCondition) {
+      const foundCondition = paymentConditions.find(pc => pc.id === formData.paymentConditionId);
+      if (foundCondition) {
+        console.log('Обновляем условие оплаты после загрузки справочников:', foundCondition);
+        setFormData(prev => ({
+          ...prev,
+          paymentCondition: foundCondition
+        }));
+      }
+    }
+  }, [dictionariesLoaded, paymentConditions, isEditMode, formData.paymentConditionId, formData.paymentCondition]);
 
   // Инициализация selectedSupplier при изменении companies или formData.supplierId
   useEffect(() => {
@@ -344,15 +408,16 @@ const ProposalEditPage: React.FC = () => {
 
   // Восстановление процесса заполнения позиций при возврате на страницу
   useEffect(() => {
-    if (fillingStarted && tenderItems.length > 0 && currentPositionIndex < tenderItems.length && !positionModalOpen) {
+    if (fillingStarted && tenderItems.length > 0 && currentPositionIndex < tenderItems.length && !positionModalOpen && !isEditMode) {
       // Если процесс заполнения был начат, но модальное окно закрыто, показываем следующую позицию
+      // Только для новых предложений, не для редактирования
       showNextPosition();
     }
-  }, [fillingStarted, tenderItems.length, currentPositionIndex, positionModalOpen]);
+  }, [fillingStarted, tenderItems.length, currentPositionIndex, positionModalOpen, isEditMode]);
 
   // Сохранение состояния процесса заполнения в localStorage
   useEffect(() => {
-    if (tenderId) {
+    if (tenderId && !isEditMode) {
       const key = `proposal_filling_${tenderId}`;
       if (fillingStarted) {
         localStorage.setItem(key, JSON.stringify({
@@ -364,17 +429,18 @@ const ProposalEditPage: React.FC = () => {
         localStorage.removeItem(key);
       }
     }
-  }, [fillingStarted, currentPositionIndex, formData.proposalItems.length, tenderId]);
+  }, [fillingStarted, currentPositionIndex, formData.proposalItems.length, tenderId, isEditMode]);
 
-  // Восстановление состояния процесса заполнения из localStorage
+  // Восстанавливаем состояние заполнения позиций из localStorage
   useEffect(() => {
-    if (tenderId && !fillingStarted) {
+    if (tenderId && !fillingStarted && !isEditMode) {
       const key = `proposal_filling_${tenderId}`;
       const savedState = localStorage.getItem(key);
       if (savedState) {
         try {
           const state = JSON.parse(savedState);
           if (state.fillingStarted && state.currentPositionIndex >= 0) {
+            console.log('Восстанавливаем состояние заполнения из localStorage');
             setFillingStarted(true);
             setCurrentPositionIndex(state.currentPositionIndex);
           }
@@ -382,8 +448,28 @@ const ProposalEditPage: React.FC = () => {
           console.error('Ошибка при восстановлении состояния заполнения:', error);
         }
       }
+    } else if (isEditMode) {
+      console.log('Режим редактирования - восстановление состояния из localStorage пропущено');
     }
-  }, [tenderId, fillingStarted]);
+  }, [tenderId, fillingStarted, isEditMode]);
+
+  // Отслеживание изменений в proposalItems
+  useEffect(() => {
+    console.log('formData.proposalItems изменился:', {
+      count: formData.proposalItems.length,
+      items: formData.proposalItems,
+      isEditMode: isEditMode,
+      tenderItemsCount: tenderItems.length
+    });
+    
+    // Проверяем, что позиции правильно связаны с позициями тендера
+    if (formData.proposalItems.length > 0 && tenderItems.length > 0) {
+      formData.proposalItems.forEach((item, index) => {
+        const tenderItem = tenderItems.find(ti => ti.id === item.tenderItemId);
+        console.log(`Позиция ${index}: tenderItemId=${item.tenderItemId}, найдена в тендере: ${tenderItem ? 'да' : 'нет'}`);
+      });
+    }
+  }, [formData.proposalItems, isEditMode, tenderItems]);
 
   const loadCompanies = async () => {
     try {
@@ -397,12 +483,13 @@ const ProposalEditPage: React.FC = () => {
   const loadDictionaries = async () => {
     try {
       console.log('Загружаем справочники...');
-      const [brandsResponse, manufacturersResponse, countriesResponse, warrantiesResponse, deliveryConditionsResponse] = await Promise.all([
+      const [brandsResponse, manufacturersResponse, countriesResponse, warrantiesResponse, deliveryConditionsResponse, paymentConditionsResponse] = await Promise.all([
         api.get('/api/dictionaries/brands'),
         api.get('/api/dictionaries/manufacturers'),
         api.get('/api/dictionaries/countries'),
         api.get('/api/dictionaries/warranties'),
-        api.get('/api/delivery-conditions')
+        api.get('/api/delivery-conditions'),
+        api.get('/api/payment-conditions')
       ]);
       
       console.log('Справочники загружены:', {
@@ -410,14 +497,16 @@ const ProposalEditPage: React.FC = () => {
         manufacturers: manufacturersResponse.data.length,
         countries: countriesResponse.data.length,
         warranties: warrantiesResponse.data.length,
-        deliveryConditions: deliveryConditionsResponse.data.length
+        deliveryConditions: deliveryConditionsResponse.data.length,
+        paymentConditions: paymentConditionsResponse.data.length
       });
       console.log('Данные справочников:', {
         brands: brandsResponse.data,
         manufacturers: manufacturersResponse.data,
         countries: countriesResponse.data,
         warranties: warrantiesResponse.data,
-        deliveryConditions: deliveryConditionsResponse.data
+        deliveryConditions: deliveryConditionsResponse.data,
+        paymentConditions: paymentConditionsResponse.data
       });
       
       setBrands(brandsResponse.data);
@@ -425,6 +514,8 @@ const ProposalEditPage: React.FC = () => {
       setCountries(countriesResponse.data);
       setWarranties(warrantiesResponse.data);
       setDeliveryConditions(deliveryConditionsResponse.data || []);
+      setPaymentConditions(paymentConditionsResponse.data || []);
+      setDictionariesLoaded(true);
     } catch (error) {
       console.error('Error loading dictionaries:', error);
     }
@@ -456,13 +547,15 @@ const ProposalEditPage: React.FC = () => {
       })));
       
       // Начинаем процесс заполнения позиций только если он еще не был начат
-      if (response.data.length > 0 && !fillingStarted) {
-        console.log('Автоматически запускаем заполнение позиций');
+      // И только для новых предложений, не для редактирования
+      if (response.data.length > 0 && !fillingStarted && !isEditMode) {
+        console.log('Автоматически запускаем заполнение позиций для нового предложения');
         startPositionFilling();
       } else {
         console.log('Автоматический запуск не выполнен:', {
           hasItems: response.data.length > 0,
-          fillingStarted: fillingStarted
+          fillingStarted: fillingStarted,
+          isEditMode: isEditMode
         });
       }
     } catch (error) {
@@ -474,7 +567,7 @@ const ProposalEditPage: React.FC = () => {
     if (!id) return;
     
     try {
-      const response = await api.get(`/api/proposals/${id}`);
+      const response = await api.get(`/api/proposals/${id}/with-best-offers`);
       const proposal = response.data;
       
       let tenderItemsResponse = null;
@@ -486,7 +579,40 @@ const ProposalEditPage: React.FC = () => {
         console.log('Загружены позиции тендера для редактирования:', tenderItemsResponse.data.length);
       }
       
+      console.log('Загружено предложение для редактирования:', proposal);
+      console.log('Позиции предложения:', proposal.proposalItems);
+      console.log('Количество позиций:', proposal.proposalItems?.length || 0);
+      console.log('Тип proposalItems:', typeof proposal.proposalItems);
+      console.log('Является ли массивом:', Array.isArray(proposal.proposalItems));
+      
+      if (proposal.proposalItems && Array.isArray(proposal.proposalItems)) {
+        proposal.proposalItems.forEach((item: any, index: number) => {
+          console.log(`Позиция ${index}:`, item);
+        });
+      }
+      
       // Преобразуем данные предложения в формат формы
+      const mappedItems = proposal.proposalItems?.map((item: any) => ({
+        tenderItemId: item.tenderItemId || '',
+        description: item.description || '',
+        brand: item.brand || null,
+        model: item.model || '',
+        manufacturer: item.manufacturer || null,
+        countryOfOrigin: item.countryOfOrigin || null,
+        quantity: item.quantity || 0,
+        unitName: item.unitName || '',
+        unitPrice: item.unitPrice || 0,
+        specifications: item.specifications || '',
+        deliveryPeriod: item.deliveryPeriod || '',
+        warranty: item.warranty || null,
+        additionalInfo: item.additionalInfo || '',
+        unitPriceWithVat: item.unitPriceWithVat || 0,
+        weight: item.weight || 0,
+        deliveryCost: item.deliveryCost || 0
+      })) || [];
+      
+      console.log('Преобразованные позиции:', mappedItems);
+      
       setFormData({
         tenderId: proposal.tenderId || '',
         supplierId: proposal.supplierId || '',
@@ -498,38 +624,51 @@ const ProposalEditPage: React.FC = () => {
         warrantyTerms: proposal.warrantyTerms || '',
         validUntil: proposal.validUntil || '',
         deliveryCost: proposal.deliveryCost ?? null,
-        deliveryCondition: proposal.deliveryCondition || undefined,
-        proposalItems: proposal.proposalItems?.map((item: any) => ({
-          tenderItemId: item.tenderItemId || '',
-          description: item.description || '',
-          brand: item.brand || null,
-          model: item.model || '',
-          manufacturer: item.manufacturer || null,
-          countryOfOrigin: item.countryOfOrigin || null,
-          quantity: item.quantity || 0,
-          unitName: item.unitName || '',
-          unitPrice: item.unitPrice || 0,
-          specifications: item.specifications || '',
-          deliveryPeriod: item.deliveryPeriod || '',
-          warranty: item.warranty || null,
-          additionalInfo: item.additionalInfo || '',
-          unitPriceWithVat: item.unitPriceWithVat || 0,
-          weight: item.weight || 0,
-          deliveryCost: item.deliveryCost || 0
-        })) || []
+        paymentCondition: proposal.paymentConditionId && paymentConditions.length > 0 ? paymentConditions.find(pc => pc.id === proposal.paymentConditionId) : undefined,
+        paymentConditionId: proposal.paymentConditionId || undefined,
+        deliveryCondition: proposal.deliveryConditionId && deliveryConditions.length > 0 ? deliveryConditions.find(dc => dc.id === proposal.deliveryConditionId) : undefined,
+        proposalItems: mappedItems
       });
       
       console.log('Загружено предложение для редактирования:', proposal);
+      console.log('Отладка условий доставки:');
+      console.log('proposal.deliveryConditionId:', proposal.deliveryConditionId);
+      console.log('deliveryConditions:', deliveryConditions);
+      if (proposal.deliveryConditionId) {
+        const foundCondition = deliveryConditions.find(dc => dc.id === proposal.deliveryConditionId);
+        console.log('Найдено условие доставки:', foundCondition);
+        
+        // Если условие доставки не найдено, но справочники еще загружаются, обновим позже
+        if (!foundCondition && deliveryConditions.length === 0) {
+          console.log('Справочники еще не загружены, условие доставки будет установлено позже');
+        }
+      }
+      
+      console.log('Отладка условий оплаты:');
+      console.log('proposal.paymentConditionId:', proposal.paymentConditionId);
+      console.log('paymentConditions:', paymentConditions);
+      if (proposal.paymentConditionId) {
+        const foundCondition = paymentConditions.find(pc => pc.id === proposal.paymentConditionId);
+        console.log('Найдено условие оплаты:', foundCondition);
+        
+        // Если условие оплаты не найдено, но справочники еще загружаются, обновим позже
+        if (!foundCondition && paymentConditions.length === 0) {
+          console.log('Справочники еще не загружены, условие оплаты будет установлено позже');
+        }
+      }
       
       // Если есть позиции тендера, но нет позиций предложения, запускаем процесс заполнения
-      if (proposal.tenderId && (!proposal.proposalItems || proposal.proposalItems.length === 0)) {
+      // Только для новых предложений, не для редактирования
+      if (!isEditMode && proposal.tenderId && (!proposal.proposalItems || proposal.proposalItems.length === 0)) {
         // Проверяем, что позиции тендера были загружены
         if (tenderItemsResponse && tenderItemsResponse.data && tenderItemsResponse.data.length > 0) {
-          console.log('Запускаем процесс заполнения позиций для редактирования');
+          console.log('Запускаем процесс заполнения позиций для нового предложения');
           setTimeout(() => {
             startPositionFilling();
           }, 100);
         }
+      } else if (isEditMode) {
+        console.log('Режим редактирования - модальное окно заполнения позиций не будет показано');
       }
     } catch (error) {
       console.error('Error loading proposal:', error);
@@ -538,7 +677,14 @@ const ProposalEditPage: React.FC = () => {
 
   // Функция для начала заполнения позиций
   const startPositionFilling = () => {
-    console.log('startPositionFilling вызван');
+    console.log('startPositionFilling вызван, isEditMode:', isEditMode);
+    
+    // Не запускаем заполнение позиций в режиме редактирования
+    if (isEditMode) {
+      console.log('Режим редактирования - заполнение позиций не будет запущено');
+      return;
+    }
+    
     setCurrentPositionIndex(0);
     setFillingStarted(true);
     console.log('fillingStarted установлен в true, вызываем showNextPosition');
@@ -547,7 +693,14 @@ const ProposalEditPage: React.FC = () => {
 
   // Функция для показа следующей позиции
   const showNextPosition = () => {
-    console.log('showNextPosition вызван, currentPositionIndex:', currentPositionIndex, 'tenderItems.length:', tenderItems.length);
+    console.log('showNextPosition вызван, currentPositionIndex:', currentPositionIndex, 'tenderItems.length:', tenderItems.length, 'isEditMode:', isEditMode);
+    
+    // Не показываем модальное окно в режиме редактирования
+    if (isEditMode) {
+      console.log('Режим редактирования - модальное окно не будет показано');
+      return;
+    }
+    
     console.log('positionModalOpen будет установлен в true');
     if (currentPositionIndex < tenderItems.length) {
       const tenderItem = tenderItems[currentPositionIndex];
@@ -739,8 +892,11 @@ const ProposalEditPage: React.FC = () => {
     }
     try {
       const dc = formData.deliveryCondition as DeliveryConditionDict | undefined;
+      const pc = formData.paymentCondition as PaymentConditionDict | undefined;
       const proposalData = {
         ...formData,
+        deliveryConditionId: dc?.id || null,
+        paymentConditionId: pc?.id || null,
         deliveryType: dc?.deliveryType || null,
         deliveryAddress: null,
         deliveryCost: formData.deliveryCost ?? null,
@@ -824,8 +980,11 @@ const ProposalEditPage: React.FC = () => {
     try {
       // Сначала сохраняем предложение
       const dc = formData.deliveryCondition as DeliveryConditionDict | undefined;
+      const pc = formData.paymentCondition as PaymentConditionDict | undefined;
       const proposalData = {
         ...formData,
+        deliveryConditionId: dc?.id || null,
+        paymentConditionId: pc?.id || null,
         deliveryType: dc?.deliveryType || null,
         deliveryAddress: null,
         deliveryCost: formData.deliveryCost ?? null,
@@ -1256,11 +1415,55 @@ const ProposalEditPage: React.FC = () => {
       {/* Условия оплаты */}
       <Card sx={{ mb: 2 }}>
         <CardContent>
-          <PaymentConditionForm
-            value={formData.paymentCondition}
-            onChange={(condition) => {
-              setFormData(prev => ({ ...prev, paymentCondition: condition }));
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            Условия оплаты
+          </Typography>
+          <Autocomplete
+            options={paymentConditions}
+            getOptionLabel={(option) => option ? option.name : ''}
+            value={(formData.paymentCondition as PaymentConditionDict) || null}
+            onChange={(_, value) => {
+              if (value && (value as any).id === 'CREATE_PAYMENT_CONDITION') {
+                window.open('/reference/payment-conditions?create=1', '_blank', 'noopener,noreferrer');
+                return;
+              }
+              setFormData(prev => ({ ...prev, paymentCondition: value || undefined }));
             }}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Условие оплаты"
+                placeholder="Выберите из справочника"
+                required
+              />
+            )}
+            renderOption={(props, option) => {
+              const { key, ...otherProps } = props as any;
+              if ((option as any).id === 'CREATE_PAYMENT_CONDITION') {
+                return (
+                  <li key={key} {...otherProps}>
+                    <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
+                      Создать условие оплаты
+                    </Typography>
+                  </li>
+                );
+              }
+              return (
+                <li key={key} {...otherProps}>
+                  <Typography variant="body1">{(option as any)?.name || ''}</Typography>
+                </li>
+              );
+            }}
+            filterOptions={(options, { inputValue }) => {
+              const filtered = options.filter((o) =>
+                (o as any).name?.toLowerCase().includes((inputValue || '').toLowerCase())
+              );
+              filtered.push({ id: 'CREATE_PAYMENT_CONDITION', name: 'Создать условие оплаты' } as any);
+              return filtered as any;
+            }}
+            isOptionEqualToValue={(option, value) => option.id === value.id}
+            noOptionsText="Условия оплаты не найдены"
+            sx={{ mb: 2 }}
           />
         </CardContent>
       </Card>
@@ -1276,7 +1479,17 @@ const ProposalEditPage: React.FC = () => {
             getOptionLabel={(option) => option ? option.name : ''}
             value={(formData.deliveryCondition as DeliveryConditionDict) || null}
             onChange={(_, value) => {
-              setFormData(prev => ({ ...prev, deliveryCondition: value || undefined }));
+              // Переход на страницу создания условий
+              if (value && (value as any).id === 'CREATE_DELIVERY_CONDITION') {
+                window.open('/reference/delivery-conditions?create=1', '_blank', 'noopener,noreferrer');
+                return;
+              }
+              setFormData(prev => ({
+                ...prev,
+                deliveryCondition: value || undefined,
+                // При нерасчетных условиях скрываем поле и сбрасываем значение
+                deliveryCost: value && (value as any).calculateDelivery ? prev.deliveryCost : null
+              }));
             }}
             renderInput={(params) => (
               <TextField
@@ -1286,30 +1499,51 @@ const ProposalEditPage: React.FC = () => {
                 required
               />
             )}
+            renderOption={(props, option) => {
+              const { key, ...otherProps } = props as any;
+              if ((option as any).id === 'CREATE_DELIVERY_CONDITION') {
+                return (
+                  <li key={key} {...otherProps}>
+                    <Typography variant="body1" color="primary" sx={{ fontWeight: 'bold' }}>
+                      Создать условия доставки
+                    </Typography>
+                  </li>
+                );
+              }
+              return (
+                <li key={key} {...otherProps}>
+                  <Typography variant="body1">{(option as any)?.name || ''}</Typography>
+                </li>
+              );
+            }}
+            filterOptions={(options, { inputValue }) => {
+              const filtered = options.filter((o) =>
+                (o as any).name?.toLowerCase().includes((inputValue || '').toLowerCase())
+              );
+              // Добавляем пункт создания условий доставки в конец списка
+              filtered.push({ id: 'CREATE_DELIVERY_CONDITION', name: 'Создать условия доставки' } as any);
+              return filtered as any;
+            }}
             isOptionEqualToValue={(option, value) => option.id === value.id}
             noOptionsText="Условия доставки не найдены"
             sx={{ mb: 2 }}
           />
           <Grid container spacing={2} sx={{ mb: 1 }}>
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                label="Стоимость доставки"
-                type="number"
-                value={formData.deliveryCost ?? ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, deliveryCost: e.target.value === '' ? null : Number(e.target.value) }))}
-                inputProps={{ min: 0, step: 0.01 }}
-                disabled={!((formData.deliveryCondition as DeliveryConditionDict)?.calculateDelivery)}
-              />
-            </Grid>
+            {((formData.deliveryCondition as DeliveryConditionDict)?.calculateDelivery) && (
+              <Grid item xs={12} md={4}>
+                <TextField
+                  fullWidth
+                  label="Стоимость доставки"
+                  type="number"
+                  value={formData.deliveryCost ?? ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, deliveryCost: e.target.value === '' ? null : Number(e.target.value) }))}
+                  inputProps={{ min: 0, step: 0.01 }}
+                />
+              </Grid>
+            )}
           </Grid>
           {!!formData.deliveryCondition && (
             <Box sx={{ pl: 1 }}>
-              {(formData.deliveryCondition as DeliveryConditionDict).calculateDelivery && (
-                <Typography variant="body2" color="text.secondary">
-                  Сумма доставки указывается отдельно в позициях
-                </Typography>
-              )}
               {(formData.deliveryCondition as DeliveryConditionDict).deliveryPeriod && (
                 <Typography variant="body2" color="text.secondary">
                   Срок: {(formData.deliveryCondition as DeliveryConditionDict).deliveryPeriod}
@@ -1372,7 +1606,7 @@ const ProposalEditPage: React.FC = () => {
             <Typography variant="h6">
               Позиции предложения
             </Typography>
-            {tenderItems.length > 0 && !fillingStarted && formData.proposalItems.length === 0 && (
+            {tenderItems.length > 0 && !fillingStarted && formData.proposalItems.length === 0 && !isEditMode && (
               <Button
                 variant="contained"
                 color="primary"
@@ -1382,7 +1616,7 @@ const ProposalEditPage: React.FC = () => {
                 Заполнить через модальное окно
               </Button>
             )}
-            {tenderItems.length > 0 && formData.proposalItems.length > 0 && (
+            {tenderItems.length > 0 && formData.proposalItems.length > 0 && !isEditMode && (
               <Button
                 variant="outlined"
                 color="secondary"
@@ -1399,7 +1633,7 @@ const ProposalEditPage: React.FC = () => {
                 Начать заново
               </Button>
             )}
-            {tenderItems.length > 0 && fillingStarted && formData.proposalItems.length === 0 && (
+            {tenderItems.length > 0 && fillingStarted && formData.proposalItems.length === 0 && !isEditMode && (
               <Button
                 variant="outlined"
                 color="primary"

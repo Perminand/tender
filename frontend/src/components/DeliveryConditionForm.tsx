@@ -76,54 +76,13 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
   const loadDeliveryTypes = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/api/delivery-types');
-      const apiTypes = response.data || [];
-      
-      // Добавляем старые хардкодные значения для обратной совместимости
-      const legacyTypes: DeliveryType[] = [
+      // Жестко ограничиваем набор типов доставки до 3-х разрешенных значений
+      const allowedTypes: DeliveryType[] = [
         { id: 'PICKUP', name: 'Самовывоз' },
         { id: 'DELIVERY_TO_WAREHOUSE', name: 'Доставка на склад' },
-        { id: 'DELIVERY_TO_SITE', name: 'Доставка на объект' },
-        { id: 'EX_WORKS', name: 'EXW - Франко завод' },
-        { id: 'FCA', name: 'FCA - Франко перевозчик' },
-        { id: 'CPT', name: 'CPT - Фрахт оплачен до' },
-        { id: 'CIP', name: 'CIP - Фрахт и страхование оплачены до' },
-        { id: 'DAP', name: 'DAP - Поставка в месте назначения' },
-        { id: 'DPU', name: 'DPU - Поставка в месте назначения разгружено' },
-        { id: 'DDP', name: 'DDP - Поставка с оплатой пошлин' },
-        { id: 'INCLUDED_IN_PRICE', name: 'Доставка включена в стоимость' },
-        { id: 'SEPARATE_LINE', name: 'Доставка отдельной строкой' },
-        { id: 'THIRD_PARTY_INVOICE', name: 'Сторонний счет на доставку' }
+        { id: 'DELIVERY_TO_SITE', name: 'Доставка на объект' }
       ];
-      
-      // Объединяем API типы с legacy типами, избегая дублирования
-      const allTypes = [...apiTypes];
-      legacyTypes.forEach(legacyType => {
-        if (!allTypes.find(type => type.id === legacyType.id)) {
-          allTypes.push(legacyType);
-        }
-      });
-      
-      setDeliveryTypes(allTypes);
-    } catch (error) {
-      console.error('Ошибка при загрузке типов доставки:', error);
-      // В случае ошибки загружаем только legacy типы
-      const legacyTypes: DeliveryType[] = [
-        { id: 'PICKUP', name: 'Самовывоз' },
-        { id: 'DELIVERY_TO_WAREHOUSE', name: 'Доставка на склад' },
-        { id: 'DELIVERY_TO_SITE', name: 'Доставка на объект' },
-        { id: 'EX_WORKS', name: 'EXW - Франко завод' },
-        { id: 'FCA', name: 'FCA - Франко перевозчик' },
-        { id: 'CPT', name: 'CPT - Фрахт оплачен до' },
-        { id: 'CIP', name: 'CIP - Фрахт и страхование оплачены до' },
-        { id: 'DAP', name: 'DAP - Поставка в месте назначения' },
-        { id: 'DPU', name: 'DPU - Поставка в месте назначения разгружено' },
-        { id: 'DDP', name: 'DDP - Поставка с оплатой пошлин' },
-        { id: 'INCLUDED_IN_PRICE', name: 'Доставка включена в стоимость' },
-        { id: 'SEPARATE_LINE', name: 'Доставка отдельной строкой' },
-        { id: 'THIRD_PARTY_INVOICE', name: 'Сторонний счет на доставку' }
-      ];
-      setDeliveryTypes(legacyTypes);
+      setDeliveryTypes(allowedTypes);
     } finally {
       setLoading(false);
     }
@@ -147,16 +106,6 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
       case 'PICKUP': return 'Самовывоз';
       case 'DELIVERY_TO_WAREHOUSE': return 'Доставка на склад';
       case 'DELIVERY_TO_SITE': return 'Доставка на объект';
-      case 'EX_WORKS': return 'EXW - Франко завод';
-      case 'FCA': return 'FCA - Франко перевозчик';
-      case 'CPT': return 'CPT - Фрахт оплачен до';
-      case 'CIP': return 'CIP - Фрахт и страхование оплачены до';
-      case 'DAP': return 'DAP - Поставка в месте назначения';
-      case 'DPU': return 'DPU - Поставка в месте назначения разгружено';
-      case 'DDP': return 'DDP - Поставка с оплатой пошлин';
-      case 'INCLUDED_IN_PRICE': return 'Доставка включена в стоимость';
-      case 'SEPARATE_LINE': return 'Доставка отдельной строкой';
-      case 'THIRD_PARTY_INVOICE': return 'Сторонний счет на доставку';
       default: return type;
     }
   };
@@ -171,12 +120,7 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
   };
 
   const handleDeliveryTypeChange = (_: any, value: DeliveryType | null) => {
-    if (value && value.id === 'CREATE_NEW') {
-      setNewDeliveryType(value.name.replace(/^Создать "/, '').replace(/"$/, ''));
-      setOpenDeliveryTypeDialog(true);
-    } else {
-      handleChange('deliveryType', value ? value.id : '');
-    }
+    handleChange('deliveryType', value ? value.id : '');
   };
 
   const handleCreateDeliveryType = async () => {
@@ -234,15 +178,7 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
                 value={deliveryTypes.find(dt => dt.id === condition.deliveryType) || null}
                 onChange={handleDeliveryTypeChange}
                 options={deliveryTypes}
-                filterOptions={(options, state) => {
-                  const filtered = options.filter(option =>
-                    option.name.toLowerCase().includes(state.inputValue.toLowerCase())
-                  );
-                  if (state.inputValue && filtered.length === 0) {
-                    return [{ id: 'CREATE_NEW', name: `Создать "${state.inputValue}"` } as DeliveryType];
-                  }
-                  return filtered;
-                }}
+                filterOptions={(options, state) => options.filter(option => option.name.toLowerCase().includes(state.inputValue.toLowerCase()))}
                 getOptionLabel={(option: DeliveryType) => option ? option.name : ''}
                 isOptionEqualToValue={(option: DeliveryType, value: DeliveryType) => option.id === value.id}
                 loading={loading}
@@ -263,17 +199,7 @@ const DeliveryConditionForm: React.FC<DeliveryConditionFormProps> = ({ value, on
                   />
                 )}
                 renderOption={(props, option) => (
-                  <li {...props}>
-                    {option.id === 'CREATE_NEW' ? (
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <span style={{ color: '#1976d2', fontWeight: 'bold' }}>
-                          {option.name}
-                        </span>
-                      </Box>
-                    ) : (
-                      option.name
-                    )}
-                  </li>
+                  <li {...props}>{option.name}</li>
                 )}
               />
             </Grid>

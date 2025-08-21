@@ -72,6 +72,17 @@ const PaymentConditionsPage: React.FC = () => {
     loadConditions();
   }, []);
 
+  // Автоматическое открытие диалога создания при наличии параметра ?create=1
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('create') === '1') {
+      handleCreate();
+      // Удаляем параметр из URL
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
   const loadConditions = async () => {
     try {
       setLoading(true);
